@@ -35,9 +35,14 @@ jobs:
         with:
           go-version: '1.26'
           cache: true
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      # Installed from source rather than downloaded. The prebuilt binaries are compiled with
+      # whatever Go the release was cut with, and golangci-lint refuses to run when that is older
+      # than the version a module targets — which is how this job failed on its first run, and how
+      # it is still failing in the sibling CLI repository. Building it here uses the same
+      # toolchain as the code under test, so the two cannot drift apart.
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+      - run: golangci-lint run --timeout 5m
 
   catalog:
     # The catalog is the product. A rule that names an unregistered predicate, or a checksum

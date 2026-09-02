@@ -171,15 +171,6 @@ func TestPluralize(t *testing.T) {
 	}
 }
 
-func lineContaining(out, needle string) string {
-	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, needle) {
-			return line
-		}
-	}
-	return ""
-}
-
 func firstLineAfter(out, needle string) string {
 	lines := strings.Split(out, "\n")
 	for i, line := range lines {

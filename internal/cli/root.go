@@ -51,8 +51,8 @@ func newVersionCmd() *cobra.Command {
 		Short: "Print the version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			fmt.Fprintln(cmd.OutOrStdout(), version.String())
-			return nil
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), version.String())
+			return err
 		},
 	}
 }

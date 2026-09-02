@@ -95,8 +95,10 @@ func (p *Printer) Print(result report.Result) error {
 // deadline rather than at the very bottom, because a reader who stops early should still have
 // seen them.
 func (p *Printer) printHuman(r report.Result) error {
-	w := p.Out
-	st := newStyle(w)
+	st := newStyle(p.Out)
+	// Every section writes through this. A closed pipe, which is what `| head` looks like from
+	// here, stops the report instead of being ignored section after section.
+	w := &errWriter{out: p.Out}
 
 	p.printHeader(w, st, r)
 
@@ -106,65 +108,98 @@ func (p *Printer) printHuman(r report.Result) error {
 	p.printAdvisories(w, st, advisories)
 	p.printGaps(w, st, r)
 	p.printFooter(w, st, r)
-	return nil
+	return w.err
 }
 
-func (p *Printer) printHeader(w io.Writer, st style, r report.Result) {
+// errWriter remembers the first write failure and skips the rest.
+//
+// Report writing is a long sequence of small prints, and threading an error return through every
+// one of them would bury the layout in error handling for a case that ends the process anyway.
+type errWriter struct {
+	out io.Writer
+	err error
+}
+
+func (e *errWriter) Write(p []byte) (int, error) {
+	if e.err != nil {
+		return len(p), nil
+	}
+	n, err := e.out.Write(p)
+	if err != nil {
+		e.err = err
+	}
+	return n, nil
+}
+
+// printf and newline are the only two ways the report writes. Having them here rather than
+// calling fmt.Fprintf everywhere keeps the layout readable and leaves no error return to forget.
+func (e *errWriter) printf(format string, args ...any) {
+	if e.err != nil {
+		return
+	}
+	if _, err := fmt.Fprintf(e.out, format, args...); err != nil {
+		e.err = err
+	}
+}
+
+func (e *errWriter) newline() { e.printf("\n") }
+
+func (p *Printer) printHeader(w *errWriter, st style, r report.Result) {
 	details := []string{r.CurrentVersion}
 	if r.Provider != "" {
 		details = append(details, r.Provider)
 	}
 	details = append(details, pluralize(r.NodeCount, "node"))
 
-	fmt.Fprintf(w, "\n  %s %s\n", st.bold(nameOr(r.Cluster, "(unnamed context)")), st.dim("("+strings.Join(details, ", ")+")"))
-	fmt.Fprintf(w, "  %s %s   %s %s\n\n",
+	w.printf("\n  %s %s\n", st.bold(nameOr(r.Cluster, "(unnamed context)")), st.dim("("+strings.Join(details, ", ")+")"))
+	w.printf("  %s %s   %s %s\n\n",
 		st.dim("upgrade to"), st.bold(r.TargetVersion),
 		st.dim("risk"), st.score(r.Score, r.RiskLevel))
 }
 
-func (p *Printer) printBreaks(w io.Writer, st style, r report.Result, breaks []report.Finding) {
+func (p *Printer) printBreaks(w *errWriter, st style, r report.Result, breaks []report.Finding) {
 	if len(breaks) == 0 {
-		fmt.Fprintf(w, "  %s\n", st.heading("BREAKS"))
-		fmt.Fprintf(w, "    %s\n", st.green("Nothing found that this upgrade breaks."))
+		w.printf("  %s\n", st.heading("BREAKS"))
+		w.printf("    %s\n", st.green("Nothing found that this upgrade breaks."))
 		// Said here, not in a footnote: a clean list means nothing if half the checks could not
 		// run, and this is the sentence that stops it being misread.
 		if r.ScanStatus != report.ScanComplete {
-			fmt.Fprintf(w, "    %s\n", st.dim(st.wrap(
+			w.printf("    %s\n", st.dim(st.wrap(
 				"Some checks could not run. Read COULD NOT SEE below before taking this as a clean result.", 4)))
 		}
-		fmt.Fprintln(w)
+		w.newline()
 		return
 	}
 
-	fmt.Fprintf(w, "  %s %s\n", st.heading("BREAKS"), st.dim("("+itoa(len(breaks))+")"))
+	w.printf("  %s %s\n", st.heading("BREAKS"), st.dim("("+itoa(len(breaks))+")"))
 	for _, f := range breaks {
 		badge := padVisible(st.severity(f.Severity), 5)
-		fmt.Fprintf(w, "    %s %s\n", badge, st.wrap(headline(f), 10))
-		fmt.Fprintf(w, "          %s\n", st.dim(f.RuleID))
+		w.printf("    %s %s\n", badge, st.wrap(headline(f), 10))
+		w.printf("          %s\n", st.dim(f.RuleID))
 		// The fix belongs with the problem. Wide mode adds the vendor's own words underneath.
 		if f.Recommendation != "" {
-			fmt.Fprintf(w, "          %s\n", st.wrap(f.Recommendation, 10))
+			w.printf("          %s\n", st.wrap(f.Recommendation, 10))
 		}
 		if p.Format == FormatWide {
 			if f.Quote != "" {
-				fmt.Fprintf(w, "          %s\n", st.dim(st.wrap("vendor: \""+f.Quote+"\"", 10)))
+				w.printf("          %s\n", st.dim(st.wrap("vendor: \""+f.Quote+"\"", 10)))
 			}
 			if f.SourceURL != "" {
-				fmt.Fprintf(w, "          %s\n", st.dim(f.SourceURL))
+				w.printf("          %s\n", st.dim(f.SourceURL))
 			}
 			for _, e := range f.Evidence {
-				fmt.Fprintf(w, "          %s\n", st.dim(st.wrap(e, 10)))
+				w.printf("          %s\n", st.dim(st.wrap(e, 10)))
 			}
 		}
-		fmt.Fprintln(w)
+		w.newline()
 	}
 }
 
-func (p *Printer) printAddons(w io.Writer, st style, r report.Result) {
+func (p *Printer) printAddons(w *errWriter, st style, r report.Result) {
 	if len(r.Addons) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "  %s %s\n", st.heading("ADD-ONS"), st.dim("("+itoa(len(r.Addons))+" detected)"))
+	w.printf("  %s %s\n", st.heading("ADD-ONS"), st.dim("("+itoa(len(r.Addons))+" detected)"))
 
 	labels := make([]string, len(r.Addons))
 	nameWidth := 0
@@ -178,67 +213,67 @@ func (p *Printer) printAddons(w io.Writer, st style, r report.Result) {
 	// under itself rather than under the marker.
 	const addonPrefix = 4 + 2 + 1 + 2
 	for i, a := range r.Addons {
-		fmt.Fprintf(w, "    %s %s  %s\n", addonMarker(st, a.Verdict), pad(labels[i], nameWidth),
+		w.printf("    %s %s  %s\n", addonMarker(st, a.Verdict), pad(labels[i], nameWidth),
 			st.wrap(addonVerdict(a), nameWidth+addonPrefix))
 	}
-	fmt.Fprintln(w)
+	w.newline()
 
 	if notes := addonNotes(r.Addons); len(notes) > 0 {
-		fmt.Fprintf(w, "  %s %s\n", st.heading("ADD-ON UPGRADE NOTES"), st.dim("("+itoa(len(notes))+")"))
+		w.printf("  %s %s\n", st.heading("ADD-ON UPGRADE NOTES"), st.dim("("+itoa(len(notes))+")"))
 		for _, n := range notes {
-			fmt.Fprintf(w, "    %s %s\n", st.dim("-"), st.wrap(n, 6))
+			w.printf("    %s %s\n", st.dim("-"), st.wrap(n, 6))
 		}
-		fmt.Fprintln(w)
+		w.newline()
 	}
 }
 
-func (p *Printer) printAdvisories(w io.Writer, st style, advisories []report.Finding) {
+func (p *Printer) printAdvisories(w *errWriter, st style, advisories []report.Finding) {
 	if len(advisories) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "  %s %s\n", st.heading("WORTH READING"), st.dim("("+itoa(len(advisories))+")"))
-	fmt.Fprintf(w, "    %s\n", st.dim(st.wrap(
+	w.printf("  %s %s\n", st.heading("WORTH READING"), st.dim("("+itoa(len(advisories))+")"))
+	w.printf("    %s\n", st.dim(st.wrap(
 		"Changes on this path that no API call can check against your cluster.", 4)))
 	for _, f := range advisories {
-		fmt.Fprintf(w, "    %s %s\n", st.dim("-"), st.wrap(f.Title, 6))
+		w.printf("    %s %s\n", st.dim("-"), st.wrap(f.Title, 6))
 		if f.VerifyCommand != "" {
-			fmt.Fprintf(w, "      %s %s\n", st.dim("check:"), st.cyan(truncateCommand(f.VerifyCommand, st.width-14)))
+			w.printf("      %s %s\n", st.dim("check:"), st.cyan(truncateCommand(f.VerifyCommand, st.width-14)))
 		}
 	}
-	fmt.Fprintln(w)
+	w.newline()
 }
 
-func (p *Printer) printGaps(w io.Writer, st style, r report.Result) {
+func (p *Printer) printGaps(w *errWriter, st style, r report.Result) {
 	gaps := groupGaps(unavailable(r.Coverage))
 	if len(gaps) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "  %s %s\n", st.heading("COULD NOT SEE"), st.dim("("+itoa(len(gaps))+")"))
+	w.printf("  %s %s\n", st.heading("COULD NOT SEE"), st.dim("("+itoa(len(gaps))+")"))
 	for _, g := range gaps {
 		header := g.source
 		if g.rulesSkipped > 0 {
 			header += st.dim(" — " + itoa(g.rulesSkipped) + " rules not checked")
 		}
-		fmt.Fprintf(w, "    %s %s\n", st.dim("-"), header)
-		fmt.Fprintf(w, "      %s\n", st.dim(st.wrap(g.reason, 6)))
+		w.printf("    %s %s\n", st.dim("-"), header)
+		w.printf("      %s\n", st.dim(st.wrap(g.reason, 6)))
 		if len(g.scopes) > 0 {
-			fmt.Fprintf(w, "      %s %s\n", st.dim("affects:"), st.dim(st.wrap(strings.Join(g.scopes, ", "), 15)))
+			w.printf("      %s %s\n", st.dim("affects:"), st.dim(st.wrap(strings.Join(g.scopes, ", "), 15)))
 		}
 		if g.verify != "" {
-			fmt.Fprintf(w, "      %s %s\n", st.dim("check:"), st.cyan(truncateCommand(g.verify, st.width-14)))
+			w.printf("      %s %s\n", st.dim("check:"), st.cyan(truncateCommand(g.verify, st.width-14)))
 		}
 	}
-	fmt.Fprintln(w)
+	w.newline()
 }
 
-func (p *Printer) printFooter(w io.Writer, st style, r report.Result) {
-	fmt.Fprintf(w, "  %s\n", st.wrap(support.Describe(r.Support, r.CurrentVersion), 2))
+func (p *Printer) printFooter(w *errWriter, st style, r report.Result) {
+	w.printf("  %s\n", st.wrap(support.Describe(r.Support, r.CurrentVersion), 2))
 	if r.PatchCurrency != nil && !r.PatchCurrency.UpToDate {
-		fmt.Fprintf(w, "  %s\n", st.wrap(fmt.Sprintf(
+		w.printf("  %s\n", st.wrap(fmt.Sprintf(
 			"This cluster runs %s; the newest patch of that minor is %s.",
 			r.PatchCurrency.CurrentPatch, r.PatchCurrency.LatestPatch), 2))
 	}
-	fmt.Fprintf(w, "\n  %s\n\n", st.dim("Continuous checks across every cluster, with history: "+productLink))
+	w.printf("\n  %s\n\n", st.dim("Continuous checks across every cluster, with history: "+productLink))
 }
 
 // truncateCommand keeps a long one-liner on one line rather than wrapping a shell command,

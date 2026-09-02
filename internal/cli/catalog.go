@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -31,24 +32,24 @@ func newCatalogListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "Removed and deprecated APIs   %d rules, %d detector rows\n",
+			out := &lineWriter{out: cmd.OutOrStdout()}
+			out.printf("Removed and deprecated APIs   %d rules, %d detector rows\n",
 				len(cat.DeprecationRules), len(cat.DetectorTable))
-			fmt.Fprintf(out, "Config breakers               %d rules\n", len(cat.ConfigBreakers))
-			fmt.Fprintf(out, "Volume plugins                %d rules\n", len(cat.VolumePlugins))
-			fmt.Fprintf(out, "Node runtime                  %d rules\n", len(cat.NodeRuntime))
-			fmt.Fprintf(out, "Advisories                    %d rules\n", len(cat.Advisories))
-			fmt.Fprintf(out, "Adoption suggestions          %d rules\n", len(cat.AdoptionRules))
-			fmt.Fprintf(out, "\nAdd-ons (%d)\n", len(cat.Addons))
+			out.printf("Config breakers               %d rules\n", len(cat.ConfigBreakers))
+			out.printf("Volume plugins                %d rules\n", len(cat.VolumePlugins))
+			out.printf("Node runtime                  %d rules\n", len(cat.NodeRuntime))
+			out.printf("Advisories                    %d rules\n", len(cat.Advisories))
+			out.printf("Adoption suggestions          %d rules\n", len(cat.AdoptionRules))
+			out.printf("\nAdd-ons (%d)\n", len(cat.Addons))
 			for _, a := range cat.Addons {
 				windows := fmt.Sprintf("%d support windows", len(a.SupportWindows))
 				if len(a.SupportWindows) == 0 {
 					windows = "no vendor compatibility matrix published"
 				}
-				fmt.Fprintf(out, "  %-16s %-42s %d rules, %d upgrade notes\n  %-16s verified %s · %s\n",
+				out.printf("  %-16s %-42s %d rules, %d upgrade notes\n  %-16s verified %s · %s\n",
 					a.AddonID, windows, len(a.Rules), len(a.UpgradeNotes), "", dashIfEmpty(a.Source.LastVerified), a.Source.URL)
 			}
-			return nil
+			return out.err
 		},
 	}
 	cmd.Flags().StringVar(&catalogDir, "catalog-dir", "", "read catalogs from this directory instead of the embedded copy")
@@ -72,19 +73,19 @@ fires.`,
 				return err
 			}
 			problems := validate(cat)
-			out := cmd.OutOrStdout()
+			out := &lineWriter{out: cmd.OutOrStdout()}
 			if len(problems) > 0 {
 				for _, p := range problems {
-					fmt.Fprintf(out, "  %s\n", p)
+					out.printf("  %s\n", p)
 				}
 				return &ExitError{Code: ExitFailure,
 					Err: fmt.Errorf("%d catalog problem(s)", len(problems))}
 			}
-			fmt.Fprintf(out, "Catalog OK: %d API rules, %d config breakers, %d volume plugins, "+
+			out.printf("Catalog OK: %d API rules, %d config breakers, %d volume plugins, "+
 				"%d node runtime, %d advisories, %d add-ons, %d adoption suggestions\n",
 				len(cat.DeprecationRules), len(cat.ConfigBreakers), len(cat.VolumePlugins),
 				len(cat.NodeRuntime), len(cat.Advisories), len(cat.Addons), len(cat.AdoptionRules))
-			return nil
+			return out.err
 		},
 	}
 	cmd.Flags().StringVar(&catalogDir, "catalog-dir", "", "read catalogs from this directory instead of the embedded copy")
@@ -194,6 +195,22 @@ func validate(cat *catalog.Catalog) []string {
 
 	sort.Strings(problems)
 	return problems
+}
+
+// lineWriter keeps the command bodies free of error plumbing for what is a sequence of prints
+// to stdout, while still reporting a closed pipe rather than ignoring it.
+type lineWriter struct {
+	out io.Writer
+	err error
+}
+
+func (l *lineWriter) printf(format string, args ...any) {
+	if l.err != nil {
+		return
+	}
+	if _, err := fmt.Fprintf(l.out, format, args...); err != nil {
+		l.err = err
+	}
 }
 
 func loadCatalog(dir string) (*catalog.Catalog, error) {
