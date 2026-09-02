@@ -1,0 +1,219 @@
+{
+  "_meta": {
+    "description": "Verified catalog of GA Kubernetes features worth ADOPTING once the upgrade target reaches availableInVersion. Consumed by AdoptionSuggestionCatalog for AdoptionSuggestionAnalyzer. This is the radar's only non-breakage tier: every rule pairs a version-gated feature with an inventory predicate showing the cluster still uses the OLD pattern, and a `benefit` sentence saying what the customer gains — findings are always INFO / scoreImpact 0 / enforcementLevel 'suggestion' and can never move the upgrade score.",
+    "fetchedAt": "2026-08-28",
+    "verificationMethod": "Every availableInVersion below was read directly from the official kubernetes/kubernetes CHANGELOG-<version>.md files in a local clone (whole-file grep, not a summarizer). Exact matched sentence is recorded per-rule in `provenance`. NONE of these values were hand-typed from memory.",
+    "predicateNote": "predicateKey names a Java predicate registered in AdoptionSuggestionAnalyzer. A rule whose key is unregistered is SKIPPED with a WARN (never a crash, never a silent wrong answer); AdoptionSuggestionCatalogTest asserts the registry covers every key so that path stays theoretical.",
+    "oldAgentNote": "Predicates marked fieldPresence=true read presence-gated fields the agent only collects from version 0.4.38+. On an older agent the field is always absent, so the suggestion may fire for a feature the cluster ALREADY adopted — tolerated because the cost is one INFO line, and each such rule's remediation says to upgrade the agent if the feature is already in use."
+  },
+  "rules": [
+    {
+      "ruleId": "rtz-k8s-adopt-cronjob-timezone",
+      "availableInVersion": "1.27",
+      "predicateKey": "cronjobWithoutTimeZone",
+      "fieldPresence": true,
+      "title": "CronJobs can pin an explicit timeZone (GA since 1.27)",
+      "benefit": "Schedules survive daylight-saving transitions — jobs stop firing an hour early or late twice a year, and the schedule you read is the schedule that runs.",
+      "remediation": "Set spec.timeZone (e.g. \"Europe/Berlin\") on each CronJob whose schedule is meant in local time. If these CronJobs already set timeZone, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.27.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.27.md",
+          "matchedText": "Promoted `CronJobTimeZone` feature to GA"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-rwop-access-mode",
+      "availableInVersion": "1.29",
+      "predicateKey": "pvcReadWriteOnce",
+      "fieldPresence": false,
+      "title": "PVCs on ReadWriteOnce could use ReadWriteOncePod (GA since 1.29)",
+      "benefit": "A hard single-POD guarantee instead of single-node: during node drains and reschedules, two pods can no longer mount the same volume and corrupt it.",
+      "remediation": "For volumes that must only ever be written by one pod, change the PVC accessMode from ReadWriteOnce to ReadWriteOncePod (requires CSI driver support).",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.29.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.29.md",
+          "matchedText": "Graduate the `ReadWriteOncePod` feature gate to GA"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-validating-admission-policy",
+      "availableInVersion": "1.30",
+      "predicateKey": "anyValidatingWebhook",
+      "fieldPresence": false,
+      "title": "Validating webhooks could migrate to in-process ValidatingAdmissionPolicy (GA since 1.30)",
+      "benefit": "Admission checks run inside the apiserver as CEL expressions: no webhook network hop (lower latency), no webhook outage that can block or fail-open every admission, and one less deployment + TLS cert to operate.",
+      "remediation": "Review each ValidatingWebhookConfiguration; policies expressible as CEL over the admitted object can move to ValidatingAdmissionPolicy/Binding. Keep webhooks only for checks needing external data.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.30.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.30.md",
+          "matchedText": "ValidatingAdmissionPolicy was promoted to GA and will be `enabled` by default."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-pdb-unhealthy-eviction",
+      "availableInVersion": "1.31",
+      "predicateKey": "pdbWithoutUnhealthyPolicy",
+      "fieldPresence": true,
+      "title": "PDBs can set unhealthyPodEvictionPolicy: AlwaysAllow (GA since 1.31)",
+      "benefit": "Node drains stop getting stuck behind pods that are already broken — the PDB keeps protecting HEALTHY replicas while unhealthy ones can always be evicted, making cluster upgrades faster and less manual.",
+      "remediation": "Set spec.unhealthyPodEvictionPolicy: AlwaysAllow on PodDisruptionBudgets. If these PDBs already set it, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+          "matchedText": "The PodDisruptionBudget `spec.unhealthyPodEvictionPolicy` field has graduated to GA. This field may be set to `AlwaysAllow` to always allow unhealthy pods covered by the PodDisruptionBudget to be evicted."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-job-pod-failure-policy",
+      "availableInVersion": "1.31",
+      "predicateKey": "jobWithoutPodFailurePolicy",
+      "fieldPresence": true,
+      "title": "Jobs can declare podFailurePolicy (GA since 1.31)",
+      "benefit": "Non-retriable failures (bad image, OOM-kill, config error) fail the Job immediately instead of burning the full backoffLimit in doomed retries — less wasted compute and the real error surfaces minutes sooner.",
+      "remediation": "Add spec.podFailurePolicy rules (e.g. FailJob on a non-retriable container exit code, Ignore on disruption) to Jobs and CronJob job templates. If already set, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+          "matchedText": "Graduated `JobPodFailurePolicy` to GA and locked it to it's default."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-sts-pvc-retention",
+      "availableInVersion": "1.32",
+      "predicateKey": "stsTemplatesWithoutRetention",
+      "fieldPresence": true,
+      "title": "StatefulSets can auto-clean their PVCs via persistentVolumeClaimRetentionPolicy (GA since 1.32)",
+      "benefit": "PVCs from scaled-down or deleted StatefulSets are deleted automatically instead of accumulating as orphans — stops the silent storage-cost creep that otherwise needs manual PVC audits.",
+      "remediation": "Set spec.persistentVolumeClaimRetentionPolicy (e.g. whenDeleted: Delete, whenScaled: Retain) on StatefulSets that use volumeClaimTemplates. If already set, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.32.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.32.md",
+          "matchedText": "Promoted feature gate `StatefulSetAutoDeletePVC` from beta to stable."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-native-sidecars",
+      "availableInVersion": "1.33",
+      "predicateKey": "sidecarStyleContainerNotNative",
+      "fieldPresence": false,
+      "title": "Sidecar-style containers can become native sidecars (initContainers with restartPolicy: Always, GA since 1.33)",
+      "benefit": "Kubernetes finally orders them correctly: the sidecar is up BEFORE the app starts and shuts down AFTER it exits — Jobs stop hanging on a still-running proxy, and startup races against log/metrics shippers disappear.",
+      "remediation": "Move recognized sidecar containers (proxy/collector/log-shipper images) from spec.containers to spec.initContainers with restartPolicy: Always. Detection uses a curated image list (otel-collector, envoy/istio-proxy, fluent-bit, promtail, cloud-sql-proxy) and will not recognize custom sidecar images.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.33.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.33.md",
+          "matchedText": "The `SidecarContainers` feature has graduated to GA."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-affinity-match-label-keys",
+      "availableInVersion": "1.33",
+      "predicateKey": "podAntiAffinityWithoutMatchLabelKeys",
+      "fieldPresence": false,
+      "title": "Pod anti-affinity can scope to one rollout via matchLabelKeys (GA since 1.33)",
+      "benefit": "Spreading stays correct DURING deployments: with matchLabelKeys: [pod-template-hash], old- and new-ReplicaSet pods stop repelling each other, so rollouts no longer stall or land skewed on large clusters.",
+      "remediation": "Add matchLabelKeys: [\"pod-template-hash\"] to podAntiAffinity terms on Deployments so the constraint applies per-revision.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.33.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.33.md",
+          "matchedText": "Graduate the `MatchLabelKeys` (MismatchLabelKeys) feature in PodAffinity (PodAntiAffinity) to GA"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-traffic-distribution",
+      "availableInVersion": "1.35",
+      "predicateKey": "multiZoneClusterIpServiceWithoutTrafficDistribution",
+      "fieldPresence": true,
+      "title": "Multi-zone Services can keep traffic in-zone via trafficDistribution (GA since 1.35)",
+      "benefit": "Service traffic prefers same-zone endpoints — measurably lower cross-zone data-transfer cost and lower latency, with automatic fallback to other zones when local endpoints are gone.",
+      "remediation": "Set spec.trafficDistribution: PreferClose on ClusterIP Services whose clients and endpoints run in every zone. If already set, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.35.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.35.md",
+          "matchedText": "`trafficDistribution` field graduated to general availability."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-in-place-resize",
+      "availableInVersion": "1.35",
+      "predicateKey": "restartSensitiveWorkloadWithResources",
+      "fieldPresence": false,
+      "title": "Restart-sensitive workloads can resize CPU/memory in place (GA since 1.35)",
+      "benefit": "Right-size requests and limits WITHOUT restarting pods — no availability blip, no connection churn, which makes acting on right-sizing recommendations essentially free for StatefulSets and single-replica services.",
+      "remediation": "Use the pod resize subresource (kubectl patch --subresource=resize) or set container resizePolicy to tune resources on StatefulSets and single-replica Deployments without a rollout.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.35.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.35.md",
+          "matchedText": "Promote InPlacePodVerticalScaling to GA."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-user-namespaces",
+      "availableInVersion": "1.36",
+      "predicateKey": "workloadWithoutUserNamespaces",
+      "fieldPresence": false,
+      "title": "Workloads could adopt user namespaces — hostUsers: false (UserNamespacesSupport GA since 1.36)",
+      "benefit": "Containers run as unprivileged host UIDs even when they believe they are root: a container escape lands as a nobody-grade UID on the node, defusing whole classes of breakout CVEs without changing the image.",
+      "remediation": "Set spec.hostUsers: false on pod templates whose images tolerate UID remapping (most stateless services do). Requires nodes with idmap-mount support (modern kernels + containerd 1.7+/CRI-O 1.25+). Roll out per-workload, starting with internet-facing services. If these workloads already set hostUsers, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+          "matchedText": "Graduated the `UserNamespacesSupport` feature gate to GA."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-volume-attributes-class",
+      "availableInVersion": "1.36",
+      "predicateKey": "pvcWithoutVolumeAttributesClass",
+      "fieldPresence": false,
+      "title": "PVCs could use VolumeAttributesClass for in-place volume tuning (GA since 1.36)",
+      "benefit": "Change a live volume's performance parameters (IOPS, throughput class) by switching its VolumeAttributesClass — no volume recreation, no data migration, no pod restart dance.",
+      "remediation": "Define VolumeAttributesClass objects for your storage tiers and set spec.volumeAttributesClassName on PVCs that may need retuning (requires CSI driver support — check your driver's release notes). If these PVCs already set volumeAttributesClassName, upgrade the runtimez agent so it is visible here.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+          "matchedText": "Locked the `VolumeAttributesClass` feature gate to `true` and updated the preferred storage version to `storage.k8s.io/v1`."
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-adopt-mutating-admission-policy",
+      "availableInVersion": "1.36",
+      "predicateKey": "anyMutatingWebhook",
+      "fieldPresence": false,
+      "title": "Mutating webhooks could migrate to in-process MutatingAdmissionPolicy (GA since 1.36)",
+      "benefit": "Mutations run inside the apiserver as CEL: no webhook network hop on every admission, no mutating-webhook outage that can block all matching writes during upgrades, and one less deployment + TLS cert to operate.",
+      "remediation": "Review each MutatingWebhookConfiguration; label/annotation injection and defaulting expressible as CEL can move to MutatingAdmissionPolicy/Binding (GA v1 in 1.36). Keep webhooks only for mutations needing external data.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+          "matchedText": "Promoted the `MutatingAdmissionPolicy` to GA (v1) in Kubernetes `v1.36`. The feature is now enabled by default."
+        }
+      ]
+    }
+  ]
+}

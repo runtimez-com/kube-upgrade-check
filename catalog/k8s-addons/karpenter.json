@@ -1,0 +1,265 @@
+{
+ "addonId": "karpenter",
+ "displayName": "Karpenter",
+ "detect": {
+  "imageSuffixes": [
+   "karpenter/controller"
+  ]
+ },
+ "source": {
+  "url": "https://karpenter.sh/docs/upgrading/compatibility/",
+  "ref": "karpenter-provider-aws @ 4c2ffe32e (upstream, committed)",
+  "lastVerified": "2026-08-29",
+  "note": "supportWindows transcribed mechanically from hack/docs/compatibilitymatrix_gen/compatibility.yaml at the committed upstream ref above. upgradeNotes are transcribed verbatim from website/content/en/preview/upgrading/upgrade-guide.md at that same ref (markdown link syntax stripped, wording otherwise untouched); each is a step on KARPENTER's own upgrade path, rendered only when the prescribed k8s remediation crosses it. 2026-08-29 CORRECTION: an earlier revision shipped 1.14 with minK8s 1.32 and an accompanying note, both taken from UNCOMMITTED local edits to the fork rather than from upstream. Upstream publishes minK8s 1.26 for 1.14 and contains no such sentence, so the window has been restored and the note removed. Catalog provenance must cite a committed upstream ref \u2014 never a working tree."
+ },
+ "supportWindows": [
+  {
+   "version": "0.21",
+   "minK8s": "1.21",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "0.22",
+   "minK8s": "1.21",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "0.23",
+   "minK8s": "1.21",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "0.24",
+   "minK8s": "1.21",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "0.25",
+   "minK8s": "1.21",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "0.26",
+   "minK8s": "1.21",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "0.27",
+   "minK8s": "1.21",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "0.28",
+   "minK8s": "1.23",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "0.29",
+   "minK8s": "1.23",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "0.30",
+   "minK8s": "1.23",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "0.31",
+   "minK8s": "1.23",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "0.32",
+   "minK8s": "1.23",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "0.33",
+   "minK8s": "1.23",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "0.34",
+   "minK8s": "1.23",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "0.35",
+   "minK8s": "1.23",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "0.36",
+   "minK8s": "1.23",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "0.37",
+   "minK8s": "1.23",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "1.0",
+   "minK8s": "1.25",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "1.0.5",
+   "minK8s": "1.25",
+   "maxK8s": "1.31"
+  },
+  {
+   "version": "1.1",
+   "minK8s": "1.25",
+   "maxK8s": "1.31"
+  },
+  {
+   "version": "1.2",
+   "minK8s": "1.25",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.3",
+   "minK8s": "1.25",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.4",
+   "minK8s": "1.25",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.5",
+   "minK8s": "1.26",
+   "maxK8s": "1.33"
+  },
+  {
+   "version": "1.6",
+   "minK8s": "1.26",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "1.7",
+   "minK8s": "1.26",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "1.8",
+   "minK8s": "1.26",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "1.9",
+   "minK8s": "1.26",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.10",
+   "minK8s": "1.26",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.11",
+   "minK8s": "1.26",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.12",
+   "minK8s": "1.26",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.13",
+   "minK8s": "1.26",
+   "maxK8s": "1.36"
+  },
+  {
+   "version": "1.14",
+   "minK8s": "1.26",
+   "maxK8s": "1.36"
+  }
+ ],
+ "upgradeNotes": [
+  {
+   "version": "1.6",
+   "title": "Native ODCR support graduates to beta and is enabled by default",
+   "quote": "If you use ODCRs with `open` instance eligibility but have **not** set `spec.capacityReservationSelectorTerms` on your EC2NodeClasses, Karpenter stops using those reservations after this upgrade and falls back to on-demand \u2014 leaving reservations unused but still billed.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/",
+   "verifyCommand": "kubectl get ec2nodeclasses -o json | jq -r '.items[] | select(.spec.capacityReservationSelectorTerms == null) | .metadata.name'  # names printed = these node classes stop using open ODCRs, which stay billed but idle"
+  },
+  {
+   "version": "1.8",
+   "title": "v1.8.4 has a TopologySpreadConstraint scheduling regression \u2014 do not upgrade to that patch",
+   "quote": "Karpenter `v1.8.4` release contains a regression which may prevent Karpenter from scheduling pods with specific TopologySpreadConstraint configurations. Please do not upgrade to this version.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/",
+   "verifyCommand": "kubectl get deploy,statefulset -A -o json | jq -r '.items[] | select(.spec.template.spec.topologySpreadConstraints != null) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # any output = workloads exposed to the v1.8.4 scheduling regression; skip that patch"
+  },
+  {
+   "version": "1.12",
+   "title": "CA-bundle hashing change marks every existing node drifted \u2014 expect fleet-wide node replacement",
+   "quote": "This version adds support for drift on CA bundle. The updated hashing logic will mark existing nodes as drifted.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/",
+   "verifyCommand": "kubectl get nodeclaims --no-headers 2>/dev/null | wc -l; kubectl get nodepools -o json | jq -r '.items[] | \"\\(.metadata.name): budgets=\\(.spec.disruption.budgets // \"NONE\")\"'  # every node counted here is replaced on upgrade \u2014 without disruption budgets that churn is unbounded"
+  }
+ ],
+ "inventoryKinds": [
+  "NodePool",
+  "NodeClaim"
+ ],
+ "rules": [
+  {
+   "ruleId": "rtz-addon-karpenter-crd-lag",
+   "kind": "crdAbsent",
+   "severity": "MEDIUM",
+   "scoreImpact": 8,
+   "appliesWhenVersionAtLeast": "1.14",
+   "params": {
+    "crdName": "capacitybuffers.autoscaling.x-k8s.io"
+   },
+   "title": "Karpenter CRDs lag the running controller (capacitybuffers CRD missing)",
+   "recommendation": "Upgrade the standalone karpenter-crd Helm chart alongside the controller. Helm does not upgrade CRDs installed via the main chart, so they silently stay at the version first installed.",
+   "quote": "If you use the standalone `karpenter-crd` Helm chart, upgrade it alongside the controller so the new CRD is installed.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/"
+  },
+  {
+   "ruleId": "rtz-addon-karpenter-v1beta1-served",
+   "kind": "crdServedVersion",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "appliesWhenVersionAtLeast": "1.0",
+   "params": {
+    "crdNames": [
+     "nodepools.karpenter.sh",
+     "nodeclaims.karpenter.sh"
+    ],
+    "servedVersion": "v1beta1"
+   },
+   "title": "Karpenter CRDs still serve v1beta1 \u2014 dropped in Karpenter 1.1.0",
+   "recommendation": "Complete the v1 migration guide before upgrading Karpenter past 1.0.x. Karpenter 1.0 supports v1beta1 via conversion webhooks; 1.1.0 removes it. Only applies from 1.0 onward: on 0.3x, v1beta1 is the native API and the migration path runs through 1.0 first.",
+   "quote": "Karpenter `1.1.0` drops the support for `v1beta1` APIs.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/"
+  },
+  {
+   "ruleId": "rtz-addon-karpenter-nodeclassref-incomplete",
+   "kind": "crFieldAbsent",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "appliesWhenVersionAtLeast": "1.0",
+   "params": {
+    "crKinds": [
+     "NodePool",
+     "NodeClaim"
+    ],
+    "field": "nodeClassRef",
+    "requiredKeys": [
+     "group",
+     "kind"
+    ]
+   },
+   "title": "Karpenter NodePool/NodeClaim nodeClassRef is missing the required group/kind",
+   "recommendation": "Set nodeClassRef.group and nodeClassRef.kind on every NodePool and NodeClaim (for the AWS provider: group karpenter.k8s.aws, kind EC2NodeClass). Objects converted from v1beta1 carry only nodeClassRef.name; from Karpenter 1.1.0 those stop resolving their node class, so the NodePool provisions no capacity. Only applies from 1.0 onward \u2014 on 0.3x the v1beta1 API did not carry these fields and the migration path runs through 1.0 first.",
+   "quote": "`nodeClassRef.group` and `nodeClassRef.kind` are strictly required. Ensure these values are set for all `NodePools` / `NodeClaims` before upgrading.",
+   "sourceUrl": "https://karpenter.sh/docs/upgrading/upgrade-guide/"
+  }
+ ]
+}

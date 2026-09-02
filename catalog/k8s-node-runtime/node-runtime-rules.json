@@ -1,0 +1,195 @@
+{
+  "_meta": {
+    "description": "Verified catalog of node-runtime upgrade breakers (Step 2 of the Upgrade Breakage Radar backfill). Consumed by NodeRuntimeCatalog for NodeRuntimeAnalyzer. Covers facts about the NODE itself (container runtime, host cgroup version) rather than API schema, config fields, or CLI flags \u2014 the other three catalogs' domain.",
+    "fetchedAt": "2026-07-11",
+    "verificationMethod": "Every removedInVersion/appliesFromVersion value below was read directly from the official kubernetes/kubernetes CHANGELOG-<version>.md files, or (for containerRuntimeVersion / cgroup-version-observability) the upstream Go source (k8s.io/api/core/v1/types.go NodeSystemInfo, k8s.io/kubelet/config/v1beta1/types.go KubeletConfiguration). Exact source URL + matched sentence is recorded per-entry below in `provenance`. NONE of these values were hand-typed from memory.",
+    "honestyNote": "detectable=true means the underlying Kubernetes API genuinely exposes the fact needed (verified against upstream Go source) \u2014 it does NOT mean OUR agent currently collects it. NodeRuntimeAnalyzer independently determines, per-cluster and per-run, whether the currently-synced node inventory actually carries the needed field; if not, it emits a distinct NOT-ASSESSED finding rather than a false 'clean'. detectable=false (cgroupVersion) means NO Kubernetes API surface exposes the fact AT ALL, under any collector \u2014 this is permanently advisory, never a 'detected' finding.",
+    "coveredThroughVersion": "1.16-1.37 (Step 3, 2026-07-11, extended the 1.24/1.35 Step 2 starter pair back across the 1.16-1.31 backfill range)",
+    "step3Note": "Step 3 (2026-07-11) added 6 new PERMANENTLY-non-detectable node-runtime rules (dockershim-adjacent kubelet CLI flags removed at 1.24; CRI v1alpha2 dropped at 1.26; --container-runtime kubelet flag removed at 1.27; cgroup v1 support for the swap feature removed at 1.28 -- narrower/earlier than the existing 1.35 failCgroupV1 rule; kubelet hard-rejects AppArmor pods without host AppArmor support at 1.31; DRA v1alpha2 kubelet gRPC API unsupported at 1.31), all surfaced via the SAME generalized 'always advisory once target>=removedInVersion' analyzer path the original cgroup-v1-fails-1.35 rule used (NodeRuntimeAnalyzer's single-rule-ID special case was generalized into a loop over every detectable=false catalog rule). The 1.20 dockershim DEPRECATION-announcement item (PR #94624) was intentionally NOT added as a separate rule -- it predates and is fully superseded by the existing actionable rtz-k8s-node-dockershim-removed (1.24) rule; a 1.20 rule would fire as noise for every cluster upgrading past 1.20 with no additional action value. In-tree cloud-provider removals (1.29 default-off, 1.30 Azure/vSphere, 1.31 GCP) were intentionally routed to the ADVISORY catalog instead of here or config-breaker: they are really a `--cloud-provider=X` VALUE-specific fact, and neither this analyzer's Node-status surface nor ConfigBreakerAnalyzer's componentFlag 'present' condition can distinguish a specific flag VALUE (vs. e.g. --cloud-provider=external, which remains valid) -- modeling it here would risk a false positive at scale, so it is advisory-only per this backfill's no-false-precision guardrail. Total: 2 -> 8 rules."
+  },
+  "rules": [
+    {
+      "ruleId": "rtz-k8s-node-dockershim-removed",
+      "kind": "containerRuntime",
+      "statusField": "containerRuntimeVersion",
+      "condition": "startsWith",
+      "value": "docker://",
+      "removedInVersion": "1.24",
+      "severity": "CRITICAL",
+      "title": "Node reports the Docker/dockershim container runtime, which was removed from the kubelet in Kubernetes 1.24",
+      "remediation": "Migrate this node to a full CRI-compliant container runtime (containerd, CRI-O, etc.) BEFORE upgrading kubelet to 1.24+ \u2014 dockershim was completely removed from the kubelet at 1.24 and the node will not be able to run Pods afterward.",
+      "provisional": false,
+      "detectable": true,
+      "note": "containerRuntimeVersion IS a real, stable, GA-guaranteed corev1.NodeSystemInfo field (json tag `containerRuntimeVersion`, doc comment: 'ContainerRuntime Version reported by the node through runtime remote API (e.g. containerd://1.4.2)') \u2014 VERIFIED against the live k8s.io/api/core/v1/types.go source. However, as of this investigation (2026-07-11) the runtimez_agent's ResourceMapper.map(Node) does NOT project this field into the synced Node.status JSON (it currently emits only capacity/allocatable/kubeletVersion/osImage/ready) \u2014 see step2_summary.md for the full gap analysis. NodeRuntimeAnalyzer therefore checks for the field's actual presence per-cluster at runtime and reports NOT-ASSESSED (never a false 'clean') for every cluster until the agent is updated to project it.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.24.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.24.md",
+          "matchedText": "Docker runtime support using dockershim in the kubelet is now completely removed in 1.24. The kubelet used to have a module called dockershim, which implements CRI support for Docker, and it has seen maintenance issues in the Kubernetes community. From 1.24 onwards, please move to a container runtime that is a full-fledged implementation of CRI (v1alpha1 or v1 compliant) as they become available. (#97252, @dims)"
+        },
+        {
+          "name": "k8s.io/api/core/v1/types.go (NodeSystemInfo.ContainerRuntimeVersion field existence)",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/api/core/v1/types.go",
+          "matchedText": "// ContainerRuntime Version reported by the node through runtime remote API (e.g. containerd://1.4.2).\nContainerRuntimeVersion string `json:\"containerRuntimeVersion\" protobuf:\"bytes,6,opt,name=containerRuntimeVersion\"`"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-cgroupv1-fails-1.35",
+      "kind": "cgroupVersion",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.35",
+      "severity": "HIGH",
+      "title": "ACTION REQUIRED (upstream): nodes running cgroup v1 will not start on kubelet 1.35+ by default (failCgroupV1)",
+      "remediation": "Verify each node's ACTUAL cgroup version manually before upgrading to 1.35+ (e.g. `stat -fc %T /sys/fs/cgroup/` on the host \u2014 cgroup2fs means v2, tmpfs means v1). From Kubernetes 1.35, the kubelet's failCgroupV1 config option defaults to true and the kubelet refuses to start on a cgroup v1 host unless you explicitly set failCgroupV1:false (a stop-gap, not a fix \u2014 cgroup v1 is now deprecated). This platform CANNOT auto-detect the host's cgroup version \u2014 no Kubernetes API field exposes it.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE, not merely a current agent-collection gap: verified by inspecting BOTH k8s.io/api/core/v1/types.go NodeSystemInfo (machineID/systemUUID/bootID/kernelVersion/osImage/containerRuntimeVersion/kubeletVersion/kubeProxyVersion/operatingSystem/architecture \u2014 no cgroup field of any kind) AND k8s.io/kubelet/config/v1beta1/types.go KubeletConfiguration (cgroupDriver/cgroupsPerQOS/cgroupRoot/failCgroupV1 are all CONFIGURATION knobs, none of them report the actual detected host cgroup version). The closest adjacent, genuinely detectable signal \u2014 whether a kubelet config has explicitly set failCgroupV1:false (i.e., deliberately disabled the safety net) \u2014 is modeled separately as a DETECTABLE ConfigBreakerCatalog rule (rtz-k8s-kubelet-fail-cgroup-v1-disabled); that rule detects the OVERRIDE, not the underlying cgroup-v1 fact itself. This rule is therefore always surfaced as an advisory the moment target>=1.35, independent of any collected data, and NEVER as a 'detected' finding.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.35.md (session copy: v135_0.md, identical text confirmed against ch135.md)",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.35.md",
+          "matchedText": "ACTION REQUIRED: `failCgroupV1` will be set to true from 1.35. \n  This means that nodes will not start on a cgroup v1 by default. This puts cgroup v1 into a deprecated state. (#134298, @kannon92)"
+        },
+        {
+          "name": "k8s.io/api/core/v1/types.go NodeSystemInfo (negative-evidence check: no cgroup field)",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/api/core/v1/types.go",
+          "matchedText": "(grep for 'cgroup' case-insensitive across NodeSystemInfo: zero matches \u2014 confirms host cgroup version is not exposed anywhere in the Node API)"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-dockershim-flags-removed",
+      "kind": "kubeletFlag",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.24",
+      "severity": "HIGH",
+      "title": "Dockershim-related kubelet CLI flags were removed alongside dockershim in Kubernetes 1.24",
+      "remediation": "Remove --experimental-dockershim-root-directory, --docker-endpoint, --image-pull-progress-deadline, --network-plugin, --cni-conf-dir, --cni-bin-dir, --cni-cache-dir, and --network-plugin-mtu from the kubelet's command line / systemd unit before upgrading to 1.24+ (same release as the dockershim removal itself, rtz-k8s-node-dockershim-removed). Verify manually -- NOT auto-detectable: these are kubelet BINARY-only CLI flags never exposed via /configz (confirmed absent from the current KubeletConfiguration v1beta1 struct) and the kubelet has no static-pod command[]/args[] representation.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE (same structural reason as the config-breaker catalog's kubelet-CLI-only entries): VERIFIED absent from k8s.io/kubelet/config/v1beta1/types.go (no networkPlugin/cniConfDir/cniBinDir/cniCacheDir/dockerEndpoint/dockershimRootDirectory/imagePullProgressDeadline fields in the current struct) and the kubelet is a host-level process with no Kubernetes Pod/static-pod representation. Always surfaced as an advisory the moment target>=1.24, independent of any collected node data.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.24.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.24.md",
+          "matchedText": "Kubelet: the following dockershim related flags are also removed along with dockershim `--experimental-dockershim-root-directory`, `--docker-endpoint`, `--image-pull-progress-deadline`, `--network-plugin`, `--cni-conf-dir`, `--cni-bin-dir`, `--cni-cache-dir`, `--network-plugin-mtu`. ([#106907](https://github.com/kubernetes/kubernetes/pull/106907), [@cyclinder](https://github.com/cyclinder))"
+        },
+        {
+          "name": "k8s.io/kubelet config v1beta1/types.go (negative-evidence check)",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/kubelet/config/v1beta1/types.go",
+          "matchedText": "(grep for 'networkPlugin'/'cniConfDir'/'cniBinDir'/'cniCacheDir'/'dockerEndpoint'/'dockershimRootDirectory' case-insensitive across the full file: zero matches -- confirms these flags are NOT part of the typed KubeletConfiguration struct served by /configz)"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-cri-v1alpha2-dropped",
+      "kind": "containerRuntimeApi",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.26",
+      "severity": "HIGH",
+      "title": "Container Runtime Interface (CRI) v1alpha2 support was dropped in Kubernetes 1.26 -- runtimes must implement CRI v1",
+      "remediation": "Verify every node's container runtime (containerd, CRI-O, etc.) implements the CRI v1 API before upgrading to 1.26+ -- very old runtime versions that only implement CRI v1alpha2 will fail to communicate with the kubelet. Verify manually -- NOT auto-detectable: no Kubernetes API field exposes which CRI protocol version a runtime implements (Node.status.nodeInfo.containerRuntimeVersion exposes the runtime NAME and VERSION string, e.g. 'containerd://1.4.2', but not the CRI protocol version it speaks); inferring this from runtime version numbers would require a hardcoded per-runtime version-threshold table not confirmed in the source changelog and is deliberately NOT modeled here to avoid inventing false precision.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE with today's data surfaces: verified against k8s.io/api/core/v1/types.go NodeSystemInfo (containerRuntimeVersion is a free-text 'name://version' string, not a CRI protocol version). A per-runtime version-threshold heuristic (e.g. 'containerd < 1.4 only supports v1alpha2') was considered and REJECTED per this backfill's no-false-precision guardrail -- no such threshold is stated in the verified changelog text. Always surfaced as an advisory the moment target>=1.26.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.26.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.26.md",
+          "matchedText": "Dropped support for the Container Runtime Interface (CRI) version `v1alpha2`, which means that container runtimes just have to implement `v1`. ([#110618](https://github.com/kubernetes/kubernetes/pull/110618), [@saschagrunert](https://github.com/saschagrunert)) [SIG Node and Security]"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-container-runtime-flag-removed",
+      "kind": "kubeletFlag",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.27",
+      "severity": "HIGH",
+      "title": "kubelet flag --container-runtime was removed in Kubernetes 1.27",
+      "remediation": "Remove --container-runtime from the kubelet's command line / systemd unit before upgrading to 1.27+ (the flag was already a no-op after dockershim's 1.24 removal, since 'remote' was the only valid value; this is its final removal). Verify manually -- NOT auto-detectable: the kubelet is a host-level process with no static-pod command[]/args[] representation for this platform's collection surfaces to scan.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE: kubelet BINARY-only CLI flag, no static-pod representation, and not part of the typed KubeletConfiguration struct served by /configz. Always surfaced as an advisory the moment target>=1.27.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.27.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.27.md",
+          "matchedText": "Kubelet: remove deprecated flag `--container-runtime` ([#114017](https://github.com/kubernetes/kubernetes/pull/114017), [@calvin0327](https://github.com/calvin0327)) [SIG Cloud Provider and Node]"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-cgroupv1-swap-removed-1.28",
+      "kind": "cgroupVersion",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.28",
+      "severity": "MEDIUM",
+      "title": "cgroup v1 support for the swap-memory (NodeSwap) feature was removed in Kubernetes 1.28",
+      "remediation": "If this cluster uses the NodeSwap feature (swap memory for container workloads), verify every node's cgroup version manually before upgrading to 1.28+ -- cgroup v1 support was removed SPECIFICALLY for the swap feature at 1.28 (a narrower, earlier-and-scoped fact than the general failCgroupV1 kubelet-startup gate that arrives platform-wide at 1.35, see rtz-k8s-node-cgroupv1-fails-1.35). Clusters not using the NodeSwap feature are unaffected by this specific item. This platform CANNOT auto-detect a host's cgroup version -- no Kubernetes API field exposes it.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE, same structural reason as rtz-k8s-node-cgroupv1-fails-1.35 (no Kubernetes API surface exposes host cgroup version). Scoped MEDIUM (not HIGH/CRITICAL) because this specific 1.28 event only affects clusters that have opted into the NodeSwap feature gate on cgroup v1 hosts -- a narrower audience than the general 1.35 failCgroupV1 default-on event. Always surfaced as an advisory the moment target>=1.28, entirely independent of any collected node data.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.28.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.28.md",
+          "matchedText": "Support for `cgroup v1` is removed. ([#118764](https://github.com/kubernetes/kubernetes/pull/118764), [@iholder101](https://github.com/iholder101)) [SIG Node and Testing] -- quoted in the context of the NodeSwap / swap-memory-for-containers feature note block (immediately preceded by: 'Containers with memory requests equal to their memory limits also won't have swap access...The formula for the swap limit for Burstable QoS pods is: (<memory-request>/<node-memory-capacity>)*<node-swap-capacity>.')"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-apparmor-hard-reject",
+      "kind": "hostCapability",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.31",
+      "severity": "HIGH",
+      "title": "kubelet hard-rejects Pods requesting AppArmor if the node does not have AppArmor enabled, from Kubernetes 1.31",
+      "remediation": "Verify every node in this cluster actually has AppArmor enabled (kernel LSM support + apparmor_parser installed) before upgrading to 1.31+ if any workloads request AppArmor profiles -- previously such Pods may have silently run unconfined on nodes without AppArmor; from 1.31 the kubelet now hard-rejects (fails to admit) these Pods instead. Verify manually -- NOT auto-detectable: no Kubernetes Node API field reports whether a host has AppArmor support/enabled.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE: verified against k8s.io/api/core/v1/types.go NodeSystemInfo -- no AppArmor-related field exists (host security-module support is not part of the Node API in any form). Always surfaced as an advisory the moment target>=1.31.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+          "matchedText": "Kubelet now hard rejects pods with AppArmor if the node does not have AppArmor enabled. ([#125776](https://github.com/kubernetes/kubernetes/pull/125776), [@vinayakankugoyal](https://github.com/vinayakankugoyal)) [SIG Node]"
+        }
+      ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-dra-v1alpha2-grpc-unsupported",
+      "kind": "hostCapability",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.31",
+      "severity": "HIGH",
+      "title": "ACTION REQUIRED: DRA drivers using the v1alpha2 kubelet gRPC API are no longer supported from Kubernetes 1.31",
+      "remediation": "If this cluster uses Dynamic Resource Allocation (DRA), verify every DRA driver has been updated to the newer kubelet gRPC API before upgrading to 1.31+ -- drivers still using the v1alpha2 API will stop working. Verify manually -- NOT auto-detectable: no Kubernetes Node/resource-slice API field reports which gRPC API version a DRA driver plugin implements.",
+      "provisional": false,
+      "detectable": false,
+      "note": "PERMANENTLY NOT DETECTABLE with today's data surfaces: this is a driver-plugin-side gRPC protocol version, not a fact reported anywhere in the Node or DRA resource-slice API objects this platform collects. Always surfaced as an advisory the moment target>=1.31.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+          "matchedText": "ACTION-REQUIRED: Dynamic Resource Allocation (DRA) drivers using the v1alpha2 kubelet gRPC API are no longer supported and need to be updated. ([#124316](https://github.com/kubernetes/kubernetes/pull/124316), [@pohly](https://github.com/pohly)) [SIG Node and Testing]"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+# Read-only access for kube-upgrade-check.
+#
+# You do not need this to scan your own cluster with your own kubeconfig: an admin context
+# already covers everything below. Apply it when you want to run the check from CI or as a Job,
+# under a service account that can do nothing else.
+#
+# Nothing here grants write access of any kind. The two rules people usually ask about:
+#
+#   nodes/proxy   reads each node's live kubelet configuration through the API server. Without
+#                 it the kubelet rules cannot be checked, and the report will say so.
+#   /metrics      reads the API server's count of deprecated API requests. Without it one
+#                 evidence tier is unavailable; the others still work.
+#
+# Apply with:  kubectl apply -f rbac/clusterrole.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-upgrade-check
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-upgrade-check
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - pods
+      - configmaps
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs: ["get", "list"]
+
+  # The kubelet's own effective configuration, served through the API server.
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses", "csidrivers", "csinodes"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
+    verbs: ["get", "list"]
+
+  # Custom resources belonging to catalogued add-ons, for example Karpenter's NodePools.
+  - apiGroups: ["karpenter.sh", "karpenter.k8s.aws", "cert-manager.io", "argoproj.io"]
+    resources: ["*"]
+    verbs: ["get", "list"]
+
+  # Lets the tool ask what it is allowed to read before it starts, so a missing permission is
+  # reported as a gap rather than discovered as a failure part-way through.
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["selfsubjectaccessreviews"]
+    verbs: ["create"]
+
+  - nonResourceURLs: ["/metrics", "/version"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-upgrade-check
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-upgrade-check
+subjects:
+  - kind: ServiceAccount
+    name: kube-upgrade-check
+    namespace: kube-system

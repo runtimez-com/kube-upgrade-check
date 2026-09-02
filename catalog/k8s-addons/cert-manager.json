@@ -1,0 +1,224 @@
+{
+ "addonId": "cert-manager",
+ "displayName": "cert-manager",
+ "detect": {
+  "imageSuffixes": [
+   "jetstack/cert-manager-controller"
+  ]
+ },
+ "source": {
+  "url": "https://cert-manager.io/docs/releases/",
+  "ref": "cert-manager/website @ 24f9fe33cbd73ba7170a5e339709cde83027f132 (origin/master, committed blobs)",
+  "lastVerified": "2026-08-29",
+  "note": "supportWindows transcribed from content/docs/releases/README.md at the pinned ref: the 'Currently supported releases' table's Supported Kubernetes column (1.20, 1.21) plus the 'Old cert-manager releases' table's Compatible Kubernetes column (0.11 through 1.19). SUPPORTED was chosen over the narrower TESTED column deliberately: supported is the vendor's own commitment ('we will still respond to and fix any bug reports for that version'), tested only what their kind-based e2e matrix happens to cover. The matrix lives in the cert-manager/website repo, NOT cert-manager/cert-manager — the code repo publishes no compatibility table. Floor is 0.11, the oldest row upstream publishes; anything older reports VERSION_NOT_IN_CATALOG (honest 'no vendor data'). The 1.12 row (1.22-1.32) is WIDER than 1.13's (1.21-1.27): 1.12 was a two-year commercial LTS whose window kept growing after 1.13 shipped — transcribed faithfully, ceilings are not monotonic across versions. upgradeNotes are transcribed verbatim from content/docs/releases/upgrading/upgrading-1.X-1.Y.md at the same ref (markdown link syntax stripped, wording otherwise untouched); the 1.19.6/1.20.3 cert-manager-edit RBAC restriction was deliberately NOT transcribed — it lands mid-patch-series in three different guides and affects only tooling that creates Challenge/Order objects directly, which the vendor calls unintended use."
+ },
+ "supportWindows": [
+  {
+   "version": "0.11",
+   "minK8s": "1.9",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "0.12",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "0.13",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "0.14",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "0.15",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "0.16",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.0",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.1",
+   "minK8s": "1.11",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.2",
+   "minK8s": "1.16",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.3",
+   "minK8s": "1.16",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.4",
+   "minK8s": "1.16",
+   "maxK8s": "1.21"
+  },
+  {
+   "version": "1.5",
+   "minK8s": "1.16",
+   "maxK8s": "1.22"
+  },
+  {
+   "version": "1.6",
+   "minK8s": "1.17",
+   "maxK8s": "1.22"
+  },
+  {
+   "version": "1.7",
+   "minK8s": "1.18",
+   "maxK8s": "1.23"
+  },
+  {
+   "version": "1.8",
+   "minK8s": "1.19",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "1.9",
+   "minK8s": "1.20",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "1.10",
+   "minK8s": "1.20",
+   "maxK8s": "1.26"
+  },
+  {
+   "version": "1.11",
+   "minK8s": "1.21",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "1.12",
+   "minK8s": "1.22",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.13",
+   "minK8s": "1.21",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "1.14",
+   "minK8s": "1.24",
+   "maxK8s": "1.31"
+  },
+  {
+   "version": "1.15",
+   "minK8s": "1.25",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.16",
+   "minK8s": "1.25",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.17",
+   "minK8s": "1.29",
+   "maxK8s": "1.33"
+  },
+  {
+   "version": "1.18",
+   "minK8s": "1.29",
+   "maxK8s": "1.33"
+  },
+  {
+   "version": "1.19",
+   "minK8s": "1.31",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.20",
+   "minK8s": "1.32",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.21",
+   "minK8s": "1.33",
+   "maxK8s": "1.36"
+  }
+ ],
+ "upgradeNotes": [
+  {
+   "version": "1.15",
+   "title": "Gateway API support is beta-on-by-default — the old feature gate must become --enable-gateway-api",
+   "quote": "If you had previously enabled this feature flag you will now need to pass the flag `--enable-gateway-api` instead. This is because while the feature is now enabled by default, we still need to gate it behind a flag so cert-manager will not crash if the GatewayAPI CRDs are not installed.",
+   "verifyCommand": "kubectl -n cert-manager get deploy -o json | jq -r '.items[].spec.template.spec.containers[].args[]? | select(test(\"ExperimentalGatewayAPISupport\"))'  # any output = replace the feature gate with --enable-gateway-api when upgrading to 1.15+",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.14-1.15"
+  },
+  {
+   "version": "1.16",
+   "title": "Helm schema validation starts rejecting values files with typos or unknown fields",
+   "quote": "Helm schema validation may reject your existing Helm values files if they contain typos or unrecognized fields.",
+   "verifyCommand": "helm -n cert-manager get values cert-manager -o yaml  # review every key against the 1.16 chart's values.schema.json — an unrecognized key makes helm upgrade fail validation",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.15-1.16"
+  },
+  {
+   "version": "1.17",
+   "title": "RSA 3072/4096 certificates switch to SHA-384/SHA-512 signatures as their keys rotate",
+   "quote": "RSA certificates with keys of length 3072 or 4096 will now use SHA-384 or SHA-512 respectively as hash algorithms. These hash algorithms are widely supported, and we don't expect this to be an issue, but it's worth bearing in mind if you start to see errors as your larger RSA keys rotate.",
+   "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.size == 3072 or .spec.privateKey.size == 4096) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # names printed = signature hash changes for these as they rotate; check anything that pins the algorithm",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.16-1.17"
+  },
+  {
+   "version": "1.18",
+   "title": "Private key rotationPolicy default flips from Never to Always",
+   "quote": "We have changed the default value of `Certificate.Spec.PrivateKey.RotationPolicy` from `Never` to `Always`.",
+   "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.rotationPolicy == null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # names printed = these private keys start rotating on every renewal after the upgrade; set rotationPolicy: Never explicitly to keep the old behaviour",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.17-1.18"
+  },
+  {
+   "version": "1.18",
+   "title": "revisionHistoryLimit default flips from unlimited to 1 — old CertificateRequests are garbage-collected",
+   "quote": "We have changed the default value of `Certificate.Spec.RevisionHistoryLimit` from `nil` to `1`.",
+   "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.revisionHistoryLimit == null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # names printed = all but the latest CertificateRequest revision is deleted after the upgrade; set the limit explicitly if you audit old requests",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.17-1.18"
+  },
+  {
+   "version": "1.19",
+   "title": "v1.19.0 re-issues certificates unnecessarily — go straight to the latest 1.19 patch",
+   "quote": "Do not install `v1.19.0`, because it has a bug which may cause certificates to be re-issued unnecessarily. We fixed the bug in `v1.19.1`.",
+   "verifyCommand": "kubectl get certificates -A --no-headers 2>/dev/null | wc -l  # every certificate counted is exposed to the v1.19.0 re-issuance bug — skip that patch entirely",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.18-1.19"
+  },
+  {
+   "version": "1.19",
+   "title": "ACME client metrics drop the high-cardinality path label — dashboards and alerts matching it go dark",
+   "quote": "A high cardinality label, called `path`, was removed from the `certmanager_acme_client_request_count` and `certmanager_acme_client_request_duration_seconds` metrics. It is replaced with a new bounded cardinality label called `action`.",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"certmanager_acme_client_request\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed reference these metrics — anything selecting on the path label matches nothing after the upgrade",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.18-1.19"
+  },
+  {
+   "version": "1.21",
+   "title": "The chart stops granting the controller permission to mint its own ServiceAccount tokens — Vault/Route53 auth via serviceAccountRef breaks",
+   "quote": "The Helm chart no longer creates a default `Role` and `RoleBinding` granting the cert-manager controller permission to create tokens for its own ServiceAccount (`serviceaccounts/token: create`).",
+   "verifyCommand": "kubectl get clusterissuers,issuers -A -o json | jq -r '.items[] | select([.. | objects | .serviceAccountRef? // empty | .name] | index(\"cert-manager\")) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name)\"'  # names printed = issuers minting tokens for the controller ServiceAccount; grant serviceaccounts/token yourself or move to a dedicated ServiceAccount",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.20-1.21"
+  },
+  {
+   "version": "1.21",
+   "title": "Removed prometheus Helm values fail schema validation — helm upgrade refuses to run until they are deleted",
+   "quote": "The Helm values `prometheus.servicemonitor.targetPort`, `prometheus.servicemonitor.path`, and `prometheus.podmonitor.path` have been removed. Because the Helm values schema uses `additionalProperties: false`, you must remove these keys from your values overrides before upgrading, or `helm upgrade` will fail with a schema validation error.",
+   "verifyCommand": "helm -n cert-manager get values cert-manager -o json | jq '{targetPort: .prometheus.servicemonitor.targetPort, servicemonitorPath: .prometheus.servicemonitor.path, podmonitorPath: .prometheus.podmonitor.path} | with_entries(select(.value != null))'  # any key printed = remove it from your values first; also rename scrape configs from tcp-prometheus-servicemonitor to http-metrics",
+   "sourceUrl": "https://cert-manager.io/docs/releases/upgrading/upgrading-1.20-1.21"
+  }
+ ],
+ "inventoryKinds": [],
+ "rules": []
+}

@@ -1,0 +1,116 @@
+{
+  "addonId": "istio",
+  "displayName": "Istio",
+  "detect": {
+    "imageSuffixes": [
+      "istio/pilot",
+      "istio-release/pilot"
+    ]
+  },
+  "source": {
+    "url": "https://istio.io/latest/docs/releases/supported-releases/",
+    "ref": "istio/istio.io @ 8e87ee7fa81916bbff19cc8e264cce29a1d394ea (upstream, committed) + istio/istio release tags 1.25.0-1.31.0",
+    "lastVerified": "2026-08-31",
+    "note": "supportWindows transcribed mechanically from data/compatibility/supportStatus.yml at the committed istio.io ref above: minK8s/maxK8s are the FIRST and LAST entries of each row's k8sVersions list. The sibling testedK8sVersions column is deliberately NOT used - it is stale upstream (the master row still reads 1.24-1.30) and reading the two columns together yields a window several minors too wide. Cross-checked against Istio's own istioctl/pkg/install/k8sversion/version.go MinK8SVersion constant read at each release tag: the two agree for 1.24, 1.26, 1.27, 1.30 and 1.31 and differ by one minor for 1.22, 1.23, 1.25, 1.28 and 1.29, where the published table is treated as authoritative because it is the vendor's support statement while the constant only gates an istioctl warning. upgradeNotes are transcribed verbatim from releasenotes/notes/*.yaml read at the release TAG each note first shipped in (git show <tag>:<path>), taking the note's own upgradeNotes[].content; whitespace is collapsed and markdown link syntax is stripped to its label, wording otherwise untouched. Notes reverted in a later release are omitted (1.25's ztunnel Helm resourceName change, reverted in 1.26), as are notes superseded by a later removal (1.26's deprecation warning for the providers 1.27 removes). 2026-08-31: the 2 predicate rules and 24 upgrade notes that lived here were REMOVED in favour of the generated pipeline (sourceId 'istio'), which reads the same releasenotes/notes/*.yaml through RuleGenerationService and reproduced 24/24 of them on a held-out comparison. What stays is what generation structurally cannot produce: image-suffix detection, and the support-window matrix, which is the SCORED backbone (generated rules never score) and has no representation in the predicate vocabulary. This file is now transcribed vendor DATA plus detection — not rules."
+  },
+  "supportWindows": [
+    {
+      "version": "1.31",
+      "minK8s": "1.32",
+      "maxK8s": "1.36"
+    },
+    {
+      "version": "1.30",
+      "minK8s": "1.32",
+      "maxK8s": "1.36"
+    },
+    {
+      "version": "1.29",
+      "minK8s": "1.31",
+      "maxK8s": "1.35"
+    },
+    {
+      "version": "1.28",
+      "minK8s": "1.30",
+      "maxK8s": "1.34"
+    },
+    {
+      "version": "1.27",
+      "minK8s": "1.29",
+      "maxK8s": "1.33"
+    },
+    {
+      "version": "1.26",
+      "minK8s": "1.29",
+      "maxK8s": "1.33"
+    },
+    {
+      "version": "1.25",
+      "minK8s": "1.29",
+      "maxK8s": "1.32"
+    },
+    {
+      "version": "1.24",
+      "minK8s": "1.28",
+      "maxK8s": "1.31"
+    },
+    {
+      "version": "1.23",
+      "minK8s": "1.27",
+      "maxK8s": "1.30"
+    },
+    {
+      "version": "1.22",
+      "minK8s": "1.27",
+      "maxK8s": "1.30"
+    },
+    {
+      "version": "1.21",
+      "minK8s": "1.26",
+      "maxK8s": "1.29"
+    },
+    {
+      "version": "1.20",
+      "minK8s": "1.25",
+      "maxK8s": "1.29"
+    },
+    {
+      "version": "1.19",
+      "minK8s": "1.25",
+      "maxK8s": "1.28"
+    },
+    {
+      "version": "1.18",
+      "minK8s": "1.24",
+      "maxK8s": "1.27"
+    },
+    {
+      "version": "1.17",
+      "minK8s": "1.23",
+      "maxK8s": "1.26"
+    },
+    {
+      "version": "1.16",
+      "minK8s": "1.22",
+      "maxK8s": "1.25"
+    },
+    {
+      "version": "1.15",
+      "minK8s": "1.22",
+      "maxK8s": "1.25"
+    },
+    {
+      "version": "1.14",
+      "minK8s": "1.21",
+      "maxK8s": "1.24"
+    },
+    {
+      "version": "1.13",
+      "minK8s": "1.20",
+      "maxK8s": "1.23"
+    }
+  ],
+  "inventoryKinds": [],
+  "rules": [],
+  "upgradeNotes": []
+}

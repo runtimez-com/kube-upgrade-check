@@ -1,0 +1,105 @@
+{
+ "addonId": "kube-proxy",
+ "displayName": "kube-proxy",
+ "detect": {
+  "imageSuffixes": [
+   "/kube-proxy"
+  ]
+ },
+ "source": {
+  "url": "https://kubernetes.io/releases/version-skew-policy/",
+  "ref": "upstream Kubernetes version skew policy (kube-proxy section)",
+  "lastVerified": "2026-08-29",
+  "note": "supportWindows are DERIVED, not transcribed row-by-row: the policy states kube-proxy \"must not be newer than kube-apiserver\" and \"may be up to three minor versions older\" (two, for kube-proxy < 1.25). So for kube-proxy X: minK8s = X (never newer than the API server) and maxK8s = X + 3 (X + 2 below 1.25). This is an upstream Kubernetes rule and applies to every distribution, not just EKS. AddonCompatCatalogTest re-derives the arithmetic for every row so a hand-edit cannot silently widen a window."
+ },
+ "supportWindows": [
+  {
+   "version": "1.21",
+   "minK8s": "1.21",
+   "maxK8s": "1.23"
+  },
+  {
+   "version": "1.22",
+   "minK8s": "1.22",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "1.23",
+   "minK8s": "1.23",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "1.24",
+   "minK8s": "1.24",
+   "maxK8s": "1.26"
+  },
+  {
+   "version": "1.25",
+   "minK8s": "1.25",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "1.26",
+   "minK8s": "1.26",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "1.27",
+   "minK8s": "1.27",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "1.28",
+   "minK8s": "1.28",
+   "maxK8s": "1.31"
+  },
+  {
+   "version": "1.29",
+   "minK8s": "1.29",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.30",
+   "minK8s": "1.30",
+   "maxK8s": "1.33"
+  },
+  {
+   "version": "1.31",
+   "minK8s": "1.31",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "1.32",
+   "minK8s": "1.32",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "1.33",
+   "minK8s": "1.33",
+   "maxK8s": "1.36"
+  },
+  {
+   "version": "1.34",
+   "minK8s": "1.34",
+   "maxK8s": "1.37"
+  },
+  {
+   "version": "1.35",
+   "minK8s": "1.35",
+   "maxK8s": "1.38"
+  },
+  {
+   "version": "1.36",
+   "minK8s": "1.36",
+   "maxK8s": "1.39"
+  },
+  {
+   "version": "1.37",
+   "minK8s": "1.37",
+   "maxK8s": "1.40"
+  }
+ ],
+ "upgradeNotes": [],
+ "inventoryKinds": [],
+ "rules": []
+}

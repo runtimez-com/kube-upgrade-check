@@ -1,0 +1,186 @@
+{
+ "addonId": "ingress-nginx",
+ "displayName": "Ingress-NGINX",
+ "detect": {
+  "imageSuffixes": [
+   "ingress-nginx/controller",
+   "ingress-nginx/controller-chroot"
+  ]
+ },
+ "source": {
+  "url": "https://github.com/kubernetes/ingress-nginx#supported-versions-table",
+  "ref": "kubernetes/ingress-nginx @ dbb11b92ddb77bee9c35e462479129354c84f939 (origin/main, committed blobs)",
+  "lastVerified": "2026-08-30",
+  "note": "supportWindows transcribed from README.md's Supported Versions table at the pinned ref. Upstream's own definition is E2E coverage, not a hard floor: 'Supported versions for the ingress-nginx project mean that we have completed E2E tests, and they are passing for the versions listed. Ingress-Nginx versions may work on older versions, but the project does not make that guarantee.' Every table cell is a contiguous descending k8s list, so a min/max window is a faithful representation, not a widening. Granularity follows what the table actually covers: minors 1.9-1.15 list EVERY released patch of the minor (1.9.2 was never released; the 1.12.0-beta.0 row shares 1.12.0's window and is not transcribed separately), so those collapse to one minor row each — with two patch-level exception rows the eyeball reading would 'fix': 1.9.6 is WIDER than the rest of 1.9 (ceiling 1.29 vs 1.28), and 1.10.0 is NARROWER than 1.10.1+ (ceiling 1.29 vs 1.30). For 1.3-1.8 the table lists a single patch per minor while other patches of those minors exist un-listed (1.7.0, 1.8.0-1.8.2, ...), so those rows stay patch-exact (1.3.1, 1.4.0, 1.5.1, 1.6.4, 1.7.1, 1.8.4) — an un-listed patch like 1.8.0 reports VERSION_NOT_IN_CATALOG (honest 'no vendor row') rather than inheriting a sibling's window. Floor is 1.3.1, the oldest row upstream publishes. upgradeNotes are transcribed verbatim from the committed changelog/controller-1.10.0.md and controller-1.12.0.md blobs (the changelog dir's Breaking-changes section and its warning-sign blocks; bullet lists flattened to sentences, wording untouched) plus docs/faq.md at the same ref for the 1.9 snippet-default flip and the Nginx 1.25 chunked-transfer behaviour that ships in 1.10. 1.13, 1.14 and 1.15 publish no breaking-change or warning block in the repo's changelogs — their release-note prose lives only in GitHub releases, which this transcription deliberately does not read. The two crAnnotationKey rules read synced Ingress annotations (agent syncs Ingress with metadata.annotations) and gate on appliesWhenVersionBelow 1.12.0: they exist to NAME the affected Ingress objects, which the corresponding upgradeNotes' operator-run commands cannot. The annotation-key prefix nginx.ingress.kubernetes.io/ is itself the controller selector — those annotations are nginx-specific by construction, so no IngressClass join is needed. Matching is on annotation KEYS only; snippet values are operator-authored raw nginx config and must not appear in finding text."
+ },
+ "supportWindows": [
+  {
+   "version": "1.3.1",
+   "minK8s": "1.20",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "1.4.0",
+   "minK8s": "1.22",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "1.5.1",
+   "minK8s": "1.23",
+   "maxK8s": "1.25"
+  },
+  {
+   "version": "1.6.4",
+   "minK8s": "1.23",
+   "maxK8s": "1.26"
+  },
+  {
+   "version": "1.7.1",
+   "minK8s": "1.24",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "1.8.4",
+   "minK8s": "1.24",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "1.9",
+   "minK8s": "1.25",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "1.9.6",
+   "minK8s": "1.25",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "1.10",
+   "minK8s": "1.26",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "1.10.0",
+   "minK8s": "1.26",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "1.11",
+   "minK8s": "1.26",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "1.12",
+   "minK8s": "1.28",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "1.13",
+   "minK8s": "1.29",
+   "maxK8s": "1.33"
+  },
+  {
+   "version": "1.14",
+   "minK8s": "1.30",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "1.15",
+   "minK8s": "1.31",
+   "maxK8s": "1.35"
+  }
+ ],
+ "upgradeNotes": [
+  {
+   "version": "1.9.0",
+   "title": "allow-snippet-annotations flips to false — Ingresses using *-snippet annotations are silently ignored",
+   "quote": "We changed the default to allow snippets to `false` in https://github.com/kubernetes/ingress-nginx/pull/10393.",
+   "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations // {}) | keys[] | test(\"nginx.ingress.kubernetes.io/.*-snippet\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"' | sort -u  # names printed = snippet annotations these Ingresses rely on stop being rendered after 1.9 unless allow-snippet-annotations is explicitly set back to \"true\"",
+   "sourceUrl": "https://kubernetes.github.io/ingress-nginx/faq/#multi-tenant-kubernetes"
+  },
+  {
+   "version": "1.10.0",
+   "title": "OpenTracing and Zipkin modules are gone — only OpenTelemetry tracing remains",
+   "quote": "This version dropped Opentracing and zipkin modules, just Opentelemetry is supported",
+   "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"ingress-nginx|nginx-configuration\")) | .data | keys[]? | select(test(\"opentracing|zipkin|datadog|jaeger\"))' | sort -u  # keys printed = tracing config that stops working on 1.10; migrate to enable-opentelemetry before upgrading",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.10.0.md"
+  },
+  {
+   "version": "1.10.0",
+   "title": "Legacy GeoIP support is dropped — only GeoIP2 remains",
+   "quote": "This version dropped support for GeoIP (legacy). Only GeoIP2 is supported",
+   "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"ingress-nginx|nginx-configuration\")) | .data | keys[]? | select(. == \"use-geoip\")' | sort -u  # output = the legacy use-geoip option is set; switch to use-geoip2 (and a GeoIP2 database) before upgrading",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.10.0.md"
+  },
+  {
+   "version": "1.10.0",
+   "title": "Backends that set Transfer-Encoding: chunked start failing with duplicate-header errors",
+   "quote": "If your code is setting the HTTP header `\"Transfer-Encoding: chunked\"` and the controller log messages show an error about duplicate header, it is because of this change",
+   "verifyCommand": "kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=100000 2>/dev/null | grep -i duplicate | grep -ci 'transfer-encoding'  # non-zero after upgrading = a backend is setting Transfer-Encoding itself; the bundled Nginx 1.25 rejects the duplicate — stop setting the header in the application",
+   "sourceUrl": "https://kubernetes.github.io/ingress-nginx/faq/#why-is-chunking-not-working-since-controller-v110"
+  },
+  {
+   "version": "1.12.0",
+   "title": "Security defaults all tighten at once — annotation validation, risk-level, cross-namespace and path-type strictness",
+   "quote": "This changes the default of the following CLI arguments: `--enable-annotation-validation` gets enabled by default. It also changes the default of the following configuration options: `allow-cross-namespace-resources` gets disabled by default. `annotations-risk-level` gets lowered to \"High\" by default. `strict-validate-path-type` gets enabled by default.",
+   "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations // {}) | keys[] | test(\"nginx.ingress.kubernetes.io/.*-snippet\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"' | sort -u  # names printed = Critical-risk snippet annotations the new default annotations-risk-level \"High\" refuses at admission; set annotations-risk-level: Critical deliberately or remove the snippets — and re-check any Ingress referencing another namespace's Secret/Service, which allow-cross-namespace-resources now blocks",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  },
+  {
+   "version": "1.12.0",
+   "title": "The global-rate-limit feature is removed outright — its annotations stop being honoured",
+   "quote": "This removes the following configuration options: `global-rate-limit-memcached-host`, `global-rate-limit-memcached-port`, `global-rate-limit-memcached-connect-timeout`, `global-rate-limit-memcached-max-idle-timeout`, `global-rate-limit-memcached-pool-size`, `global-rate-limit-status-code`. It also removes the following annotations: `global-rate-limit`, `global-rate-limit-window`, `global-rate-limit-key`, `global-rate-limit-ignored-cidrs`.",
+   "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations // {}) | keys[] | test(\"global-rate-limit\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"' | sort -u  # names printed = rate limiting these Ingresses rely on disappears on 1.12; move to the per-pod limit-* annotations or an external rate limiter",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  },
+  {
+   "version": "1.12.0",
+   "title": "Third-party Lua plugin support is removed",
+   "quote": "It also removes support for user provided Lua plugins in the `/etc/nginx/lua/plugins` directory.",
+   "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"ingress-nginx|nginx-configuration\")) | .data.plugins // empty'  # output = Lua plugins that stop loading on 1.12; there is no replacement mechanism",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  },
+  {
+   "version": "1.12.0",
+   "title": "The ingress_upstream_latency_seconds metric is removed — dashboards and alerts on it go dark",
+   "quote": "This metric has already been deprecated and is now getting removed.",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"ingress_upstream_latency_seconds\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed reference the removed metric — they match nothing after the upgrade; nginx_ingress_controller_response_duration_seconds is the surviving latency histogram",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  }
+ ],
+ "inventoryKinds": [
+  "Ingress"
+ ],
+ "rules": [
+  {
+   "ruleId": "rtz-addon-ingress-nginx-snippet-annotations",
+   "kind": "crAnnotationKey",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "appliesWhenVersionBelow": "1.12.0",
+   "params": {
+    "crKind": "Ingress",
+    "annotationKeyPattern": "^nginx\\.ingress\\.kubernetes\\.io/(configuration|server|stream)-snippet$"
+   },
+   "title": "Ingresses use snippet annotations that 1.12's default annotations-risk-level refuses",
+   "recommendation": "These snippet annotations are rated Critical risk; after upgrading ingress-nginx to 1.12+ the default annotations-risk-level of High rejects any create or update of these Ingresses at admission (and since 1.9 the snippets are only rendered at all when allow-snippet-annotations is explicitly \"true\"). Before upgrading, either move the snippet logic into supported annotations/ConfigMap options, or deliberately set annotations-risk-level: Critical and allow-snippet-annotations: \"true\" in the controller ConfigMap — the vendor treats that combination as insecure in multi-tenant clusters.",
+   "quote": "This changes the default of the following CLI arguments: `--enable-annotation-validation` gets enabled by default. It also changes the default of the following configuration options: `allow-cross-namespace-resources` gets disabled by default. `annotations-risk-level` gets lowered to \"High\" by default. `strict-validate-path-type` gets enabled by default.",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  },
+  {
+   "ruleId": "rtz-addon-ingress-nginx-global-rate-limit-removed",
+   "kind": "crAnnotationKey",
+   "severity": "MEDIUM",
+   "scoreImpact": 10,
+   "appliesWhenVersionBelow": "1.12.0",
+   "params": {
+    "crKind": "Ingress",
+    "annotationKeyPattern": "^nginx\\.ingress\\.kubernetes\\.io/global-rate-limit(-window|-key|-ignored-cidrs)?$"
+   },
+   "title": "Ingresses use global-rate-limit annotations that 1.12 removes outright",
+   "recommendation": "The global-rate-limit feature is deleted in ingress-nginx 1.12 — after the upgrade these annotations are ignored and the rate limiting they provided silently disappears. Replace them with the per-pod limit-rps / limit-rpm / limit-connections annotations or an external rate limiter before upgrading.",
+   "quote": "This removes the following configuration options: `global-rate-limit-memcached-host`, `global-rate-limit-memcached-port`, `global-rate-limit-memcached-connect-timeout`, `global-rate-limit-memcached-max-idle-timeout`, `global-rate-limit-memcached-pool-size`, `global-rate-limit-status-code`. It also removes the following annotations: `global-rate-limit`, `global-rate-limit-window`, `global-rate-limit-key`, `global-rate-limit-ignored-cidrs`.",
+   "sourceUrl": "https://github.com/kubernetes/ingress-nginx/blob/dbb11b92ddb77bee9c35e462479129354c84f939/changelog/controller-1.12.0.md"
+  }
+ ]
+}

@@ -1,0 +1,523 @@
+{
+ "_meta": {
+  "description": "Verified catalog of behavioral Kubernetes upgrade breakers that are REAL but NOT auto-detectable from any collected data (Step 2 of the Upgrade Breakage Radar backfill, item 3). Consumed by AdvisoryBreakerCatalog for AdvisoryBreakerAnalyzer. Every entry is surfaced as an INFO/advisory finding with scoreImpact=0 the moment the upgrade target reaches its version \u2014 'verify manually', NEVER silently dropped.",
+  "fetchedAt": "2026-07-11",
+  "verificationMethod": "Every version value below was read directly from the official kubernetes/kubernetes CHANGELOG-<version>.md files. Exact source URL + matched sentence is recorded per-entry below in `provenance`. NONE of these values were hand-typed from memory.",
+  "coveredThroughVersion": "1.16-1.37 (Step 3, 2026-07-11, extended the 1.32/1.33/1.36/1.37 Step 2 range back to 1.16)",
+  "step3Note": "Step 3 (2026-07-11) added 17 behavioral advisory entries spanning 1.16-1.31: 9 genuinely-behavioral items from step3_extracted.md's own ADVISORY section (startupProbe readiness timing 1.19, strict kubelet-config deserialization 1.17, invalid --cpu-manager-policy startup failure 1.16, topology-spread skew calculation 1.24, PodSecurity warn-defaults-to-enforce 1.26, Service status.loadBalancer gating 1.29, CronJob TZ/CRON_TZ disallowed 1.29, default-StorageClass auto-assignment change 1.30, --nodeport-addresses default change 1.30, kubectl exec -- separator 1.31, Service.spec.ipFamilyPolicy required 1.23) plus 4 in-tree cloud-provider removals (1.29 off-by-default, 1.30 Azure, 1.30 vSphere, 1.31 GCP) that were DELIBERATELY routed here instead of config-breaker/node-runtime: they are really a `--cloud-provider=X` VALUE-specific fact and neither ConfigBreakerAnalyzer's componentFlag 'present' condition nor NodeRuntimeAnalyzer's Node-status surface can distinguish a specific flag VALUE (vs. e.g. --cloud-provider=external, which remains valid) without inventing a new value-matching capability this backfill deliberately did not add. Also added 2 feature-gate removals (DefaultHostNetworkHostPortsInPodTemplates, SkipReadOnlyValidationGCE, both 1.31) that step3_extracted.md's own source classification tagged 'advisory' rather than 'detectable' (despite being mechanically identical removed-feature-gate events to the ~109 CRITICAL config-breaker rules also added in this backfill) -- honored the given classification as-is rather than override it; see _workspace/step3_load_summary.md for this judgment call. Total: 5 -> 22 rules.",
+  "step4Note": "Step 4 (2026-07-12): added 1.34 apiserver/etcd metric label renames (#131845), 1.36 volume_operation metric rename (#136399), and 1.36 kubeadm flex-volume removal (#136423) \u2014 advisory (monitoring/kubeadm) breakers from the 1.32->1.37 coverage audit.",
+  "verifyCommandNote": "verifyCommand added 2026-08-29: a read-only command the operator runs to learn whether THIS cluster is affected (same contract as AddonCatalog.UpgradeNote.verifyCommand). 'Not auto-detectable by the platform' never meant 'not checkable by the operator'. Some commands honestly target a scripts repo or the node host rather than the cluster and say so in their trailing comment. AdvisoryBreakerAnalyzer appends each as 'Check with: ...' to the finding recommendation; the upgrade-strategy LLM may copy it verbatim into a step's verifyCommand (guard-enforced)."
+ },
+ "rules": [
+  {
+   "ruleId": "rtz-k8s-advisory-selinuxmount-ga-1.37",
+   "version": "1.37",
+   "title": "SELinuxMount became GA and enabled by default in Kubernetes 1.37 \u2014 may break existing SELinux-labeled volumes",
+   "remediation": "Review the upstream blog (https://kubernetes.io/blog/2026/04/22/breaking-changes-in-selinux-volume-labeling/) to identify potentially problematic workloads BEFORE upgrading to 1.37. Clusters without SELinux enabled are unaffected. Verify manually \u2014 not auto-detectable from synced inventory.",
+   "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select([.spec.securityContext.seLinuxOptions, (.spec.containers[].securityContext.seLinuxOptions // empty)] | map(select(. != null)) | length > 0) | .metadata.namespace + \"/\" + .metadata.name' | sort -u  # pods printed set seLinuxOptions explicitly \u2014 review them against the 1.37 SELinuxMount blog; clusters without SELinux enabled are unaffected either way",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.37.md",
+     "matchedText": "Graduated the `SELinuxMount` feature gate to GA. `SELinuxMount` is now enabled by default in Kubernetes 1.37, which may break existing workloads in Kubernetes clusters with SELinux enabled. Please see our blog to identify potentially problematic workloads in your 1.36 cluster and how to fix them or opt out of SELinuxMount changes before upgrading to 1.37. Admins of clusters without SELinux enabled can ignore this release note, as nothing changes for them. (#139956, @jsafrane) [SIG API Machinery, Apps and Node]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-strict-ip-cidr-validation-1.36",
+   "version": "1.36",
+   "title": "StrictIPCIDRValidation enabled by default in kube-apiserver from Kubernetes 1.36 \u2014 stricter IP/CIDR field validation",
+   "remediation": "API fields no longer allow IP/CIDR values with extraneous leading zeros (e.g. 010.000.000.005) or ambiguous CIDR subnet/mask values (e.g. 192.168.0.5/24) from 1.36 onward. Audit manifests, GitOps templates, and any custom controllers that programmatically construct IP/CIDR strings before upgrading to 1.36+. Verify manually \u2014 not auto-detectable from synced inventory.",
+   "verifyCommand": "kubectl get netpol,svc -A -o json | grep -oE '\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+(/[0-9]+)?\"' | grep -E '(^\"|\\.)0[0-9]' | sort -u  # any output = IP/CIDR literals with leading zeros in live objects; ambiguous subnet/mask CIDRs (host bits set) still need a manual manifest review",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+     "matchedText": "The `StrictIPCIDRValidation` feature gate in `kube-apiserver` is enabled by default, meaning that API fields no longer allow IP or CIDR values with extraneous leading \"0\"s (e.g., `010.000.000.005` rather than `10.0.0.5`) or CIDR subnet/mask values with ambiguous semantics (e.g., `192.168.0.5/24` rather than `192.168.0.0/24` or `192.168.0.5/32`). (#137053, @danwinship) [SIG Network and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-statefulset-servicename-dns1123-1.33",
+   "version": "1.33",
+   "title": "StatefulSet .spec.serviceName now requires DNS1123 validation from Kubernetes 1.33",
+   "remediation": "New StatefulSets with an invalid .spec.serviceName value will be REJECTED by the API server from 1.33 onward (previously created invalid StatefulSets could not create Pods and should be deleted/fixed). Audit StatefulSet manifests/Helm charts/GitOps templates for a DNS1123-valid serviceName before upgrading to 1.33+. Verify manually \u2014 not auto-detectable from synced inventory (schema itself is unchanged; only admission-time validation is stricter).",
+   "verifyCommand": "kubectl get statefulsets -A -o json | jq -r '.items[] | select((.spec.serviceName // \"\") | test(\"^[a-z]([-a-z0-9]*[a-z0-9])?$\") | not) | .metadata.namespace + \"/\" + .metadata.name'  # names printed have a serviceName that fails DNS1123 \u2014 fix the manifests before creating StatefulSets on 1.33+",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.33.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.33.md",
+     "matchedText": "Validation now requires new StatefulSets with a `.spec.serviceName` field value to pass DNS1123 validation. Previously created StatefulSets with an invalid `.spec.serviceName` field value could not create any pods, and should be deleted.\n  - Published OpenAPI for the StatefulSet schema is corrected to indicate the `.spec.serviceName` is optional. (#130233, @soltysh) [SIG API Machinery, Apps and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-node-monitor-grace-period-1.32",
+   "version": "1.32",
+   "title": "Default node-monitor-grace-period increased from 40s to 50s in Kubernetes 1.32",
+   "remediation": "If your cluster relies on the DEFAULT node-monitor-grace-period (not explicitly overridden on kube-controller-manager), nodes will now be marked NotReady up to 10s later than before after becoming unreachable, which can shift alerting/SLO expectations. Verify manually whether this default-value change affects your monitoring/alerting thresholds before upgrading to 1.32+.",
+   "verifyCommand": "kubectl -n kube-system get pods -l component=kube-controller-manager -o json | jq -r '.items[].spec.containers[].command[]? | select(test(\"node-monitor-grace-period\"))'  # no output = the DEFAULT applies and NotReady detection moves 40s to 50s (align alert thresholds); managed control planes hide these pods \u2014 check the provider's settings instead",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.32.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.32.md",
+     "matchedText": "The default value for node-monitor-grace-period has been increased to 50s (earlier 40s) (Ref - https://github.com/kubernetes/kubernetes/issues/121793) (#126287, @devppratik) [SIG API Machinery, Apps and Node]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-etcd-bookmark-metric-rename-1.36",
+   "version": "1.36",
+   "title": "ACTION REQUIRED: metric etcd_bookmark_counts renamed to etcd_bookmark_total in Kubernetes 1.36",
+   "remediation": "If you use custom monitoring dashboards or alerting rules based on the etcd_bookmark_counts metric, update them to use the new etcd_bookmark_total metric name before/at upgrade to 1.36+, or your dashboards/alerts will silently stop receiving data. Verify manually \u2014 not auto-detectable from synced inventory (this platform does not scrape kube-apiserver's own /metrics).",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | contains(\"etcd_bookmark_counts\")) | .metadata.namespace + \"/\" + .metadata.name'  # rules printed still use the old metric name; grep Grafana dashboards for it too",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+     "matchedText": "ACTION REQUIRED: Renamed metric `etcd_bookmark_counts` to `etcd_bookmark_total`. If you are using custom monitoring dashboards or alerting rules based on the `etcd_bookmark_counts` metric, update them to use the new `etcd_bookmark_total` metric. (#136483, @petern48) [SIG API Machinery, Etcd, Instrumentation and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-startup-probe-not-ready-1.19",
+   "version": "1.19",
+   "title": "Containers with a startupProbe but no readinessProbe are now 'not-ready' until the startupProbe completes, from Kubernetes 1.19",
+   "remediation": "Previously such containers were considered ready before the startupProbe completed; from 1.19 they are correctly reported not-ready during that window. Review any Service/endpoint readiness assumptions that relied on the old (buggy) behavior before upgrading to 1.19+. Verify manually -- not auto-detectable from synced inventory (behavioral timing change, not a schema/config change).",
+   "verifyCommand": "kubectl get deploy,statefulset,daemonset -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[] | select(.startupProbe != null and .readinessProbe == null)] | length > 0) | .kind + \"/\" + .metadata.namespace + \"/\" + .metadata.name'  # workloads printed report not-ready while their startupProbe runs from 1.19 \u2014 re-check Service endpoint timing assumptions",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.19.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.19.md",
+     "matchedText": "Containers which specify a `startupProbe` but not a `readinessProbe` were previously considered \"ready\" before the `startupProbe` completed, but are now considered \"not-ready\". ([#92196](https://github.com/kubernetes/kubernetes/pull/92196), [@thockin](https://github.com/thockin)) [SIG Node]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-strict-kubelet-config-deserialization-1.17",
+   "version": "1.17",
+   "title": "kubelet --config file now uses STRICT deserialization from Kubernetes 1.17 -- unknown/duplicate fields fail kubelet startup",
+   "remediation": "Audit every node's kubelet config file (or the kubelet-config ConfigMap) for typos, mis-indentation, duplicate keys, or unknown fields before upgrading to 1.17+ -- the kubelet will now FAIL TO START rather than silently ignoring such issues. Verify manually -- not auto-detectable: a kubelet that fails to start due to a bad config file will not produce a /configz snapshot for this platform to inspect in the first place (chicken-and-egg), so this cannot be checked from a running cluster's collected data.",
+   "verifyCommand": "kubectl -n kube-system get cm -o name | grep kubelet-config  # dump each ConfigMap printed and review for unknown/duplicate/mis-indented fields; node-local kubelet config files must be checked on each host \u2014 a kubelet that fails strict parsing never comes up to report it",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.17.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.17.md",
+     "matchedText": "Kubelet: a configuration file specified via `--config` is now loaded with strict deserialization, which fails if the config file contains duplicate or unknown fields. This protects against accidentally running with config files that are malformed, mis-indented, or have typos in field names, and getting unexpected behavior. ([#83204](https://github.com/kubernetes/kubernetes/pull/83204), [@obitech](https://github.com/obitech))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-invalid-cpu-manager-policy-fails-1.16",
+   "version": "1.16",
+   "title": "An invalid --cpu-manager-policy value now makes the kubelet FAIL TO START, from Kubernetes 1.16",
+   "remediation": "Verify every node's --cpu-manager-policy (or cpuManagerPolicy config field) is a genuinely valid policy name before upgrading to 1.16+ -- the kubelet used to silently fall back to the cpumanager's default policy on an invalid name; from 1.16 it fails to start instead. Verify manually -- not auto-detectable with this catalog's equals/present condition schema: the set of valid policy names is version-dependent and would require a hardcoded enum to validate against, which risks false positives/negatives as the valid set evolves -- deliberately not modeled to avoid inventing false precision.",
+   "verifyCommand": "for n in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do printf '%s: ' \"$n\"; kubectl get --raw \"/api/v1/nodes/$n/proxy/configz\" | jq -r '.kubeletconfig.cpuManagerPolicy // \"none\"'; done  # anything other than none or static is invalid and fails kubelet startup from 1.16",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.16.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.16.md",
+     "matchedText": "Passing an invalid policy name in the `--cpu-manager-policy` flag will now cause the kubelet to fail instead of simply ignoring the flag and running the `cpumanager`'s default policy instead. ([#80294](https://github.com/kubernetes/kubernetes/pull/80294), [@klueska](https://github.com/klueska))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-topology-spread-skew-excludes-nonmatching-nodes-1.24",
+   "version": "1.24",
+   "title": "Pod topology spread skew calculation now excludes nodes that don't match the node affinity/selector, from Kubernetes 1.24",
+   "remediation": "Revisit node affinity and/or pod selector in your topology spread constraints before upgrading to 1.24+ -- this may lead to unschedulable pods if you previously had pods matching the spreading selector on nodes that don't match the node affinity/selector (especially when topologyKey is not node-level). Verify manually -- not auto-detectable from synced inventory (scheduler-internal calculation change).",
+   "verifyCommand": "kubectl get deploy,statefulset -A -o json | jq -r '.items[] | select(.spec.template.spec.topologySpreadConstraints != null and (.spec.template.spec.affinity.nodeAffinity != null or .spec.template.spec.nodeSelector != null)) | .kind + \"/\" + .metadata.namespace + \"/\" + .metadata.name'  # workloads printed combine spread constraints with a node affinity/selector \u2014 re-check schedulability under the 1.24 skew calculation",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.24.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.24.md",
+     "matchedText": "The calculations for Pod topology spread skew now exclude nodes that\n  don't match the node affinity/selector. This may lead to unschedulable pods if you previously had pods\n  matching the spreading selector on those excluded nodes (not matching the node affinity/selector),\n  especially when the `topologyKey` is not node-level. Revisit the node affinity and/or pod selector in the\n  topology spread constraints to avoid this scenario. ([#107009](https://github.com/kubernetes/kubernetes/pull/107009), [@kerthcet](https://github.com/kerthcet))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-podsecurity-warn-defaults-enforce-1.26",
+   "version": "1.26",
+   "title": "Pod Security admission's 'warn' level now defaults to the 'enforce' level, from Kubernetes 1.26",
+   "remediation": "Review any namespace pod-security labels relying on the previous warn-only default before upgrading to 1.26+ -- workloads that previously only triggered a warning may now be enforced/rejected. Verify manually -- not auto-detectable from synced inventory (admission default-value change).",
+   "verifyCommand": "kubectl get ns -o json | jq -r '.items[] | select(.metadata.labels[\"pod-security.kubernetes.io/enforce\"] != null and .metadata.labels[\"pod-security.kubernetes.io/warn\"] == null) | .metadata.name'  # namespaces printed inherit warn from their enforce level on 1.26+ \u2014 workloads that were silent may start producing warnings",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.26.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.26.md",
+     "matchedText": "'Pod Security admission: the pod-security `warn` level will now default to\n  the `enforce` level.'\n   ([#113491](https://github.com/kubernetes/kubernetes/pull/113491), [@tallclair](https://github.com/tallclair))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-service-loadbalancer-status-requires-type-1.29",
+   "version": "1.29",
+   "title": "Service.status.loadBalancer can no longer be set unless spec.type is LoadBalancer, from Kubernetes 1.29",
+   "remediation": "Audit any custom controllers/webhooks that set status.loadBalancer on Services whose spec.type is not LoadBalancer before upgrading to 1.29+ -- this is no longer permitted (the AllowServiceLBStatusOnNonLB feature gate can restore the previous behavior if genuinely needed). Verify manually -- not auto-detectable from synced inventory (admission validation change).",
+   "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type != \"LoadBalancer\" and (.status.loadBalancer.ingress // [] | length) > 0) | .metadata.namespace + \"/\" + .metadata.name'  # services printed carry status.loadBalancer without type LoadBalancer \u2014 whatever controller writes that field breaks on 1.29+",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.29.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.29.md",
+     "matchedText": "Setting the `status.loadBalancer` of a Service whose `spec.type` is not `LoadBalancer` was previously allowed, but any update to the `metadata` or `spec` would wipe that field. Setting this field is no longer permitted unless `spec.type` is  `LoadBalancer`.  In the very unlikely event that this has unexpected impact, you can enable the `AllowServiceLBStatusOnNonLB` feature gate, which will restore the previous behavior.  If you do need to set this, please file an issue with the Kubernetes project to help contributors understand why you need it. ([#119789](https://github.com/kubernetes/kubernetes/pull/119789), [@thockin](https://github.com/thockin))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-cronjob-tz-in-schedule-disallowed-1.29",
+   "version": "1.29",
+   "title": "CronJob TZ/CRON_TZ prefixes in .spec.schedule are now disallowed for NEW CronJobs, from Kubernetes 1.29",
+   "remediation": "Migrate any CronJobs using the (accidentally-enabled-in-1.22) TZ= or CRON_TZ= prefix in .spec.schedule to the dedicated .spec.timeZone field (supported since 1.25+) before upgrading to 1.29+ -- creating NEW CronJob objects with TZ/CRON_TZ in the schedule string is now disallowed. Verify manually -- not auto-detectable from synced inventory (admission validation change on CREATE only).",
+   "verifyCommand": "kubectl get cronjobs -A -o json | jq -r '.items[] | select(.spec.schedule | test(\"TZ=\")) | .metadata.namespace + \"/\" + .metadata.name + \"  \" + .spec.schedule'  # cronjobs printed embed TZ/CRON_TZ in the schedule \u2014 move it to spec.timeZone before recreating them on 1.29+",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.29.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.29.md",
+     "matchedText": "Creation of new `CronJob` objects containing `TZ` or `CRON_TZ` in `.spec.schedule`, accidentally enabled in `v1.22`, is now disallowed. Use the `.spec.timeZone` field instead, supported in `v1.25+` clusters in default configurations. See https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#unsupported-timezone-specification for more information. ([#116252](https://github.com/kubernetes/kubernetes/pull/116252), [@soltysh](https://github.com/soltysh))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-default-storageclass-not-autoassigned-empty-scn-1.30",
+   "version": "1.30",
+   "title": "PersistentVolume controller no longer auto-assigns a default StorageClass to PVCs with an empty storageClassName, from Kubernetes 1.30",
+   "remediation": "Audit any PVC manifests/GitOps templates relying on an EMPTY (not omitted) storageClassName getting the default StorageClass auto-assigned before upgrading to 1.30+ -- this specific case (empty string, as opposed to the field being entirely absent) no longer triggers default-assignment. Verify manually -- not auto-detectable from synced inventory (controller default-assignment behavior change).",
+   "verifyCommand": "kubectl get pvc -A -o json | jq -r '.items[] | select(.spec.storageClassName == \"\") | .metadata.namespace + \"/\" + .metadata.name'  # PVCs printed pin the EMPTY-STRING class; new PVCs stamped from the same manifests stop getting the default StorageClass on 1.30+",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.30.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.30.md",
+     "matchedText": "The PersistentVolume controller no longer automatically assigns a default `StorageClass` to Persistent Volume Claims (PVCs) with an empty `storageClassName`.\n   ([#122704](https://github.com/kubernetes/kubernetes/pull/122704), [@carlory](https://github.com/carlory))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-nodeport-addresses-default-primary-ip-1.30",
+   "version": "1.30",
+   "title": "--nodeport-addresses now defaults to primary node IP(s) only rather than all node IPs, from Kubernetes 1.30",
+   "remediation": "If kube-proxy relies on the default --nodeport-addresses behavior (not explicitly overridden), NodePort Services will now only be reachable via the node's PRIMARY IP(s), not every IP on the host, from 1.30+. Verify manually whether this default-value change affects any multi-homed nodes before upgrading.",
+   "verifyCommand": "kubectl -n kube-system get cm kube-proxy -o jsonpath='{.data.config\\.conf}' 2>/dev/null | grep -c nodePortAddresses; kubectl get nodes -o json | jq -r '.items[] | select([.status.addresses[] | select(.type == \"InternalIP\")] | length > 1) | .metadata.name'  # 0 on the first line = the changed default applies; node names on the second = multi-IP nodes whose NodePorts narrow to the primary IP",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.30.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.30.md",
+     "matchedText": "Changed `--nodeport-addresses` behavior to default to \"primary node IP(s) only\" rather than \"all node IPs\".\n   ([#122724](https://github.com/kubernetes/kubernetes/pull/122724), [@nayihz](https://github.com/nayihz))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-kubectl-exec-requires-separator-1.31",
+   "version": "1.31",
+   "title": "kubectl exec [POD] [COMMAND] without a -- separator is removed, from Kubernetes 1.31",
+   "remediation": "Update any scripts/CI pipelines invoking `kubectl exec POD COMMAND` (without the `--` separator) to use `kubectl exec POD -- COMMAND` -- this is a kubectl CLIENT-side behavior change (recommended since 1.18), so it is governed by the kubectl CLIENT version in use, not strictly the cluster's server version. Verify manually -- not auto-detectable from synced cluster inventory (client-side CLI behavior).",
+   "verifyCommand": "grep -rn 'kubectl exec' --include='*.sh' --include='*.yml' --include='*.yaml' . | grep -v ' -- '  # run in your scripts/CI repos, NOT on the cluster: hits without the -- separator break with kubectl clients 1.31+",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "\"Removed the ability to run `kubectl exec [POD] [COMMAND]` without a `--` separator.\n  The `--` separator has been recommended since the Kubernetes v1.18 release, which also deprecated the legacy way of invoking `kubectl exec`.\n  \n  This change aligns with the deprecation of legacy `kubectl exec` command execution and enforces the use of `kubectl exec [POD] -- [COMMAND]` for improved compatibility and adherence to recommended practices.\"\n   ([#125437](https://github.com/kubernetes/kubernetes/pull/125437), [@ardaguclu](https://github.com/ardaguclu)) [SIG CLI and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-service-ipfamilypolicy-required-dualstack-1.23",
+   "version": "1.23",
+   "title": "Service.spec.ipFamilyPolicy is now REQUIRED to create/update a dual-stack Service, from Kubernetes 1.23",
+   "remediation": "Set spec.ipFamilyPolicy explicitly to PreferDualStack or RequireDualStack on any dual-stack Service manifests/Helm charts/GitOps templates before upgrading to 1.23+ -- the server no longer infers this field from ipFamilies/clusterIPs (that inference caused update ambiguity). Verify manually -- not auto-detectable from synced inventory (admission validation change).",
+   "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select((.spec.ipFamilies // [] | length) > 1 and .spec.ipFamilyPolicy == null) | .metadata.namespace + \"/\" + .metadata.name'  # services printed lack the field on the live object; ALSO grep your manifests/Helm charts \u2014 the server may have inferred it where your YAML omits it",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.23.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.23.md",
+     "matchedText": "The `Service.spec.ipFamilyPolicy` field is now *required* in order to create or update a Service as dual-stack.  This is a breaking change from the beta behavior.  Previously the server would try to infer the value of that field from either `ipFamilies` or `clusterIPs`, but that caused ambiguity on updates.  Users who want a dual-stack Service MUST specify `ipFamilyPolicy` as either \"PreferDualStack\" or \"RequireDualStack\". ([#96684](https://github.com/kubernetes/kubernetes/pull/96684), [@thockin](https://github.com/thockin))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-intree-cloud-providers-off-by-default-1.29",
+   "version": "1.29",
+   "title": "In-tree cloud providers are switched OFF by default from Kubernetes 1.29",
+   "remediation": "If this cluster relies on an IN-TREE cloud provider (--cloud-provider=aws|azure|gce|vsphere|... on control-plane/kubelet components) without having migrated to the external cloud-controller-manager, verify the DisableCloudProviders and DisableKubeletCloudCredentialProvider feature gates are set to keep the in-tree behavior before upgrading to 1.29+. Verify manually -- not auto-detectable: this catalog's componentFlag surface can only check whether --cloud-provider is PRESENT, not its specific value (e.g. 'external' remains valid), so a value-specific check risks a false positive at scale and is intentionally not modeled as a detectable config-breaker rule.",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(test(\"cloud-provider=\"))' | sort -u  # aws/azure/gce/vsphere values = in-tree provider still in use (external is fine); kubelet flags need per-node checks and managed control planes hide these pods",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.29.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.29.md",
+     "matchedText": "In-tree cloud providers are now switched off by default. Please use `DisableCloudProviders` and `DisableKubeletCloudCredentialProvider` feature flags if you still need this functionality. ([#117503](https://github.com/kubernetes/kubernetes/pull/117503), [@dims](https://github.com/dims))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-intree-cloud-provider-azure-removed-1.30",
+   "version": "1.30",
+   "title": "In-tree cloud provider for Azure was removed in Kubernetes 1.30",
+   "remediation": "Migrate any cluster still using --cloud-provider=azure to the external cloud-provider-azure and its CSI driver (https://github.com/kubernetes/cloud-provider-azure) BEFORE upgrading to 1.30+. Verify manually -- not auto-detectable: this catalog's componentFlag surface can only check whether --cloud-provider is PRESENT, not its specific value (azure vs. e.g. external), so modeling this as a detectable rule risks a false positive at scale and is intentionally routed to advisory instead.",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(contains(\"cloud-provider=azure\"))'  # any output = the in-tree Azure provider is still configured; migrate to cloud-provider-azure and its CSI driver before 1.30",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.30.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.30.md",
+     "matchedText": "The in-tree cloud provider for azure has now been removed. Please use the external cloud provider and CSI driver from https://github.com/kubernetes/cloud-provider-azure instead. ([#122857](https://github.com/kubernetes/kubernetes/pull/122857), [@nilo19](https://github.com/nilo19)) [SIG API Machinery, Cloud Provider, Instrumentation, Node and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-intree-cloud-provider-vsphere-removed-1.30",
+   "version": "1.30",
+   "title": "In-tree cloud provider for vSphere was removed in Kubernetes 1.30",
+   "remediation": "Migrate any cluster still using --cloud-provider=vsphere to the external cloud-provider-vsphere and its CSI driver (https://github.com/kubernetes/cloud-provider-vsphere) BEFORE upgrading to 1.30+. Verify manually -- not auto-detectable: same value-specific limitation as the Azure in-tree-removal advisory above (--cloud-provider PRESENCE is checkable, not its specific value).",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(contains(\"cloud-provider=vsphere\"))'  # any output = the in-tree vSphere provider is still configured; migrate to cloud-provider-vsphere and its CSI driver before 1.30",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.30.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.30.md",
+     "matchedText": "The in-tree cloud provider for vSphere has now been removed. Please use the external cloud provider and CSI driver from https://github.com/kubernetes/cloud-provider-vsphere instead. ([#122937](https://github.com/kubernetes/kubernetes/pull/122937), [@dims](https://github.com/dims)) [SIG API Machinery, Cloud Provider, Storage and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-intree-cloud-provider-gcp-removed-1.31",
+   "version": "1.31",
+   "title": "Last remaining in-tree GCP cloud provider and credential provider were removed in Kubernetes 1.31",
+   "remediation": "Migrate any cluster still using --cloud-provider=gce to the external cloud-provider-gcp and credential provider (https://github.com/kubernetes/cloud-provider-gcp) BEFORE upgrading to 1.31+ -- this was the LAST remaining in-tree cloud provider. Verify manually -- not auto-detectable: same value-specific limitation as the Azure/vSphere in-tree-removal advisories above.",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(contains(\"cloud-provider=gce\"))'  # any output = the in-tree GCE provider is still configured; migrate to cloud-provider-gcp before 1.31",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "Removing the last remaining in-tree gcp cloud provider and credential provider. Please use the external cloud provider and credential provider from https://github.com/kubernetes/cloud-provider-gcp instead. ([#124519](https://github.com/kubernetes/kubernetes/pull/124519), [@dims](https://github.com/dims)) [SIG API Machinery, Apps, Auth, Autoscaling, Cloud Provider, Instrumentation, Network, Node, Scheduling, Storage and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-gate-removed-default-hostnetwork-hostports-1.31",
+   "version": "1.31",
+   "title": "Feature gate DefaultHostNetworkHostPortsInPodTemplates was removed in Kubernetes 1.31",
+   "remediation": "This niche gate (deprecated since v1.28 with no reported issues) is removed at 1.31 -- if your --feature-gates explicitly references DefaultHostNetworkHostPortsInPodTemplates, remove it before upgrading. Flagged advisory (not a detectable config-breaker rule) per this backfill's own source classification of this specific gate as low-incidence/niche; verify manually if you have any custom component-flag overrides referencing it.",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(contains(\"DefaultHostNetworkHostPortsInPodTemplates\"))'  # any output = drop this gate from --feature-gates before 1.31; check kubelet flags on nodes too",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "The feature gate \"DefaultHostNetworkHostPortsInPodTemplates\" has been removed.  This behavior was deprecated in v1.28, and has had no reports of issues since. ([#124417](https://github.com/kubernetes/kubernetes/pull/124417), [@thockin](https://github.com/thockin))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-gate-removed-skip-readonly-validation-gce-1.31",
+   "version": "1.31",
+   "title": "Feature gate SkipReadOnlyValidationGCE was removed in Kubernetes 1.31",
+   "remediation": "This niche gate (active for 2 releases with no reported issues) is removed at 1.31 -- if your --feature-gates explicitly references SkipReadOnlyValidationGCE, remove it before upgrading. Flagged advisory (not a detectable config-breaker rule) per this backfill's own source classification of this specific gate as low-incidence/niche; verify manually if you have any custom component-flag overrides referencing it.",
+   "verifyCommand": "kubectl -n kube-system get pods -l tier=control-plane -o json | jq -r '.items[].spec.containers[].command[]? | select(contains(\"SkipReadOnlyValidationGCE\"))'  # any output = drop this gate from --feature-gates before 1.31; check kubelet flags on nodes too",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "The feature gate \"SkipReadOnlyValidationGCE\" has been removed.  This gate has been active for 2 releases with no reports of issues (and was such a niche thing, we didn't expect any). ([#124210](https://github.com/kubernetes/kubernetes/pull/124210), [@thockin](https://github.com/thockin))"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-apiserver-etcd-metric-label-rename-1.34",
+   "version": "1.34",
+   "title": "Kubernetes 1.34 renamed labels on many apiserver/etcd/watch-cache metrics (resource_prefix/type/kind \u2192 group/resource) \u2014 dashboards & alerts break",
+   "remediation": "Before upgrading to 1.34, audit Prometheus recording/alerting rules and Grafana dashboards that reference apiserver_cache_list_*, etcd_request_*, apiserver_selfrequest_total, apiserver_watch_events_*, and the storage/watch-cache metric family: the `resource_prefix`/`type`/`kind` labels are replaced by API `group`/`resource` labels. Not auto-detectable from synced cluster inventory \u2014 review your monitoring config manually.",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"apiserver_cache_list|etcd_request|apiserver_selfrequest_total|apiserver_watch_events|resource_prefix\")) | .metadata.namespace + \"/\" + .metadata.name'  # rules printed touch the renamed metric families \u2014 port them to the new group/resource labels; grep Grafana dashboards too",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.34.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.34.md",
+     "matchedText": "For metrics `apiserver_request_body_size_bytes`, `apiserver_storage_events_received_total`, ... `etcd_bookmark_counts`, `storage_decode_errors_total` extract the API group from `resource` label and put it in new `group` label. ([#131845](https://github.com/kubernetes/kubernetes/pull/131845), [@serathius](https://github.com/serathius)) [SIG API Machinery, Etcd, Instrumentation and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-volume-operation-errors-metric-rename-1.36",
+   "version": "1.36",
+   "title": "Kubernetes 1.36 renamed the kube-controller-manager metric `volume_operation_total_errors` \u2192 `volume_operation_errors_total`",
+   "remediation": "Before upgrading to 1.36, update any custom monitoring dashboards or alerting rules based on `volume_operation_total_errors` to use `volume_operation_errors_total`. Not auto-detectable from synced cluster inventory.",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | contains(\"volume_operation_total_errors\")) | .metadata.namespace + \"/\" + .metadata.name'  # rules printed use the old name \u2014 switch them to volume_operation_errors_total",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+     "matchedText": "kube-controller-manager: Renamed metric `volume_operation_total_errors` to `volume_operation_errors_total`. If you are using custom monitoring dashboards or alerting rules based on the `volume_operation_total_errors` metric, update them to use the new `volume_operation_errors_total` metric. ([#136399](https://github.com/kubernetes/kubernetes/pull/136399), [@tico88612](https://github.com/tico88612)) [SIG Apps, Instrumentation, Storage and Testing]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-kubeadm-flexvolume-removed-1.36",
+   "version": "1.36",
+   "title": "Kubernetes 1.36 (kubeadm) removed integrated flex-volume support \u2014 ACTION REQUIRED for clusters still using flex-volumes",
+   "remediation": "If this is a kubeadm cluster still using flex-volumes (deprecated by SIG Storage since v1.22), before upgrading to 1.36 you must use a non-distroless KCM image, pass the KCM flag --flex-volume-plugin-dir, and mount /usr/libexec/kubernetes/kubelet-plugins/volume/exec into the KCM static pod via kubeadm extraVolumes \u2014 kubeadm no longer does this automatically. Migrating off flex-volumes to a CSI driver is strongly recommended.",
+   "verifyCommand": "kubectl get pv -o json | jq -r '.items[] | select(.spec.flexVolume != null) | .metadata.name + \" driver=\" + .spec.flexVolume.driver'; kubectl get pods -A -o json | jq -r '.items[] | select([.spec.volumes[]? | select(.flexVolume != null)] | length > 0) | .metadata.namespace + \"/\" + .metadata.name'  # anything printed still uses flex-volumes \u2014 migrate to a CSI driver or wire the KCM flag and mounts via kubeadm extraVolumes before 1.36",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+     "matchedText": "ACTION REQUIRED: Removed the integrated support for flex-volumes in kubeadm. Users were advised to migrate away from flex-volumes as recommended by SIG Storage since `v1.22`. ... ([#136423](https://github.com/kubernetes/kubernetes/pull/136423), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle]"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-kubelet-streaming-idle-timeout-deprecated-1.34",
+   "version": "1.34",
+   "title": "kubelet config field streamingConnectionIdleTimeout is deprecated from Kubernetes 1.34 \u2014 plan its removal from kubelet configs",
+   "remediation": "Check each node's kubelet configuration (via /configz or the config file) for an explicit streamingConnectionIdleTimeout value. The field is deprecated as of 1.34; remove it or plan migration before the (not yet announced) removal release so kubelets keep starting. Deprecation-only today, which is why this is an advisory rather than a detected config-breaker: there is no removal version to gate a finding on yet.",
+   "verifyCommand": "for n in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do printf '%s: ' \"$n\"; kubectl get --raw \"/api/v1/nodes/$n/proxy/configz\" | jq -r '.kubeletconfig.streamingConnectionIdleTimeout // \"unset\"'; done  # /configz is the EFFECTIVE config: any value other than the 4h0m0s default was set explicitly \u2014 remove it from that node's kubelet config; 4h0m0s is almost certainly the default (an explicit value equal to it is indistinguishable, and removing it changes nothing)",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.34.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.34.md",
+     "matchedText": "Deprecated `StreamingConnectionIdleTimeout` field of the kubelet config."
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-kube-proxy-ipvs-winddown-1.37",
+   "version": "1.37",
+   "title": "kube-proxy ipvs mode is being wound down from Kubernetes 1.37 (KubeProxyIPVS gate added in preparation for its removal)",
+   "remediation": "If kube-proxy runs with --proxy-mode=ipvs (or mode: ipvs in its ConfigMap), plan a migration to iptables or nftables mode. 1.37 added the KubeProxyIPVS feature gate explicitly 'in preparation for deactivating and then removing' ipvs mode; a future release will disable it by default. Advisory because kube-proxy's mode is not observable on clusters without kube-proxy static pods (k3s, managed control planes).",
+   "verifyCommand": "kubectl -n kube-system get cm kube-proxy -o jsonpath='{.data.config\\.conf}' 2>/dev/null | grep -E 'mode:'; kubectl -n kube-system get ds kube-proxy -o jsonpath='{.spec.template.spec.containers[0].command}' 2>/dev/null | grep -o 'proxy-mode=[a-z]*'  # ipvs anywhere = plan the migration to iptables/nftables; nothing printed = no kube-proxy config visible (k3s/managed) \u2014 check the distro's proxy settings",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.37.md",
+     "matchedText": "Added the `KubeProxyIPVS` feature gate in preparation for deactivating and then removing the `ipvs` mode of `kube-proxy`."
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-cgroup-v1-deprecated-1.35",
+   "version": "1.35",
+   "title": "Kubernetes 1.35 deprecates cgroup v1 \u2014 kubelets will not start on cgroup v1 hosts by default",
+   "remediation": "Verify every node runs cgroup v2 before upgrading (on the host: stat -fc %T /sys/fs/cgroup \u2014 expect cgroup2fs). Nodes still on cgroup v1 need the OS migrated, or the temporary kubelet escape hatch failCgroupV1: false (kubeadm: edit the kube-system/kubelet-config ConfigMap). Not auto-detectable: the cgroup version is not exposed through the Kubernetes API or kubelet /configz \u2014 check hosts manually.",
+   "verifyCommand": "stat -fc %T /sys/fs/cgroup  # run ON EACH NODE HOST, not via kubectl: cgroup2fs = ready for 1.35; tmpfs = still cgroup v1 \u2014 migrate the node OS or set the failCgroupV1: false escape hatch",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.35.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.35.md",
+     "matchedText": "ACTION REQUIRED: `failCgroupV1` will be set to true from 1.35. This means that nodes will not start on a cgroup v1 by default. This puts cgroup v1 into a deprecated state."
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-cadvisor-kubelet-flags-fatal-1.37",
+   "version": "1.37",
+   "title": "18 deprecated cAdvisor kubelet flags now make the kubelet FAIL TO START (--containerd, --boot-id-file, --storage-driver-*, ...)",
+   "remediation": "Before upgrading nodes to 1.37, remove every deprecated cAdvisor flag from kubelet startup arguments (node bootstrap / systemd unit). These flags have no /configz or static-pod representation, so this cannot be auto-detected.",
+   "verifyCommand": "ps aux | grep kubelet   # on each node; check for --containerd, --boot-id-file, --storage-driver-*",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "cAdvisor deprecated kubelet flags now hard-fail kubelet startup"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-cadvisor-metrics-removed-1.37",
+   "version": "1.37",
+   "title": "cAdvisor metric series removed (container_cpu_load_average_10s, container_tasks_state, container_application_*, userDefinedMetrics)",
+   "remediation": "Update dashboards, alerts and recording rules that reference the removed cAdvisor series before upgrading to 1.37.",
+   "verifyCommand": "grep -rEl 'container_cpu_load_average_10s|container_tasks_state|container_application_' /etc/grafana /etc/prometheus 2>/dev/null   # or search dashboards/alerts for the removed series",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "Removed cAdvisor metric series"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-credential-provider-strict-config-1.32",
+   "version": "1.32",
+   "title": "kubelet --image-credential-provider-config is now STRICTLY deserialized \u2014 unknown/duplicate fields make the kubelet fail to start",
+   "remediation": "Validate every node's image credential provider config file for unknown or duplicate fields before upgrading to 1.32+ (structural sibling of the 1.17 kubelet --config strict rule).",
+   "verifyCommand": "kubectl get nodes -o name   # then on each node: kubelet --image-credential-provider-config=<path> --dry-run 2>&1 | head   # validate the file parses strictly",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.32.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "Promoted the kubelet image credential provider config to strict deserialization"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-pod-status-manager-state-1.32",
+   "version": "1.32",
+   "title": "kubelet checkpoint /var/lib/kubelet/pod_status_manager_state must be DELETED when upgrading the kubelet to 1.32 (format change)",
+   "remediation": "Delete /var/lib/kubelet/pod_status_manager_state on each node as part of the kubelet upgrade, or the kubelet may fail to start. NOTE: this instruction appears only in the v1.32.0-beta.0 notes and was dropped from the final v1.32.0 section, which claims 'no urgent upgrade notes' (2026-08-31 audit).",
+   "verifyCommand": "ls /var/lib/kubelet/pod_status_manager_state   # on each node",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.32.md (v1.32.0-beta.0)",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "InPlacePodVerticalScaling checkpoint format change"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-memoryqos-beta-1.37",
+   "version": "1.37",
+   "title": "MemoryQoS beta on by default \u2014 memory.min/memory.low now applied to Guaranteed/Burstable pods on cgroup v2 nodes",
+   "remediation": "Review memory-reclaim-sensitive workloads before 1.37: kernel reclaim behavior changes cluster-wide on cgroup v2. Disable the MemoryQoS gate to keep 1.36 behavior.",
+   "verifyCommand": "stat -fc %T /sys/fs/cgroup   # on each node; cgroup2fs means MemoryQoS applies from 1.37",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "MemoryQoS graduated to beta, enabled by default"
+    }
+   ]
+  },
+  {
+   "ruleId": "rtz-k8s-advisory-credential-provider-cachetype-1.34",
+   "version": "1.34",
+   "title": "v1 credential provider config: tokenAttributes.cacheType is REQUIRED for service-account-based providers",
+   "remediation": "Set tokenAttributes.cacheType (ServiceAccount or Token) in each node's credential provider config before upgrading to 1.34+ where service-account-based registry credentials are used.",
+   "verifyCommand": "grep -n cacheType /etc/kubernetes/image-credential-provider-config.yaml   # on each node using service-account-based registry credentials",
+   "provisional": false,
+   "provenance": [
+    {
+     "name": "CHANGELOG-1.34.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/",
+     "matchedText": "Updated the v1 credential provider configuration to include the tokenAttributes.cacheType field"
+    }
+   ]
+  }
+ ]
+}

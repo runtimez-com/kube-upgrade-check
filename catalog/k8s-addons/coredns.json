@@ -1,0 +1,102 @@
+{
+ "addonId": "coredns",
+ "displayName": "CoreDNS",
+ "detect": {
+  "imageSuffixes": [
+   "coredns/coredns",
+   "eks/coredns"
+  ]
+ },
+ "source": {
+  "url": "https://github.com/coredns/coredns/tree/master/notes",
+  "ref": "coredns/coredns @ c113fe48769e5dba61ddc27e46867e5302a173cb (origin/master, committed blobs)",
+  "lastVerified": "2026-08-30",
+  "note": "CoreDNS publishes NO Kubernetes compatibility matrix in its repo (README.md and plugin/kubernetes/README.md checked at the pinned ref) — supportWindows is deliberately OMITTED, so every cluster running CoreDNS gets the honest NO_VENDOR_DATA INFO finding and a PARTIAL addon-compat tier. The kubeadm-pinned CoreDNS-version-per-k8s-release table (kubernetes/kubernetes constants, coredns/deployment CoreDNS-k8s_version.md) is a statement of what k8s SHIPS, not a support window, and was deliberately not transcribed as one. latestKnownVersion is 1.14.7 — the newest committed release note at the pinned ref — so the upgrade checklist can still render without a matrix. upgradeNotes are transcribed verbatim from the committed notes/coredns-*.md blobs (markdown emphasis and link syntax stripped, wording otherwise untouched). The 1.9.0 removal of kubernetes-plugin wildcard queries was deliberately NOT transcribed: it breaks client lookup behaviour, not config, and no read-only kubectl command can prove a cluster's workloads issue wildcard queries — a checklist item without an honest verify command is worse than silence. Detection: the two suffixes cover registry.k8s.io/coredns/coredns, Docker Hub coredns/coredns and EKS's eks/coredns; the pre-k8s-1.21 single-segment k8s.gcr.io/coredns repo and Rancher's mirrored-coredns-coredns names do NOT match and are a known miss — a bare 'coredns' suffix would also match any repo merely ending in those letters. The two crSpecListContains rules read the corednsPlugins directive-name projection the agent stamps onto kube-system coredns ConfigMaps (Corefile VALUES are never collected — names only); rows synced by an agent predating that projection are SKIPPED, never judged, so eac can deploy before the agent. proxy was moved out of tree IN v1.5.0 (commit 9dd288943 'Move proxy to external', reachable from tag v1.5.0) while the 1.5.0 release note's own wording says 'fully deprecated' — the rule quotes the note verbatim and states the removal in the recommendation."
+ },
+ "latestKnownVersion": "1.14.7",
+ "upgradeNotes": [
+  {
+   "version": "1.7.0",
+   "title": "Metric names change wholesale — dashboards and alerts on coredns_*_count_total go dark",
+   "quote": "We mostly dropped `count` from `_total` metrics names",
+   "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_[a-z_]+_count_total\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed reference pre-1.7 metric names (coredns_dns_request_count_total et al) — they match nothing after the upgrade; also review Grafana dashboards outside the cluster",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.7.0.md"
+  },
+  {
+   "version": "1.7.0",
+   "title": "The federation plugin is removed — a Corefile still naming it stops CoreDNS from starting",
+   "quote": "The federation plugin (which allows for v1 Kubernetes federation) has been removed.",
+   "verifyCommand": "kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -wn federation  # any output = the Corefile still loads the removed plugin; delete the federation block before upgrading or CoreDNS 1.7+ exits on an unknown directive",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.7.0.md"
+  },
+  {
+   "version": "1.7.0",
+   "title": "kubernetes-plugin options resyncperiod and upstream are removed",
+   "quote": "plugin/kubernetes: Remove already-deprecated options `resyncperiod` and `upstream`",
+   "verifyCommand": "kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -wnE 'resyncperiod|upstream'  # any output inside the kubernetes block = remove these option lines before upgrading; CoreDNS 1.7+ refuses to parse them",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.7.0.md"
+  },
+  {
+   "version": "1.8.0",
+   "title": "Outgoing zone transfers move to the dedicated transfer plugin — transfer-to options stop parsing",
+   "quote": "the transfer plugin is now made a first class citizen and plugins wanting to perform outgoing zone transfers now use this plugin: file, auto, secondary and kubernetes are converted.",
+   "verifyCommand": "kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -nE 'transfer[[:space:]]+to'  # any output = rewrite these as a top-level transfer block per the 1.8.0 notes before upgrading",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.8.0.md"
+  },
+  {
+   "version": "1.11.0",
+   "title": "Endpoint and EndpointSlice v1beta watches are dropped — CoreDNS 1.11 needs Kubernetes 1.21+",
+   "quote": "In the kubernetes plugin, we have dropped support for watching Endpoint and Endpointslice v1beta, since all supported K8s versions now use Endpointslice.",
+   "verifyCommand": "kubectl api-versions | grep -cx discovery.k8s.io/v1  # 0 = this cluster cannot serve EndpointSlice v1, so CoreDNS 1.11+ has nothing to watch — upgrade Kubernetes to 1.21+ BEFORE upgrading CoreDNS past 1.10",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.11.0.md"
+  },
+  {
+   "version": "1.13.0",
+   "title": "forward no longer fails over on SERVFAIL/REFUSED — broken primary upstreams stop being masked",
+   "quote": "plugin/forward: No failover to next upstream when receiving SERVFAIL or REFUSED response codes",
+   "verifyCommand": "kubectl -n kube-system get cm coredns -o jsonpath='{.data.Corefile}' | grep -n 'forward'  # a forward line listing MULTIPLE upstreams = resolution that silently rode the second upstream past a misbehaving first now returns the first's SERVFAIL/REFUSED to pods; fix the primary upstream before upgrading",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.13.0.md"
+  }
+ ],
+ "inventoryKinds": [
+  "ConfigMap@namespace"
+ ],
+ "rules": [
+  {
+   "ruleId": "rtz-addon-coredns-federation-plugin-removed",
+   "kind": "crSpecListContains",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "appliesWhenVersionBelow": "1.7.0",
+   "params": {
+    "crKind": "ConfigMap@namespace",
+    "field": "corednsPlugins",
+    "anyOf": [
+     "federation"
+    ]
+   },
+   "title": "The Corefile still loads the federation plugin, which CoreDNS 1.7 removes",
+   "recommendation": "Delete the federation block from the Corefile before upgrading CoreDNS to 1.7 or later — CoreDNS exits at startup on an unknown directive, taking cluster DNS down with it. Kubernetes v1 federation itself was long since retired, so the block is almost certainly vestigial.",
+   "quote": "The federation plugin (which allows for v1 Kubernetes federation) has been removed.",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.7.0.md"
+  },
+  {
+   "ruleId": "rtz-addon-coredns-proxy-plugin-removed",
+   "kind": "crSpecListContains",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "appliesWhenVersionBelow": "1.5.0",
+   "params": {
+    "crKind": "ConfigMap@namespace",
+    "field": "corednsPlugins",
+    "anyOf": [
+     "proxy"
+    ]
+   },
+   "title": "The Corefile still loads the proxy plugin, which leaves the CoreDNS binary at 1.5",
+   "recommendation": "Replace every proxy directive with forward (or grpc for gRPC upstreams) before upgrading CoreDNS to 1.5 or later. The plugin was moved out of tree in v1.5.0 (coredns/coredns#2651), so a Corefile still naming it stops CoreDNS from starting — this is the Corefile migration Kubernetes shipped its own coredns-migration tooling for.",
+   "quote": "The use of TIMEOUT and no_reload in file and auto have been fully deprecated. As is the proxy plugin.",
+   "sourceUrl": "https://github.com/coredns/coredns/blob/c113fe48769e5dba61ddc27e46867e5302a173cb/notes/coredns-1.5.0.md"
+  }
+ ]
+}

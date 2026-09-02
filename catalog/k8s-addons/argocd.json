@@ -1,0 +1,194 @@
+{
+ "addonId": "argocd",
+ "displayName": "Argo CD",
+ "detect": {
+  "imageSuffixes": [
+   "argoproj/argocd"
+  ]
+ },
+ "source": {
+  "url": "https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/#tested-versions",
+  "ref": "argo-cd @ origin/release-3.5 (e258ee23c) + release-3.2/2.14/2.11/2.8, committed blobs",
+  "lastVerified": "2026-08-29",
+  "note": "supportWindows transcribed from docs/operator-manual/tested-kubernetes-versions.md. That file is a PLACEHOLDER on master \u2014 it is populated only on release branches, each listing its own version plus the two prior \u2014 so the matrix was assembled from release-3.5/3.2/2.14/2.11/2.8 and the overlapping rows cross-checked for contradictions (none). Each cell is a contiguous descending k8s list, which is what makes a min/max window a faithful representation rather than a widening; the generator asserts contiguity and refuses to transcribe a gapped cell. Floor is 2.6: release-2.5 and older ship no such table, so an older install reports VERSION_NOT_IN_CATALOG (honest 'no vendor data') rather than a guessed window. 2026-08-29: rules read from RELEASE branches, not master \u2014 origin/release-3.3 carries a breaking-change section (client-side-apply CRD size) that master's copy lost, and master's 3.3-3.4/3.4-3.5/3.5-3.6 guides contain empty placeholder sections where 'no entry' means 'not yet written', never 'no change'."
+ },
+ "supportWindows": [
+  {
+   "version": "2.6",
+   "minK8s": "1.22",
+   "maxK8s": "1.24"
+  },
+  {
+   "version": "2.7",
+   "minK8s": "1.23",
+   "maxK8s": "1.26"
+  },
+  {
+   "version": "2.8",
+   "minK8s": "1.24",
+   "maxK8s": "1.27"
+  },
+  {
+   "version": "2.9",
+   "minK8s": "1.25",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "2.10",
+   "minK8s": "1.25",
+   "maxK8s": "1.28"
+  },
+  {
+   "version": "2.11",
+   "minK8s": "1.25",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "2.12",
+   "minK8s": "1.26",
+   "maxK8s": "1.29"
+  },
+  {
+   "version": "2.13",
+   "minK8s": "1.27",
+   "maxK8s": "1.30"
+  },
+  {
+   "version": "2.14",
+   "minK8s": "1.28",
+   "maxK8s": "1.31"
+  },
+  {
+   "version": "3.0",
+   "minK8s": "1.29",
+   "maxK8s": "1.32"
+  },
+  {
+   "version": "3.1",
+   "minK8s": "1.31",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "3.2",
+   "minK8s": "1.31",
+   "maxK8s": "1.34"
+  },
+  {
+   "version": "3.3",
+   "minK8s": "1.32",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "3.4",
+   "minK8s": "1.32",
+   "maxK8s": "1.35"
+  },
+  {
+   "version": "3.5",
+   "minK8s": "1.33",
+   "maxK8s": "1.36"
+  }
+ ],
+ "upgradeNotes": [
+  {
+   "version": "3.0",
+   "title": "Logs RBAC is enforced by default \u2014 the pod Logs tab disappears without an explicit grant",
+   "quote": "Starting from 3.0, this flag is removed and the logs RBAC is enforced by default, meaning the `logs` tab on `pod` view will not be visible without granting explicit `logs, get` permissions to the users/groups/roles requiring it.",
+   "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.default}'; kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.server\\.rbac\\.log\\.enforce\\.enable}'  # affected when policy.default is unset AND the flag is absent or false",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/"
+  },
+  {
+   "version": "3.0",
+   "title": "Legacy repository config in argocd-cm is no longer read",
+   "quote": "Before repositories were managed as Secrets, they were configured in the argocd-cm ConfigMap. The argocd-cm option has been deprecated for some time and is no longer available in Argo CD 3.0.",
+   "verifyCommand": "kubectl -n argocd get cm argocd-cm -o json | jq '.data | keys[] | select(. == \"repositories\" or . == \"repository.credentials\" or . == \"helm.repositories\")'  # any output = migrate those to repository Secrets first",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/"
+  },
+  {
+   "version": "3.0",
+   "title": "ApplicationSet nested selectors are always applied \u2014 generated Applications may disappear",
+   "quote": "Starting in Argo CD 3.0, the field is ignored, and behavior is always the same as if `applyNestedSelectors` was set to `true`. In other words, nested selectors are always applied.",
+   "verifyCommand": "kubectl get appsets -A -o=json | jq -r '.items[] | select(.spec.applyNestedSelectors != true and .spec.generators[][].generators[][].generators[].selector != null) | .metadata.name'  # names printed = affected",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/"
+  },
+  {
+   "version": "3.0",
+   "title": "Resource tracking switches from labels to annotations by default",
+   "quote": "The default behavior for tracking resources has changed to use annotation-based tracking instead of label-based tracking.",
+   "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.application\\.resourceTrackingMethod}'; kubectl get applications -A -o json | jq -r '.items[] | select(.spec.syncPolicy.syncOptions[]? == \"ApplyOutOfSyncOnly=true\") | .metadata.name'  # label/empty tracking plus these apps risks orphaned resources",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/2.14-3.0/"
+  },
+  {
+   "version": "3.3",
+   "title": "Server-Side Apply is required \u2014 client-side apply can no longer write the ApplicationSet CRD",
+   "quote": "In this version, the ApplicationSet CRD exceeds the size limit for client-side apply, meaning that the previous upgrade methods will result in `The CustomResourceDefinition \"applicationsets.argoproj.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`",
+   "verifyCommand": "kubectl get crd applicationsets.argoproj.io -o jsonpath='{.metadata.annotations.kubectl\\.kubernetes\\.io/last-applied-configuration}' | head -c 1  # any output = re-apply the CRDs with --server-side --force-conflicts",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.2-3.3/"
+  },
+  {
+   "version": "3.4",
+   "title": "Cluster version label changes format \u2014 cluster generators can silently match nothing",
+   "quote": "Application Sets with Cluster Generators, that fetch clusters based on their Kubernetes version and use `argocd.argoproj.io/auto-label-cluster-info` on the cluster secret, need to be updated to use `argocd.argoproj.io/kubernetes-version` with the `vMajor.Minor.Patch` format instead of the previous `Major.Minor` format.",
+   "verifyCommand": "kubectl get appsets -A -o json | jq -r '.items[] | select([.. | .\"argocd.argoproj.io/kubernetes-version\"? // empty] | map(test(\"^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$\") | not) | any) | .metadata.name'  # names printed = selectors still use the old Major.Minor form",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.3-3.4/"
+  },
+  {
+   "version": "3.5",
+   "title": "Helm 4 requires plain-HTTP OCI registries to be declared explicitly",
+   "quote": "In Helm v4, the OCI implementation is more strict: if the registry doesn't speak TLS, it is required to explicitly use `--plain-http` upon `helm push`, `helm registry login` and upon `helm dependency build`.",
+   "verifyCommand": "kubectl -n argocd get secret -l argocd.argoproj.io/secret-type=repository -o json | jq -r '.items[] | select((.data.url // \"\" | @base64d) | startswith(\"http://\")) | select(.data.insecureOCIForceHttp == null) | .metadata.name'  # names printed = add insecureOCIForceHttp: \"true\"",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.4-3.5/"
+  },
+  {
+   "version": "3.5",
+   "title": "GnuPG signature verification is replaced by Source Integrity",
+   "quote": "Keys configured in `signatureKeys` will continue to be supported, but they cannot be used together with `sourceIntegrity`.",
+   "verifyCommand": "kubectl get appprojects -A -o json | jq -r '.items[] | select((.spec.signatureKeys // [] | length) > 0 and .spec.sourceIntegrity != null) | .metadata.name'  # names printed = the two are configured together, which is unsupported",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.4-3.5/"
+  }
+ ],
+ "inventoryKinds": [
+  "ApplicationSet",
+  "Secret@namespace"
+ ],
+ "rules": [
+  {
+   "ruleId": "rtz-addon-argocd-crd-client-side-apply",
+   "kind": "crdFlagSet",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "params": {
+    "crdName": "applicationsets.argoproj.io",
+    "anyOfFlags": [
+     "lastAppliedConfigurationPresent",
+     "clientSideApplyManager"
+    ]
+   },
+   "title": "Argo CD ApplicationSet CRD was applied client-side \u2014 the upgrade to 3.3 will fail",
+   "recommendation": "Re-apply the Argo CD CRDs with Server-Side Apply before upgrading to 3.3 or later: `kubectl apply --server-side --force-conflicts -f <crds>`. If Argo CD manages itself through an Application, add `ServerSideApply=true` to that Application's spec.syncPolicy.syncOptions. The ApplicationSet CRD is now roughly 1.4MB against a 262144-byte annotation ceiling, so client-side apply cannot write it at all \u2014 this fails the upgrade outright rather than degrading behaviour. If you set `ClientSideApplyMigration=false` as a temporary workaround for this error, remove it again after upgrading to 3.3.2 \u2014 leaving it disabled risks field-manager conflicts later. Note that only a positive signal is detectable: a Helm-managed install records its state in Secrets and sets neither marker, so the absence of this finding is not proof that Server-Side Apply was used.",
+   "quote": "In this version, the ApplicationSet CRD exceeds the size limit for client-side apply, meaning that the previous upgrade methods will result in `The CustomResourceDefinition \"applicationsets.argoproj.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.2-3.3/"
+  },
+  {
+   "ruleId": "rtz-addon-argocd-cluster-version-selector-format",
+   "kind": "crSelectorFormat",
+   "severity": "HIGH",
+   "scoreImpact": 20,
+   "params": {
+    "crKinds": [
+     "ApplicationSet",
+     "Secret@namespace"
+    ],
+    "field": "clusterGeneratorVersionSelectors",
+    "expectedPattern": "^v\\d+\\.\\d+\\.\\d+$",
+    "gateKind": "Secret@namespace",
+    "gateLabel": "argocd.argoproj.io/auto-label-cluster-info",
+    "gateLabelEquals": "true"
+   },
+   "title": "Argo CD cluster generators select on the pre-3.4 Kubernetes version format",
+   "recommendation": "Update these ApplicationSets to select on the `vMajor.Minor.Patch` form (for example `v1.32.13` rather than `1.32`) before upgrading Argo CD to 3.4. This breakage is SILENT: the generator simply matches no clusters, so its Applications disappear without an error or an event. The finding is raised only for clusters whose Secret carries `argocd.argoproj.io/auto-label-cluster-info`, since Argo CD rewrites the version label only there \u2014 if you maintain that label yourself, nothing changes for you.",
+   "quote": "Application Sets with Cluster Generators, that fetch clusters based on their Kubernetes version and use `argocd.argoproj.io/auto-label-cluster-info` on the cluster secret, need to be updated to use `argocd.argoproj.io/kubernetes-version` with the `vMajor.Minor.Patch` format instead of the previous `Major.Minor` format.",
+   "sourceUrl": "https://argo-cd.readthedocs.io/en/stable/operator-manual/upgrading/3.3-3.4/"
+  }
+ ]
+}

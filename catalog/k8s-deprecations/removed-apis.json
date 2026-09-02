@@ -1,0 +1,1752 @@
+{
+ "_meta": {
+  "description": "Kubernetes removed/deprecated built-in API catalog for the EAC Upgrade Breakage Radar. Single verified source of truth for both the live inventory-scan path (catalogRules, consumed by DeprecationCatalog/UpgradeBreakageAnalyzer) and the pre-apply CrossGuard gate (detectorTable, consumed by DeprecatedApiDetector).",
+  "rowShapeNotes": "catalogRules entries carry ruleId/title/remediation (one finding identity per GVK). detectorTable entries are lighter (deprecatedIn/removedIn/replacement only) and support a kind==\"*\" wildcard that matches any Kind under that apiVersion \u2014 this mirrors the original DeprecatedApiDetector.TABLE lookup (exact apiVersion+kind first, then apiVersion+\"*\").",
+  "regressionNote": "catalogRules[0..49] and detectorTable[0..26] are verbatim, mechanically extracted copies of the pre-refactor DeprecationCatalog.java / DeprecatedApiDetector.java hardcoded tables (see scripts/fetch-deprecations.sh extraction step in the Phase-1 backend summary) \u2014 including two known, pre-existing, UNRECONCILED drifts between the two legacy tables for the flowcontrol.apiserver.k8s.io/v1beta1 and v1beta2 groups (catalogRules has explicit FlowSchema/PriorityLevelConfiguration rows with different deprecatedIn than detectorTable's wildcard row for the same apiVersion). These are preserved AS-IS (not fixed) to guarantee byte-for-byte-unchanged behavior for both existing consumers; reconciling them is a deliberate follow-up, not part of this phase.",
+  "sources": [
+   {
+    "name": "FairwindsOps/pluto versions.yaml",
+    "url": "https://raw.githubusercontent.com/FairwindsOps/pluto/master/versions.yaml",
+    "fetchedAt": "2026-07-10T00:00:00Z",
+    "usedFor": "Cross-reference for existing rows; source for the 12 new >=1.33 rows (admissionregistration.k8s.io/v1alpha1 ValidatingAdmissionPolicy(Binding), resource.k8s.io/v1alpha3 and v1beta1 DRA kinds, storage.k8s.io/v1alpha1 VolumeAttributesClass, storagemigration.k8s.io/v1alpha1 StorageVersionMigration)."
+   },
+   {
+    "name": "Kubernetes official Deprecated API Migration Guide",
+    "url": "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md",
+    "fetchedAt": "2026-07-10T00:00:00Z",
+    "usedFor": "Cross-check of already-enacted removals through v1.32 (confirmed the pre-existing flowcontrol.apiserver.k8s.io/v1beta1 removed-in=1.26 value in catalogRules matches the official record \u2014 pluto's v1.29 value for that same row appears stale/incorrect, which is why it was NOT used to overwrite the existing verified entry)."
+   }
+  ],
+  "newRowsAddedThisRun": 12,
+  "newRowsVerified": 12,
+  "newRowsProvisional": 0,
+  "step1CorrectionsAndAdditions": {
+   "description": "Backend Step 1 pass (raw-CHANGELOG whole-file scan, curl'd directly from raw.githubusercontent.com/kubernetes/kubernetes \u2014 never the summarizer): corrects one unverifiable existing removedIn claim and adds 6 verified new rows (coordination.k8s.io/v1alpha1, authentication.k8s.io/v1alpha1, scheduling.k8s.io/v1alpha1, scheduling.k8s.io/v1alpha2 x2 kinds, cbt.storage.k8s.io/v1alpha1) plus 1 detector-only kubeadm config-schema row. Every value below is a direct verbatim CHANGELOG quote + PR number; nothing is from memory.",
+   "sourcesConsulted": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md through CHANGELOG-1.37.md (raw, whole-file grep, not the summarizer)",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-<version>.md"
+    },
+    {
+     "name": "Kubernetes official Deprecated API Migration Guide (main branch, live-site v1.36 as of this run)",
+     "url": "https://raw.githubusercontent.com/kubernetes/website/main/content/en/docs/reference/using-api/deprecation-guide.md",
+     "usedFor": "Cross-check only. As of this run the page's 'Removed APIs by release' section stops at v1.32 for EVERY group (it does not mention the already-CHANGELOG-confirmed 1.33/1.34/1.35 removals either, e.g. admissionregistration.k8s.io/v1alpha1, resource.k8s.io/v1alpha3, storage.k8s.io/v1alpha1) \u2014 this is a known documentation lag, not evidence against any specific removal. Its silence on resource.k8s.io/v1beta1 is therefore inconclusive, not disconfirming."
+    },
+    {
+     "name": "kubernetes/kubernetes PR #137564 file diff (SnapshotMetadataService CRD manifest)",
+     "url": "https://api.github.com/repos/kubernetes/kubernetes/pulls/137564/files",
+     "usedFor": "Confirmed the exact API group is cbt.storage.k8s.io (test/e2e/testing-manifests/storage-csi/external-snapshot-metadata/cbt.storage.k8s.io_snapshotmetadataservices.yaml), not storage.k8s.io or snapshot.storage.k8s.io as guessed in the task brief."
+    }
+   ],
+   "unconfirmedRemovals": [
+    {
+     "apiVersion": "resource.k8s.io/v1beta1",
+     "kinds": [
+      "ResourceSlice",
+      "ResourceClaim",
+      "DeviceClass",
+      "ResourceClaimTemplate"
+     ],
+     "verdict": "RESOLVED 2026-08-28 \u2014 removedIn CORRECTED 1.36 -> 1.38 (and deprecatedIn 1.33 -> 1.35) in both catalogRules and detectorTable; provisional cleared. The earlier pass looked only at CHANGELOG prose and the (stale) website deprecation guide, neither of which carries the value. The kubernetes/kubernetes SOURCE TREE does.",
+     "note": "The 1.36 value came from CHANGELOG-1.33.md: 'The resource.k8s.io/v1beta1 API is deprecated and will be removed in 1.36. Use v1beta2 instead.' (#129970) \u2014 a forward-looking announcement upstream did not honour, which is why no later CHANGELOG confirms the removal. Authoritative value, read from kubernetes/kubernetes @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.35 and APILifecycleRemoved()=1.38 for all four kinds; pkg/controlplane/instance.go still lists resourcev1beta1 in betaAPIGroupVersionsDisabledByDefault (still served, disabled by default) at 1.38-alpha. Serving is cut off by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator), which keys off exactly APILifecycleRemoved \u2014 so that tag IS the removal release, and CHANGELOG prose is a secondary source. LESSON: prefer the generated prerelease-lifecycle tags over changelog text for every removedIn in this file; see CatalogGroundTruthTest, which now asserts this mechanically."
+    }
+   ],
+   "newVerifiedRows": [
+    {
+     "apiVersion": "coordination.k8s.io/v1alpha1",
+     "kind": "LeaseCandidate",
+     "removedIn": "1.32",
+     "quote": "Coordination.v1alpha1 API is dropped and replaced with coordination.v1alpha2. Old coordination.v1alpha1 types must be deleted before upgrade",
+     "pr": 127857,
+     "source": "CHANGELOG-1.32.md"
+    },
+    {
+     "apiVersion": "authentication.k8s.io/v1alpha1",
+     "kind": "SelfSubjectReview",
+     "removedIn": "1.33",
+     "quote": "kube-apiserver: Inactive serving code is removed for authentication.k8s.io/v1alpha1 APIs",
+     "pr": 129186,
+     "source": "CHANGELOG-1.33.md"
+    },
+    {
+     "apiVersion": "scheduling.k8s.io/v1alpha1",
+     "kind": "Workload",
+     "removedIn": "1.36",
+     "quote": "Introduced scheduling.k8s.io/v1alpha2 Workload and PodGroup API to allow for expressing workload-level scheduling requirements and let kube-scheduler act on those. Removed scheduling.k8s.io/v1alpha1 Workload API.",
+     "pr": 136976,
+     "source": "CHANGELOG-1.36.md"
+    },
+    {
+     "apiVersion": "scheduling.k8s.io/v1alpha2",
+     "kinds": [
+      "Workload",
+      "PodGroup"
+     ],
+     "removedIn": "1.37",
+     "quote": "Promotes the scheduling.k8s.io API group from v1alpha2 to v1alpha3 and drops v1alpha2 entirely. Remember to remove all v1alpha2 objects from the api-server while performing the cluster update.",
+     "pr": 138572,
+     "source": "CHANGELOG-1.37.md"
+    },
+    {
+     "apiVersion": "cbt.storage.k8s.io/v1alpha1",
+     "kind": "SnapshotMetadataService",
+     "removedIn": "1.36",
+     "quote": "Promoted SnapshotMetadataService to v1beta1. Removed support for the v1alpha1 version.",
+     "pr": 137564,
+     "source": "CHANGELOG-1.36.md",
+     "groupNote": "Confirmed via PR file diff that the CRD group is cbt.storage.k8s.io, not storage.k8s.io \u2014 this CRD ships from the out-of-tree kubernetes-csi/external-snapshot-metadata sidecar project (test manifest vendored into kubernetes/kubernetes for e2e only), so detection depends on the CRD being installed in-cluster."
+    },
+    {
+     "apiVersion": "kubeadm.k8s.io/v1beta3",
+     "kind": "*",
+     "removedIn": "1.37",
+     "quote": "Kubeadm: removed the v1beta3 API which was deprecated since v1.31. The 1.35 kubeadm binary can be used to migrate to v1beta4 by using the command 'kubeadm config migrate'.",
+     "pr": 136016,
+     "source": "CHANGELOG-1.37.md",
+     "placement": "detectorTable ONLY (not catalogRules) \u2014 kubeadm ClusterConfiguration/InitConfiguration/JoinConfiguration are client-side config documents (embedded as YAML text inside the kube-system kubeadm-config ConfigMap, or standalone bootstrap files), never a live top-level Kind scanned by the Tier-A resource inventory, and kube-apiserver never serves or reports metrics for this group. It fits ONLY the pre-apply CrossGuard raw-manifest scan (DeprecatedApiDetector), which is why ResourceKindMap is intentionally NOT updated for these kinds."
+    }
+   ],
+   "advisoryOutOfScope": [
+    {
+     "topic": "kubeadm flex-volume removal",
+     "verdict": "OUT OF SCOPE for RemovedVolumePluginCatalog \u2014 does NOT map to a detectable Pod-spec field.",
+     "quote": "ACTION REQUIRED: Removed the integrated support for flex-volumes in kubeadm. Users were advised to migrate away from flex-volumes as recommended by SIG Storage since v1.22. If kubeadm users wish to continue using the feature, they need a custom image for the KCM that is not based on distroless, pass the KCM flag --flex-volume-plugin-dir, and mount the directory /usr/libexec/kubernetes/kubelet-plugins/volume/exec in the KCM static pod using kubeadm's extraVolumes mechanism before upgrading to v1.36.",
+     "pr": 136423,
+     "source": "CHANGELOG-1.36.md",
+     "reasoning": "This is kubeadm's own convenience automation for wiring the kube-controller-manager's --flex-volume-plugin-dir flag + hostPath mount into its static pod manifest at cluster-bootstrap time \u2014 NOT the removal of the generic `flexVolume` Pod-spec volume source key itself (the quote's own remediation path \u2014 mount the directory yourself via extraVolumes \u2014 confirms the underlying flex-volume kubelet mechanism still functions). RemovedVolumePluginCatalog's detection model is 'flag volumeSourceKey presence in a live workload spec'; there is no such workload-spec field affected here, so forcing a row in would produce a structurally meaningless / never-firing rule. Surfaced here as advisory documentation instead, per the task's explicit instruction not to force it."
+    }
+   ]
+  }
+ },
+ "catalogRules": [
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Ingress",
+   "deprecatedIn": "1.14",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-extensions-ingress",
+   "title": "Ingress (extensions/v1beta1) removed in 1.22",
+   "remediation": "Migrate Ingress from extensions/v1beta1 to networking.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-extensions-deployment",
+   "title": "Deployment (extensions/v1beta1) removed in 1.16",
+   "remediation": "Migrate Deployment from extensions/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "DaemonSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-extensions-daemonset",
+   "title": "DaemonSet (extensions/v1beta1) removed in 1.16",
+   "remediation": "Migrate DaemonSet from extensions/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "ReplicaSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-extensions-replicaset",
+   "title": "ReplicaSet (extensions/v1beta1) removed in 1.16",
+   "remediation": "Migrate ReplicaSet from extensions/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "NetworkPolicy",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-extensions-networkpolicy",
+   "title": "NetworkPolicy (extensions/v1beta1) removed in 1.16",
+   "remediation": "Migrate NetworkPolicy from extensions/v1beta1 to networking.k8s.io/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "PodSecurityPolicy",
+   "deprecatedIn": "1.10",
+   "removedIn": "1.16",
+   "replacement": "policy/v1beta1",
+   "ruleId": "rtz-k8s-dep-extensions-podsecuritypolicy",
+   "title": "PodSecurityPolicy (extensions/v1beta1) removed in 1.16",
+   "remediation": "Migrate PodSecurityPolicy from extensions/v1beta1 to policy/v1beta1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta1",
+   "kind": "Deployment",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta1-deployment",
+   "title": "Deployment (apps/v1beta1) removed in 1.16",
+   "remediation": "Migrate Deployment from apps/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta1",
+   "kind": "StatefulSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta1-statefulset",
+   "title": "StatefulSet (apps/v1beta1) removed in 1.16",
+   "remediation": "Migrate StatefulSet from apps/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta1",
+   "kind": "ControllerRevision",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta1-controllerrevision",
+   "title": "ControllerRevision (apps/v1beta1) removed in 1.16",
+   "remediation": "Migrate ControllerRevision from apps/v1beta1 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "Deployment",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta2-deployment",
+   "title": "Deployment (apps/v1beta2) removed in 1.16",
+   "remediation": "Migrate Deployment from apps/v1beta2 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "DaemonSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta2-daemonset",
+   "title": "DaemonSet (apps/v1beta2) removed in 1.16",
+   "remediation": "Migrate DaemonSet from apps/v1beta2 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "ReplicaSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta2-replicaset",
+   "title": "ReplicaSet (apps/v1beta2) removed in 1.16",
+   "remediation": "Migrate ReplicaSet from apps/v1beta2 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "StatefulSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta2-statefulset",
+   "title": "StatefulSet (apps/v1beta2) removed in 1.16",
+   "remediation": "Migrate StatefulSet from apps/v1beta2 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "ControllerRevision",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1",
+   "ruleId": "rtz-k8s-dep-appsv1beta2-controllerrevision",
+   "title": "ControllerRevision (apps/v1beta2) removed in 1.16",
+   "remediation": "Migrate ControllerRevision from apps/v1beta2 to apps/v1 before upgrading to 1.16+."
+  },
+  {
+   "apiVersion": "policy/v1beta1",
+   "kind": "PodSecurityPolicy",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "(none \u2014 migrate to Pod Security Admission)",
+   "ruleId": "rtz-k8s-dep-policy-podsecuritypolicy",
+   "title": "PodSecurityPolicy (policy/v1beta1) removed in 1.25",
+   "remediation": "Remove PodSecurityPolicy and migrate to Pod Security Admission (PSA) before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "policy/v1beta1",
+   "kind": "PodDisruptionBudget",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "policy/v1",
+   "ruleId": "rtz-k8s-dep-policy-poddisruptionbudget",
+   "title": "PodDisruptionBudget (policy/v1beta1) removed in 1.25",
+   "remediation": "Migrate PodDisruptionBudget from policy/v1beta1 to policy/v1 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "batch/v1beta1",
+   "kind": "CronJob",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "batch/v1",
+   "ruleId": "rtz-k8s-dep-batch-cronjob",
+   "title": "CronJob (batch/v1beta1) removed in 1.25",
+   "remediation": "Migrate CronJob from batch/v1beta1 to batch/v1 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "autoscaling/v2beta1",
+   "kind": "HorizontalPodAutoscaler",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "autoscaling/v2",
+   "ruleId": "rtz-k8s-dep-autoscaling-hpa-v2beta1",
+   "title": "HorizontalPodAutoscaler (autoscaling/v2beta1) removed in 1.25",
+   "remediation": "Migrate HorizontalPodAutoscaler from autoscaling/v2beta1 to autoscaling/v2 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "autoscaling/v2beta2",
+   "kind": "HorizontalPodAutoscaler",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.26",
+   "replacement": "autoscaling/v2",
+   "ruleId": "rtz-k8s-dep-autoscaling-hpa-v2beta2",
+   "title": "HorizontalPodAutoscaler (autoscaling/v2beta2) removed in 1.26",
+   "remediation": "Migrate HorizontalPodAutoscaler from autoscaling/v2beta2 to autoscaling/v2 before upgrading to 1.26+."
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "Ingress",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-networking-ingress",
+   "title": "Ingress (networking.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate Ingress from networking.k8s.io/v1beta1 to networking.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "IngressClass",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-networking-ingressclass",
+   "title": "IngressClass (networking.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate IngressClass from networking.k8s.io/v1beta1 to networking.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "apiextensions.k8s.io/v1beta1",
+   "kind": "CustomResourceDefinition",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "apiextensions.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-apiextensions-crd",
+   "title": "CustomResourceDefinition (apiextensions.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate CustomResourceDefinition from apiextensions.k8s.io/v1beta1 to apiextensions.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "MutatingWebhookConfiguration",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionreg-mutatingwebhook",
+   "title": "MutatingWebhookConfiguration (admissionregistration.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate MutatingWebhookConfiguration to admissionregistration.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "ValidatingWebhookConfiguration",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionreg-validatingwebhook",
+   "title": "ValidatingWebhookConfiguration (admissionregistration.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate ValidatingWebhookConfiguration to admissionregistration.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "Role",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "rbac.authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-rbac-role",
+   "title": "Role (rbac.authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate Role from rbac.authorization.k8s.io/v1beta1 to rbac.authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "RoleBinding",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "rbac.authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-rbac-rolebinding",
+   "title": "RoleBinding (rbac.authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate RoleBinding from rbac.authorization.k8s.io/v1beta1 to rbac.authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "ClusterRole",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "rbac.authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-rbac-clusterrole",
+   "title": "ClusterRole (rbac.authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate ClusterRole from rbac.authorization.k8s.io/v1beta1 to rbac.authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "ClusterRoleBinding",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "rbac.authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-rbac-clusterrolebinding",
+   "title": "ClusterRoleBinding (rbac.authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate ClusterRoleBinding from rbac.authorization.k8s.io/v1beta1 to rbac.authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "PriorityClass",
+   "deprecatedIn": "1.14",
+   "removedIn": "1.22",
+   "replacement": "scheduling.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-scheduling-priorityclass",
+   "title": "PriorityClass (scheduling.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate PriorityClass from scheduling.k8s.io/v1beta1 to scheduling.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1beta1",
+   "kind": "Lease",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "coordination.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-coordination-lease",
+   "title": "Lease (coordination.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate Lease from coordination.k8s.io/v1beta1 to coordination.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "CSINode",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-csinode",
+   "title": "CSINode (storage.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate CSINode from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "CSIDriver",
+   "deprecatedIn": "1.18",
+   "removedIn": "1.22",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-csidriver",
+   "title": "CSIDriver (storage.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate CSIDriver from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "StorageClass",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-storageclass",
+   "title": "StorageClass (storage.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate StorageClass from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "VolumeAttachment",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-volumeattachment",
+   "title": "VolumeAttachment (storage.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate VolumeAttachment from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "CSIStorageCapacity",
+   "deprecatedIn": "1.24",
+   "removedIn": "1.27",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-csistoragecapacity",
+   "title": "CSIStorageCapacity (storage.k8s.io/v1beta1) removed in 1.27",
+   "remediation": "Migrate CSIStorageCapacity from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.27+."
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "CertificateSigningRequest",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "certificates.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-certificates-csr",
+   "title": "CertificateSigningRequest (certificates.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate CertificateSigningRequest to certificates.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "authentication.k8s.io/v1beta1",
+   "kind": "TokenReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "authentication.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authentication-tokenreview",
+   "title": "TokenReview (authentication.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate TokenReview to authentication.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "apiregistration.k8s.io/v1beta1",
+   "kind": "APIService",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "apiregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-apiregistration-apiservice",
+   "title": "APIService (apiregistration.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate APIService from apiregistration.k8s.io/v1beta1 to apiregistration.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "authorization.k8s.io/v1beta1",
+   "kind": "SubjectAccessReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authorization-subjectaccessreview",
+   "title": "SubjectAccessReview (authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate SubjectAccessReview to authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "authorization.k8s.io/v1beta1",
+   "kind": "LocalSubjectAccessReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authorization-localsubjectaccessreview",
+   "title": "LocalSubjectAccessReview (authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate LocalSubjectAccessReview to authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "authorization.k8s.io/v1beta1",
+   "kind": "SelfSubjectAccessReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "authorization.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authorization-selfsubjectaccessreview",
+   "title": "SelfSubjectAccessReview (authorization.k8s.io/v1beta1) removed in 1.22",
+   "remediation": "Migrate SelfSubjectAccessReview to authorization.k8s.io/v1 before upgrading to 1.22+."
+  },
+  {
+   "apiVersion": "discovery.k8s.io/v1beta1",
+   "kind": "EndpointSlice",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "discovery.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-discovery-endpointslice",
+   "title": "EndpointSlice (discovery.k8s.io/v1beta1) removed in 1.25",
+   "remediation": "Migrate EndpointSlice from discovery.k8s.io/v1beta1 to discovery.k8s.io/v1 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "events.k8s.io/v1beta1",
+   "kind": "Event",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.25",
+   "replacement": "events.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-events-event",
+   "title": "Event (events.k8s.io/v1beta1) removed in 1.25",
+   "remediation": "Migrate Event from events.k8s.io/v1beta1 to events.k8s.io/v1 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "node.k8s.io/v1beta1",
+   "kind": "RuntimeClass",
+   "deprecatedIn": "1.20",
+   "removedIn": "1.25",
+   "replacement": "node.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-node-runtimeclass",
+   "title": "RuntimeClass (node.k8s.io/v1beta1) removed in 1.25",
+   "remediation": "Migrate RuntimeClass from node.k8s.io/v1beta1 to node.k8s.io/v1 before upgrading to 1.25+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta1",
+   "kind": "FlowSchema",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.26",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-flowschema-v1beta1",
+   "title": "FlowSchema (flowcontrol.apiserver.k8s.io/v1beta1) removed in 1.26",
+   "remediation": "Migrate FlowSchema to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.26+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta1",
+   "kind": "PriorityLevelConfiguration",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.26",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-plc-v1beta1",
+   "title": "PriorityLevelConfiguration (flowcontrol.apiserver.k8s.io/v1beta1) removed in 1.26",
+   "remediation": "Migrate PriorityLevelConfiguration to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.26+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta2",
+   "kind": "FlowSchema",
+   "deprecatedIn": "1.26",
+   "removedIn": "1.29",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-flowschema-v1beta2",
+   "title": "FlowSchema (flowcontrol.apiserver.k8s.io/v1beta2) removed in 1.29",
+   "remediation": "Migrate FlowSchema to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.29+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta2",
+   "kind": "PriorityLevelConfiguration",
+   "deprecatedIn": "1.26",
+   "removedIn": "1.29",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-plc-v1beta2",
+   "title": "PriorityLevelConfiguration (flowcontrol.apiserver.k8s.io/v1beta2) removed in 1.29",
+   "remediation": "Migrate PriorityLevelConfiguration to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.29+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta3",
+   "kind": "FlowSchema",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-flowschema-v1beta3",
+   "title": "FlowSchema (flowcontrol.apiserver.k8s.io/v1beta3) removed in 1.32",
+   "remediation": "Migrate FlowSchema to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.32+."
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta3",
+   "kind": "PriorityLevelConfiguration",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-flowcontrol-plc-v1beta3",
+   "title": "PriorityLevelConfiguration (flowcontrol.apiserver.k8s.io/v1beta3) removed in 1.32",
+   "remediation": "Migrate PriorityLevelConfiguration to flowcontrol.apiserver.k8s.io/v1 before upgrading to 1.32+."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "ValidatingAdmissionPolicy",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionreg-validatingadmissionpolicy-v1alpha1",
+   "title": "ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1alpha1) removed in 1.32",
+   "remediation": "Migrate ValidatingAdmissionPolicy from admissionregistration.k8s.io/v1alpha1 to admissionregistration.k8s.io/v1 before upgrading to 1.32+."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "ValidatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionreg-validatingadmissionpolicybinding-v1alpha1",
+   "title": "ValidatingAdmissionPolicyBinding (admissionregistration.k8s.io/v1alpha1) removed in 1.32",
+   "remediation": "Migrate ValidatingAdmissionPolicyBinding from admissionregistration.k8s.io/v1alpha1 to admissionregistration.k8s.io/v1 before upgrading to 1.32+."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceslice-v1alpha3",
+   "title": "ResourceSlice (resource.k8s.io/v1alpha3) removed in 1.34",
+   "remediation": "Migrate ResourceSlice from resource.k8s.io/v1alpha3 to resource.k8s.io/v1 before upgrading to 1.34+."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaim-v1alpha3",
+   "title": "ResourceClaim (resource.k8s.io/v1alpha3) removed in 1.34",
+   "remediation": "Migrate ResourceClaim from resource.k8s.io/v1alpha3 to resource.k8s.io/v1 before upgrading to 1.34+."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-deviceclass-v1alpha3",
+   "title": "DeviceClass (resource.k8s.io/v1alpha3) removed in 1.34",
+   "remediation": "Migrate DeviceClass from resource.k8s.io/v1alpha3 to resource.k8s.io/v1 before upgrading to 1.34+."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaimtemplate-v1alpha3",
+   "title": "ResourceClaimTemplate (resource.k8s.io/v1alpha3) removed in 1.34",
+   "remediation": "Migrate ResourceClaimTemplate from resource.k8s.io/v1alpha3 to resource.k8s.io/v1 before upgrading to 1.34+."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "ruleId": "rtz-k8s-dep-resource-resourceslice-v1beta1",
+   "title": "ResourceSlice (resource.k8s.io/v1beta1) removed in 1.38",
+   "remediation": "Migrate ResourceSlice from resource.k8s.io/v1beta1 to resource.k8s.io/v1beta2 (or v1, GA since 1.34) before upgrading to 1.38+. Deprecated in 1.35; the API server stops serving v1beta1 at 1.38.",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaim-v1beta1",
+   "title": "ResourceClaim (resource.k8s.io/v1beta1) removed in 1.38",
+   "remediation": "Migrate ResourceClaim from resource.k8s.io/v1beta1 to resource.k8s.io/v1beta2 (or v1, GA since 1.34) before upgrading to 1.38+. Deprecated in 1.35; the API server stops serving v1beta1 at 1.38.",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "ruleId": "rtz-k8s-dep-resource-deviceclass-v1beta1",
+   "title": "DeviceClass (resource.k8s.io/v1beta1) removed in 1.38",
+   "remediation": "Migrate DeviceClass from resource.k8s.io/v1beta1 to resource.k8s.io/v1beta2 (or v1, GA since 1.34) before upgrading to 1.38+. Deprecated in 1.35; the API server stops serving v1beta1 at 1.38.",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaimtemplate-v1beta1",
+   "title": "ResourceClaimTemplate (resource.k8s.io/v1beta1) removed in 1.38",
+   "remediation": "Migrate ResourceClaimTemplate from resource.k8s.io/v1beta1 to resource.k8s.io/v1beta2 (or v1, GA since 1.34) before upgrading to 1.38+. Deprecated in 1.35; the API server stops serving v1beta1 at 1.38.",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "VolumeAttributesClass",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.35",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-volumeattributesclass-v1alpha1",
+   "title": "VolumeAttributesClass (storage.k8s.io/v1alpha1) removed in 1.35",
+   "remediation": "Migrate VolumeAttributesClass from storage.k8s.io/v1alpha1 to storage.k8s.io/v1 before upgrading to 1.35+."
+  },
+  {
+   "apiVersion": "storagemigration.k8s.io/v1alpha1",
+   "kind": "StorageVersionMigration",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.35",
+   "replacement": "storagemigration.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-storagemigration-storageversionmigration-v1alpha1",
+   "title": "StorageVersionMigration (storagemigration.k8s.io/v1alpha1) removed in 1.35",
+   "remediation": "Migrate StorageVersionMigration from storagemigration.k8s.io/v1alpha1 to storagemigration.k8s.io/v1beta1 before upgrading to 1.35+."
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1alpha1",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.32",
+   "replacement": "coordination.k8s.io/v1alpha2",
+   "ruleId": "rtz-k8s-dep-coordination-leasecandidate-v1alpha1",
+   "title": "LeaseCandidate (coordination.k8s.io/v1alpha1) removed in 1.32",
+   "remediation": "Migrate LeaseCandidate from coordination.k8s.io/v1alpha1 to coordination.k8s.io/v1alpha2 before upgrading to 1.32+. (coordination.k8s.io/v1alpha2 was itself promoted to v1beta1 in 1.33 \u2014 check your target version's current available version.)"
+  },
+  {
+   "apiVersion": "authentication.k8s.io/v1alpha1",
+   "kind": "SelfSubjectReview",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "authentication.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authentication-selfsubjectreview-v1alpha1",
+   "title": "SelfSubjectReview (authentication.k8s.io/v1alpha1) removed in 1.32",
+   "remediation": "Migrate SelfSubjectReview from authentication.k8s.io/v1alpha1 to authentication.k8s.io/v1 (GA since 1.28) before upgrading to 1.32+."
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1alpha1",
+   "kind": "Workload",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.36",
+   "replacement": "scheduling.k8s.io/v1alpha2",
+   "ruleId": "rtz-k8s-dep-scheduling-workload-v1alpha1",
+   "title": "Workload (scheduling.k8s.io/v1alpha1) removed in 1.36",
+   "remediation": "Migrate Workload from scheduling.k8s.io/v1alpha1 to scheduling.k8s.io/v1alpha2 before upgrading to 1.36+. (scheduling.k8s.io/v1alpha2 was itself removed in 1.37 in favor of v1alpha3 \u2014 check your target version's current available version.)"
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1alpha2",
+   "kind": "Workload",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.37",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "ruleId": "rtz-k8s-dep-scheduling-workload-v1alpha2",
+   "title": "Workload (scheduling.k8s.io/v1alpha2) removed in 1.37",
+   "remediation": "Migrate Workload from scheduling.k8s.io/v1alpha2 to scheduling.k8s.io/v1alpha3 before upgrading to 1.37+."
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1alpha2",
+   "kind": "PodGroup",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.37",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "ruleId": "rtz-k8s-dep-scheduling-podgroup-v1alpha2",
+   "title": "PodGroup (scheduling.k8s.io/v1alpha2) removed in 1.37",
+   "remediation": "Migrate PodGroup from scheduling.k8s.io/v1alpha2 to scheduling.k8s.io/v1alpha3 before upgrading to 1.37+."
+  },
+  {
+   "apiVersion": "cbt.storage.k8s.io/v1alpha1",
+   "kind": "SnapshotMetadataService",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.36",
+   "replacement": "cbt.storage.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-cbtstorage-snapshotmetadataservice-v1alpha1",
+   "title": "SnapshotMetadataService (cbt.storage.k8s.io/v1alpha1) removed in 1.36",
+   "remediation": "Migrate the SnapshotMetadataService custom resource from cbt.storage.k8s.io/v1alpha1 to cbt.storage.k8s.io/v1beta1 before upgrading to 1.36+. This CRD is delivered by the out-of-tree kubernetes-csi/external-snapshot-metadata CSI sidecar project (KEP-3314 Change Block Tracking) \u2014 this finding only applies if that CRD is installed in your cluster."
+  },
+  {
+   "apiVersion": "authentication.k8s.io/v1beta1",
+   "kind": "SelfSubjectReview",
+   "deprecatedIn": "1.30",
+   "removedIn": "1.33",
+   "replacement": "authentication.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-authentication-selfsubjectreview-v1beta1",
+   "title": "SelfSubjectReview (authentication.k8s.io/v1beta1) removed in 1.33",
+   "remediation": "Migrate SelfSubjectReview from authentication.k8s.io/v1beta1 to authentication.k8s.io/v1 before upgrading to 1.33+. Deprecated in 1.30.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/authentication/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.30 and APILifecycleRemoved()=1.33 for SelfSubjectReview. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1alpha1",
+   "kind": "ClusterTrustBundle",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "certificates.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-certificates-clustertrustbundle-v1alpha1",
+   "title": "ClusterTrustBundle (certificates.k8s.io/v1alpha1) removed in 1.37",
+   "remediation": "Migrate ClusterTrustBundle from certificates.k8s.io/v1alpha1 to certificates.k8s.io/v1beta1 before upgrading to 1.37+. Deprecated in 1.34.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/certificates/v1alpha1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.34 and APILifecycleRemoved()=1.37 for ClusterTrustBundle. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "IPAddress",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-networking-ipaddress-v1beta1",
+   "title": "IPAddress (networking.k8s.io/v1beta1) removed in 1.37",
+   "remediation": "Migrate IPAddress from networking.k8s.io/v1beta1 to networking.k8s.io/v1 before upgrading to 1.37+. Deprecated in 1.34.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/networking/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.34 and APILifecycleRemoved()=1.37 for IPAddress. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "ServiceCIDR",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "networking.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-networking-servicecidr-v1beta1",
+   "title": "ServiceCIDR (networking.k8s.io/v1beta1) removed in 1.37",
+   "remediation": "Migrate ServiceCIDR from networking.k8s.io/v1beta1 to networking.k8s.io/v1 before upgrading to 1.37+. Deprecated in 1.34.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/networking/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.34 and APILifecycleRemoved()=1.37 for ServiceCIDR. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "VolumeAttributesClass",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-volumeattributesclass-v1beta1",
+   "title": "VolumeAttributesClass (storage.k8s.io/v1beta1) removed in 1.37",
+   "remediation": "Migrate VolumeAttributesClass from storage.k8s.io/v1beta1 to storage.k8s.io/v1 before upgrading to 1.37+. Deprecated in 1.34.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/storage/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.34 and APILifecycleRemoved()=1.37 for VolumeAttributesClass. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "ValidatingAdmissionPolicy",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.34",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-validatingadmissionpolicy-v1beta1",
+   "title": "ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1beta1) removed in 1.34",
+   "remediation": "Migrate ValidatingAdmissionPolicy from admissionregistration.k8s.io/v1beta1 to admissionregistration.k8s.io/v1 before upgrading to 1.34+. Deprecated in 1.31.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.31 and APILifecycleRemoved()=1.34 for ValidatingAdmissionPolicy. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "ValidatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.34",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-validatingadmissionpolicybinding-v1beta1",
+   "title": "ValidatingAdmissionPolicyBinding (admissionregistration.k8s.io/v1beta1) removed in 1.34",
+   "remediation": "Migrate ValidatingAdmissionPolicyBinding from admissionregistration.k8s.io/v1beta1 to admissionregistration.k8s.io/v1 before upgrading to 1.34+. Deprecated in 1.31.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.31 and APILifecycleRemoved()=1.34 for ValidatingAdmissionPolicyBinding. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "CSIStorageCapacity",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.24",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-csistoragecapacity-v1alpha1",
+   "title": "CSIStorageCapacity (storage.k8s.io/v1alpha1) removed in 1.24",
+   "remediation": "Migrate CSIStorageCapacity from storage.k8s.io/v1alpha1 to storage.k8s.io/v1 before upgrading to 1.24+. Deprecated in 1.21.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/storage/v1alpha1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.21 and APILifecycleRemoved()=1.24 for CSIStorageCapacity. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "VolumeAttachment",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.24",
+   "replacement": "storage.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storage-volumeattachment-v1alpha1",
+   "title": "VolumeAttachment (storage.k8s.io/v1alpha1) removed in 1.24",
+   "remediation": "Migrate VolumeAttachment from storage.k8s.io/v1alpha1 to storage.k8s.io/v1 before upgrading to 1.24+. Deprecated in 1.21.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/storage/v1alpha1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.21 and APILifecycleRemoved()=1.24 for VolumeAttachment. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-deviceclass-v1beta2",
+   "title": "DeviceClass (resource.k8s.io/v1beta2) removed in 1.39",
+   "remediation": "Migrate DeviceClass from resource.k8s.io/v1beta2 to resource.k8s.io/v1 before upgrading to 1.39+. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for DeviceClass. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaim-v1beta2",
+   "title": "ResourceClaim (resource.k8s.io/v1beta2) removed in 1.39",
+   "remediation": "Migrate ResourceClaim from resource.k8s.io/v1beta2 to resource.k8s.io/v1 before upgrading to 1.39+. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for ResourceClaim. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceclaimtemplate-v1beta2",
+   "title": "ResourceClaimTemplate (resource.k8s.io/v1beta2) removed in 1.39",
+   "remediation": "Migrate ResourceClaimTemplate from resource.k8s.io/v1beta2 to resource.k8s.io/v1 before upgrading to 1.39+. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for ResourceClaimTemplate. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-resource-resourceslice-v1beta2",
+   "title": "ResourceSlice (resource.k8s.io/v1beta2) removed in 1.39",
+   "remediation": "Migrate ResourceSlice from resource.k8s.io/v1beta2 to resource.k8s.io/v1 before upgrading to 1.39+. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for ResourceSlice. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "DeviceTaintRule",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1beta2",
+   "ruleId": "rtz-k8s-dep-resource-devicetaintrule-v1alpha3",
+   "title": "DeviceTaintRule (resource.k8s.io/v1alpha3) removed in 1.39",
+   "remediation": "Migrate DeviceTaintRule from resource.k8s.io/v1alpha3 to resource.k8s.io/v1beta2 before upgrading to 1.39+. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1alpha3/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for DeviceTaintRule. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1alpha2",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "coordination.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-coordination-leasecandidate-v1alpha2",
+   "title": "LeaseCandidate (coordination.k8s.io/v1alpha2) removed in 1.38",
+   "remediation": "Migrate LeaseCandidate from coordination.k8s.io/v1alpha2 to coordination.k8s.io/v1beta1 before upgrading to 1.38+. Deprecated in 1.35.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/coordination/v1alpha2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.35 and APILifecycleRemoved()=1.38 for LeaseCandidate. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1beta1",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": null,
+   "ruleId": "rtz-k8s-dep-coordination-leasecandidate-v1beta1",
+   "title": "LeaseCandidate (coordination.k8s.io/v1beta1) removed in 1.39",
+   "remediation": "LeaseCandidate (coordination.k8s.io/v1beta1) stops being served at 1.39 and has no GA successor in the tree yet \u2014 delete these objects before upgrading and track the successor API upstream. Deprecated in 1.36.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/coordination/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.36 and APILifecycleRemoved()=1.39 for LeaseCandidate. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "MutatingAdmissionPolicy",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "admissionregistration.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-mutatingadmissionpolicy-v1alpha1",
+   "title": "MutatingAdmissionPolicy (admissionregistration.k8s.io/v1alpha1) removed in 1.38",
+   "remediation": "Migrate MutatingAdmissionPolicy from admissionregistration.k8s.io/v1alpha1 to admissionregistration.k8s.io/v1beta1 before upgrading to 1.38+. Deprecated in 1.35.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1alpha1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.35 and APILifecycleRemoved()=1.38 for MutatingAdmissionPolicy. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "MutatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "admissionregistration.k8s.io/v1beta1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-mutatingadmissionpolicybinding-v1alpha1",
+   "title": "MutatingAdmissionPolicyBinding (admissionregistration.k8s.io/v1alpha1) removed in 1.38",
+   "remediation": "Migrate MutatingAdmissionPolicyBinding from admissionregistration.k8s.io/v1alpha1 to admissionregistration.k8s.io/v1beta1 before upgrading to 1.38+. Deprecated in 1.35.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1alpha1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.35 and APILifecycleRemoved()=1.38 for MutatingAdmissionPolicyBinding. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "MutatingAdmissionPolicy",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-mutatingadmissionpolicy-v1beta1",
+   "title": "MutatingAdmissionPolicy (admissionregistration.k8s.io/v1beta1) removed in 1.40",
+   "remediation": "Migrate MutatingAdmissionPolicy from admissionregistration.k8s.io/v1beta1 to admissionregistration.k8s.io/v1 before upgrading to 1.40+. Deprecated in 1.37.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.37 and APILifecycleRemoved()=1.40 for MutatingAdmissionPolicy. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "MutatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-admissionregistration-mutatingadmissionpolicybinding-v1beta1",
+   "title": "MutatingAdmissionPolicyBinding (admissionregistration.k8s.io/v1beta1) removed in 1.40",
+   "remediation": "Migrate MutatingAdmissionPolicyBinding from admissionregistration.k8s.io/v1beta1 to admissionregistration.k8s.io/v1 before upgrading to 1.40+. Deprecated in 1.37.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/admissionregistration/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.37 and APILifecycleRemoved()=1.40 for MutatingAdmissionPolicyBinding. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "ClusterTrustBundle",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "certificates.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-certificates-clustertrustbundle-v1beta1",
+   "title": "ClusterTrustBundle (certificates.k8s.io/v1beta1) removed in 1.40",
+   "remediation": "Migrate ClusterTrustBundle from certificates.k8s.io/v1beta1 to certificates.k8s.io/v1 before upgrading to 1.40+. Deprecated in 1.37.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/certificates/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.37 and APILifecycleRemoved()=1.40 for ClusterTrustBundle. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "PodCertificateRequest",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "certificates.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-certificates-podcertificaterequest-v1beta1",
+   "title": "PodCertificateRequest (certificates.k8s.io/v1beta1) removed in 1.40",
+   "remediation": "Migrate PodCertificateRequest from certificates.k8s.io/v1beta1 to certificates.k8s.io/v1 before upgrading to 1.40+. Deprecated in 1.37.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/certificates/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.37 and APILifecycleRemoved()=1.40 for PodCertificateRequest. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "storagemigration.k8s.io/v1beta1",
+   "kind": "StorageVersionMigration",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "storagemigration.k8s.io/v1",
+   "ruleId": "rtz-k8s-dep-storagemigration-storageversionmigration-v1beta1",
+   "title": "StorageVersionMigration (storagemigration.k8s.io/v1beta1) removed in 1.40",
+   "remediation": "Migrate StorageVersionMigration from storagemigration.k8s.io/v1beta1 to storagemigration.k8s.io/v1 before upgrading to 1.40+. Deprecated in 1.37.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/storagemigration/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.37 and APILifecycleRemoved()=1.40 for StorageVersionMigration. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourcePoolStatusRequest",
+   "deprecatedIn": "1.39",
+   "removedIn": "1.42",
+   "replacement": null,
+   "ruleId": "rtz-k8s-dep-resource-resourcepoolstatusrequest-v1alpha3",
+   "title": "ResourcePoolStatusRequest (resource.k8s.io/v1alpha3) removed in 1.42",
+   "remediation": "ResourcePoolStatusRequest (resource.k8s.io/v1alpha3) stops being served at 1.42 and has no GA successor in the tree yet \u2014 delete these objects before upgrading and track the successor API upstream. Deprecated in 1.39.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1alpha3/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.39 and APILifecycleRemoved()=1.42 for ResourcePoolStatusRequest. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "DeviceTaintRule",
+   "deprecatedIn": "1.39",
+   "removedIn": "1.42",
+   "replacement": null,
+   "ruleId": "rtz-k8s-dep-resource-devicetaintrule-v1beta2",
+   "title": "DeviceTaintRule (resource.k8s.io/v1beta2) removed in 1.42",
+   "remediation": "DeviceTaintRule (resource.k8s.io/v1beta2) stops being served at 1.42 and has no GA successor in the tree yet \u2014 delete these objects before upgrading and track the successor API upstream. Deprecated in 1.39.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/resource/v1beta2/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.39 and APILifecycleRemoved()=1.42 for DeviceTaintRule. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "PodGroup",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "ruleId": "rtz-k8s-dep-scheduling-podgroup-v1beta1",
+   "title": "PodGroup (scheduling.k8s.io/v1beta1) removed in 1.43",
+   "remediation": "Migrate PodGroup from scheduling.k8s.io/v1beta1 to scheduling.k8s.io/v1alpha3 before upgrading to 1.43+. Deprecated in 1.40.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/scheduling/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.40 and APILifecycleRemoved()=1.43 for PodGroup. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "Workload",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "ruleId": "rtz-k8s-dep-scheduling-workload-v1beta1",
+   "title": "Workload (scheduling.k8s.io/v1beta1) removed in 1.43",
+   "remediation": "Migrate Workload from scheduling.k8s.io/v1beta1 to scheduling.k8s.io/v1alpha3 before upgrading to 1.43+. Deprecated in 1.40.",
+   "provisional": false,
+   "sourceNote": "Verified against the kubernetes/kubernetes source tree @ v1.38.0-alpha.0: staging/src/k8s.io/api/scheduling/v1beta1/zz_generated.prerelease-lifecycle.go declares APILifecycleDeprecated()=1.40 and APILifecycleRemoved()=1.43 for Workload. Serving is cut off at exactly that release by staging/src/k8s.io/apiserver/pkg/server/deleted_kinds.go (ResourceExpirationEvaluator). Replacement target confirmed to exist in the tree."
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "PodSchedulingContext",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.32",
+   "replacement": "none \u2014 classic DRA with control plane controller was removed; use structured parameters (DeviceClass/ResourceSlice)",
+   "ruleId": "rtz-k8s-dep-resource-podschedulingcontext-v1alpha3",
+   "title": "PodSchedulingContext (resource.k8s.io/v1alpha3) removed in 1.32 \u2014 delete objects BEFORE upgrading",
+   "remediation": "Delete all PodSchedulingContext objects before upgrading to 1.32+: the changelog warns leftovers cannot be removed through the apiserver after the upgrade. (2026-08-31 audit: the one DRA v1alpha3 kind absent from this catalog.)"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha2",
+   "kind": "PodSchedulingContext",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.32",
+   "replacement": "none \u2014 classic DRA with control plane controller was removed; use structured parameters (DeviceClass/ResourceSlice)",
+   "ruleId": "rtz-k8s-dep-resource-podschedulingcontext-v1alpha2",
+   "title": "PodSchedulingContext (resource.k8s.io/v1alpha2) removed in 1.32 \u2014 delete objects BEFORE upgrading",
+   "remediation": "Delete all PodSchedulingContext objects before upgrading to 1.32+: the changelog warns leftovers cannot be removed through the apiserver after the upgrade. (2026-08-31 audit: the one DRA v1alpha3 kind absent from this catalog.)"
+  }
+ ],
+ "detectorTable": [
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Deployment",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1"
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "DaemonSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1"
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "ReplicaSet",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1"
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "NetworkPolicy",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "networking.k8s.io/v1"
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "PodSecurityPolicy",
+   "deprecatedIn": "1.10",
+   "removedIn": "1.16",
+   "replacement": "(none \u2014 use Pod Security Admission)"
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Ingress",
+   "deprecatedIn": "1.14",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1"
+  },
+  {
+   "apiVersion": "apps/v1beta1",
+   "kind": "*",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1"
+  },
+  {
+   "apiVersion": "apps/v1beta2",
+   "kind": "*",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": "apps/v1"
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "Ingress",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1"
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "IngressClass",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "networking.k8s.io/v1"
+  },
+  {
+   "apiVersion": "policy/v1beta1",
+   "kind": "PodDisruptionBudget",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "policy/v1"
+  },
+  {
+   "apiVersion": "policy/v1beta1",
+   "kind": "PodSecurityPolicy",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "(none \u2014 use Pod Security Admission)"
+  },
+  {
+   "apiVersion": "batch/v1beta1",
+   "kind": "CronJob",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "batch/v1"
+  },
+  {
+   "apiVersion": "autoscaling/v2beta1",
+   "kind": "HorizontalPodAutoscaler",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "autoscaling/v2"
+  },
+  {
+   "apiVersion": "autoscaling/v2beta2",
+   "kind": "HorizontalPodAutoscaler",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.26",
+   "replacement": "autoscaling/v2"
+  },
+  {
+   "apiVersion": "rbac.authorization.k8s.io/v1beta1",
+   "kind": "*",
+   "deprecatedIn": "1.17",
+   "removedIn": "1.22",
+   "replacement": "rbac.authorization.k8s.io/v1"
+  },
+  {
+   "apiVersion": "apiextensions.k8s.io/v1beta1",
+   "kind": "CustomResourceDefinition",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "apiextensions.k8s.io/v1"
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "*",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "admissionregistration.k8s.io/v1"
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "CertificateSigningRequest",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "certificates.k8s.io/v1"
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1beta1",
+   "kind": "Lease",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "coordination.k8s.io/v1"
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "PriorityClass",
+   "deprecatedIn": "1.14",
+   "removedIn": "1.22",
+   "replacement": "scheduling.k8s.io/v1"
+  },
+  {
+   "apiVersion": "node.k8s.io/v1beta1",
+   "kind": "RuntimeClass",
+   "deprecatedIn": "1.20",
+   "removedIn": "1.25",
+   "replacement": "node.k8s.io/v1"
+  },
+  {
+   "apiVersion": "discovery.k8s.io/v1beta1",
+   "kind": "EndpointSlice",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.25",
+   "replacement": "discovery.k8s.io/v1"
+  },
+  {
+   "apiVersion": "events.k8s.io/v1beta1",
+   "kind": "Event",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.25",
+   "replacement": "events.k8s.io/v1"
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta1",
+   "kind": "*",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.26",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1"
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta2",
+   "kind": "*",
+   "deprecatedIn": "1.23",
+   "removedIn": "1.29",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1"
+  },
+  {
+   "apiVersion": "flowcontrol.apiserver.k8s.io/v1beta3",
+   "kind": "*",
+   "deprecatedIn": "1.26",
+   "removedIn": "1.32",
+   "replacement": "flowcontrol.apiserver.k8s.io/v1"
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "ValidatingAdmissionPolicy",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "admissionregistration.k8s.io/v1"
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "ValidatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "admissionregistration.k8s.io/v1"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.34",
+   "replacement": "resource.k8s.io/v1"
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta1",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "resource.k8s.io/v1beta2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "VolumeAttributesClass",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.35",
+   "replacement": "storage.k8s.io/v1"
+  },
+  {
+   "apiVersion": "storagemigration.k8s.io/v1alpha1",
+   "kind": "StorageVersionMigration",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.35",
+   "replacement": "storagemigration.k8s.io/v1beta1"
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1alpha1",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.32",
+   "replacement": "coordination.k8s.io/v1alpha2"
+  },
+  {
+   "apiVersion": "authentication.k8s.io/v1alpha1",
+   "kind": "SelfSubjectReview",
+   "deprecatedIn": "1.29",
+   "removedIn": "1.32",
+   "replacement": "authentication.k8s.io/v1"
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1alpha1",
+   "kind": "Workload",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.36",
+   "replacement": "scheduling.k8s.io/v1alpha2"
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1alpha2",
+   "kind": "*",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.37",
+   "replacement": "scheduling.k8s.io/v1alpha3"
+  },
+  {
+   "apiVersion": "cbt.storage.k8s.io/v1alpha1",
+   "kind": "SnapshotMetadataService",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.36",
+   "replacement": "cbt.storage.k8s.io/v1beta1"
+  },
+  {
+   "apiVersion": "kubeadm.k8s.io/v1beta3",
+   "kind": "*",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.37",
+   "replacement": "kubeadm.k8s.io/v1beta4"
+  },
+  {
+   "apiVersion": "authentication.k8s.io/v1beta1",
+   "kind": "SelfSubjectReview",
+   "deprecatedIn": "1.30",
+   "removedIn": "1.33",
+   "replacement": "authentication.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "apidiscovery.k8s.io/v2beta1",
+   "kind": "APIGroupDiscovery",
+   "deprecatedIn": "1.32",
+   "removedIn": "1.35",
+   "replacement": "apidiscovery.k8s.io/v2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1alpha1",
+   "kind": "ClusterTrustBundle",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "certificates.k8s.io/v1beta1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "IPAddress",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "networking.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "networking.k8s.io/v1beta1",
+   "kind": "ServiceCIDR",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "networking.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1beta1",
+   "kind": "VolumeAttributesClass",
+   "deprecatedIn": "1.34",
+   "removedIn": "1.37",
+   "replacement": "storage.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "ValidatingAdmissionPolicy",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.34",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "ValidatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.31",
+   "removedIn": "1.34",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "CSIStorageCapacity",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.24",
+   "replacement": "storage.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storage.k8s.io/v1alpha1",
+   "kind": "VolumeAttachment",
+   "deprecatedIn": "1.21",
+   "removedIn": "1.24",
+   "replacement": "storage.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "DeviceClass",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceClaim",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceClaimTemplate",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "ResourceSlice",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "DeviceTaintRule",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": "resource.k8s.io/v1beta2",
+   "provisional": false
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1alpha2",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "coordination.k8s.io/v1beta1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "coordination.k8s.io/v1beta1",
+   "kind": "LeaseCandidate",
+   "deprecatedIn": "1.36",
+   "removedIn": "1.39",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "MutatingAdmissionPolicy",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "admissionregistration.k8s.io/v1beta1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1alpha1",
+   "kind": "MutatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.35",
+   "removedIn": "1.38",
+   "replacement": "admissionregistration.k8s.io/v1beta1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "MutatingAdmissionPolicy",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "admissionregistration.k8s.io/v1beta1",
+   "kind": "MutatingAdmissionPolicyBinding",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "admissionregistration.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "ClusterTrustBundle",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "certificates.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "certificates.k8s.io/v1beta1",
+   "kind": "PodCertificateRequest",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "certificates.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "storagemigration.k8s.io/v1beta1",
+   "kind": "StorageVersionMigration",
+   "deprecatedIn": "1.37",
+   "removedIn": "1.40",
+   "replacement": "storagemigration.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1alpha3",
+   "kind": "ResourcePoolStatusRequest",
+   "deprecatedIn": "1.39",
+   "removedIn": "1.42",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "resource.k8s.io/v1beta2",
+   "kind": "DeviceTaintRule",
+   "deprecatedIn": "1.39",
+   "removedIn": "1.42",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "PodGroup",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "provisional": false
+  },
+  {
+   "apiVersion": "scheduling.k8s.io/v1beta1",
+   "kind": "Workload",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": "scheduling.k8s.io/v1alpha3",
+   "provisional": false
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "DeploymentRollback",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "extensions/v1beta1",
+   "kind": "Scale",
+   "deprecatedIn": "1.9",
+   "removedIn": "1.16",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "admission.k8s.io/v1beta1",
+   "kind": "AdmissionReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "admission.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "authorization.k8s.io/v1beta1",
+   "kind": "SelfSubjectRulesReview",
+   "deprecatedIn": "1.19",
+   "removedIn": "1.22",
+   "replacement": "authorization.k8s.io/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "policy/v1beta1",
+   "kind": "Eviction",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "policy/v1",
+   "provisional": false
+  },
+  {
+   "apiVersion": "lifecycle.k8s.io/v1alpha1",
+   "kind": "Eviction",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": null,
+   "provisional": false
+  },
+  {
+   "apiVersion": "lifecycle.k8s.io/v1alpha1",
+   "kind": "EvictionRequest",
+   "deprecatedIn": "1.40",
+   "removedIn": "1.43",
+   "replacement": null,
+   "provisional": false
+  }
+ ]
+}

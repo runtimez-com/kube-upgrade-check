@@ -1,0 +1,327 @@
+{
+ "_meta": {
+  "description": "Verified catalog of in-tree Kubernetes volume plugins removed (or hard-disabled) from the kubelet as part of the CSI-migration effort. Consumed by RemovedVolumePluginCatalog for PluginRemovalAnalyzer (Phase 2 of the Upgrade Breakage Radar). This is the ONLY correct way to catch `gitRepo`-class breakage: the Pod/apps-v1 API schema NEVER drops these fields (GA compatibility guarantee \u2014 verified against the real v1.36 bundled schema in Phase 1), but the kubelet-side plugin implementation that actually mounts the volume IS removed at a specific version. Detection = flag the field's PRESENCE in a live workload spec once targetVersion >= removedIn.",
+  "fetchScript": "scripts/fetch-plugin-removals.sh",
+  "fetchedAt": "2026-07-10",
+  "verificationMethod": "Every deprecatedIn/removedIn value below was read directly from the official kubernetes/kubernetes CHANGELOG-<version>.md files (raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/) and/or the current kubernetes.io storage-volumes documentation page, not hand-typed from memory. Exact source URL + matched sentence is recorded per-entry below in `provenance`.",
+  "provisionalCount": 1,
+  "provisionalNote": "photonPersistentDisk is marked provisional \u2014 see its own `note` field. All other entries (including the Step-1-added portworxVolume) are confirmed via an explicit, unambiguous CHANGELOG/docs sentence naming the plugin.",
+  "step1Addition": {
+   "description": "Backend Step 1 pass added portworxVolume (verified via CHANGELOG-1.25.md, CHANGELOG-1.31.md, CHANGELOG-1.33.md, CHANGELOG-1.36.md \u2014 direct whole-file grep, not the summarizer).",
+   "kubeadmFlexVolumeAdvisory": "The task also asked to consider a 'kubeadm flex-volume removal' (CHANGELOG-1.36.md, PR #136423: 'Removed the integrated support for flex-volumes in kubeadm... mount the directory /usr/libexec/kubernetes/kubelet-plugins/volume/exec in the KCM static pod using kubeadm's extraVolumes mechanism'). This is kubeadm's OWN convenience automation for wiring --flex-volume-plugin-dir into the kube-controller-manager static pod at bootstrap time, NOT a removal of the generic `flexVolume` Pod-spec volume source key (whose kubelet-side mechanism the same quote confirms still works if you mount the directory yourself). It does not map to any detectable field in a live workload spec, so per the task's explicit instruction it is documented here as advisory/out-of-scope rather than forced into a plugins[] row."
+  }
+ },
+ "plugins": [
+  {
+   "volumeSourceKey": "gitRepo",
+   "deprecatedIn": "1.11",
+   "removedIn": "1.36",
+   "replacement": "An initContainer that git-clones the repository into an emptyDir volume shared with the workload container",
+   "severity": "CRITICAL",
+   "remediation": "DISABLED BY DEFAULT from 1.33 (GitRepoVolumeDriver gate default false \u2014 pods using gitRepo fail on day one of a 1.33 upgrade, three minors before the 1.36 removal; source-verified 2026-08-31). The gitRepo volume plugin was removed. Replace it with an initContainer that git-clones the repository into an emptyDir volume shared with the workload container.",
+   "provisional": false,
+   "note": "Mechanism nuance: Kubernetes 1.36 locked the gitRepo volume driver to disabled via a feature gate (KEP-5040, kubernetes/kubernetes#136400) 'with no option to turn it back on' -- this is a feature-gate lock, not a literal deletion of the API field (gitRepo remains a valid Pod schema field per the GA compatibility guarantee, confirmed against the real v1.36 bundled schema in Phase 1). It is however functionally equivalent to removal for kubelet behavior: a gitRepo volume can no longer be mounted from 1.36 onward, with no opt-back-in. removedIn=1.36 reflects the version at which it stops functioning, per the official docs.",
+   "provenance": [
+    {
+     "name": "Kubernetes docs - Volumes: gitRepo (disabled)",
+     "url": "https://kubernetes.io/docs/concepts/storage/volumes/#gitrepo-disabled",
+     "matchedText": "Warning: Kubernetes 1.36 does not include the gitRepo volume driver. The last version that provided a way to use this driver was Kubernetes v1.35, and it has been deprecated since the v1.11 minor release."
+    },
+    {
+     "name": "kubernetes/kubernetes PR #136400 - KEP-5040 Lock gitRepo Volume Driver to disabled",
+     "url": "https://github.com/kubernetes/kubernetes/pull/136400",
+     "matchedText": "Disabled git-repo volume plugin by default, with no option to turn it back on. (merged 2026-02-12, targets the v1.36 release)"
+    }
+   ],
+   "disabledByDefaultIn": "1.33"
+  },
+  {
+   "volumeSourceKey": "glusterfs",
+   "deprecatedIn": "1.25",
+   "removedIn": "1.26",
+   "replacement": "A community GlusterFS CSI driver, or migrate data to an alternate supported storage backend",
+   "severity": "CRITICAL",
+   "remediation": "The GlusterFS in-tree volume plugin was removed in Kubernetes 1.26. No first-party CSI migration path was provided for GlusterFS; migrate volumes to a supported CSI-based storage backend before upgrading to 1.26+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.25.md",
+     "matchedText": "GlusterFS provisioner (`kubernetes.io/glusterfs`) has been deprecated in this release. (#111485)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.26.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.26.md",
+     "matchedText": "`GlusterFS` in-tree storage driver which was deprecated in kubernetes 1.25 release is now removed entirely in `v1.26`. Volumes must be migrated to an alternate storage solution before upgrading to `v1.26`. (#112015)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "storageos",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "The StorageOS CSI driver (if still supported by the vendor), or migrate data to an alternate storage backend",
+   "severity": "CRITICAL",
+   "remediation": "The StorageOS in-tree volume plugin was removed in Kubernetes 1.25. Migrate volumes to the StorageOS CSI driver or an alternate supported storage backend before upgrading to 1.25+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.22.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.22.md",
+     "matchedText": "The `storageos`, `quobyte` and `flocker` storage volume plugins are deprecated and will be removed in a later release. (#101773)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.25.md",
+     "matchedText": "The intree volume plugin storageos support has been completely removed from Kubernetes. (#111620)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "flocker",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "Migrate data to an alternate supported storage backend (the Flocker project itself is discontinued/archived; no CSI driver exists)",
+   "severity": "CRITICAL",
+   "remediation": "The Flocker in-tree volume plugin was removed in Kubernetes 1.25. The Flocker project is discontinued; migrate volumes to an alternate supported storage backend before upgrading to 1.25+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.22.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.22.md",
+     "matchedText": "The `storageos`, `quobyte` and `flocker` storage volume plugins are deprecated and will be removed in a later release. (#101773)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.25.md",
+     "matchedText": "The intree volume plugin flocker support was completely removed from Kubernetes. (#111618)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "quobyte",
+   "deprecatedIn": "1.22",
+   "removedIn": "1.25",
+   "replacement": "The Quobyte CSI driver",
+   "severity": "CRITICAL",
+   "remediation": "The Quobyte in-tree volume plugin was removed in Kubernetes 1.25. Migrate volumes to the Quobyte CSI driver before upgrading to 1.25+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.22.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.22.md",
+     "matchedText": "The `storageos`, `quobyte` and `flocker` storage volume plugins are deprecated and will be removed in a later release. (#101773)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.25.md",
+     "matchedText": "The intree volume plugin quobyte support has been completely removed from Kubernetes. (#111619)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "scaleIO",
+   "deprecatedIn": "1.16",
+   "removedIn": "1.22",
+   "replacement": "The Dell PowerFlex (formerly ScaleIO) CSI driver",
+   "severity": "CRITICAL",
+   "remediation": "The ScaleIO in-tree volume plugin was removed in Kubernetes 1.22. Migrate volumes to the Dell PowerFlex CSI driver before upgrading to 1.22+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.16.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.16.md",
+     "matchedText": "The `Cinder` and `ScaleIO` volume providers have been deprecated and will be removed in a future release. (#80099)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.22.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.22.md",
+     "matchedText": "Intree volume plugin scaleIO support has been completely removed from Kubernetes. (#101685)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "photonPersistentDisk",
+   "deprecatedIn": null,
+   "removedIn": "1.16",
+   "replacement": "A supported vSphere CSI storage backend (the VMware Photon Controller product itself is discontinued)",
+   "severity": "CRITICAL",
+   "remediation": "The photonPersistentDisk in-tree volume plugin implementation was removed from the kubelet. Migrate volumes to a supported vSphere/CSI storage backend before upgrading.",
+   "provisional": true,
+   "note": "PROVISIONAL - weaker evidence than the other 8 entries in this catalog. There is no standalone official CHANGELOG sentence naming 'photonPersistentDisk volume plugin removed' (unlike the other 8 plugins here). removedIn=1.16 is INFERRED from directly inspecting the merged code diff for kubernetes/kubernetes PR #72178 ('Remove ovirt/cloudstack/photon cloud providers', merged 2019-06-14, shipped in CHANGELOG-1.16.md), whose file list deletes pkg/volume/photon_pd/{attacher.go,photon_pd.go,photon_util.go,attacher_test.go,photon_pd_test.go} -- i.e. the actual kubelet volume-plugin implementation package. The PR's own title/release-note frame this as removing the PHOTON CLOUD PROVIDER (node/route management), not explicitly the persistent-disk volume plugin, even though the diff shows both were deleted together. deprecatedIn is left null (no dated deprecation announcement specific to the volume plugin was found -- only a 2018-05-10 commit deprecating the cloud provider, a related but distinct subsystem). Corroborating signal (not proof): the current kubernetes.io Volumes doc page has zero mentions of photonPersistentDisk at all (unlike gitRepo/gcePersistentDisk, which get dedicated deprecation-warning sections), consistent with it having been gone a long time. RECOMMENDATION: treat this entry's removedIn as an estimate; do not rely on it alone for a customer upgrade decision without an independent check against the customer's specific current/target version pair.",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes PR #72178 - Remove ovirt/cloudstack/photon cloud providers (file diff)",
+     "url": "https://github.com/kubernetes/kubernetes/pull/72178",
+     "matchedText": "Deletes pkg/volume/photon_pd/{attacher.go,photon_pd.go,photon_util.go,attacher_test.go,photon_pd_test.go}; merged 2019-06-14; documented in CHANGELOG-1.16.md as 'The deprecated cloud providers ovirt, cloudstack and photon have been removed'. INDIRECT evidence -- see note."
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "cephfs",
+   "deprecatedIn": "1.28",
+   "removedIn": "1.31",
+   "replacement": "The CephFS CSI driver (https://github.com/ceph/ceph-csi/)",
+   "severity": "CRITICAL",
+   "remediation": "The CephFS in-tree volume plugin (kubernetes.io/cephfs) was removed in Kubernetes 1.31 and became non-functional. Migrate to the CephFS CSI driver (https://github.com/ceph/ceph-csi/) and re-deploy affected workloads before upgrading to 1.31+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.28.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.28.md",
+     "matchedText": "CephFS volume plugin (`kubernetes.io/cephfs`) has been deprecated in this release and will be removed in a subsequent release. (#118143)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "CephFS volume plugin (`kubernetes.io/cephfs`) was removed in this release and the `cephfs` volume type became non-functional. A re-deployment of your application is required to use the new driver if you were using `kubernetes.io/cephfs` volume plugin before upgrading cluster version to 1.31+. (#124544)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "rbd",
+   "deprecatedIn": "1.28",
+   "removedIn": "1.31",
+   "replacement": "The RBD CSI driver (https://github.com/ceph/ceph-csi/)",
+   "severity": "CRITICAL",
+   "remediation": "The RBD (Ceph RBD) in-tree volume plugin (kubernetes.io/rbd) was removed in Kubernetes 1.31, including its CSI-migration shim, and became non-functional. Migrate to the RBD CSI driver (https://github.com/ceph/ceph-csi/) and re-deploy affected workloads before upgrading to 1.31+.",
+   "provisional": false,
+   "note": null,
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.28.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.28.md",
+     "matchedText": "RBD volume plugin (`kubernetes.io/rbd`) has been deprecated in this release and will be removed in a subsequent release. (#118552)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "CephRBD volume plugin (`kubernetes.io/rbd`) was removed in this release. And its csi migration support was also removed, so the `rbd` volume type became non-functional. (#124546)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "portworxVolume",
+   "replacementCsiDriver": "pxd.portworx.com",
+   "provisioner": "kubernetes.io/portworx-volume",
+   "provisionerNote": "Verbatim constant PortworxVolumePluginName = \"kubernetes.io/portworx-volume\" from staging/src/k8s.io/csi-translation-lib/plugins/portworx.go:30 in the kubernetes/kubernetes repo. A StorageClass with this provisioner names the removed in-tree plugin even when no PV currently exists.",
+   "deprecatedIn": "1.25",
+   "removedIn": "1.36",
+   "replacement": "The Portworx CSI driver (pxd.portworx.com)",
+   "severity": "CRITICAL",
+   "remediation": "The Portworx in-tree volume plugin was removed in Kubernetes 1.36 (CSIMigrationPortworx, GA/locked since 1.33, has redirected all operations to the pxd.portworx.com CSI driver since then). Ensure the Portworx CSI driver is installed before upgrading to 1.36+; the in-tree plugin no longer functions at all from 1.36 onward.",
+   "provisional": false,
+   "note": "deprecatedIn=1.25 is the CSIMigrationPortworx feature-gate's Beta promotion (the first per-plugin migration-track signal for Portworx), NOT an explicit 'this plugin is deprecated and will be removed' sentence like cephfs/rbd have \u2014 no such standalone sentence was found for Portworx in any changelog searched (1.16-1.37). The migration timeline is fully documented and unambiguous even so: Beta/off-by-default in 1.25 (#110411), Beta/on-by-default in 1.31 (#125016), GA/locked in 1.33 (#129297), and the in-tree plugin fully removed in 1.36 (#135322). removedIn=1.36 is NOT provisional \u2014 it has an explicit, unambiguous removal sentence.",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.25.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.25.md",
+     "matchedText": "Promoted the `CSIMigrationPortworx` feature gate to Beta. (#110411, @trierra)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.31.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.31.md",
+     "matchedText": "The feature-gate CSIMigrationPortworx was promoted to beta in Kubernetes 1.25, but turned off by default. In 1.31, it was turned on by default. Before upgrading to 1.31, please make sure that the corresponding portworx csi driver is installed if you are using Portworx. (#125016)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.33.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.33.md",
+     "matchedText": "Promoted the feature gate `CSIMigrationPortworx` to GA. If your applications are using Portworx volumes, please make sure that the corresponding Portworx CSI driver is installed on your cluster before upgrading to 1.31 or later because all operations for the in-tree `portworxVolume` type are redirected to the pxd.portworx.com CSI driver when the feature gate is enabled. (#129297)"
+    },
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.36.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.36.md",
+     "matchedText": "Removed the in-tree Portworx volume plugin, completing the migration to CSI. Removed the GA `CSIMigrationPortworx` feature gate (locked since `v1.33`) and alpha `InTreePluginPortworxUnregister` feature gate, with all operations now redirected to CSI. (#135322)"
+    }
+   ]
+  },
+  {
+   "volumeSourceKey": "cinder",
+   "replacementCsiDriver": "cinder.csi.openstack.org",
+   "provisioner": "kubernetes.io/cinder",
+   "deprecatedIn": "1.24",
+   "removedIn": "1.26",
+   "replacement": "The cinder CSI driver (cinder.csi.openstack.org)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate cinder volumes to the cinder.csi.openstack.org CSI driver before upgrading to 1.26+. From 1.26 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/cinder' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/cinder\"' <tag> -- cmd` matches at v1.25.0 and matches nothing at v1.26.0, so 1.26 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationOpenStack feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "awsElasticBlockStore",
+   "replacementCsiDriver": "ebs.csi.aws.com",
+   "provisioner": "kubernetes.io/aws-ebs",
+   "deprecatedIn": "1.25",
+   "removedIn": "1.27",
+   "replacement": "The awsElasticBlockStore CSI driver (ebs.csi.aws.com)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate awsElasticBlockStore volumes to the ebs.csi.aws.com CSI driver before upgrading to 1.27+. From 1.27 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/aws-ebs' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/awsebs\"' <tag> -- cmd` matches at v1.26.0 and matches nothing at v1.27.0, so 1.27 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationAWS feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "azureDisk",
+   "replacementCsiDriver": "disk.csi.azure.com",
+   "provisioner": "kubernetes.io/azure-disk",
+   "deprecatedIn": "1.24",
+   "removedIn": "1.27",
+   "replacement": "The azureDisk CSI driver (disk.csi.azure.com)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate azureDisk volumes to the disk.csi.azure.com CSI driver before upgrading to 1.27+. From 1.27 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/azure-disk' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/azuredd\"' <tag> -- cmd` matches at v1.26.0 and matches nothing at v1.27.0, so 1.27 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationAzureDisk feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "gcePersistentDisk",
+   "replacementCsiDriver": "pd.csi.storage.gke.io",
+   "provisioner": "kubernetes.io/gce-pd",
+   "deprecatedIn": "1.25",
+   "removedIn": "1.28",
+   "replacement": "The gcePersistentDisk CSI driver (pd.csi.storage.gke.io)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate gcePersistentDisk volumes to the pd.csi.storage.gke.io CSI driver before upgrading to 1.28+. From 1.28 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/gce-pd' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/gcepd\"' <tag> -- cmd` matches at v1.27.0 and matches nothing at v1.28.0, so 1.28 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationGCE feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "vsphereVolume",
+   "replacementCsiDriver": "csi.vsphere.vmware.com",
+   "provisioner": "kubernetes.io/vsphere-volume",
+   "deprecatedIn": "1.26",
+   "removedIn": "1.29",
+   "replacement": "The vsphereVolume CSI driver (csi.vsphere.vmware.com)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate vsphereVolume volumes to the csi.vsphere.vmware.com CSI driver before upgrading to 1.29+. From 1.29 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/vsphere-volume' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/vsphere_volume\"' <tag> -- cmd` matches at v1.28.0 and matches nothing at v1.29.0, so 1.29 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationvSphere feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "azureFile",
+   "replacementCsiDriver": "file.csi.azure.com",
+   "provisioner": "kubernetes.io/azure-file",
+   "deprecatedIn": "1.26",
+   "removedIn": "1.30",
+   "replacement": "The azureFile CSI driver (file.csi.azure.com)",
+   "severity": "CRITICAL",
+   "remediation": "Migrate azureFile volumes to the file.csi.azure.com CSI driver before upgrading to 1.30+. From 1.30 the in-tree plugin is no longer registered by the kubelet, so existing PersistentVolumes fail to mount and StorageClasses naming the in-tree provisioner 'kubernetes.io/azure-file' can no longer provision. Install the CSI driver and migrate FIRST \u2014 after the upgrade the workloads are already broken.",
+   "provisional": false,
+   "note": "Removal release established by the kubelet/KCM plugin REGISTRATION, not by directory deletion: `git grep -l 'pkg/volume/azure_file\"' <tag> -- cmd` matches at v1.29.0 and matches nothing at v1.30.0, so 1.30 is the first release where the in-tree plugin is no longer probed and the volume stops mounting. (Directory presence is NOT a valid signal \u2014 pkg/volume/glusterfs outlived its unregistration by a release.) This method reproduces all four pre-existing entries in this catalog exactly: glusterfs 1.26, rbd 1.31, cephfs 1.31, portworxVolume 1.36. deprecatedIn is the release the CSIMigrationAzureFile feature gate reached PreRelease: GA in */features/kube_features.go. In-tree provisioner and replacement driver names are verbatim constants from staging/src/k8s.io/csi-translation-lib/plugins."
+  },
+  {
+   "volumeSourceKey": "flexVolume",
+   "deprecatedIn": "1.23",
+   "removedIn": null,
+   "replacement": "A CSI driver",
+   "severity": "MEDIUM",
+   "remediation": "FlexVolume has been deprecated since Kubernetes 1.23 in favour of CSI. It is still registered as of 1.37, so nothing breaks yet \u2014 but kubeadm dropped its support wiring in 1.36 (kube-controller-manager no longer auto-mounts the plugin directory, and the distroless KCM image cannot execute the driver binaries), so a kubeadm cluster on 1.36+ needs --flex-volume-plugin-dir plus extraVolumes and a non-distroless KCM image, or the driver stops working. Plan the move to a CSI driver.",
+   "provisional": false,
+   "note": "DEPRECATION-ONLY row: removedIn is deliberately null because the plugin is STILL registered at v1.37.0 (`git grep -l 'pkg/volume/flexvolume\"' v1.37.0 -- cmd` matches both cmd/kubelet/app/plugins.go and cmd/kube-controller-manager/app/plugins.go). Deprecation release is from CHANGELOG-1.23.md, section 'Deprecation of FlexVolume': 'FlexVolume is deprecated. Out-of-tree CSI driver is the recommended way to write volume drivers in Kubernetes.' The core/v1 Go type carries a matching 'Deprecated: FlexVolume is deprecated' marker, but that comment only shipped in v1.32.0, so it is not the deprecation release."
+  }
+ ]
+}
