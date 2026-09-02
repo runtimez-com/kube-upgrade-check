@@ -1,0 +1,92 @@
+version: 2
+
+project_name: kube-upgrade-check
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: kube-upgrade-check
+    main: ./cmd/kube-upgrade-check
+    binary: kube-upgrade-check
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X github.com/runtimez-com/kube-upgrade-check/internal/version.Version={{.Version}}
+      - -X github.com/runtimez-com/kube-upgrade-check/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/runtimez-com/kube-upgrade-check/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+# Every release is signed; a checksum file alone only proves the download matches whatever
+# the release page happens to serve.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+brews:
+  - name: kube-upgrade-check
+    repository:
+      owner: runtimez-com
+      name: homebrew-tap
+      branch: main
+      # Without this, goreleaser falls back to the default GITHUB_TOKEN, which Actions scopes
+      # to THIS repository only — the push into the tap then fails with a 403 that reads like
+      # a missing repo rather than a missing permission.
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/runtimez-com/kube-upgrade-check
+    description: Find what breaks before you upgrade Kubernetes
+    license: Apache-2.0
+    test: |
+      system "#{bin}/kube-upgrade-check", "version"
+
+nfpms:
+  - id: packages
+    package_name: kube-upgrade-check
+    homepage: https://github.com/runtimez-com/kube-upgrade-check
+    description: Find what breaks before you upgrade Kubernetes
+    maintainer: runtimez <support@runtimez.com>
+    license: Apache-2.0
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+
+scoops:
+  - repository:
+      owner: runtimez-com
+      name: scoop-bucket
+      branch: main
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/runtimez-com/kube-upgrade-check
+    description: Find what breaks before you upgrade Kubernetes
+    license: Apache-2.0
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude: ["^docs:", "^test:", "^chore:"]
