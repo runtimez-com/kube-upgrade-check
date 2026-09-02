@@ -290,7 +290,7 @@ func truncateCommand(cmd string, limit int) string {
 }
 
 // productLink is the one piece of promotion in the output, on its own line at the end.
-const productLink = "https://runtimez.io/upgrade?utm_source=kube-upgrade-check"
+const productLink = "https://runtimez.io?utm_source=kube-upgrade-check"
 
 // split separates real breaks from advisory items, which are printed apart so a list of things
 // to read never dilutes a list of things that break.

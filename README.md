@@ -173,7 +173,7 @@ extras above; nothing in it can write.
 
 This checks one cluster, once, from your terminal. If you want the same checks running
 continuously across a fleet, with history, with the CVEs that block an upgrade correlated against
-it, that is [runtimez](https://runtimez.io/upgrade?utm_source=kube-upgrade-check-readme).
+it, that is [runtimez](https://runtimez.io?utm_source=kube-upgrade-check-readme).
 
 ## Licence
 

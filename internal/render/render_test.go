@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -247,5 +248,36 @@ func TestAddonMarkerSeparatesUnknownFromBroken(t *testing.T) {
 		if got := addonMarker(st, verdict); got != want {
 			t.Errorf("%s marked %q, want %q", verdict, got, want)
 		}
+	}
+}
+
+// The footer link is the only promotion in the output, and it shipped once pointing at a path
+// that returned 403. This does not check the network, which would make the suite depend on a
+// website being up, but it does catch the shape of that mistake: a path that has to exist.
+func TestProductLinkIsABareOriginWithTracking(t *testing.T) {
+	u, err := url.Parse(productLink)
+	if err != nil {
+		t.Fatalf("the product link does not parse: %v", err)
+	}
+	if u.Scheme != "https" {
+		t.Errorf("the link must be https, got %q", u.Scheme)
+	}
+	if u.Host == "" {
+		t.Error("the link has no host")
+	}
+	// A path is a promise that a particular page exists. The bare origin cannot 404.
+	if u.Path != "" && u.Path != "/" {
+		t.Errorf("the link points at the path %q, which has to keep existing; prefer the bare origin", u.Path)
+	}
+	if u.Query().Get("utm_source") == "" {
+		t.Error("the link carries no utm_source, so nothing can be attributed to the tool")
+	}
+}
+
+// It also has to actually reach the reader.
+func TestProductLinkIsPrintedInTheHumanReport(t *testing.T) {
+	out := renderWith(t, FormatTable, sample())
+	if !strings.Contains(out, productLink) {
+		t.Errorf("the footer link is missing from the report:\n%s", out)
 	}
 }
