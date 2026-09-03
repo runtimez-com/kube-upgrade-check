@@ -1,6 +1,11 @@
 # kube-upgrade-check
 
-Find what breaks before you upgrade Kubernetes.
+[![ci](https://github.com/runtimez-com/kube-upgrade-check/actions/workflows/ci.yml/badge.svg)](https://github.com/runtimez-com/kube-upgrade-check/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/runtimez-com/kube-upgrade-check)](https://github.com/runtimez-com/kube-upgrade-check/releases)
+[![licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](LICENSE)
+[![go report](https://goreportcard.com/badge/github.com/runtimez-com/kube-upgrade-check)](https://goreportcard.com/report/github.com/runtimez-com/kube-upgrade-check)
+
+**Find what breaks before you upgrade Kubernetes.**
 
 Point it at a cluster and it tells you what an upgrade to a given version would break: removed
 APIs still in use, control-plane and kubelet settings the new version refuses to start with,
@@ -9,40 +14,9 @@ support the version you are moving to.
 
 It reads your cluster and writes nothing. No account, no agent, no data leaves the machine.
 
-```console
-$ kube-upgrade-check --target 1.34
+![kube-upgrade-check scanning a cluster](docs/demo.gif)
 
-  prod-eu (v1.33.13-eks-a1b2c3, EKS, 6 nodes)
-  upgrade to 1.34   risk 81/100 CRITICAL
-
-  BREAKS (2)
-    CRIT  kube-system/exempt — FlowSchema flowcontrol.apiserver.k8s.io/v1beta3 was removed in 1.32
-          rtz-k8s-dep-flowcontrol-v1beta3-flowschema
-          helm last wrote this at flowcontrol.apiserver.k8s.io/v1beta3 on 2024-03-02.
-          Move these objects to flowcontrol.apiserver.k8s.io/v1 before upgrading.
-
-    HIGH  Deployment/karpenter/karpenter — Karpenter 1.0.5 does not support Kubernetes 1.34
-          rtz-addon-karpenter-support
-          The vendor's table gives Karpenter 1.0.5 a ceiling of Kubernetes 1.31. Upgrade
-          Karpenter to at least 1.0.6 before upgrading Kubernetes.
-
-  ADD-ONS (3 detected)
-    !! Karpenter 1.0.5       does not support the target (vendor ceiling: Kubernetes 1.31) —
-                             upgrade to at least 1.0.6
-    ok cert-manager v1.19.1  supported
-    ?? CoreDNS 1.11.1        the vendor publishes no compatibility matrix, so this could not
-                             be checked
-
-  COULD NOT SEE (1)
-    - control-plane flags — 276 rules not checked
-      no static control-plane pods were found. This is normal on a managed control plane
-      (EKS, GKE, AKS), and on distributions such as k3s that run the control plane as a
-      single process rather than as pods. Either way its flags cannot be read through the API
-      check: kubectl get pods -n kube-system -l tier=control-plane -o yaml
-
-  Standard support for 1.33 ends 2026-11-23 (82 days). Staying past standard support costs
-  about $5256 per cluster per year.
-```
+> That recording is a real scan, not a mock-up. Regenerate it any time with `vhs docs/demo.tape`.
 
 ## Install
 
@@ -98,33 +72,84 @@ An unknown `--fail-on` value is rejected rather than ignored. A typo that quietl
 | Add-on compatibility | Whether Karpenter, ingress-nginx, cert-manager, Argo CD, CoreDNS, Istio and kube-proxy support the target | 7 catalogs |
 | Advisories | Behaviour changes on the path that no API call can settle | 34 |
 
-## Why not Pluto or kubent
+## How this differs from Pluto and kubent
 
-Those tools find removed APIs, and they do it well. This one covers removed APIs plus the other
-five families above, and it looks for API usage differently.
+[Pluto](https://github.com/FairwindsOps/pluto) and
+[kubent](https://github.com/doitintl/kube-no-trouble) are good tools and this one is not a
+replacement for them. Both answer one question — *am I using an API version that is going away?* —
+and both answer it well. If that is your question, either will serve you.
 
-The API server converts objects on read. Ask for a Deployment at `apps/v1` and you get
-`apps/v1` back, whatever it was written as. So listing objects and reporting their `apiVersion`
-tells you what you asked for, not what is there.
+This tool answers a wider one: *what breaks when I upgrade?* Removed APIs are one of seven
+families it checks.
 
-What survives is the record of who wrote what:
+| | Pluto | kubent | kube-upgrade-check |
+| --- | :---: | :---: | :---: |
+| Removed and deprecated APIs | yes | yes | yes |
+| Scans manifests and Helm charts in a repo | **yes** | **yes** | no |
+| Helm 2 releases | **yes** | no | no |
+| Reads stored Helm 3 release manifests | **yes** | **yes** | no — see below |
+| Managed-fields evidence | no | no | **yes** |
+| Control-plane and kubelet settings the target rejects | no | no | **382 rules** |
+| Feature gates locked to a new default | no | no | **yes** |
+| In-tree volume plugins that stop mounting | no | no | **17 rules** |
+| Node runtime and version skew | no | no | **yes** |
+| Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **7 catalogs** |
+| Vendor support dates and extended-support cost | no | no | **yes** |
+| Reports what it could **not** check | no | no | **yes** |
 
-- **Managed fields.** Every object records which client last wrote each part of it, at which API
-  version, and when. An entry at a removed version means those fields have not been rewritten
-  since. This is per-object, names the writer, and carries a date.
-- **Last-applied annotation.** What a client-side `kubectl apply` submitted. Narrow, since Helm
-  and server-side apply leave nothing, but it names the manifest a person actually edited.
-- **API server metrics.** The cluster's own count of deprecated requests served since it started.
-  Cluster-wide rather than per-object, so it catches a controller that no stored object reveals.
+Two of those rows deserve explaining, because they are the reasons this exists.
 
-Each finding says which of these found it.
+### Managed fields find what a stored manifest cannot
+
+The API server converts objects on read. Ask for a Deployment at `apps/v1` and you get `apps/v1`
+back whatever it was written as, so listing objects and reporting their `apiVersion` tells you
+what you asked for rather than what is there. Pluto's README makes this point plainly, and it is
+why both tools read the manifest a client stored: Helm's release secret, or the
+`last-applied-configuration` annotation that client-side `kubectl apply` leaves behind.
+
+That works, and it misses everything applied another way. Server-side apply writes no annotation.
+Nor does `kubectl create`, `kubectl edit`, an operator, Flux, or Argo CD.
+
+Kubernetes has recorded the answer on every object since 1.18 regardless of how it was written.
+`metadata.managedFields` says which client last wrote each part of an object, **at which API
+version, and when**. An entry at a removed version means those fields have not been rewritten
+since. Neither Pluto nor kubent reads it — there is no reference to managed fields anywhere in
+kubent's source, and Pluto documents repository manifests and Helm releases as its sources.
+
+So a finding here can say *helm wrote this at `flowcontrol.apiserver.k8s.io/v1beta3` on
+2024-03-02* — the writer and the date, per object, with no manifest stored anywhere.
+
+Helm is worth being precise about. Because Helm appears as a field manager, objects it applied are
+covered by this tier like any other. What this tool does **not** do is read Helm's stored release
+manifest, and that is a real gap rather than a redundant one: the stored manifest is what
+`helm upgrade` replays, so it can fail on a removed API even when nothing in the live cluster
+still carries one. Pluto and kubent both read it. If you manage everything with Helm, run one of
+them as well.
+
+### It tells you what it could not check
+
+Every check that could not run is printed, with the reason and a command to run yourself. On EKS,
+GKE and AKS the provider runs the control plane out of reach, so a few hundred config rules
+genuinely cannot be evaluated, and the report says so with a count rather than quietly returning
+a shorter list of findings.
+
+This matters more than it sounds. The failure mode of an upgrade checker is not a wrong finding,
+which someone will notice. It is a clean report that was clean because half the checks never ran.
+`--strict` turns any gap into a non-zero exit for pipelines that would rather fail than proceed on
+partial information.
+
+### Where the other tools are still the better choice
+
+- **Checking a change before it is applied.** Pluto and kubent both scan static manifests and Helm
+  charts in a repository. This tool reads a live cluster, so it cannot review a pull request. A
+  `--manifests` mode is planned; until it lands, use Pluto in CI.
+- **Stored Helm release manifests**, for the reason above.
+- **Helm 2.** Pluto supports it. This does not.
+- **Maturity.** Both have years of production use behind them. This was released in 2026.
 
 ## What it cannot see
 
-Every check that could not run is printed, with the reason and a command to run yourself. The
-tool never shows an unchecked rule as a passed one.
-
-The usual gaps:
+The specific gaps, all of them printed at the end of a run with a command to check yourself:
 
 - **Managed control planes.** On EKS, GKE and AKS the provider runs the API server, scheduler and
   controller manager outside your cluster. Their flags cannot be read, so several hundred config
@@ -135,9 +160,11 @@ The usual gaps:
   providers block it.
 - **Objects written before Kubernetes 1.18** carry no managed-field record. If nothing has
   touched an object since, there may be no evidence to find.
+- **Objects written by a client that reset `managedFields`.** Rare, but it erases the record.
 
-Run with `--strict` to make any gap a non-zero exit, for pipelines that would rather fail than
-proceed on partial information.
+A resource type the target no longer serves, or one the API server answers rather than stores
+such as `SubjectAccessReview`, cannot hold objects at all. Those are reported as not applicable
+rather than as gaps, so the list above stays short enough to act on.
 
 ## The catalog
 
