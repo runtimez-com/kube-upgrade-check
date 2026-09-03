@@ -34,6 +34,12 @@ As a kubectl plugin:
 kubectl krew install upgrade-check
 ```
 
+```bash
+kubectl upgrade-check --target 1.34
+kubectl upgrade-check --target 1.34 -o json
+kubectl upgrade-check --fail-on high --strict
+```
+
 Windows: `scoop bucket add runtimez https://github.com/runtimez-com/scoop-bucket && scoop install kube-upgrade-check`
 
 Binaries cover macOS, Linux and Windows on amd64 and arm64. Debian, RPM and Alpine packages are

@@ -40,11 +40,6 @@ DESCRIPTION = """    Reports what an upgrade to a target Kubernetes version woul
     Every check that could not run is printed with the reason and a command to
     run yourself, so a clean report cannot be one where half the checks were
     silently skipped.
-
-    Examples:
-      kubectl upgrade-check --target 1.34
-      kubectl upgrade-check --target 1.34 -o json
-      kubectl upgrade-check --fail-on high --strict
 """
 
 CAVEATS = """    Some checks need permissions the built-in view role does not grant:
@@ -105,7 +100,8 @@ def main(version: str) -> int:
         "spec:\n"
         f"  version: {version}\n"
         f"  homepage: https://github.com/{REPO}\n"
-        "  shortDescription: Find what breaks before you upgrade Kubernetes\n"
+        # Naming Kubernetes here says nothing: every plugin in the index is a kubectl plugin.
+        "  shortDescription: Find what breaks before you upgrade\n"
         "  description: |\n" + DESCRIPTION +
         "  caveats: |\n" + CAVEATS +
         "  platforms:\n" + "".join(blocks).rstrip() + "\n"
