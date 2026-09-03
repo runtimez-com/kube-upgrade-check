@@ -28,6 +28,12 @@ brew install runtimez-com/tap/kube-upgrade-check
 curl -fsSL https://raw.githubusercontent.com/runtimez-com/kube-upgrade-check/main/install.sh | sh
 ```
 
+As a kubectl plugin:
+
+```bash
+kubectl krew install upgrade-check
+```
+
 Windows: `scoop bucket add runtimez https://github.com/runtimez-com/scoop-bucket && scoop install kube-upgrade-check`
 
 Binaries cover macOS, Linux and Windows on amd64 and arm64. Debian, RPM and Alpine packages are

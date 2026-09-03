@@ -3,6 +3,9 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -25,9 +28,26 @@ func Execute() int {
 // printing the gate as though it were an error.
 var lastExitCode = ExitOK
 
+// invokedAs returns the name to print in usage text.
+//
+// Installed through krew, this binary is run by kubectl as `kubectl-upgrade_check`, and every
+// example in the help would otherwise name a command the reader does not have. kubectl turns the
+// underscores back into dashes when it dispatches, so the reverse mapping reconstructs exactly
+// what someone typed.
+func invokedAs() string {
+	name := filepath.Base(os.Args[0])
+	if ext := filepath.Ext(name); ext == ".exe" {
+		name = strings.TrimSuffix(name, ext)
+	}
+	if plugin, found := strings.CutPrefix(name, "kubectl-"); found {
+		return "kubectl " + strings.ReplaceAll(plugin, "_", "-")
+	}
+	return name
+}
+
 func newRootCmd() *cobra.Command {
 	cmd := newCheckCmd()
-	cmd.Use = "kube-upgrade-check"
+	cmd.Use = invokedAs()
 	cmd.Short = "Find what breaks before you upgrade Kubernetes"
 	cmd.Long = `Find what breaks before you upgrade Kubernetes.
 
