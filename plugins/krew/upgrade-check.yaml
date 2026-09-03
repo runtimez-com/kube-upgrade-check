@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: upgrade-check
 spec:
-  version: v0.1.2
+  version: v0.1.3
   homepage: https://github.com/runtimez-com/kube-upgrade-check
   shortDescription: Find what breaks before you upgrade Kubernetes
   description: |
@@ -43,8 +43,8 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_darwin_amd64.tar.gz
-      sha256: ff189367f654bf26736d541d19778aafe9bb250e3710c502e27ed5910d36d6ba
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_darwin_amd64.tar.gz
+      sha256: 887c48d0063aa5099a40e2bfbf427ff3e86b75d78c4ef76889d43659cb5df1b9
       bin: kube-upgrade-check
       files:
         - from: "kube-upgrade-check"
@@ -55,8 +55,8 @@ spec:
         matchLabels:
           os: darwin
           arch: arm64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_darwin_arm64.tar.gz
-      sha256: de1aa1d5eb0a3c8521d14161278302bd4a2bd190743670d6ff810499fd7cb773
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_darwin_arm64.tar.gz
+      sha256: 8e2b73a67032f453cc6f4f3c71f8013240f707f9ec7718a8470558910925a090
       bin: kube-upgrade-check
       files:
         - from: "kube-upgrade-check"
@@ -67,8 +67,8 @@ spec:
         matchLabels:
           os: linux
           arch: amd64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_linux_amd64.tar.gz
-      sha256: bc96b646de712a81e6a1c0e6e76e700d4bf9c24177af01ac66ec182300f9a277
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_linux_amd64.tar.gz
+      sha256: d790dac352e92df9e0334e9121169e82cfa51c97e64975b22e50110cd21d1a43
       bin: kube-upgrade-check
       files:
         - from: "kube-upgrade-check"
@@ -79,8 +79,8 @@ spec:
         matchLabels:
           os: linux
           arch: arm64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_linux_arm64.tar.gz
-      sha256: 25eb1f7c1c12cb4e0f2c790f7112f1d0cc9b2942ce947ae049146175404ece10
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_linux_arm64.tar.gz
+      sha256: de236ba5fe34ca58263eafec3cb0d1604c1313929075e6f39c5411544bd0a796
       bin: kube-upgrade-check
       files:
         - from: "kube-upgrade-check"
@@ -91,8 +91,8 @@ spec:
         matchLabels:
           os: windows
           arch: amd64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_windows_amd64.zip
-      sha256: 526be3761ad733740d75342f87efe08bffac25d39eeaf5e9a4aa474dae3e6ddf
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_windows_amd64.zip
+      sha256: 50a7541e40af50735b344bfc5f14c1aa5cea0a406e546bb24d482ea9b8d434af
       bin: kube-upgrade-check.exe
       files:
         - from: "kube-upgrade-check.exe"
@@ -103,8 +103,8 @@ spec:
         matchLabels:
           os: windows
           arch: arm64
-      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.2/kube-upgrade-check_0.1.2_windows_arm64.zip
-      sha256: 31f753bbc8e67cc1ea309ef3edb2cb6db9846230e3e16c8c6e8caac8c77cf0ef
+      uri: https://github.com/runtimez-com/kube-upgrade-check/releases/download/v0.1.3/kube-upgrade-check_0.1.3_windows_arm64.zip
+      sha256: a34273a94cb83a7403eec1463cd549cd26bd1f4b4080abae13dbe15f880d0a72
       bin: kube-upgrade-check.exe
       files:
         - from: "kube-upgrade-check.exe"
