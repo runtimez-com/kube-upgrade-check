@@ -1,0 +1,321 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-add-dra-health-watch-method",
+    "severity": "HIGH",
+    "title": "Update DRA drivers for the v1 health API",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The DRA driver implementation and whether it compiles against the updated Go interface are external driver internals not represented in cluster inventory."
+    },
+    "quote": "Promoted the DRAResourceHealth `kubelet` gRPC API to `v1`; the schema is unchanged from `v1alpha1`. `DRAPlugin.WatchHealthStatus` is a mandatory method on the `DRAPlugin` interface in the `k8s.io/dynamic-resource-allocation/kubeletplugin` helper, replacing the optional versioned gRPC interface. This is a one-time Go API break: existing drivers must add the method to compile. Drivers without health support return `ErrHealthNotSupported` from it, or disable the service with `HealthService(false)`. The helper serves both `v1` and `v1alpha1` by default, so drivers report health on `kubelet` `v1.36` and older without extra configuration. The `kubelet` prefers `v1` and, for three releases of transition, still consumes `v1alpha1` from drivers that shipped before `v1` existed. The `v1alpha1` DRAResourceHealth API is deprecated and is planned to be removed in `v1.40`. The `kubelet` only opens the device health stream for plugins that advertise the service. ([#139477](https://github.com/kubernetes/kubernetes/pull/139477), [@harche](https://github.com/harche)) [SIG Node and Testing]",
+    "remediation": "Existing drivers must add the `DRAPlugin.WatchHealthStatus` method to compile. Drivers without health support should return `ErrHealthNotSupported` from it, or disable the service with `HealthService(false)`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-check-csidriver-prevent-pod-scheduling",
+    "severity": "MEDIUM",
+    "title": "Review CSIDriver scheduling prevention settings",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "CSIDriver",
+      "target": "preventPodSchedulingIfMissing"
+    },
+    "quote": "Promoted the `VolumeLimitScaling` feature gate, which adds the `preventPodSchedulingIfMissing` field to CSIDriver to prevent Pod scheduling on nodes missing a required CSI driver, to Beta. ([#140612](https://github.com/kubernetes/kubernetes/pull/140612), [@gnufied](https://github.com/gnufied)) [SIG API Machinery, Storage and Testing]",
+    "remediation": "Review CSIDriver objects with `preventPodSchedulingIfMissing` set and verify that the required CSI driver is present on nodes where Pods must be scheduled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-dra-resource-availability-accounting",
+    "severity": "MEDIUM",
+    "title": "Verify DRA resource availability accounting",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether the DRAResourcePoolStatus feature gate is enabled and whether operators rely on the affected resource availability numbers cannot be determined from cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourcePoolStatusRequest"
+    },
+    "quote": "- Added a second Alpha of DRA resource availability visibility (KEP-5677), behind the `DRAResourcePoolStatus` feature gate (disabled by default). The ResourcePoolStatusRequest controller counts partitionable and consumable devices correctly, counting each device once, ignoring AdminAccess, and treating taints as unavailable. Optional fields describe partition and shareable availability. These accounting fixes change the numbers reported in `v1.36`. ([#140170](https://github.com/kubernetes/kubernetes/pull/140170), [@nmn3m](https://github.com/nmn3m)) [SIG API Machinery, Apps, Auth, Node and Testing]",
+    "remediation": "If using DRA resource availability visibility, verify the reported partitionable and consumable device numbers after upgrading, accounting for the changes from v1.36."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-explicitly-set-kube-proxy-mode",
+    "severity": "LOW",
+    "title": "Explicitly set KubeProxyConfiguration mode",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected setting may be absent or nested in kube-proxy configuration, and cluster inventory cannot determine whether it was explicitly set."
+    },
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "namespace": "kube-system",
+      "target": "kube-proxy"
+    },
+    "quote": "Changed `kubeadm` to explicitly set `KubeProxyConfiguration.mode` to iptables when `KubeProxyConfiguration` is not provided or when the `mode` field is empty. In `v1.37`, `kube-proxy` will warn if the field is not explicitly set as part of the planned transition to nftables as the default mode in a future release. ([#139777](https://github.com/kubernetes/kubernetes/pull/139777), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle]",
+    "remediation": "Explicitly set `KubeProxyConfiguration.mode` to `iptables`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-migrate-kube-proxy-ipvs-mode",
+    "severity": "LOW",
+    "title": "Move kube-proxy away from deprecated ipvs mode",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Determining whether kube-proxy uses ipvs and whether the Linux kernel is new enough for nftables requires configuration and node-host kernel information not settled by cluster inventory."
+    },
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "namespace": "kube-system",
+      "target": "kube-proxy"
+    },
+    "quote": "`kubeadm`: Added a (delayed) warning that `kube-proxy`'s ipvs mode is deprecated since `v1.35` and users on newer Linux kernels should be using the nftables mode instead, which became GA in `v1.33`. For older kernel versions, users can use iptables, which is still the default. ([#139067](https://github.com/kubernetes/kubernetes/pull/139067), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle]",
+    "remediation": "On newer Linux kernels, use the `nftables` mode instead of `ipvs`; for older kernel versions, use `iptables`, which is still the default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-migrate-podgroup-template-ref-to-workload-ref",
+    "severity": "HIGH",
+    "title": "Migrate PodGroupTemplateRef to WorkloadRef",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory can identify PodGroup objects but cannot reliably determine whether their manifests or clients use the replaced PodGroupTemplateRef field."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodGroup"
+    },
+    "quote": "Updated the PodGroup API to replace `PodGroupTemplateRef` with `WorkloadRef`, a simpler and more direct way to reference the workload a PodGroup belongs to. ([#140080](https://github.com/kubernetes/kubernetes/pull/140080), [@dom4ha](https://github.com/dom4ha)) [SIG API Machinery, Apps, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Review PodGroup manifests and clients and replace `PodGroupTemplateRef` with `WorkloadRef`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-move-node-sync-period-configuration",
+    "severity": "HIGH",
+    "title": "Move NodeSyncPeriod to NodeMonitorPeriod",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected cloud-controller-manager configuration is node-host configuration and is not represented in cluster inventory."
+    },
+    "quote": "Moved the `NodeSyncPeriod` field from `KubeCloudSharedConfiguration` to `CloudControllerManagerConfiguration.NodeLifecycleController.NodeMonitorPeriod`. ([#137964](https://github.com/kubernetes/kubernetes/pull/137964), [@niewysoki](https://github.com/niewysoki)) [SIG API Machinery, Apps, Cloud Provider, Instrumentation and Node]",
+    "remediation": "Move the `NodeSyncPeriod` setting from `KubeCloudSharedConfiguration` to `CloudControllerManagerConfiguration.NodeLifecycleController.NodeMonitorPeriod`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-podcertificaterequest-noderestriction-signer-check",
+    "severity": "HIGH",
+    "title": "Verify PodCertificateRequest signer authorization after NodeRestriction check",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether each PodCertificateRequest signer name matches a podCertificate projected volume source or is authorized with verb=request-podcertificate-signer; verify manually."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodCertificateRequest"
+    },
+    "quote": "Added a defense-in-depth check to the `NodeRestriction` admission plugin for PodCertificateRequests. A node can only create a PodCertificateRequest referring to a particular signer name if the Pod actually mounts a `podCertificate` projected volume source that refers to that signer name, or if an authorization check for the user (with `verb=request-podcertificate-signer` and `resource=<signerName>`) succeeds. ([#140006](https://github.com/kubernetes/kubernetes/pull/140006), [@ahmedtd](https://github.com/ahmedtd)) [SIG Auth and Testing]",
+    "remediation": "Verify that each node-created PodCertificateRequest refers to a signer name mounted by the Pod through a podCertificate projected volume source, or that the user is authorized with verb=request-podcertificate-signer and resource=<signerName>."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-remove-pod-certificate-request-v1-fields",
+    "severity": "HIGH",
+    "title": "Update clients using removed PodCertificateRequest v1 fields",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether a client still sets the removed PKIXPublicKey or ProofOfPossession fields."
+    },
+    "quote": "Graduated Pod Certificates to GA, with the PodCertificateRequest feature gate enabled by default. The `PKIXPublicKey` and `ProofOfPossession` fields, deprecated in PodCertificateRequest `v1beta1`, are removed from the `v1` API. Update clients that still set these fields before upgrading. ([#139579](https://github.com/kubernetes/kubernetes/pull/139579), [@yt2985](https://github.com/yt2985)) [SIG API Machinery, Apps, Architecture, Auth, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Update clients that still set these fields before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-remove-scheduling-v1alpha2-objects",
+    "severity": "CRITICAL",
+    "title": "Remove scheduling.k8s.io/v1alpha2 objects before upgrade",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "scheduling.k8s.io/v1alpha2"
+    },
+    "quote": "ACTION REQUIRED: Converted the `DisruptionMode` enum field to a struct to support future extensibility. Promoted the `scheduling.k8s.io` API group from `v1alpha2` to `v1alpha3` and dropped `v1alpha2` entirely.\n  Remove all `v1alpha2` objects from the `kube-apiserver` before performing the cluster update. ([#138572](https://github.com/kubernetes/kubernetes/pull/138572), [@dom4ha](https://github.com/dom4ha)) [SIG API Machinery, Apps, CLI, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Remove all v1alpha2 objects from the kube-apiserver before performing the cluster update."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-remove-was-v1alpha2-objects",
+    "severity": "CRITICAL",
+    "title": "Remove Workload-Aware Scheduling v1alpha2 objects",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "scheduling.k8s.io/v1alpha2"
+    },
+    "quote": "Promoted the core Workload-Aware Scheduling (WAS) API types Workload and PodGroup to `scheduling.k8s.io/v1beta1`. Remove all `v1alpha2` objects from the `kube-apiserver` before upgrading from `v1.36` to `v1.37`. ([#140184](https://github.com/kubernetes/kubernetes/pull/140184), [@tosi3k](https://github.com/tosi3k)) [SIG API Machinery, Apps, Auth, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Remove all `v1alpha2` Workload and PodGroup objects from the `kube-apiserver` before upgrading from `v1.36` to `v1.37`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-replace-removed-workload-feature-gates",
+    "severity": "CRITICAL",
+    "title": "Replace removed workload-aware scheduling feature gates",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate command-line flags and node-host configuration are not available in cluster inventory."
+    },
+    "quote": "Removed the `GangScheduling` and `WorkloadAwarePreemption` feature gates. Use the `GenericWorkload` feature gate to enable core workload-aware scheduling functionality. ([#139520](https://github.com/kubernetes/kubernetes/pull/139520), [@macsko](https://github.com/macsko)) [SIG API Machinery, Node, Scheduling and Testing]",
+    "remediation": "Verify manually that `GangScheduling` and `WorkloadAwarePreemption` are not configured, and use the `GenericWorkload` feature gate to enable core workload-aware scheduling functionality."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-restrict-node-logs-access",
+    "severity": "MEDIUM",
+    "title": "Restrict nodes/logs access to trusted users",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Which users and groups can access the nodes/logs subresource is defined by RBAC ClusterRole and binding rules that are not settled by the available inventory predicates."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterRole"
+    },
+    "quote": "ACTION REQUIRED: Updated the `kubelet` to log its effective configuration at startup. Because these logs can expose configuration details, cluster administrators should restrict the `nodes/logs` ClusterRole to trusted users. This is largely a reminder of an existing best practice, since most effective configuration values can already be inferred from other log messages or `kubelet` behavior. ([#139837](https://github.com/kubernetes/kubernetes/pull/139837), [@SergeyKanzhelev](https://github.com/SergeyKanzhelev)) [SIG Node]",
+    "remediation": "Cluster administrators should restrict the nodes/logs ClusterRole to trusted users."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-review-dra-claim-sharing-and-limits",
+    "severity": "HIGH",
+    "title": "Review DRA claim sharing and resource-limit enforcement",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory can identify DRA claims but cannot determine claim references, resource limits, or whether claims are shared for overhead allocations."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "The scheduler supports unreferenced Pod-level claims, enforces resource limits with DRA, and enforces claim sharing rules, allowing claim sharing across Pods for overhead allocations.",
+    "remediation": "If the cluster uses DRA claims, verify claim references, resource limits, and claim-sharing behavior for affected Pods."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-review-dra-in-place-resource-resizing",
+    "severity": "MEDIUM",
+    "title": "Review in-place resizing of DRA-backed Pods",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory can identify ResourceClaim objects but cannot determine which Pods use those claims or whether their standard resource requests and limits are resized in place."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "Standard resource requests and limits can be resized in place for Pods that use DRA claims.",
+    "remediation": "If the cluster uses DRA claims, verify that in-place resizing of standard resource requests and limits is compatible with workload and driver behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-review-dra-kubelet-resource-accounting",
+    "severity": "MEDIUM",
+    "title": "Review kubelet accounting for DRA allocated resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory can identify DRA claims but cannot determine whether their allocated resources affect kubelet cgroups, OOM scores, or Memory QoS thresholds."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "The `kubelet` accounts for DRA allocated resources when configuring Pod and container cgroups, OOM scores, and Memory QoS thresholds.",
+    "remediation": "If the cluster uses DRA claims, verify that the changed kubelet resource accounting is compatible with the expected cgroup, OOM score, and Memory QoS behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-review-dra-resource-slice-allocations",
+    "severity": "MEDIUM",
+    "title": "Review DRA ResourceSlice allocation mappings",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether ResourceSlice objects represent direct or overhead allocations and whether the installed DRA drivers rely on those allocation models cannot be settled from cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceSlice"
+    },
+    "quote": "ResourceSlice mappings and PodStatus support direct allocations, for DRA drivers modeling CPU, memory, and hugepages as a resource, and overhead allocations, for accelerator host overhead.",
+    "remediation": "If the cluster uses DRA ResourceSlices, verify that the DRA drivers and workloads are compatible with the updated direct and overhead allocation mappings."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-review-empty-pod-level-resources-qos",
+    "severity": "MEDIUM",
+    "title": "Review Pods with empty Pod-level resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory can identify Pods with a Pod-level resources field, but the available flat field predicate cannot reliably distinguish all affected empty forms (`{}`, `{requests:{}}`, and `{limits:{}}`)."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resources"
+    },
+    "quote": "Updated Pod-level resource handling so that Pod resources determine QoS only when they include a resource request or limit. Empty Pod resources (`{}`, `{requests:{}}`, or `{limits:{}}`) no longer affect QoS calculation. ([#137150](https://github.com/kubernetes/kubernetes/pull/137150), [@KevinTMtz](https://github.com/KevinTMtz)) [SIG Apps, CLI, Node and Scheduling]",
+    "remediation": "Review Pods with empty Pod-level resources and confirm that the QoS behavior change is acceptable."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-select-dra-metadata-api-versions",
+    "severity": "HIGH",
+    "title": "Select supported DRA metadata API versions",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether an installed DRA driver enables the feature and which metadata API versions it supports is implemented in the driver and is not represented in cluster inventory."
+    },
+    "quote": "Promoted the DRA metadata API to Beta. DRA driver authors that enable the feature must explicitly select which versions to support in their metadata output. ([#140722](https://github.com/kubernetes/kubernetes/pull/140722), [@pohly](https://github.com/pohly)) [SIG Node and Testing]",
+    "remediation": "DRA driver authors that enable the feature must explicitly select which versions to support in their metadata output."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-selinux-mount-workload-compatibility",
+    "severity": "HIGH",
+    "title": "Review workloads affected by SELinuxMount GA",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether SELinux is enabled on cluster nodes and whether workloads have problematic volume-labeling behavior depend on node-host configuration and workload details not settled by the available cluster inventory predicates."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "ACTION REQUIRED: Graduated the `SELinuxMount` feature gate to GA. The feature is enabled by default in `v1.37`, which may break existing workloads in clusters with SELinux enabled. Please see [the Kubernetes blog post](https://kubernetes.io/blog/2026/04/22/breaking-changes-in-selinux-volume-labeling/) to identify potentially problematic workloads in a `v1.36` cluster and how to fix them or opt out of `SELinuxMount` changes before upgrading to `v1.37`. Admins of clusters without SELinux enabled can ignore this release note. ([#139956](https://github.com/kubernetes/kubernetes/pull/139956), [@jsafrane](https://github.com/jsafrane)) [SIG API Machinery, Apps and Node]",
+    "remediation": "Please see the Kubernetes blog post to identify potentially problematic workloads in a v1.36 cluster and how to fix them or opt out of SELinuxMount changes before upgrading to v1.37. Admins of clusters without SELinux enabled can ignore this release note."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-set-kubelet-event-record-qps",
+    "severity": "MEDIUM",
+    "title": "Set a non-zero kubelet eventRecordQPS value when required",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet eventRecordQPS setting is in kubelet configuration or node-host configuration and is not settled by the available cluster inventory predicates."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "ACTION REQUIRED: Fixed `eventRecordQPS` handling in `kubelet` configuration to treat 0 as unlimited (no rate limit), aligning behavior with the documentation. Users relying on the previous default behavior should explicitly set a non-zero value (for example, 50). ([#117119](https://github.com/kubernetes/kubernetes/pull/117119), [@HirazawaUi](https://github.com/HirazawaUi)) [SIG API Machinery, Auth and Node]",
+    "remediation": "Users relying on the previous default behavior should explicitly set a non-zero value for eventRecordQPS, for example, 50."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-update-podgroup-scheduled-condition-consumers",
+    "severity": "MEDIUM",
+    "title": "Update consumers of the renamed PodGroup condition",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether external controllers, automation, or dashboards inspect the renamed PodGroup condition."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodGroup"
+    },
+    "quote": "Renamed the PodGroup condition `PodGroupScheduled` to `PodGroupInitiallyScheduled` to clarify that the condition is set only after a PodGroup is first scheduled successfully and may not reflect the PodGroup's current scheduling state. ([#139743](https://github.com/kubernetes/kubernetes/pull/139743), [@antekjb](https://github.com/antekjb)) [SIG API Machinery, Scheduling and Testing]",
+    "remediation": "Verify manually that consumers of PodGroup conditions use `PodGroupInitiallyScheduled` instead of `PodGroupScheduled` and account for its initial-scheduling semantics."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.37-verify-nodeallocatable-dra-feature-gate",
+    "severity": "HIGH",
+    "title": "Verify NodeAllocatableDRA feature-gate support on target nodes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Node feature-gate configuration and the node-declared NodeAllocatableDRA capability are not available in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Validation enforces constraints for the updated API and uses node declared features to confirm that target nodes have the `NodeAllocatableDRA` feature gate enabled. ([#140009](https://github.com/kubernetes/kubernetes/pull/140009), [@pravk03](https://github.com/pravk03)) [SIG API Machinery, Apps, Auth, Autoscaling, Node, Scheduling and Testing]",
+    "remediation": "For nodes used by the updated DRA API, verify manually that the `NodeAllocatableDRA` feature gate is enabled and declared before upgrading."
+  }
+]

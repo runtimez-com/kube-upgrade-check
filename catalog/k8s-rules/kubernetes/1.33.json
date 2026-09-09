@@ -1,0 +1,400 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-allow-memory-decrease-only-with-restart-container",
+    "severity": "HIGH",
+    "title": "Set RestartContainer for memory limit decreases",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory cannot determine whether a pod will perform an in-place memory limit decrease or whether its nested container resizePolicy permits it."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "InPlacePodVerticalScaling: Memory limits cannot be decreased unless the memory resize restart policy is set to `RestartContainer`. Container resizePolicy is no longer mutable. ([#130183](https://github.com/kubernetes/kubernetes/pull/130183), [@tallclair](https://github.com/tallclair)) [SIG Apps and Node]",
+    "remediation": "For workloads that decrease memory limits with InPlacePodVerticalScaling, set the memory resize restart policy to `RestartContainer`; do not rely on changing Container resizePolicy after creation."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-clustertrustbundle-v1beta1",
+    "severity": "HIGH",
+    "title": "Make ClusterTrustBundle v1beta1 available for projection",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "ClusterTrustBundle",
+      "target": "certificates.k8s.io/v1alpha1"
+    },
+    "quote": "The `ClusterTrustBundle` API is moving to `v1beta1`.\n  In order for the `ClusterTrustBundleProjection` feature to work on the kubelet side, the `ClusterTrustBundle` API must be available at `v1beta1` version and the `ClusterTrustBundleProjection` feature gate must be enabled. If the API becomes later after kubelet started running, restart the kubelet to enable the feature. ([#128499](https://github.com/kubernetes/kubernetes/pull/128499), [@stlaz](https://github.com/stlaz)) [SIG API Machinery, Apps, Auth, Etcd, Node, Storage and Testing]",
+    "remediation": "Make the `ClusterTrustBundle` API available at `v1beta1`, enable the `ClusterTrustBundleProjection` feature gate, and restart the kubelet if the API becomes available after the kubelet started running."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-configure-crashloopbackoff-restart-delay",
+    "severity": "MEDIUM",
+    "title": "Verify CrashLoopBackOff restart delay feature gate and configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature gates and per-node kubelet configuration are node-host configuration not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Added the ability to reduce both the initial delay and the maximum delay accrued between container restarts for a node for containers in `CrashLoopBackOff` across the cluster to the recommended values of `1s` initial delay and `60s` maximum delay. To set this for a node, turn on the feature gate `ReduceDefaultCrashLoopBackOffDecay`. If you are also using the feature gate `KubeletCrashLoopBackOffMax` with a configured per-node `CrashLoopBackOff.MaxContainerRestartPeriod`, the effective kubelet configuration will follow the conflict resolution policy described further in the documentation [here](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#reduced-container-restart-delay). ([#130711](https://github.com/kubernetes/kubernetes/pull/130711), [@lauralorenz](https://github.com/lauralorenz)) [SIG Node and Testing]",
+    "remediation": "Verify whether to enable `ReduceDefaultCrashLoopBackOffDecay` on nodes and, if using `KubeletCrashLoopBackOffMax` with `CrashLoopBackOff.MaxContainerRestartPeriod`, follow the documented conflict resolution policy."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-dra-admin-access-label",
+    "severity": "HIGH",
+    "title": "DRA adminAccess requires the admin namespace label",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace",
+      "target": "kubernetes.io/dra-admin-access"
+    },
+    "quote": "- DRA: Starting Kubernetes 1.33, only users with access to an admin namespace with the `kubernetes.io/dra-admin-access` label are authorized to create ResourceClaim or ResourceClaimTemplate objects with the `adminAccess` field in this admin namespace if they want to and only they can reference these ResourceClaims or ResourceClaimTemplates in their pod or deployment specs. ([#130225](https://github.com/kubernetes/kubernetes/pull/130225), [@ritazh](https://github.com/ritazh)) [SIG API Machinery, Apps, Auth, Node and Testing]",
+    "remediation": "Verify that users who create or reference ResourceClaim or ResourceClaimTemplate objects with the `adminAccess` field have access to the labeled admin namespace."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-dra-all-devices-scheduling",
+    "severity": "MEDIUM",
+    "title": "DRA All-device requests no longer schedule onto nodes without devices",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory projection does not expose whether a DRA request asks for \"All\" devices or whether the workload depends on scheduling onto nodes without devices."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "- DRA: when asking for \"All\" devices on a node, Kubernetes <= 1.32 proceeded to schedule pods onto nodes with no devices by not allocating any devices for those pods. Kubernetes 1.33 changes that to only picking nodes which have at least one device. Users who want the \"proceed with scheduling also without devices\" semantic can use the upcoming prioritized list feature with one sub-request for \"all\" devices and a second alternative with \"count: 0\". ([#129560](https://github.com/kubernetes/kubernetes/pull/129560), [@bart0sh](https://github.com/bart0sh)) [SIG API Machinery and Node]",
+    "remediation": "Verify manually whether DRA requests ask for \"All\" devices and, if scheduling without devices is required, use the upcoming prioritized list feature with one sub-request for \"all\" devices and a second alternative with \"count: 0\"."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-dra-device-taints",
+    "severity": "HIGH",
+    "title": "DRA device taints can prevent allocation or evict pods",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory does not expose whether DRA devices are tainted or whether claims tolerate those taints."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "- DRA: Device taints enable DRA drivers or admins to mark device as unusable, which prevents allocating them. Pods may also get evicted at runtime if a device becomes unusable, depending on the severity of the taint and whether the claim tolerates the taint. ([#130447](https://github.com/kubernetes/kubernetes/pull/130447), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Architecture, Auth, Etcd, Instrumentation, Node, Scheduling and Testing]",
+    "remediation": "Verify manually whether DRA drivers or administrators use device taints, and whether affected claims tolerate them."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-dra-resourceclaim-downgrade-limit",
+    "severity": "HIGH",
+    "title": "ResourceClaims with more than 32 reserved entries prevent downgrade to Kubernetes 1.32.0",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory predicate vocabulary cannot determine whether the reservedFor list contains more than 32 entries."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "ResourceClaim",
+      "target": "reservedFor"
+    },
+    "quote": "DRA API: The maximum number of pods that can use the same ResourceClaim is now 256 instead of 32. Downgrading a cluster where this relaxed limit is in use to Kubernetes 1.32.0 is not supported, as version 1.32.0 would refuse to update ResourceClaims with more than 32 entries in the `status.reservedFor` field. ([#129543](https://github.com/kubernetes/kubernetes/pull/129543), [@pohly](https://github.com/pohly)) [SIG API Machinery, Node and Testing]",
+    "remediation": "Do not downgrade a cluster to Kubernetes 1.32.0 when this relaxed limit is in use; verify manually whether any ResourceClaim has more than 32 entries in the status.reservedFor field."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-inplace-pod-vertical-scaling-resize-status",
+    "severity": "MEDIUM",
+    "title": "Resize requests no longer set status to Proposed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether workloads or integrations depend on the API server setting resize status to `Proposed`."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "- For the `InPlacePodVerticalScaling` feature, the API server will no longer set the resize status to `Proposed` upon receiving a resize request. ([#130574](https://github.com/kubernetes/kubernetes/pull/130574), [@natasha41575](https://github.com/natasha41575)) [SIG Apps, Node and Testing]",
+    "remediation": "Verify manually whether workloads or integrations using `InPlacePodVerticalScaling` depend on the resize status being set to `Proposed`, and update them if necessary."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-kubelet-credential-provider-token-attribute",
+    "severity": "MEDIUM",
+    "title": "Credential providers can receive a pod-bound KSA token",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet credential provider configuration is an on-disk node-host configuration that is not available in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "- Expanded the on-disk kubelet credential provider configuration to allow an optional `tokenAttribute` field to be configured. When it is set, the kubelet will provision a token with the given audience bound to the current pod and its service account. This KSA token along with required annotations on the KSA defined in configuration will be sent to the credential provider plugin via its standard input (along with the image information that is already sent today). The KSA annotations to be sent are configurable in the kubelet credential provider configuration. ([#128372](https://github.com/kubernetes/kubernetes/pull/128372), [@aramase](https://github.com/aramase)) [SIG API Machinery, Auth, Node and Testing]",
+    "remediation": "Verify manually whether kubelet credential provider configurations use `tokenAttribute`, and update or validate the credential provider plugin and configured KSA annotations as needed."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-migrate-apidiscovery-v2beta1",
+    "severity": "HIGH",
+    "title": "Stop using the disabled-by-default API discovery v2beta1 API",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "apidiscovery.k8s.io/v2beta1"
+    },
+    "quote": "`apidiscovery.k8s.io/v2beta1` API group is disabled by default ([#130347](https://github.com/kubernetes/kubernetes/pull/130347), [@Jefftree](https://github.com/Jefftree)) [SIG API Machinery and Testing]",
+    "remediation": "Ensure clients no longer use `apidiscovery.k8s.io/v2beta1`, or explicitly enable the API group if it is required."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-migrate-endpoints-to-endpointslices",
+    "severity": "MEDIUM",
+    "title": "Migrate v1 Endpoints API users to EndpointSlice",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "Endpoints",
+      "target": "v1"
+    },
+    "quote": "The v1 Endpoints API is now officially deprecated (though still fully supported). The API will not be removed, but all users should use the EndpointSlice API instead. ([#130098](https://github.com/kubernetes/kubernetes/pull/130098), [@danwinship](https://github.com/danwinship)) [SIG API Machinery and Network]",
+    "remediation": "Update users of the v1 Endpoints API to use the EndpointSlice API instead."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-migrate-pod-resize-status-consumers",
+    "severity": "MEDIUM",
+    "title": "Use Pod resize conditions instead of status.resize",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resize"
+    },
+    "quote": "The pod `status.resize` field is now deprecated and will no longer be set. The status of a pod resize will be exposed under two new conditions: `PodResizeInProgress` and `PodResizePending` instead. ([#130733](https://github.com/kubernetes/kubernetes/pull/130733), [@natasha41575](https://github.com/natasha41575)) [SIG API Machinery, Apps, CLI, Node, Scheduling and Testing]",
+    "remediation": "Update consumers of pod status.resize to use the PodResizeInProgress and PodResizePending conditions instead."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-migrate-resource-v1beta1",
+    "severity": "MEDIUM",
+    "title": "Migrate resource.k8s.io v1beta1 objects",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "resource.k8s.io/v1beta1"
+    },
+    "quote": "The `resource.k8s.io/v1beta1` API is deprecated and will be removed in 1.36. Use `v1beta2` instead. ([#129970](https://github.com/kubernetes/kubernetes/pull/129970), [@mortent](https://github.com/mortent)) [SIG API Machinery, Apps, Auth, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Migrate uses of the `resource.k8s.io/v1beta1` API to `v1beta2` before the API is removed in 1.36."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-remove-cpumanager-feature-gate",
+    "severity": "HIGH",
+    "title": "Remove the CPUManager feature gate",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kubelet feature-gate command-line flags and node-host configuration are not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Removed general available feature gate `CPUManager`. ([#129296](https://github.com/kubernetes/kubernetes/pull/129296), [@carlory](https://github.com/carlory)) [SIG API Machinery, Node and Testing]",
+    "remediation": "Remove `CPUManager` from kubelet feature-gate configuration."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-remove-pdb-unhealthy-pod-eviction-policy-feature-gate",
+    "severity": "HIGH",
+    "title": "Remove the PDBUnhealthyPodEvictionPolicy feature gate",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kubernetes feature-gate command-line flags and node-host configuration are not represented in cluster inventory."
+    },
+    "quote": "Removed general available feature-gate `PDBUnhealthyPodEvictionPolicy`. ([#129500](https://github.com/kubernetes/kubernetes/pull/129500), [@carlory](https://github.com/carlory)) [SIG API Machinery, Apps and Auth]",
+    "remediation": "Remove `PDBUnhealthyPodEvictionPolicy` from feature-gate configuration."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-remove-watch-from-storage-feature-gate",
+    "severity": "MEDIUM",
+    "title": "Remove deprecated WatchFromStorageWithoutResourceVersion feature gate",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory does not expose component feature-gate configuration."
+    },
+    "quote": "The `WatchFromStorageWithoutResourceVersion` feature was deprecated and can no longer be enabled. ([#129930](https://github.com/kubernetes/kubernetes/pull/129930), [@serathius](https://github.com/serathius))",
+    "remediation": "Verify manually that WatchFromStorageWithoutResourceVersion is not enabled in component feature-gate configuration before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-rename-updatepodtoleration-action-type",
+    "severity": "HIGH",
+    "title": "Update custom plugin code for the renamed action type",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Custom plugin source code and compiled plugin interfaces are not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "Renamed `UpdatePodTolerations` action type to `UpdatePodToleration`.\n  Action required for custom plugin developers to update their code to follow the rename. ([#129023](https://github.com/kubernetes/kubernetes/pull/129023), [@zhifei92](https://github.com/zhifei92)) [SIG Scheduling and Testing]",
+    "remediation": "Custom plugin developers must update code that uses `UpdatePodTolerations` to use `UpdatePodToleration`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-replace-deprecated-inplace-scaling-gate",
+    "severity": "MEDIUM",
+    "title": "Replace deprecated InPlacePodVerticalScalingAllocatedStatus feature gate",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature gate settings are kubelet and control-plane command-line or configuration flags, which are not represented in cluster inventory."
+    },
+    "quote": "The feature gate `InPlacePodVerticalScalingAllocatedStatus` is deprecated and no longer used. The `AllocatedResources` field in `ContainerStatus` is now guarded by the `InPlacePodVerticalScaling` feature gate. ([#130880](https://github.com/kubernetes/kubernetes/pull/130880), [@tallclair](https://github.com/tallclair)) [SIG CLI, Node and Scheduling]",
+    "remediation": "Stop using the deprecated `InPlacePodVerticalScalingAllocatedStatus` feature gate and use the `InPlacePodVerticalScaling` feature gate when relying on the `AllocatedResources` field in `ContainerStatus`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-replace-service-topology-mode-annotation",
+    "severity": "MEDIUM",
+    "title": "Replace deprecated Service topology-mode annotation",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.kubernetes.io/topology-mode"
+    },
+    "quote": "The EndpointSlice `hints` field has graduated to GA. The beta annotation `service.kubernetes.io/topology-mode` is now considered deprecated and will not graduate to GA. It remains operational for backward compatibility. Users are encouraged to use the `spec.trafficDistribution` field in the Service API for topology-aware routing configuration. ([#130742](https://github.com/kubernetes/kubernetes/pull/130742), [@gauravkghildiyal](https://github.com/gauravkghildiyal)) [SIG Network]",
+    "remediation": "Replace the service.kubernetes.io/topology-mode annotation with the spec.trafficDistribution field in the Service API for topology-aware routing configuration."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-replicationcontroller-declarative-validation",
+    "severity": "HIGH",
+    "title": "Check ReplicationController fields against declarative validation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Determining whether `replicas` and `minReadySeconds` violate their minimum or requiredness rules requires field values and depends on feature-gate configuration not represented by the permitted inventory predicates."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ReplicationController"
+    },
+    "quote": "The minimum value validation of ReplicationController's `replicas` and `minReadySeconds` fields have been migrated to declarative validation. The requiredness of both fields is also declaratively validated.\n  If the `DeclarativeValidation` feature gate is enabled, mismatches with existing validation are reported via metrics.\n  If the `DeclarativeValidationTakeover` feature gate is enabled, declarative validation is the primary source of errors for migrated fields. ([#130725](https://github.com/kubernetes/kubernetes/pull/130725), [@jpbetz](https://github.com/jpbetz)) [SIG API Machinery, Apps, Architecture, CLI, Cluster Lifecycle, Instrumentation, Network, Node and Storage]",
+    "remediation": "Review ReplicationControllers to ensure `replicas` and `minReadySeconds` satisfy their minimum and requiredness validation, especially when `DeclarativeValidationTakeover` is enabled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-review-image-pull-authentication-tracking",
+    "severity": "HIGH",
+    "title": "Review image pull authentication and pull policies",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected image authentication history is persisted by the kubelet on the node host and is not represented in cluster inventory."
+    },
+    "quote": "New configuration is introduced to the kubelet that allows it to track container images and the list of authentication information that leads to their successful pulls. This data is persisted across reboots of the host and restarts of the kubelet.\n  \n  The kubelet ensures any image requiring credential verification is always pulled if authentication information from an image pull is not yet present, thus enforcing authentication / re-authentication. This means an image pull might be attempted even in cases where a pod requests the `IfNotPresent` image pull policy, and might lead to the pod not starting if its pull policy is `Never` and is unable to present authentication information that led to a previous successful pull of the image it is requesting. ([#128152](https://github.com/kubernetes/kubernetes/pull/128152), [@stlaz](https://github.com/stlaz)) [SIG API Machinery, Architecture, Auth, Node and Testing]",
+    "remediation": "Review images requiring credential verification and pods using `IfNotPresent` or `Never`; ensure the required authentication information is available and that images can be pulled or re-authenticated."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-review-merged-eviction-settings",
+    "severity": "MEDIUM",
+    "title": "Review merged kubelet eviction settings",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected kubelet configuration and eviction settings are node-host configuration and are not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "`MergeDefaultEvictionSettings` indicates that defaults for the evictionHard, evictionSoft, evictionSoftGracePeriod, and evictionMinimumReclaim fields should be merged into values specified for those fields in this configuration. Signals specified in this configuration take precedence. Signals not specified in this configuration inherit their defaults. ([#127577](https://github.com/kubernetes/kubernetes/pull/127577), [@vaibhav2107](https://github.com/vaibhav2107)) [SIG API Machinery and Node]",
+    "remediation": "Review kubelet evictionHard, evictionSoft, evictionSoftGracePeriod, and evictionMinimumReclaim settings and confirm that omitted signals should inherit their defaults and specified signals should take precedence."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-review-storage-capacity-scoring-change",
+    "severity": "MEDIUM",
+    "title": "Review storage capacity scoring behavior and feature gate configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory does not expose component feature-gate configuration or the node-selection behavior used for dynamic provisioning."
+    },
+    "quote": "The `StorageCapacityScoring` feature gate was added to score nodes by available storage capacity. It's in alpha and disabled by default. The `VolumeCapacityPriority` alpha feature was replaced with this, and the default behavior was changed. The `VolumeCapacityPriority` preferred a node with the least allocatable, but the `StorageCapacityScoring` preferred a node with the maximum allocatable. See [KEP-4049](https://github.com/kubernetes/enhancements/blob/master/keps/sig-storage/4049-storage-capacity-scoring-of-nodes-for-dynamic-provisioning/README.md) for details. ([#128184](https://github.com/kubernetes/kubernetes/pull/128184), [@cupnes](https://github.com/cupnes)) [SIG Scheduling, Storage and Testing]",
+    "remediation": "Verify manually whether VolumeCapacityPriority was enabled or relied upon, review the changed default behavior, and configure StorageCapacityScoring if the alpha feature is required."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-review-x509-client-certificate-user-uid-rdn",
+    "severity": "HIGH",
+    "title": "Review X.509 certificate UID RDNs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot inspect external X.509 client certificates or determine whether their subjects contain the specified RDN."
+    },
+    "quote": "Kubernetes components that accepted X.509 client certificate authentication now read the user UID from a certificate subject name RDN with object ID `1.3.6.1.4.1.57683.2`. An RDN with this object ID had to contain a string value and appear no more than once in the certificate subject. Reading the user UID from this RDN could be disabled by setting the beta feature gate `AllowParsingUserUIDFromCertAuth` to `false`(until the feature gate graduated to GA). ([#127897](https://github.com/kubernetes/kubernetes/pull/127897), [@modulitos](https://github.com/modulitos)) [SIG API Machinery, Auth and Testing]",
+    "remediation": "Review X.509 client certificates for the specified RDN, ensuring it contains a string value and appears no more than once; if necessary, disable reading the user UID from this RDN with the beta feature gate `AllowParsingUserUIDFromCertAuth` set to `false`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-statefulset-servicename-dns1123",
+    "severity": "HIGH",
+    "title": "Fix invalid StatefulSet serviceName values",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory can identify StatefulSets with a serviceName field but cannot determine whether the value passes DNS1123 validation with the permitted field predicates."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "StatefulSet",
+      "target": "serviceName"
+    },
+    "quote": "Validation now requires new StatefulSets with a `.spec.serviceName` field value to pass DNS1123 validation. Previously created StatefulSets with an invalid `.spec.serviceName` field value could not create any pods, and should be deleted.",
+    "remediation": "Review StatefulSets with `.spec.serviceName` values, delete previously created StatefulSets with invalid values, and ensure new values pass DNS1123 validation."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-update-csi-islikelynotmountpoint-usage",
+    "severity": "HIGH",
+    "title": "Verify CSI drivers correctly interpret IsLikelyNotMountPoint",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether a third-party CSI driver calls IsLikelyNotMountPoint and correctly handles its return value is internal driver behavior not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "DaemonSet"
+    },
+    "quote": "[Action Required] CSI drivers that call IsLikelyNotMountPoint should not assume false means that the path is a mount point. Each CSI driver needs to make sure correct usage of return value of IsLikelyNotMountPoint because if the file is an irregular file but not a mount point is acceptable ([#129370](https://github.com/kubernetes/kubernetes/pull/129370), [@andyzhangx](https://github.com/andyzhangx)) [SIG Storage and Windows]",
+    "remediation": "Verify that each CSI driver calling IsLikelyNotMountPoint does not assume false means the path is a mount point and correctly handles an irregular file that is not a mount point."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-validate-built-in-ip-and-cidr-values",
+    "severity": "HIGH",
+    "title": "Validate built-in API IP and CIDR values",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected values may occur in multiple fields across built-in API kinds, and the available cluster inventory does not expose a generic predicate for detecting malformed IP or CIDR strings."
+    },
+    "quote": "When the `StrictIPCIDRValidation` feature gate is enabled, Kubernetes will be\nslightly stricter about what values will be accepted as IP addresses and network\naddress ranges (“CIDR blocks”).\n\nIn particular, octets within IPv4 addresses are not allowed to have any leading\n`0`s, and IPv4-mapped IPv6 values (e.g. `::ffff:192.168.0.1`) are forbidden.\nThese sorts of values can potentially cause security problems when different\ncomponents interpret the same string as referring to different IP addresses\n(as in CVE-2021-29923).\n\nThis tightening applies only to fields in built-in API kinds, and not to\ncustom resource kinds, values in Kubernetes configuration files, or\ncommand-line arguments.\n\n(When the feature gate is disabled, creating an object with such an invalid\nIP or CIDR value will result in a warning from the API server about the fact\nthat it will be rejected in the future.) ([#122550](https://github.com/kubernetes/kubernetes/pull/122550), [#128786](https://github.com/kubernetes/kubernetes/pull/128786), [@danwinship](https://github.com/danwinship)) [SIG API Machinery, Apps, Network, Node, Scheduling and Testing]",
+    "remediation": "Inspect built-in API objects for IPv4 addresses with leading zeros or IPv4-mapped IPv6 values, and correct those values before enabling StrictIPCIDRValidation or upgrading when the feature gate is enabled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-validate-node-selector-requirement-values",
+    "severity": "HIGH",
+    "title": "Validate NodeSelectorRequirement values before creating pods",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory cannot determine whether nested pod affinity or node selector requirements contain values rejected by the new validation."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "Implemented validation for `NodeSelectorRequirement` values in Kubernetes when creating pods. ([#128212](https://github.com/kubernetes/kubernetes/pull/128212), [@AxeZhan](https://github.com/AxeZhan)) [SIG Apps and Scheduling]",
+    "remediation": "Review pod NodeSelectorRequirement values and correct any invalid values before creating pods."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-validate-service-cidr-configuration",
+    "severity": "HIGH",
+    "title": "Control newly added Service CIDRs",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ServiceCIDR"
+    },
+    "quote": "Graduated the `MultiCIDRServiceAllocator` feature gate to stable, and the `DisableAllocatorDualWrite` feature gate to beta (disabled by default).\n**Action required** for Kubernetes cluster administrators and for distributions that manage the cluster Service CIDR.\nKubernetes now allows users to define the cluster Service CIDR via an API object: ServiceCIDR.\nDistributions or administrators of Kubernetes may want to control that new Service CIDRs added to the cluster do not overlap with other networks on the cluster, that only belong to a specific range of IPs. Administrators may also prefer to retain the existing behavior of only having one ServiceCIDR per cluster. You can use `ValidatingAdmissionPolicy` to achieve this. ([#128971](https://github.com/kubernetes/kubernetes/pull/128971), [@aojea](https://github.com/aojea)) [SIG Apps, Architecture, Auth, CLI, Etcd, Network, Release and Testing]",
+    "remediation": "Use `ValidatingAdmissionPolicy` to ensure newly added ServiceCIDRs do not overlap with other cluster networks, remain within the permitted IP range, and, if desired, preserve the existing behavior of only having one ServiceCIDR per cluster."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.33-verify-kube-proxy-nftables-kernel-check-setting",
+    "severity": "MEDIUM",
+    "title": "Verify the kube-proxy nftables kernel version check setting",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kube-proxy environment variable configuration is held in the component's pod or node configuration and the intended environment-variable value cannot be settled by the permitted inventory predicates."
+    },
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "target": "kube-proxy"
+    },
+    "quote": "Fixed the behavior of the `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` environment variable in the nftables proxier. The kernel version check is now skipped only when this variable is explicitly set to a non-empty value. To skip the check, set the `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` environment variable. ([#130401](https://github.com/kubernetes/kubernetes/pull/130401), [@ryota-sakamoto](https://github.com/ryota-sakamoto))",
+    "remediation": "Verify kube-proxy configuration and set `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` to a non-empty value if the kernel version check should be skipped."
+  }
+]

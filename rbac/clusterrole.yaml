@@ -6,8 +6,9 @@
 #
 # Nothing here grants write access of any kind. The two rules people usually ask about:
 #
-#   nodes/proxy   reads each node's live kubelet configuration through the API server. Without
-#                 it the kubelet rules cannot be checked, and the report will say so.
+#   nodes/proxy   reads each node's live kubelet configuration and its /metrics through the API
+#                 server. Without it the kubelet rules and the cgroup / container-runtime checks
+#                 cannot be settled, and the report will say so.
 #   /metrics      reads the API server's count of deprecated API requests. Without it one
 #                 evidence tier is unavailable; the others still work.
 #
@@ -31,6 +32,18 @@ rules:
       - configmaps
       - persistentvolumes
       - persistentvolumeclaims
+      - services
+      - serviceaccounts
+      - namespaces
+    verbs: ["get", "list"]
+
+  # Ready endpoints behind webhook and aggregated-API Services, read by service name only.
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list"]
+
+  - apiGroups: ["apiregistration.k8s.io"]
+    resources: ["apiservices"]
     verbs: ["get", "list"]
 
   # The kubelet's own effective configuration, served through the API server.

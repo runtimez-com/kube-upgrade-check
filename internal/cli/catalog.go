@@ -81,10 +81,18 @@ fires.`,
 				return &ExitError{Code: ExitFailure,
 					Err: fmt.Errorf("%d catalog problem(s)", len(problems))}
 			}
+			detectable := 0
+			for _, r := range cat.GeneratedRules {
+				if r.Detection.Kind != catalog.DetectNotDetectable {
+					detectable++
+				}
+			}
 			out.printf("Catalog OK: %d API rules, %d config breakers, %d volume plugins, "+
-				"%d node runtime, %d advisories, %d add-ons, %d adoption suggestions\n",
+				"%d node runtime, %d advisories, %d add-ons, %d adoption suggestions, "+
+				"%d release-note rules (%d detectable)\n",
 				len(cat.DeprecationRules), len(cat.ConfigBreakers), len(cat.VolumePlugins),
-				len(cat.NodeRuntime), len(cat.Advisories), len(cat.Addons), len(cat.AdoptionRules))
+				len(cat.NodeRuntime), len(cat.Advisories), len(cat.Addons), len(cat.AdoptionRules),
+				len(cat.GeneratedRules), detectable)
 			return out.err
 		},
 	}

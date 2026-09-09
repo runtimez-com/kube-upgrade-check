@@ -158,6 +158,23 @@ type NodeRuntimeRule struct {
 	Remediation      string   `json:"remediation"`
 	Provisional      bool     `json:"provisional"`
 	Detectable       *bool    `json:"detectable"`
+	// Metric, when set, lets the rule be settled from each kubelet's /metrics endpoint. It is
+	// independent of Detectable, which keeps its meaning of "checkable from Node status": the
+	// backend that shares this catalog has no kubelet-metrics collector and still treats such a
+	// rule as advisory, while this tool checks it wherever nodes/proxy is granted.
+	Metric *MetricMatch `json:"metric"`
+}
+
+// MetricMatch names a kubelet metric series and how its sample decides a rule.
+//
+//	valueEquals            the gauge's value equals Value (kubelet_cgroup_version == 1)
+//	labelVersionAtMostTarget  the series' Label holds a Kubernetes minor that is <= the target
+//	                       (kubelet_cri_losing_support{version="1.36"} on a 1.36 upgrade)
+type MetricMatch struct {
+	Name      string `json:"name"`
+	Condition string `json:"condition"`
+	Value     string `json:"value"`
+	Label     string `json:"label"`
 }
 
 // IsDetectable reports whether the rule can be checked from node status.

@@ -288,3 +288,46 @@ func TestRealCatalogDetectsAKnownGate(t *testing.T) {
 		t.Error("expected the removed HPAContainerMetrics gate to be detected from the real catalog")
 	}
 }
+
+// The 1.37 removal of the PodGroupWorkloadExists admission plugin is expressed with the same
+// list-membership condition as gate presence. The rule must fire on exact membership of the
+// admission list and stay silent when the plugin is absent, so an apiserver that will refuse to
+// start is named and one that will not is left alone.
+func TestRealCatalogDetectsRemovedAdmissionPlugin(t *testing.T) {
+	cat, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const rule = "rtz-k8s-apiserver-admission-plugin-podgroupworkloadexists-removed"
+	fired, _ := Analyze(inv([]inventory.ControlPlanePod{
+		apiserver("kube-apiserver", "--enable-admission-plugins=NodeRestriction,PodGroupWorkloadExists"),
+	}, nil), "1.36", "1.37", cat.ConfigBreakers)
+	f := byRule(fired, rule)
+	if f == nil {
+		t.Fatal("expected the removed admission plugin to be detected from the real catalog")
+	}
+	if !strings.Contains(strings.Join(f.Evidence, " "), "PodGroupWorkloadExists") {
+		t.Errorf("evidence must name the plugin, got %v", f.Evidence)
+	}
+
+	fired, _ = Analyze(inv([]inventory.ControlPlanePod{
+		apiserver("kube-apiserver", "--enable-admission-plugins=NodeRestriction,PodGroupWorkloadExistsExtra"),
+	}, nil), "1.36", "1.37", cat.ConfigBreakers)
+	if byRule(fired, rule) != nil {
+		t.Error("a longer plugin name sharing the prefix must not fire")
+	}
+
+	// Locked gates regenerated for 1.37 fire on the explicit non-default value only.
+	fired, _ = Analyze(inv([]inventory.ControlPlanePod{
+		apiserver("kube-apiserver", "--feature-gates=HostnameOverride=false"),
+	}, nil), "1.36", "1.37", cat.ConfigBreakers)
+	if byRule(fired, "rtz-k8s-gate-locked-hostname-override") == nil {
+		t.Error("HostnameOverride=false must fire the 1.37 locked-gate rule")
+	}
+	fired, _ = Analyze(inv(nil, []inventory.KubeletConfig{
+		kubelet("n1", map[string]any{"featureGates": map[string]any{"PLEGOnDemandRelist": false}}),
+	}), "1.36", "1.37", cat.ConfigBreakers)
+	if byRule(fired, "rtz-k8s-gate-locked-pleg-on-demand-relist-kubelet") == nil {
+		t.Error("PLEGOnDemandRelist=false in the kubelet map must fire the 1.37 locked-gate rule")
+	}
+}

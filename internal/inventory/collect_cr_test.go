@@ -127,7 +127,7 @@ func collectKinds(t *testing.T, c *cluster.Client, inv *Inventory, resources map
 		if !ok {
 			continue
 		}
-		rows, err := listCustomResources(context.Background(), c, kind, gvr)
+		rows, err := listCustomResources(context.Background(), c, kind, gvr, nil)
 		if err != nil {
 			t.Fatalf("list %s: %v", kind, err)
 		}

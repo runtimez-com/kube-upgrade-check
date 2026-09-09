@@ -78,11 +78,14 @@ An unknown `--fail-on` value is rejected rather than ignored. A typo that quietl
 | Family | What it finds | Rules |
 | --- | --- | --- |
 | Removed APIs | Objects still written at an API version the target removes | 97 |
-| Config breakers | Control-plane flags and kubelet settings the target refuses to start with, including feature gates locked to their default | 382 |
+| Config breakers | Control-plane flags and kubelet settings the target refuses to start with, including feature gates locked to their default | 449 |
 | Volume plugins | In-tree volume plugins that stop mounting | 17 |
-| Node runtime | Container runtime, cgroup version, kubelet and kube-proxy version skew | 8 |
+| Node runtime | Container runtime, cgroup version, kubelet and kube-proxy version skew | 9 |
 | Add-on compatibility | Whether Karpenter, ingress-nginx, cert-manager, Argo CD, CoreDNS, Istio and kube-proxy support the target | 7 catalogs |
-| Advisories | Behaviour changes on the path that no API call can settle | 34 |
+| Release-note rules | Rules extracted from each Kubernetes changelog with the sentence they rest on: a deprecated Service field still set, a label or annotation the release stops honouring, an object still written at a retiring apiVersion | 149 (33 settled from objects; the rest print as reading) |
+| Node runtime, from the kubelet | cgroup v1 hosts and container runtimes the kubelet itself reports as losing support, read from each kubelet's `/metrics` | 2 |
+| Upgrade preflight | What stops the upgrade rather than breaks after it: a skipped minor, nodes not Ready, disruption budgets that block a drain, bare pods, Fail-policy admission and CRD conversion webhooks with no ready backend, unavailable aggregated APIs | 8 checks |
+| Advisories | Behaviour changes on the path that no API call can settle | 36 |
 
 ## How this differs from Pluto and kubent
 
@@ -101,12 +104,13 @@ families it checks.
 | Helm 2 releases | **yes** | no | no |
 | Reads stored Helm 3 release manifests | **yes** | **yes** | no — see below |
 | Managed-fields evidence | no | no | **yes** |
-| Control-plane and kubelet settings the target rejects | no | no | **382 rules** |
+| Control-plane and kubelet settings the target rejects | no | no | **449 rules** |
 | Feature gates locked to a new default | no | no | **yes** |
 | In-tree volume plugins that stop mounting | no | no | **17 rules** |
 | Node runtime and version skew | no | no | **yes** |
 | Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **7 catalogs** |
 | Vendor support dates and extended-support cost | no | no | **yes** |
+| Drain, webhook and aggregated-API preflight | no | no | **yes** |
 | Reports what it could **not** check | no | no | **yes** |
 
 Two of those rows deserve explaining, because they are the reasons this exists.
@@ -168,8 +172,9 @@ The specific gaps, all of them printed at the end of a run with a command to che
   rules cannot be evaluated. The report names the number.
 - **`/metrics`.** Needs `nonResourceURLs: ["/metrics"]`, which is not in the built-in `view` role.
   Without it one evidence tier is missing.
-- **Node configuration.** Reading each kubelet's live config needs `nodes/proxy`. Some managed
-  providers block it.
+- **Node configuration and kubelet metrics.** Reading each kubelet's live config and its
+  `/metrics` (the cgroup version and the container runtime's support horizon) needs
+  `nodes/proxy`. Some managed providers block it.
 - **Objects written before Kubernetes 1.18** carry no managed-field record. If nothing has
   touched an object since, there may be no evidence to find.
 - **Objects written by a client that reset `managedFields`.** Rare, but it erases the record.

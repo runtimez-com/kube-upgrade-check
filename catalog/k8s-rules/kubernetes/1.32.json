@@ -1,0 +1,286 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-audit-credential-ids",
+    "severity": "INFO",
+    "title": "Review audit consumers for X.509 credential IDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "External audit logging configuration, audit storage, and consumers of kube-apiserver audit records are not represented in cluster inventory."
+    },
+    "quote": "- X.509 client certificate authentication to the kube-apiserver now produces credential IDs (derived from the certificate's signature) , for use in audit logging. ([#125634](https://github.com/kubernetes/kubernetes/pull/125634), [@ahmedtd](https://github.com/ahmedtd)) [SIG API Machinery, Auth and Testing]",
+    "remediation": "Review audit logging integrations and consumers that process X.509 client certificate authentication records so they can use the new credential IDs."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-dra-admin-access-allocation",
+    "severity": "HIGH",
+    "title": "Review DRA admin access allocation handling",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "DRA allocation consumers and the DRAAdminAccess feature-gate state are not represented by a reliable cluster-inventory predicate."
+    },
+    "quote": "- DRA: the `DeviceRequestAllocationResult` struct now has an \"AdminAccess\" field which should be used instead of the corresponding field in the `DeviceRequest` field when dealing with an allocation. If a device is only allocated for admin access, allocating it again for normal usage is now supported, as originally intended. To allow admin access, starting with 1.32 the `DRAAdminAccess` feature gate must be enabled. ([#127266](https://github.com/kubernetes/kubernetes/pull/127266), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Auth, Etcd, Network, Node, Scheduling and Testing]",
+    "remediation": "Use the AdminAccess field in DeviceRequestAllocationResult instead of the corresponding field in DeviceRequest when dealing with an allocation. Enable the DRAAdminAccess feature gate to allow admin access.",
+    "verifyCommand": "kubectl get nodes -o name # output lists nodes, but DRA allocation consumers and the DRAAdminAccess feature-gate state must be verified separately"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-node-monitor-grace-period-increased",
+    "severity": "MEDIUM",
+    "title": "Account for the increased node monitor grace period",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The node-monitor-grace-period command-line flag or node-controller configuration is not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "- The default value for node-monitor-grace-period has been increased to 50s (earlier 40s) (Ref - https://github.com/kubernetes/kubernetes/issues/121793) ([#126287](https://github.com/kubernetes/kubernetes/pull/126287), [@devppratik](https://github.com/devppratik)) [SIG API Machinery, Apps and Node]",
+    "remediation": "Review workloads and operational expectations that relied on the earlier 40s value, and account for the new 50s default.",
+    "verifyCommand": "kubectl get nodes -o name # lists Nodes to review; the node-monitor-grace-period configuration is not visible in cluster inventory"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-remove-classic-dra-workloads-and-contexts",
+    "severity": "HIGH",
+    "title": "Remove workloads and PodSchedulingContext resources that depend on classic DRA",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether classic DRA was enabled and which workloads depend on it cannot be determined from cluster inventory; PodSchedulingContext presence alone does not establish that it uses classic DRA."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodSchedulingContext"
+    },
+    "quote": "- Removed all support for _classic_ dynamic resource allocation (DRA). The `DRAControlPlaneController` feature gate, formerly alpha, is no longer available. Kubernetes now only uses the _structured parameters_ model (also alpha) for allocating dynamic resources to Pods.\n\n  if and only if classic DRA was enabled in a cluster, remove all workloads (pods, app deployments, etc. ) which depend on classic DRA and make sure that all PodSchedulingContext resources are gone before upgrading. PodSchedulingContext resources cannot be removed through the apiserver after an upgrade and workloads would not work properly. ([#128003](https://github.com/kubernetes/kubernetes/pull/128003), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Auth, Etcd, Node, Scheduling and Testing]",
+    "remediation": "If and only if classic DRA was enabled in the cluster, remove all workloads (pods, app deployments, etc.) which depend on classic DRA and make sure that all PodSchedulingContext resources are gone before upgrading.",
+    "verifyCommand": "kubectl get podschedulingcontexts -A -o name # output lists PodSchedulingContext resources that must be reviewed and removed when classic DRA was enabled"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-remove-enforce-mountable-secrets-annotation",
+    "severity": "MEDIUM",
+    "title": "Stop using the deprecated ServiceAccount annotation",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "ServiceAccount",
+      "target": "kubernetes.io/enforce-mountable-secrets"
+    },
+    "quote": "- ServiceAccount metadata.annotations[kubernetes.io/enforce-mountable-secrets]: deprecated since v1.32; no removal deadline. Prefer separate namespaces to isolate access to mounted secrets. ([#128396](https://github.com/kubernetes/kubernetes/pull/128396), [@ritazh](https://github.com/ritazh)) [SIG API Machinery, Apps, Auth, CLI and Testing]",
+    "remediation": "Prefer separate namespaces to isolate access to mounted secrets, and stop relying on the `kubernetes.io/enforce-mountable-secrets` ServiceAccount annotation.",
+    "verifyCommand": "kubectl get serviceaccounts --all-namespaces -o json | jq -r '.items[] | select(.metadata.annotations[\"kubernetes.io/enforce-mountable-secrets\"] != null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"' # listed ServiceAccounts use the deprecated annotation"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-remove-removed-scheduler-volume-limit-plugins",
+    "severity": "CRITICAL",
+    "title": "Remove removed volume limit plugins from scheduler configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether these plugins are explicitly enabled is stored in the kube-scheduler configuration, which is not represented in cluster inventory."
+    },
+    "quote": "- kube-scheduler removed `AzureDiskLimits` ,`CinderLimits` `EBSLimits` and `GCEPDLimits` plugin. Given the corresponding CSI driver reports how many volumes a node can handle in NodeGetInfoResponse, the kubelet stores this limit in CSINode and the scheduler then knows the limit of the driver on the node. Removed plugins AzureDiskLimits, CinderLimits, EBSLimits and GCEPDLimits if you explicitly enabled them in the scheduler config. ([#124003](https://github.com/kubernetes/kubernetes/pull/124003), [@carlory](https://github.com/carlory)) [SIG Scheduling, Storage and Testing]",
+    "remediation": "Remove the AzureDiskLimits, CinderLimits, EBSLimits and GCEPDLimits plugins from the scheduler config if you explicitly enabled them.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-scheduler -o yaml | grep -nE 'AzureDiskLimits|CinderLimits|EBSLimits|GCEPDLimits' # matching output identifies scheduler configuration references to review manually"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-resourceclaim-reservedfor-downgrade-limit",
+    "severity": "HIGH",
+    "title": "ResourceClaims with more than 32 reserved pods prevent downgrade to Kubernetes 1.32.0",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected condition is a count greater than 32 in the status.reservedFor field, which cannot be represented by the available single-field predicates; the query names matching ResourceClaim objects."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "- DRA API: the maximum number of pods which can use the same ResourceClaim is now 256 instead of 32. Beware that downgrading a cluster where this relaxed limit is in use to Kubernetes 1.32.0 is not supported because 1.32.0 would refuse to update ResourceClaims with more than 32 entries in the status.reservedFor field. ([#129544](https://github.com/kubernetes/kubernetes/pull/129544), [@pohly](https://github.com/pohly)) [SIG API Machinery, Node and Testing]",
+    "remediation": "Do not downgrade a cluster to Kubernetes 1.32.0 while any ResourceClaim has more than 32 entries in status.reservedFor."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-resourceslice-listmeta-renamed",
+    "severity": "MEDIUM",
+    "title": "Update clients that consume ResourceSliceList listMeta",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The API group is not stated, and cluster inventory cannot determine whether external clients consume the ResourceSliceList listMeta field."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceSlice"
+    },
+    "quote": "- The resource/v1alpha3.ResourceSliceList filed which should have been named \"metadata\" but was instead named \"listMeta\" is now properly \"metadata\". ([#126749](https://github.com/kubernetes/kubernetes/pull/126749), [@thockin](https://github.com/thockin)) [SIG API Machinery]",
+    "remediation": "Update clients that consume ResourceSliceList to use the metadata field instead of listMeta, and verify compatibility before upgrading.",
+    "verifyCommand": "kubectl get --raw /api | grep -i resourceslice # shows only core API discovery; client usage of ResourceSliceList remains outside cluster inventory"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-disable-node-kube-proxy-version-gate",
+    "severity": "MEDIUM",
+    "title": "Review DisableNodeKubeProxyVersion feature-gate configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate command-line configuration is not represented in cluster inventory; verify component configuration manually."
+    },
+    "quote": "- Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year from deprecation announcement in 1.29 to clearing the field by default, per the [Kubernetes deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/). ([#126720](https://github.com/kubernetes/kubernetes/pull/126720), [@liggitt](https://github.com/liggitt)) [SIG Architecture and Node]",
+    "remediation": "Verify manually whether any component relies on the `DisableNodeKubeProxyVersion` feature gate being enabled, and update the configuration for the default-off behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-kubelet-fine-grained-authz",
+    "severity": "MEDIUM",
+    "title": "Review RBAC access to kubelet subresources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether KubeletFineGrainedAuthz is enabled and whether callers rely on nodes/proxy access cannot be settled from cluster inventory alone."
+    },
+    "quote": "- Revised the kubelet API Authorization with new subresources, that allow finer-grained authorization checks and access control for kubelet endpoints.\n  Provided you enable the `KubeletFineGrainedAuthz` feature gate, you can access kubelet's `/healthz` endpoint by granting the caller `nodes/helathz` permission in RBAC.\n  Similarly you can also access  kubelet's `/pods` endpoint to fetch a list of Pods bound to that node by granting the caller `nodes/pods` permission in RBAC.\n  Similarly you can also access  kubelet's `/configz` endpoint to fetch kubelet's configuration by granting the caller `nodes/configz` permission in RBAC.\n  You can still access kubelet's `/healthz`, `/pods` and `/configz` by granting the caller `nodes/proxy` permission in RBAC but that also grants the caller permissions to exec, run and attach to containers on the nodes and doing so does not follow the least privilege principle. Granting callers more permissions than they need can give attackers an opportunity to escalate privileges. ([#126347](https://github.com/kubernetes/kubernetes/pull/126347), [@vinayakankugoyal](https://github.com/vinayakankugoyal)) [SIG API Machinery, Auth, Cluster Lifecycle and Node]",
+    "remediation": "If you enable the KubeletFineGrainedAuthz feature gate, review callers of kubelet endpoints and grant only the corresponding finer-grained nodes/helathz, nodes/pods, or nodes/configz permissions instead of nodes/proxy where least privilege is required.",
+    "verifyCommand": "kubectl get clusterrole,role -A -o json | jq -r '.items[] | select(any(.rules[]?; any(.resources[]?; . == \"nodes/proxy\"))) | [.kind,.metadata.namespace,.metadata.name] | @tsv' # output lists RBAC objects granting nodes/proxy that should be reviewed for narrower kubelet subresource permissions"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-scheduler-async-preemption",
+    "severity": "LOW",
+    "title": "Review the SchedulerAsyncPreemption feature gate",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "namespace": "kube-system",
+      "reason": "Whether the scheduler feature gate is enabled is component configuration, not a supported cluster-inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod",
+      "namespace": "kube-system"
+    },
+    "quote": "Added alpha support for asynchronous Pod preemption.\n  When the `SchedulerAsyncPreemption` feature gate is enabled, the scheduler now runs API calls to trigger preemptions asynchronously for better performance. ([#128170](https://github.com/kubernetes/kubernetes/pull/128170), [@sanposhiho](https://github.com/sanposhiho)) [SIG Scheduling and Testing]",
+    "remediation": "When the `SchedulerAsyncPreemption` feature gate is enabled, review the scheduler's asynchronous preemption behavior and performance impact.",
+    "verifyCommand": "kubectl get pods -n kube-system -l component=kube-scheduler -o yaml | grep SchedulerAsyncPreemption # a matching feature-gate argument requires manual review"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-service-account-token-audiences",
+    "severity": "HIGH",
+    "title": "Review kubelet service account token audience volumes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory can identify Pod volumes containing service account token audiences, but cannot determine the audience value kubelet will request and therefore cannot settle whether NodeRestriction will reject it."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "- NodeRestriction admission now validates the audience value that kubelet is requesting a service account token for is part of the pod spec volume. This change is introduced with a new kube-apiserver featuregate `ServiceAccountNodeAudienceRestriction` that's enabled by default. ([#128077](https://github.com/kubernetes/kubernetes/pull/128077), [@aramase](https://github.com/aramase)) [SIG Auth, Storage and Testing]",
+    "remediation": "Review Pods with service account token volume audiences and ensure the audience value that kubelet requests is part of the Pod spec volume before upgrading.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select([.spec.volumes[]?.projected.sources[]?.serviceAccountToken?.audience] | any) | [.metadata.namespace,.metadata.name] | @tsv' # output lists Pods with service account token audiences that require manual audience review"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-single-process-oom-kill",
+    "severity": "MEDIUM",
+    "title": "Review the kubelet singleProcessOOMKill setting",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet configuration and whether cgroups v2 is in use are node-host configuration details not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Added `singleProcessOOMKill` flag to the kubelet configuration. Setting that to true enable single process OOM killing in cgroups v2. In this mode, if a single process is OOM killed within a container, the remaining processes will not be OOM killed. ([#126096](https://github.com/kubernetes/kubernetes/pull/126096), [@utam0k](https://github.com/utam0k)) [SIG API Machinery, Node, Testing and Windows]",
+    "remediation": "Review the kubelet configuration and set `singleProcessOOMKill` to true only when single process OOM killing in cgroups v2 is desired.",
+    "verifyCommand": "kubectl get nodes -o name # lists nodes whose kubelet configuration should be checked manually"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-review-unsafe-malformed-object-deletion",
+    "severity": "HIGH",
+    "title": "Review use of unsafe deletion of corrupt resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "namespace": "kube-system",
+      "reason": "Whether the kube-apiserver feature gate is enabled and whether clients request the unsafe delete option is configuration and request behavior, not a supported cluster-inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod",
+      "namespace": "kube-system"
+    },
+    "quote": "A new feature that allows unsafe deletion of corrupt resources has been added, it is disabled by default,\n  and it can be enabled by setting the option `--feature-gates=AllowUnsafeMalformedObjectDeletion=true`.\n  It comes with an API change, a new delete option `ignoreStoreReadErrorWithClusterBreakingPotential` has\n  been introduced, it is not set by default, this maintains backward compatibility.\n  In order to perform an unsafe deletion of a corrupt resource, the user must enable the option for the delete\n  request. A resource is considered corrupt if it can not be successfully retrieved from the storage due to\n  a) transformation error e.g. decryption failure, or b) the object failed to decode. Normal deletion flow is\n  attempted first, and if it fails with a corrupt resource error then it triggers unsafe delete.\n  In addition, when this feature is enabled, the 'details' field of 'Status' from the LIST response\n  includes information that identifies the corrupt object(s).\n  NOTE: unsafe deletion ignores finalizer constraints, and skips precondition checks.\n  WARNING: this may break the workload associated with the resource being unsafe-deleted, if it relies on the\n  normal deletion flow, so cluster breaking consequences apply. ([#127513](https://github.com/kubernetes/kubernetes/pull/127513), [@tkashem](https://github.com/tkashem)) [SIG API Machinery, Etcd, Node and Testing]",
+    "remediation": "The feature is disabled by default. If enabling it, understand that unsafe deletion ignores finalizer constraints, skips precondition checks, and may break the workload associated with the resource being unsafe-deleted.",
+    "verifyCommand": "kubectl get pods -n kube-system -l component=kube-apiserver -o yaml | grep -E 'AllowUnsafeMalformedObjectDeletion|ignoreStoreReadErrorWithClusterBreakingPotential' # matching feature-gate or delete-option configuration requires manual review"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-selinux-change-policy",
+    "severity": "MEDIUM",
+    "title": "Review SELinux volume relabeling behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether cluster nodes run with SELinux enabled and whether SELinuxMount and SELinuxChangePolicy feature gates are enabled cannot be settled from the collected Pod inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "- Implemented a new, alpha `seLinuxChangePolicy` field within a Pod-level `securityContext`, under SELinuxChangePolicy feature gate. This field allows for opting out from mounting Pod volumes with SELinux label when SELinuxMount feature is enabled (it is alpha and disabled by default now).\n  Please see [the KEP](https://github.com/kubernetes/enhancements/tree/master/keps/sig-storage/1710-selinux-relabeling#story-3-cluster-upgrade) how we expect to warn users before any SELinux behavior changes and how they can opt-out before. Note that this field and feature gate is useful only with clusters that run with SELinux enabled. No action is required on clusters without SELinux. ([#127981](https://github.com/kubernetes/kubernetes/pull/127981), [@jsafrane](https://github.com/jsafrane)) [SIG API Machinery, Apps, Architecture, Node, Storage and Testing]",
+    "remediation": "On clusters that run with SELinux enabled, review the KEP and use the seLinuxChangePolicy field and SELinuxChangePolicy feature gate as needed before SELinux behavior changes. No action is required on clusters without SELinux.",
+    "verifyCommand": "kubectl get pods --all-namespaces -o name # output names Pods to inspect alongside node SELinux status and SELinux feature-gate settings"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-soft-eviction-termination-grace-period",
+    "severity": "MEDIUM",
+    "title": "Review termination grace period overwrite behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Soft-eviction settings and the AllowOverwriteTerminationGracePeriodSeconds feature-gate state are kubelet or node-host configuration, not settled by cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "- Fixed the bug where `spec.terminationGracePeriodSeconds` of the pod will always be overwritten by the MaxPodGracePeriodSeconds of the soft eviction, you can enable the `AllowOverwriteTerminationGracePeriodSeconds` feature gate, which will restore the previous behavior.  If you do need to set this, please file an issue with the Kubernetes project to help contributors understand why you needed it. ([#122890](https://github.com/kubernetes/kubernetes/pull/122890), [@HirazawaUi](https://github.com/HirazawaUi)) [SIG API Machinery, Architecture, Node and Testing]",
+    "remediation": "If the previous behavior is required, enable the AllowOverwriteTerminationGracePeriodSeconds feature gate and file an issue with the Kubernetes project explaining why it is needed.",
+    "verifyCommand": "kubectl get nodes -o name # output names Nodes whose kubelet soft-eviction and feature-gate settings should be checked"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-structured-authentication-extra-keys",
+    "severity": "HIGH",
+    "title": "Remove disallowed namespaced authentication keys",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Structured authentication configuration is node-host configuration and its namespaced extra keys are not exposed as cluster inventory objects."
+    },
+    "quote": "- Disallow `k8s.io` and `kubernetes.io` namespaced extra key in structured authentication configuration. ([#126553](https://github.com/kubernetes/kubernetes/pull/126553), [@aramase](https://github.com/aramase)) [SIG Auth]",
+    "remediation": "Remove `k8s.io` and `kubernetes.io` namespaced extra keys from the structured authentication configuration before upgrading.",
+    "verifyCommand": "kubectl get --raw /configz # output may expose kube-apiserver configuration; inspect structured authentication configuration for disallowed namespaced extra keys"
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-update-out-of-tree-postfilter-plugins",
+    "severity": "HIGH",
+    "title": "Update out-of-tree PostFilter plugin usage of NodeToStatusMap",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Out-of-tree PostFilter plugin source and build compatibility are not represented in cluster inventory."
+    },
+    "quote": "Changed NodeToStatusMap from a map to a struct and exposed methods to access the entries. Added absentNodesStatus, which informs the status of nodes that are absent in the map. For developers of out-of-tree PostFilter plugins, ensure to update the usage of NodeToStatusMap. Additionally, NodeToStatusMap should eventually be renamed to NodeToStatusReader. ([#126022](https://github.com/kubernetes/kubernetes/pull/126022), [@macsko](https://github.com/macsko)) [SIG Node, Scheduling, and Testing]",
+    "remediation": "For developers of out-of-tree PostFilter plugins, ensure to update the usage of NodeToStatusMap."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-update-pod-preemption-plugin-interface",
+    "severity": "HIGH",
+    "title": "Update custom scheduler plugins for the PodEligibleToPreemptOthers signature",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Custom scheduler plugin source and build compatibility are not represented in cluster inventory."
+    },
+    "quote": "**ACTION REQUIRED** for custom scheduler plugin developers:\n  `PodEligibleToPreemptOthers` in the `preemption` interface now includes `ctx` in the parameters.\n  Please update your plugins' implementation accordingly. ([#126465](https://github.com/kubernetes/kubernetes/pull/126465), [@googs1025](https://github.com/googs1025)) [SIG Scheduling]",
+    "remediation": "Update your plugins' implementation accordingly to include `ctx` in the `PodEligibleToPreemptOthers` parameters."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.32-validate-image-credential-provider-config",
+    "severity": "HIGH",
+    "title": "Validate kubelet image credential provider configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet flag and referenced file are node-host configuration and are not exposed through cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "- kubelet: the `--image-credential-provider-config` file was loaded with strict deserialization, which failed if the config file contained duplicate or unknown fields. This protected against accidentally running with malformed config files, unindented files, or typos in field names, and it prevented unexpected behavior. ([#128062](https://github.com/kubernetes/kubernetes/pull/128062), [@aramase](https://github.com/aramase)) [SIG Auth and Node]",
+    "remediation": "Check the file passed to `--image-credential-provider-config` and correct duplicate or unknown fields, malformed formatting, unindented content, and field-name typos before upgrading.",
+    "verifyCommand": "kubectl get nodes -o name # output identifies nodes whose kubelet host configuration must be checked manually; it cannot validate the credential provider file"
+  }
+]
