@@ -19,12 +19,13 @@ func TestLoadEmbedded(t *testing.T) {
 	}{
 		{"deprecation rules", len(c.DeprecationRules), 97},
 		{"detector table", len(c.DetectorTable), 80},
-		{"config breakers", len(c.ConfigBreakers), 382},
+		{"config breakers", len(c.ConfigBreakers), 449},
 		{"volume plugins", len(c.VolumePlugins), 17},
-		{"node runtime", len(c.NodeRuntime), 8},
-		{"advisories", len(c.Advisories), 34},
+		{"node runtime", len(c.NodeRuntime), 9},
+		{"advisories", len(c.Advisories), 36},
 		{"addons", len(c.Addons), 7},
 		{"adoption", len(c.AdoptionRules), 13},
+		{"generated rules", len(c.GeneratedRules), 149},
 	}
 	for _, ch := range checks {
 		if ch.got < ch.min {

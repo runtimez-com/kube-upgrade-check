@@ -18,6 +18,7 @@ type Inventory struct {
 
 	Nodes             []Node
 	KubeletConfigs    []KubeletConfig
+	KubeletMetrics    []KubeletMetrics
 	ControlPlanePods  []ControlPlanePod
 	Workloads         []Workload
 	StandalonePods    []Pod
@@ -28,11 +29,22 @@ type Inventory struct {
 	CRDs              []CRD
 	// CRs is keyed by kind. A kind that could not be read is ABSENT from this map rather than
 	// present and empty: an add-on rule must decline on an unread kind, not report it clean.
-	CRs       map[string][]CustomResource
-	Ingresses []Ingress
-	CoreDNS   []CoreDNSConfig
-	KubeProxy *KubeProxyConfig
-	APIUsage  []APIUsage
+	CRs map[string][]CustomResource
+	// CRUnread names the kinds that are served but could not be listed, with the reason, and
+	// CRNotServed the kinds a catalog asked for that this cluster does not serve at all. The
+	// difference decides whether a rule declines (a gap to print) or does not apply (nothing to
+	// print): both leave the kind absent from CRs, and absence alone cannot say which.
+	CRUnread    map[string]string
+	CRNotServed map[string]bool
+	Ingresses   []Ingress
+	CoreDNS     []CoreDNSConfig
+	KubeProxy   *KubeProxyConfig
+	APIUsage    []APIUsage
+
+	// Operational preflight: what would stop the upgrade itself rather than break after it.
+	PDBs        []PDB
+	Webhooks    []Webhook
+	APIServices []APIService
 
 	// Collected records what each collector managed to read. Evaluators consult it before
 	// concluding anything from an empty slice.
@@ -90,6 +102,9 @@ type Node struct {
 	ContainerRuntimeVersion string
 	KernelVersion           string
 	OSImage                 string
+	// Conditions is type -> status ("Ready" -> "True") from Node status, for the preflight
+	// readiness check; a node that is not Ready cannot take an upgrade's rescheduled pods.
+	Conditions map[string]string
 	// Status carries every top-level status field, for catalog rules that name one by string.
 	Status map[string]any
 }
@@ -166,6 +181,9 @@ type PVC struct {
 type CRD struct {
 	Name           string
 	ServedVersions []string
+	// Conversion is filled by the preflight collector from Spec when the CRD converts through a
+	// webhook; nil otherwise.
+	Conversion *Conversion
 	// LastAppliedConfigurationPresent and ClientSideApplyManager record how this CRD was
 	// installed. A true value proves client-side apply was used; a false one proves only that
 	// this particular signal is absent, which is why rules may only fire on true.
@@ -182,6 +200,14 @@ type CustomResource struct {
 	Labels         map[string]string
 	AnnotationKeys []string
 	Spec           map[string]any
+	// APIVersion is the version the object was read at. WrittenAt is every apiVersion a
+	// manager recorded in metadata.managedFields, which is the version its manifests still
+	// speak, and is the evidence a "still in use" rule rests on.
+	APIVersion string
+	WrittenAt  []string
+	Managers   []string // distinct managedFields managers, so evidence can say who wrote it
+	// Status is kept for the kinds whose rules read it. Projected the same way as Spec.
+	Status map[string]any
 }
 
 // Ref is the "namespace/name" form used in findings.

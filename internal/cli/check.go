@@ -13,8 +13,10 @@ import (
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/addons"
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/advisory"
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/configbreaker"
+	"github.com/runtimez-com/kube-upgrade-check/internal/eval/generated"
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/noderuntime"
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/plugins"
+	"github.com/runtimez-com/kube-upgrade-check/internal/eval/preflight"
 	"github.com/runtimez-com/kube-upgrade-check/internal/eval/removedapi"
 	"github.com/runtimez-com/kube-upgrade-check/internal/inventory"
 	"github.com/runtimez-com/kube-upgrade-check/internal/render"
@@ -114,6 +116,14 @@ func runCheck(cmd *cobra.Command, opts checkOptions) error {
 	// Which custom resources matter is decided by the add-on catalogs, so the list is read from
 	// them rather than hard-coded here.
 	inventory.CollectCustomResources(ctx, client, inv, addonInventoryKinds(cat))
+	// Release-note rules read a few fields of a few more kinds; the projection keeps the read
+	// cheap on a large cluster. A kind the add-on collector already read in full is not read twice.
+	inventory.CollectRuleObjects(ctx, client, inv, generated.Wants(cat, currentVersion, targetVersion))
+	// Metric-backed node rules read each kubelet's /metrics; the names come from the catalog.
+	inventory.CollectKubeletMetrics(ctx, client, inv, noderuntime.MetricNames(cat.NodeRuntime))
+	// Disruption budgets, admission webhooks and aggregated APIs decide whether the upgrade can
+	// proceed at all, independent of the target version.
+	inventory.CollectPreflight(ctx, client, inv)
 	evidence := source.Scan(ctx, client, cat, targetVersion)
 	inv.APIUsage = source.ToInventory(evidence.Usages)
 
@@ -189,6 +199,14 @@ func assemble(inv *inventory.Inventory, evidence source.Result, cat *catalog.Cat
 	coverage = append(coverage, nrCoverage...)
 
 	findings = append(findings, advisory.Analyze(currentVersion, targetVersion, inv.ClusterName, cat.Advisories)...)
+
+	genFindings, genCoverage := generated.Analyze(inv, evidence.Served, currentVersion, targetVersion, cat)
+	findings = append(findings, genFindings...)
+	coverage = append(coverage, genCoverage...)
+
+	pfFindings, pfCoverage := preflight.Analyze(inv, currentVersion, targetVersion)
+	findings = append(findings, pfFindings...)
+	coverage = append(coverage, pfCoverage...)
 
 	addonResult := addons.Analyze(inv, currentVersion, targetVersion, cat.Addons, now)
 	findings = append(findings, addonResult.Findings...)

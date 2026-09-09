@@ -227,6 +227,10 @@ func collectNodes(ctx context.Context, c *cluster.Client) ([]Node, error) {
 			node.Status["osImage"] = n.Status.NodeInfo.OSImage
 			node.Status["operatingSystem"] = n.Status.NodeInfo.OperatingSystem
 			node.Status["architecture"] = n.Status.NodeInfo.Architecture
+			node.Conditions = map[string]string{}
+			for _, cond := range n.Status.Conditions {
+				node.Conditions[string(cond.Type)] = string(cond.Status)
+			}
 			out = append(out, node)
 		}
 		return list.Continue, nil

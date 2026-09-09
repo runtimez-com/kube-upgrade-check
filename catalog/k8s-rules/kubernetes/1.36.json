@@ -1,0 +1,262 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-configure-concurrent-node-status-updates",
+    "severity": "MEDIUM",
+    "title": "Review the split node status update concurrency flag",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected cloud provider component command-line flags are not available in cluster inventory."
+    },
+    "quote": "Added new `concurrent-node-status-updates` flag that is split from the `concurrent-node-syncs` flag. ([#136716](https://github.com/kubernetes/kubernetes/pull/136716), [@yonizxz](https://github.com/yonizxz)) [SIG Cloud Provider]",
+    "remediation": "Review cloud provider component configuration and set the new `concurrent-node-status-updates` flag separately from `concurrent-node-syncs` as appropriate."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-dra-resourceclaim-granular-status-rbac",
+    "severity": "HIGH",
+    "title": "Grant granular RBAC permissions for DRA ResourceClaim status updates",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether the required granular RBAC permissions are granted or whether the DRAResourceClaimGranularStatusAuthorization feature gate is enabled."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "ACTION REQUIRED: DRA (Dynamic Resource Allocation) drivers and controllers now require granular RBAC permissions to update ResourceClaim statuses when the `DRAResourceClaimGranularStatusAuthorization` feature gate is enabled (beta in `v1.36`). Schedulers and controllers must be granted `update`/`patch` on `resourceclaims/binding`. DRA drivers must be granted `associated-node:update` or `arbitrary-node:update` (or patch equivalents) on `resourceclaims/driver`, restricted by their specific `resourceNames`. ([#134947](https://github.com/kubernetes/kubernetes/pull/134947), [@aojea](https://github.com/aojea)) [SIG API Machinery, Apps, Auth, Instrumentation, Node, Scheduling and Testing]",
+    "remediation": "When the `DRAResourceClaimGranularStatusAuthorization` feature gate is enabled, grant schedulers and controllers `update`/`patch` on `resourceclaims/binding`, and grant DRA drivers `associated-node:update` or `arbitrary-node:update` (or patch equivalents) on `resourceclaims/driver`, restricted by their specific `resourceNames`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-enable-device-taint-rules-api-and-gate",
+    "severity": "MEDIUM",
+    "title": "Verify DeviceTaintRules API and feature gate enablement",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "DeviceTaintRule",
+      "target": "resource.k8s.io/v1beta2"
+    },
+    "quote": "DRA: Graduated device taints and tolerations (KEP #5055) to beta. Support for DeviceTaints in ResourceSlices is on by default. Support for `DeviceTaintRules` depends on enabling `resource.k8s.io/v1beta2` and the `DeviceTaintRules` feature gate. ([#137170](https://github.com/kubernetes/kubernetes/pull/137170), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Auth, Cluster Lifecycle, Etcd, Node, Scheduling and Testing]",
+    "remediation": "If using `DeviceTaintRules`, enable `resource.k8s.io/v1beta2` and the `DeviceTaintRules` feature gate."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-git-repo-volume-plugin-disabled",
+    "severity": "HIGH",
+    "title": "git-repo volume plugin is disabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The inventory predicates cannot inspect nested volume sources to identify workloads using the git-repo volume plugin."
+    },
+    "quote": "Disabled `git-repo` volume plugin by default, with no option to turn it back on. ([#136400](https://github.com/kubernetes/kubernetes/pull/136400), [@vinayakankugoyal](https://github.com/vinayakankugoyal)) [SIG Storage]",
+    "remediation": "Migrate workloads away from the `git-repo` volume plugin before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-migrate-portworx-in-tree-volumes-to-csi",
+    "severity": "HIGH",
+    "title": "Migrate Portworx volumes to CSI",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "PersistentVolume",
+      "target": "portworxVolume"
+    },
+    "quote": "Removed the in-tree Portworx volume plugin, completing the migration to CSI.\n  Removed the GA `CSIMigrationPortworx` feature gate (locked since `v1.33`) and alpha `InTreePluginPortworxUnregister` feature gate, with all operations now redirected to CSI. ([#135322](https://github.com/kubernetes/kubernetes/pull/135322), [@carlory](https://github.com/carlory)) [SIG API Machinery, Apps, Auth, Node, Scalability, Scheduling, Storage and Testing]",
+    "remediation": "Migrate Portworx volumes to CSI before upgrading; all operations are now redirected to CSI."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-migrate-volumeattributesclass-to-v1",
+    "severity": "MEDIUM",
+    "title": "Use the preferred VolumeAttributesClass storage version",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "VolumeAttributesClass",
+      "target": "storage.k8s.io/v1beta1"
+    },
+    "quote": "Locked the `VolumeAttributesClass` feature gate to `true` and updated the preferred storage version to `storage.k8s.io/v1`. ([#134556](https://github.com/kubernetes/kubernetes/pull/134556), [@carlory](https://github.com/carlory)) [SIG API Machinery, Apps, Etcd, Network, Node, Scheduling, Storage and Testing]",
+    "remediation": "Update VolumeAttributesClass objects and clients to use the preferred `storage.k8s.io/v1` version."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-migrate-workload-api-v1alpha1",
+    "severity": "HIGH",
+    "title": "Migrate removed scheduling Workload API",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "Workload",
+      "target": "scheduling.k8s.io/v1alpha1"
+    },
+    "quote": "Introduced `scheduling.k8s.io/v1alpha2` Workload and PodGroup API to express workload-level scheduling requirements and let `kube-scheduler` act on those. Removed `scheduling.k8s.io/v1alpha1` Workload API. ([#136976](https://github.com/kubernetes/kubernetes/pull/136976), [@tosi3k](https://github.com/tosi3k)) [SIG API Machinery, Apps, Auth, CLI, Cloud Provider, Etcd, Node, Scheduling, Storage and Testing]",
+    "remediation": "Migrate Workload objects and clients from `scheduling.k8s.io/v1alpha1` to `scheduling.k8s.io/v1alpha2` before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-pod-level-resource-resizing",
+    "severity": "INFO",
+    "title": "Pod-level CPU and memory resources can be resized in place",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resources"
+    },
+    "quote": "Graduated the `InPlacePodLevelResourcesVerticalScaling` feature gate to beta, enabled by default. Pod-level CPU and memory resources can be resized in place for Pods with pod-level resources configured. ([#137684](https://github.com/kubernetes/kubernetes/pull/137684), [@ndixita](https://github.com/ndixita)) [SIG API Machinery, Apps, Autoscaling, Node, Release, Scheduling and Testing]",
+    "remediation": "Verify the behavior of Pods with pod-level resources configured when the feature gate is enabled by default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-pod-resize-admission-failure",
+    "severity": "HIGH",
+    "title": "Pod resize requests may fail admission",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether a requested Pod resize exceeds node allocatable capacity or whether the node OS supports resize."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "For Pod resizes requested on nodes where the resize request exceeds the node's allocatable capacity or the node is running an OS that does not support resize, the request fails in admission rather than being marked as Infeasible in the Pod status later. ([#136043](https://github.com/kubernetes/kubernetes/pull/136043), [@natasha41575](https://github.com/natasha41575)) [SIG API Machinery, Node, Release, Scheduling, Storage and Testing]",
+    "remediation": "Verify manually that Pod resize requests fit within node allocatable capacity and that the nodes run an OS that supports resize."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-remove-negative-image-minimum-gc-age",
+    "severity": "CRITICAL",
+    "title": "Correct negative imageMinimumGCAge values",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`imageMinimumGCAge` is a kubelet node-host configuration value and is not available in cluster inventory."
+    },
+    "quote": "Added validation to prevent negative duration values for `imageMinimumGCAge`. ([#135997](https://github.com/kubernetes/kubernetes/pull/135997), [@ngopalak-redhat](https://github.com/ngopalak-redhat)) [SIG API Machinery and Node]",
+    "remediation": "Verify kubelet configuration manually and remove any negative duration value for `imageMinimumGCAge`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-remove-noncanonical-ip-and-cidr-values",
+    "severity": "HIGH",
+    "title": "Correct noncanonical IP and CIDR values",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected IP and CIDR values can occur in multiple API fields, and the available cluster inventory does not provide a single collected field that can identify all noncanonical values."
+    },
+    "quote": "The `StrictIPCIDRValidation` feature gate in `kube-apiserver` is enabled by default, meaning that API fields no longer allow IP or CIDR values with extraneous leading \"0\"s (e.g., `010.000.000.005` rather than `10.0.0.5`) or CIDR subnet/mask values with ambiguous semantics (e.g., `192.168.0.5/24` rather than `192.168.0.0/24` or `192.168.0.5/32`). ([#137053](https://github.com/kubernetes/kubernetes/pull/137053), [@danwinship](https://github.com/danwinship)) [SIG Network and Testing]",
+    "remediation": "Verify manually that API fields use IP values without extraneous leading \"0\"s and use unambiguous CIDR subnet and mask values before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-rename-etcd-bookmark-metric",
+    "severity": "MEDIUM",
+    "title": "Update monitoring references to the renamed etcd bookmark metric",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Custom monitoring dashboards and alerting rules are external to cluster inventory."
+    },
+    "quote": "ACTION REQUIRED: Renamed metric `etcd_bookmark_counts` to `etcd_bookmark_total`. If you are using custom monitoring dashboards or alerting rules based on the `etcd_bookmark_counts` metric, update them to use the new `etcd_bookmark_total` metric. ([#136483](https://github.com/kubernetes/kubernetes/pull/136483), [@petern48](https://github.com/petern48)) [SIG API Machinery, Etcd, Instrumentation and Testing]",
+    "remediation": "If you are using custom monitoring dashboards or alerting rules based on the `etcd_bookmark_counts` metric, update them to use the new `etcd_bookmark_total` metric."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-replace-deprecated-scheduler-score-fields",
+    "severity": "MEDIUM",
+    "title": "Replace deprecated scheduler score fields",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Scheduler configuration fields are stored in node-host configuration and are not available in cluster inventory."
+    },
+    "quote": "Added the PlacementScore extension point to the scheduler for scoring placements in placement-based PodGroup scheduling, guarded by the `TopologyAwareWorkloadScheduling` feature gate. Deprecated `MinNodeScore` and `MaxNodeScore` in favor of `MinScore` and `MaxScore`. ([#137201](https://github.com/kubernetes/kubernetes/pull/137201), [@brejman](https://github.com/brejman)) [SIG Scheduling]",
+    "remediation": "Verify scheduler configuration manually and replace `MinNodeScore` and `MaxNodeScore` with `MinScore` and `MaxScore`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-service-externalips-deprecated",
+    "severity": "MEDIUM",
+    "title": "Service externalIPs is deprecated",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Service",
+      "target": "externalIPs"
+    },
+    "quote": "Added warnings and deprecation for Service `.spec.externalIPs`. ([#137293](https://github.com/kubernetes/kubernetes/pull/137293), [@adrianmoisey](https://github.com/adrianmoisey)) [SIG Apps, Network and Windows]",
+    "remediation": "Review Services using `.spec.externalIPs` and migrate away from this deprecated field."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-update-newlifecycle-consumers",
+    "severity": "HIGH",
+    "title": "Update consumers of NewLifecycle for the sets.Set[string] change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether external consumers of the apiserver admission subsystem's NewLifecycle function exist; verify manually."
+    },
+    "quote": "Changed deprecated `sets.String` with `sets.Set[string]` in apiserver admission subsystem. This is a **breaking change** for consumers of the `NewLifecycle` function. ([#134044](https://github.com/kubernetes/kubernetes/pull/134044), [@mcallzbl](https://github.com/mcallzbl)) [SIG API Machinery and Auth]",
+    "remediation": "Update consumers of the `NewLifecycle` function to use `sets.Set[string]` instead of the deprecated `sets.String`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-update-prebind-plugin-implementations",
+    "severity": "HIGH",
+    "title": "Update PreBind plugin implementations",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Custom scheduler plugin implementations and their source or build configuration are not represented in cluster inventory."
+    },
+    "quote": "Added support for running PreBind plugins in parallel in the scheduler framework to improve binding latency.\n  ACTION REQUIRED: Plugins can opt-in to parallel execution by returning `AllowParallel: true` from the `PreBindPreFlight` method. PreBind plugin implementations need to be updated to return `PreBindPreFlightResult` from the `PreBindPreFlight` method; returning nil retains the existing sequential behavior. ([#135393](https://github.com/kubernetes/kubernetes/pull/135393), [@tosi3k](https://github.com/tosi3k)) [SIG Node, Scheduling, Storage and Testing]",
+    "remediation": "PreBind plugin implementations need to be updated to return `PreBindPreFlightResult` from the `PreBindPreFlight` method; returning nil retains the existing sequential behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-update-volume-operation-metric",
+    "severity": "MEDIUM",
+    "title": "Update volume operation monitoring metric",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Custom monitoring dashboards and alerting rules are external to cluster inventory."
+    },
+    "quote": "ACTION REQUIRED:\n  kube-controller-manager: Renamed metric `volume_operation_total_errors` to `volume_operation_errors_total`. If you are using custom monitoring dashboards or alerting rules based on the `volume_operation_total_errors` metric, update them to use the new `volume_operation_errors_total` metric. ([#136399](https://github.com/kubernetes/kubernetes/pull/136399), [@tico88612](https://github.com/tico88612)) [SIG Apps, Instrumentation, Storage and Testing]",
+    "remediation": "If you are using custom monitoring dashboards or alerting rules based on the `volume_operation_total_errors` metric, update them to use the new `volume_operation_errors_total` metric."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-validate-podgroup-workload-reference",
+    "severity": "MEDIUM",
+    "title": "Validate PodGroup Workload references and templates",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodGroup"
+    },
+    "quote": "Added an admission plugin that validates PodGroup resources reference an existing Workload and match the declared PodGroupTemplate spec. ([#137464](https://github.com/kubernetes/kubernetes/pull/137464), [@helayoty](https://github.com/helayoty)) [SIG API Machinery, Apps, Auth, CLI, Cloud Provider, Etcd, Node, Scheduling and Testing]",
+    "remediation": "Ensure PodGroup resources reference an existing Workload and match the declared PodGroupTemplate spec."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-verify-configz-consumers",
+    "severity": "MEDIUM",
+    "title": "Verify consumers of component configz endpoints",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "External consumers of component /configz endpoints are not represented in cluster inventory."
+    },
+    "quote": "Updated the `/configz` endpoint of `kubelet`, `kube-scheduler`, cloud controller manager, and `kube-proxy` to serialize the `APIVersion` and `Kind` fields and use public types instead of internal. ([#136044](https://github.com/kubernetes/kubernetes/pull/136044), [@SergeyKanzhelev](https://github.com/SergeyKanzhelev)) [SIG API Machinery, Cloud Provider, Cluster Lifecycle, Network, Node, Scheduling and Testing]",
+    "remediation": "Verify that consumers of the `/configz` endpoint of `kubelet`, `kube-scheduler`, cloud controller manager, and `kube-proxy` accept the serialized `APIVersion` and `Kind` fields and public types instead of internal types."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-verify-constrained-impersonation-clients",
+    "severity": "MEDIUM",
+    "title": "Verify impersonation clients with ConstrainedImpersonation enabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine which external clients, users, or automation use impersonation requests affected by ConstrainedImpersonation."
+    },
+    "quote": "Promoted the `ConstrainedImpersonation` feature to beta, enabled by default. ([#137609](https://github.com/kubernetes/kubernetes/pull/137609), [@enj](https://github.com/enj)) [SIG API Machinery and Testing]",
+    "remediation": "Verify manually that clients and automation using impersonation continue to work with `ConstrainedImpersonation` enabled by default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-verify-memoryqos-cgroup-v2-behavior",
+    "severity": "MEDIUM",
+    "title": "Verify tiered cgroup v2 memory protection behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine node cgroup version, MemoryQoS configuration, or the resulting node-level memory protection behavior."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Kubelet: Added tiered cgroup v2 memory protection for MemoryQoS: `memory.min` for Guaranteed pods and `memory.low` for Burstable pods, with node-level metrics and rollback reconciliation (KEP-2570). ([#137719](https://github.com/kubernetes/kubernetes/pull/137719), [@sohankunkerkar](https://github.com/sohankunkerkar)) [SIG Node, Storage and Testing]",
+    "remediation": "Verify node cgroup v2 and MemoryQoS behavior, including `memory.min` for Guaranteed pods, `memory.low` for Burstable pods, node-level metrics, and rollback reconciliation."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.36-verify-snapshotmetadata-v1beta1-usage",
+    "severity": "HIGH",
+    "title": "Verify SnapshotMetadataService version usage",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The note does not identify an inventory-visible Kubernetes object or fully qualified API group for the SnapshotMetadataService version, and cluster inventory cannot determine third-party CSI or service-client usage."
+    },
+    "quote": "Promoted `SnapshotMetadataService` to `v1beta1`. Removed support for the `v1alpha1` version. ([#137564](https://github.com/kubernetes/kubernetes/pull/137564), [@iPraveenParihar](https://github.com/iPraveenParihar)) [SIG Storage and Testing]",
+    "remediation": "Verify manually that SnapshotMetadataService consumers use `v1beta1` and do not depend on the removed `v1alpha1` version."
+  }
+]

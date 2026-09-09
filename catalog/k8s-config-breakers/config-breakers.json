@@ -12,7 +12,22 @@
   "step3Note": "Step 3 (2026-07-11) backfilled the config-breaker catalog with the older-release (1.16-1.31) config/flag class: 109 feature-gate removal/lock rules (one rule per individual gate name, deduped across releases per the earliest-breaking-version rule -- see _workspace/step3_load_summary.md for the full per-rule dedup log), 22 removed component CLI-flag rules (12 detectable across kube-apiserver/kube-scheduler/kube-controller-manager; 10 marked detectable=false -- kubelet-only flags with no static-pod representation, or kube-proxy which this catalog's collection surface does not scan), and 1 new kubeletConfig nested-selector rule (memorySwap.swapBehavior=UnlimitedSwap dropped at 1.30) that required a minimal backward-compatible dotted-path extension to ConfigBreakerAnalyzer.matchesKubeletConfigRule. Also enriched the existing rtz-k8s-gate-removed-server-side-apply (1.32) rule with a newly-verified deprecatedInVersion=1.26 lock precursor rather than creating a duplicate rule. Total: 55 -> 187 rules.",
   "step4Note": "Step 4 (2026-07-12) closed the 1.34-1.36 feature-gate/flag removal gap found by the 1.32->1.37 coverage audit: added PodDisruptionConditions (1.34 #129501), StrictCostEnforcementForVAP + StrictCostEnforcementForWebhooks (1.35 #134994, locked 1.32), HonorPVReclaimPolicy (1.36 #135335, locked 1.33), WatchFromStorageWithoutResourceVersion (1.36 #136066) as CRITICAL control-plane gate breakers, plus --register-schedulable kubelet flag (1.34 #122384, detectable=false). Excluded the kube-proxy iptables-wait change (#131961) as an internal iptables-binary detail, not a user-facing flag.",
   "step5Note": "Step 5 (2026-07-12) closed removed-feature-gate gaps found by the parallel per-release 1.32->1.37 changelog audit: 8 control-plane gate removals (DRAControlPlaneController 1.32 #128003, DevicePluginCDIDevices + LegacySidecarContainers 1.34 #132083/#131463, SizeMemoryBackedVolumes + UserNamespacesPodSecurityStandards 1.35 #133720/#132157, CSIMigrationPortworx + InTreePluginPortworxUnregister 1.36 #135322, DeclarativeValidationTakeover 1.37 #139212) + 3 -kubelet featureGateMap variants for the node-read gates. All verbatim-sourced.",
-  "step6Note": "2026-08-31 locked-gate class (source-derived by scripts/gen-locked-gate-rules.py from LockToDefault: true diffs across v1.31.0..v1.35.0 of pkg/features/kube_features.go + the apiserver registry): 146 rules / 73 gates across 1.32-1.35 using the new featureGateListValueEquals / featureGateMapValueEquals conditions \u2014 a gate locked while explicitly set to the non-default value is the same fatal startup failure as a removed gate, which this catalog previously could not see. Counts are deliberately NOT changelog-derived: the changelogs under-report locks and mis-stated two lock versions (MaxUnavailableStatefulSet, StatefulSetAutoDeletePVC)."
+  "step6Note": "2026-08-31 locked-gate class (source-derived by scripts/gen-locked-gate-rules.py from LockToDefault: true diffs across v1.31.0..v1.35.0 of pkg/features/kube_features.go + the apiserver registry): 146 rules / 73 gates across 1.32-1.35 using the new featureGateListValueEquals / featureGateMapValueEquals conditions \u2014 a gate locked while explicitly set to the non-default value is the same fatal startup failure as a removed gate, which this catalog previously could not see. Counts are deliberately NOT changelog-derived: the changelogs under-report locks and mis-stated two lock versions (MaxUnavailableStatefulSet, StatefulSetAutoDeletePVC).",
+  "lockedGateRuns": [
+   {
+    "date": "2026-09-07",
+    "tags": [
+     "v1.36.0",
+     "v1.37.0"
+    ],
+    "gatesPerMinor": {
+     "1.36": 20,
+     "1.37": 13
+    },
+    "rulesAdded": 66,
+    "source": "scripts/gen-locked-gate-rules.py (versioned_feature_list.yaml at each tag, kube_features.go fallback)"
+   }
+  ]
  },
  "rules": [
   {
@@ -10039,6 +10054,1749 @@
    "condition": "featureGateMapValueEquals",
    "title": "Feature gate `SystemdWatchdog` is locked to true from Kubernetes 1.35 \u2014 kubelet fails to start with `SystemdWatchdog=false` in its featureGates map",
    "remediation": "Remove `SystemdWatchdog: false` from the kubelet's `featureGates` config before upgrading to 1.35+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "CSIServiceAccountTokenSecrets=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "CSIServiceAccountTokenSecrets: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-csi-service-account-token-secrets",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `CSIServiceAccountTokenSecrets` is locked to true from Kubernetes 1.36 \u2014 a component started with `CSIServiceAccountTokenSecrets=false` fails",
+   "remediation": "Remove `CSIServiceAccountTokenSecrets` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "CSIServiceAccountTokenSecrets=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "CSIServiceAccountTokenSecrets: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-csi-service-account-token-secrets-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `CSIServiceAccountTokenSecrets` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `CSIServiceAccountTokenSecrets=false` in its featureGates map",
+   "remediation": "Remove `CSIServiceAccountTokenSecrets: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAAdminAccess=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAAdminAccess: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-admin-access",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DRAAdminAccess` is locked to true from Kubernetes 1.36 \u2014 a component started with `DRAAdminAccess=false` fails",
+   "remediation": "Remove `DRAAdminAccess` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAAdminAccess=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAAdminAccess: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-admin-access-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DRAAdminAccess` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `DRAAdminAccess=false` in its featureGates map",
+   "remediation": "Remove `DRAAdminAccess: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DeclarativeValidation=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DeclarativeValidation: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-declarative-validation",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DeclarativeValidation` is locked to true from Kubernetes 1.36 \u2014 a component started with `DeclarativeValidation=false` fails",
+   "remediation": "Remove `DeclarativeValidation` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DeclarativeValidation=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DeclarativeValidation: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-declarative-validation-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DeclarativeValidation` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `DeclarativeValidation=false` in its featureGates map",
+   "remediation": "Remove `DeclarativeValidation: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DisableNodeKubeProxyVersion=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DisableNodeKubeProxyVersion: lockToDefault: true at 1.36 (default: true, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-disable-node-kube-proxy-version",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DisableNodeKubeProxyVersion` is locked to true from Kubernetes 1.36 \u2014 a component started with `DisableNodeKubeProxyVersion=false` fails",
+   "remediation": "Remove `DisableNodeKubeProxyVersion` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DisableNodeKubeProxyVersion=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DisableNodeKubeProxyVersion: lockToDefault: true at 1.36 (default: true, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-disable-node-kube-proxy-version-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DisableNodeKubeProxyVersion` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `DisableNodeKubeProxyVersion=false` in its featureGates map",
+   "remediation": "Remove `DisableNodeKubeProxyVersion: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ExternalServiceAccountTokenSigner=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ExternalServiceAccountTokenSigner: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-external-service-account-token-signer",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `ExternalServiceAccountTokenSigner` is locked to true from Kubernetes 1.36 \u2014 a component started with `ExternalServiceAccountTokenSigner=false` fails",
+   "remediation": "Remove `ExternalServiceAccountTokenSigner` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ExternalServiceAccountTokenSigner=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ExternalServiceAccountTokenSigner: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-external-service-account-token-signer-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `ExternalServiceAccountTokenSigner` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `ExternalServiceAccountTokenSigner=false` in its featureGates map",
+   "remediation": "Remove `ExternalServiceAccountTokenSigner: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "GitRepoVolumeDriver=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "GitRepoVolumeDriver: lockToDefault: true at 1.36 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-git-repo-volume-driver",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `GitRepoVolumeDriver` is locked to false from Kubernetes 1.36 \u2014 a component started with `GitRepoVolumeDriver=true` fails",
+   "remediation": "Remove `GitRepoVolumeDriver` from `--feature-gates` (or stop setting it to true) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "GitRepoVolumeDriver=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "GitRepoVolumeDriver: lockToDefault: true at 1.36 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-git-repo-volume-driver-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `GitRepoVolumeDriver` is locked to false from Kubernetes 1.36 \u2014 kubelet fails to start with `GitRepoVolumeDriver=true` in its featureGates map",
+   "remediation": "Remove `GitRepoVolumeDriver: true` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ImageVolume=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ImageVolume: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-image-volume",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `ImageVolume` is locked to true from Kubernetes 1.36 \u2014 a component started with `ImageVolume=false` fails",
+   "remediation": "Remove `ImageVolume` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ImageVolume=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ImageVolume: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-image-volume-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `ImageVolume` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `ImageVolume=false` in its featureGates map",
+   "remediation": "Remove `ImageVolume: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletFineGrainedAuthz=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletFineGrainedAuthz: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-fine-grained-authz",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `KubeletFineGrainedAuthz` is locked to true from Kubernetes 1.36 \u2014 a component started with `KubeletFineGrainedAuthz=false` fails",
+   "remediation": "Remove `KubeletFineGrainedAuthz` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletFineGrainedAuthz=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletFineGrainedAuthz: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-fine-grained-authz-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `KubeletFineGrainedAuthz` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `KubeletFineGrainedAuthz=false` in its featureGates map",
+   "remediation": "Remove `KubeletFineGrainedAuthz: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPSI=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPSI: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-psi",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `KubeletPSI` is locked to true from Kubernetes 1.36 \u2014 a component started with `KubeletPSI=false` fails",
+   "remediation": "Remove `KubeletPSI` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPSI=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPSI: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-psi-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `KubeletPSI` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `KubeletPSI=false` in its featureGates map",
+   "remediation": "Remove `KubeletPSI: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPodResourcesDynamicResources=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPodResourcesDynamicResources: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-pod-resources-dynamic-resources",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `KubeletPodResourcesDynamicResources` is locked to true from Kubernetes 1.36 \u2014 a component started with `KubeletPodResourcesDynamicResources=false` fails",
+   "remediation": "Remove `KubeletPodResourcesDynamicResources` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPodResourcesDynamicResources=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPodResourcesDynamicResources: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-pod-resources-dynamic-resources-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `KubeletPodResourcesDynamicResources` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `KubeletPodResourcesDynamicResources=false` in its featureGates map",
+   "remediation": "Remove `KubeletPodResourcesDynamicResources: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPodResourcesGet=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPodResourcesGet: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-pod-resources-get",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `KubeletPodResourcesGet` is locked to true from Kubernetes 1.36 \u2014 a component started with `KubeletPodResourcesGet=false` fails",
+   "remediation": "Remove `KubeletPodResourcesGet` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "KubeletPodResourcesGet=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "KubeletPodResourcesGet: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-kubelet-pod-resources-get-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `KubeletPodResourcesGet` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `KubeletPodResourcesGet=false` in its featureGates map",
+   "remediation": "Remove `KubeletPodResourcesGet: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "MutableCSINodeAllocatableCount=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "MutableCSINodeAllocatableCount: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-mutable-csi-node-allocatable-count",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `MutableCSINodeAllocatableCount` is locked to true from Kubernetes 1.36 \u2014 a component started with `MutableCSINodeAllocatableCount=false` fails",
+   "remediation": "Remove `MutableCSINodeAllocatableCount` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "MutableCSINodeAllocatableCount=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "MutableCSINodeAllocatableCount: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-mutable-csi-node-allocatable-count-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `MutableCSINodeAllocatableCount` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `MutableCSINodeAllocatableCount=false` in its featureGates map",
+   "remediation": "Remove `MutableCSINodeAllocatableCount: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "NodeLogQuery=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "NodeLogQuery: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-node-log-query",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `NodeLogQuery` is locked to true from Kubernetes 1.36 \u2014 a component started with `NodeLogQuery=false` fails",
+   "remediation": "Remove `NodeLogQuery` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "NodeLogQuery=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "NodeLogQuery: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-node-log-query-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `NodeLogQuery` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `NodeLogQuery=false` in its featureGates map",
+   "remediation": "Remove `NodeLogQuery: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ProcMountType=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ProcMountType: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-proc-mount-type",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `ProcMountType` is locked to true from Kubernetes 1.36 \u2014 a component started with `ProcMountType=false` fails",
+   "remediation": "Remove `ProcMountType` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "ProcMountType=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "ProcMountType: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-proc-mount-type-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `ProcMountType` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `ProcMountType=false` in its featureGates map",
+   "remediation": "Remove `ProcMountType: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SELinuxChangePolicy=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SELinuxChangePolicy: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-se-linux-change-policy",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `SELinuxChangePolicy` is locked to true from Kubernetes 1.36 \u2014 a component started with `SELinuxChangePolicy=false` fails",
+   "remediation": "Remove `SELinuxChangePolicy` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SELinuxChangePolicy=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SELinuxChangePolicy: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-se-linux-change-policy-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `SELinuxChangePolicy` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `SELinuxChangePolicy=false` in its featureGates map",
+   "remediation": "Remove `SELinuxChangePolicy: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SELinuxMountReadWriteOncePod=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SELinuxMountReadWriteOncePod: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-se-linux-mount-read-write-once-pod",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `SELinuxMountReadWriteOncePod` is locked to true from Kubernetes 1.36 \u2014 a component started with `SELinuxMountReadWriteOncePod=false` fails",
+   "remediation": "Remove `SELinuxMountReadWriteOncePod` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SELinuxMountReadWriteOncePod=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SELinuxMountReadWriteOncePod: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-se-linux-mount-read-write-once-pod-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `SELinuxMountReadWriteOncePod` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `SELinuxMountReadWriteOncePod=false` in its featureGates map",
+   "remediation": "Remove `SELinuxMountReadWriteOncePod: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SeparateCacheWatchRPC=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SeparateCacheWatchRPC: lockToDefault: true at 1.36 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-separate-cache-watch-rpc",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `SeparateCacheWatchRPC` is locked to false from Kubernetes 1.36 \u2014 a component started with `SeparateCacheWatchRPC=true` fails",
+   "remediation": "Remove `SeparateCacheWatchRPC` from `--feature-gates` (or stop setting it to true) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "SeparateCacheWatchRPC=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "SeparateCacheWatchRPC: lockToDefault: true at 1.36 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-separate-cache-watch-rpc-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `SeparateCacheWatchRPC` is locked to false from Kubernetes 1.36 \u2014 kubelet fails to start with `SeparateCacheWatchRPC=true` in its featureGates map",
+   "remediation": "Remove `SeparateCacheWatchRPC: true` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "TopologyManagerPolicyOptions=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "TopologyManagerPolicyOptions: lockToDefault: true first shipped in v1.36.0 (spec entry annotated at 1.32; default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-topology-manager-policy-options",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `TopologyManagerPolicyOptions` is locked to true from Kubernetes 1.36 \u2014 a component started with `TopologyManagerPolicyOptions=false` fails",
+   "remediation": "Remove `TopologyManagerPolicyOptions` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "TopologyManagerPolicyOptions=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "TopologyManagerPolicyOptions: lockToDefault: true first shipped in v1.36.0 (spec entry annotated at 1.32; default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-topology-manager-policy-options-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `TopologyManagerPolicyOptions` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `TopologyManagerPolicyOptions=false` in its featureGates map",
+   "remediation": "Remove `TopologyManagerPolicyOptions: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "UserNamespacesSupport=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "UserNamespacesSupport: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-user-namespaces-support",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `UserNamespacesSupport` is locked to true from Kubernetes 1.36 \u2014 a component started with `UserNamespacesSupport=false` fails",
+   "remediation": "Remove `UserNamespacesSupport` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "UserNamespacesSupport=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "UserNamespacesSupport: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-user-namespaces-support-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `UserNamespacesSupport` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `UserNamespacesSupport=false` in its featureGates map",
+   "remediation": "Remove `UserNamespacesSupport: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "VolumeAttributesClass=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "VolumeAttributesClass: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-volume-attributes-class",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `VolumeAttributesClass` is locked to true from Kubernetes 1.36 \u2014 a component started with `VolumeAttributesClass=false` fails",
+   "remediation": "Remove `VolumeAttributesClass` from `--feature-gates` (or stop setting it to false) before upgrading to 1.36+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.36",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "VolumeAttributesClass=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.36.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "VolumeAttributesClass: lockToDefault: true at 1.36 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-volume-attributes-class-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `VolumeAttributesClass` is locked to true from Kubernetes 1.36 \u2014 kubelet fails to start with `VolumeAttributesClass=false` in its featureGates map",
+   "remediation": "Remove `VolumeAttributesClass: false` from the kubelet's `featureGates` config before upgrading to 1.36+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAExtendedResource=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAExtendedResource: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-extended-resource",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DRAExtendedResource` is locked to true from Kubernetes 1.37 \u2014 a component started with `DRAExtendedResource=false` fails",
+   "remediation": "Remove `DRAExtendedResource` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAExtendedResource=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAExtendedResource: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-extended-resource-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DRAExtendedResource` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `DRAExtendedResource=false` in its featureGates map",
+   "remediation": "Remove `DRAExtendedResource: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAPrioritizedList=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAPrioritizedList: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-prioritized-list",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DRAPrioritizedList` is locked to true from Kubernetes 1.37 \u2014 a component started with `DRAPrioritizedList=false` fails",
+   "remediation": "Remove `DRAPrioritizedList` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAPrioritizedList=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAPrioritizedList: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-prioritized-list-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DRAPrioritizedList` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `DRAPrioritizedList=false` in its featureGates map",
+   "remediation": "Remove `DRAPrioritizedList: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAResourceClaimDeviceStatus=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAResourceClaimDeviceStatus: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-resource-claim-device-status",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DRAResourceClaimDeviceStatus` is locked to true from Kubernetes 1.37 \u2014 a component started with `DRAResourceClaimDeviceStatus=false` fails",
+   "remediation": "Remove `DRAResourceClaimDeviceStatus` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DRAResourceClaimDeviceStatus=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DRAResourceClaimDeviceStatus: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-dra-resource-claim-device-status-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DRAResourceClaimDeviceStatus` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `DRAResourceClaimDeviceStatus=false` in its featureGates map",
+   "remediation": "Remove `DRAResourceClaimDeviceStatus: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DeclarativeValidationTakeover=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DeclarativeValidationTakeover: lockToDefault: true at 1.37 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-declarative-validation-takeover",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DeclarativeValidationTakeover` is locked to false from Kubernetes 1.37 \u2014 a component started with `DeclarativeValidationTakeover=true` fails",
+   "remediation": "Remove `DeclarativeValidationTakeover` from `--feature-gates` (or stop setting it to true) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DeclarativeValidationTakeover=true",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DeclarativeValidationTakeover: lockToDefault: true at 1.37 (default: false, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-declarative-validation-takeover-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DeclarativeValidationTakeover` is locked to false from Kubernetes 1.37 \u2014 kubelet fails to start with `DeclarativeValidationTakeover=true` in its featureGates map",
+   "remediation": "Remove `DeclarativeValidationTakeover: true` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DisableCPUQuotaWithExclusiveCPUs=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DisableCPUQuotaWithExclusiveCPUs: lockToDefault: true at 1.37 (default: true, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-disable-cpu-quota-with-exclusive-cp-us",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `DisableCPUQuotaWithExclusiveCPUs` is locked to true from Kubernetes 1.37 \u2014 a component started with `DisableCPUQuotaWithExclusiveCPUs=false` fails",
+   "remediation": "Remove `DisableCPUQuotaWithExclusiveCPUs` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "DisableCPUQuotaWithExclusiveCPUs=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "DisableCPUQuotaWithExclusiveCPUs: lockToDefault: true at 1.37 (default: true, preRelease: Deprecated)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-disable-cpu-quota-with-exclusive-cp-us-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `DisableCPUQuotaWithExclusiveCPUs` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `DisableCPUQuotaWithExclusiveCPUs=false` in its featureGates map",
+   "remediation": "Remove `DisableCPUQuotaWithExclusiveCPUs: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "HPAConfigurableTolerance=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "HPAConfigurableTolerance: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-hpa-configurable-tolerance",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `HPAConfigurableTolerance` is locked to true from Kubernetes 1.37 \u2014 a component started with `HPAConfigurableTolerance=false` fails",
+   "remediation": "Remove `HPAConfigurableTolerance` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "HPAConfigurableTolerance=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "HPAConfigurableTolerance: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-hpa-configurable-tolerance-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `HPAConfigurableTolerance` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `HPAConfigurableTolerance=false` in its featureGates map",
+   "remediation": "Remove `HPAConfigurableTolerance: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "HostnameOverride=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "HostnameOverride: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-hostname-override",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `HostnameOverride` is locked to true from Kubernetes 1.37 \u2014 a component started with `HostnameOverride=false` fails",
+   "remediation": "Remove `HostnameOverride` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "HostnameOverride=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "HostnameOverride: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-hostname-override-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `HostnameOverride` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `HostnameOverride=false` in its featureGates map",
+   "remediation": "Remove `HostnameOverride: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "InPlacePodVerticalScalingInitContainers=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "InPlacePodVerticalScalingInitContainers: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-in-place-pod-vertical-scaling-init-containers",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `InPlacePodVerticalScalingInitContainers` is locked to true from Kubernetes 1.37 \u2014 a component started with `InPlacePodVerticalScalingInitContainers=false` fails",
+   "remediation": "Remove `InPlacePodVerticalScalingInitContainers` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "InPlacePodVerticalScalingInitContainers=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "InPlacePodVerticalScalingInitContainers: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-in-place-pod-vertical-scaling-init-containers-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `InPlacePodVerticalScalingInitContainers` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `InPlacePodVerticalScalingInitContainers=false` in its featureGates map",
+   "remediation": "Remove `InPlacePodVerticalScalingInitContainers: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "NodeDeclaredFeatures=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "NodeDeclaredFeatures: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-node-declared-features",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `NodeDeclaredFeatures` is locked to true from Kubernetes 1.37 \u2014 a component started with `NodeDeclaredFeatures=false` fails",
+   "remediation": "Remove `NodeDeclaredFeatures` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "NodeDeclaredFeatures=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "NodeDeclaredFeatures: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-node-declared-features-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `NodeDeclaredFeatures` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `NodeDeclaredFeatures=false` in its featureGates map",
+   "remediation": "Remove `NodeDeclaredFeatures: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "PLEGOnDemandRelist=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "PLEGOnDemandRelist: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-pleg-on-demand-relist",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `PLEGOnDemandRelist` is locked to true from Kubernetes 1.37 \u2014 a component started with `PLEGOnDemandRelist=false` fails",
+   "remediation": "Remove `PLEGOnDemandRelist` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "PLEGOnDemandRelist=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "PLEGOnDemandRelist: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-pleg-on-demand-relist-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `PLEGOnDemandRelist` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `PLEGOnDemandRelist=false` in its featureGates map",
+   "remediation": "Remove `PLEGOnDemandRelist: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "PodReadyToStartContainersCondition=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "PodReadyToStartContainersCondition: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-pod-ready-to-start-containers-condition",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `PodReadyToStartContainersCondition` is locked to true from Kubernetes 1.37 \u2014 a component started with `PodReadyToStartContainersCondition=false` fails",
+   "remediation": "Remove `PodReadyToStartContainersCondition` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "PodReadyToStartContainersCondition=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "PodReadyToStartContainersCondition: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-pod-ready-to-start-containers-condition-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `PodReadyToStartContainersCondition` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `PodReadyToStartContainersCondition=false` in its featureGates map",
+   "remediation": "Remove `PodReadyToStartContainersCondition: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "RelaxedServiceNameValidation=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "RelaxedServiceNameValidation: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-relaxed-service-name-validation",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `RelaxedServiceNameValidation` is locked to true from Kubernetes 1.37 \u2014 a component started with `RelaxedServiceNameValidation=false` fails",
+   "remediation": "Remove `RelaxedServiceNameValidation` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "RelaxedServiceNameValidation=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "RelaxedServiceNameValidation: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-relaxed-service-name-validation-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `RelaxedServiceNameValidation` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `RelaxedServiceNameValidation=false` in its featureGates map",
+   "remediation": "Remove `RelaxedServiceNameValidation: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "WatchCacheInitializationPostStartHook=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "WatchCacheInitializationPostStartHook: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-watch-cache-initialization-post-start-hook",
+   "source": "componentFlag",
+   "component": "kube-apiserver,kube-scheduler,kube-controller-manager",
+   "selectors": [
+    "--feature-gates"
+   ],
+   "condition": "featureGateListValueEquals",
+   "title": "Feature gate `WatchCacheInitializationPostStartHook` is locked to true from Kubernetes 1.37 \u2014 a component started with `WatchCacheInitializationPostStartHook=false` fails",
+   "remediation": "Remove `WatchCacheInitializationPostStartHook` from `--feature-gates` (or stop setting it to false) before upgrading to 1.37+; the gate can no longer be changed."
+  },
+  {
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "provisional": false,
+   "detectable": true,
+   "value": "WatchCacheInitializationPostStartHook=false",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes v1.37.0 test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "url": "https://github.com/kubernetes/kubernetes/blob/v1.37.0/test/compatibility_lifecycle/reference/versioned_feature_list.yaml",
+     "matchedText": "WatchCacheInitializationPostStartHook: lockToDefault: true at 1.37 (default: true, preRelease: GA)"
+    }
+   ],
+   "note": "Locked-to-default gate (source-derived by scripts/gen-locked-gate-rules.py): setting it to the non-default value is a fatal 'cannot set feature gate' error at startup. Presence at the DEFAULT value is harmless \u2014 hence the ValueEquals condition, unlike the removed-gate rows.",
+   "ruleId": "rtz-k8s-gate-locked-watch-cache-initialization-post-start-hook-kubelet",
+   "source": "kubeletConfig",
+   "component": "kubelet",
+   "selectors": [
+    "featureGates"
+   ],
+   "condition": "featureGateMapValueEquals",
+   "title": "Feature gate `WatchCacheInitializationPostStartHook` is locked to true from Kubernetes 1.37 \u2014 kubelet fails to start with `WatchCacheInitializationPostStartHook=false` in its featureGates map",
+   "remediation": "Remove `WatchCacheInitializationPostStartHook: false` from the kubelet's `featureGates` config before upgrading to 1.37+."
+  },
+  {
+   "ruleId": "rtz-k8s-apiserver-admission-plugin-podgroupworkloadexists-removed",
+   "source": "componentFlag",
+   "component": "kube-apiserver",
+   "selectors": [
+    "--enable-admission-plugins",
+    "--admission-control"
+   ],
+   "condition": "featureGateList",
+   "value": "PodGroupWorkloadExists",
+   "deprecatedInVersion": null,
+   "appliesFromVersion": "1.37",
+   "severity": "CRITICAL",
+   "deprecatedSeverity": null,
+   "title": "Admission plugin `PodGroupWorkloadExists` was removed in Kubernetes 1.37 \u2014 a kube-apiserver that still enables it fails to start",
+   "remediation": "Remove `PodGroupWorkloadExists` from `--enable-admission-plugins` (and the deprecated `--admission-control`) on every kube-apiserver before upgrading to 1.37; kube-apiserver rejects an unknown admission plugin name at startup. The plugin only validated that a PodGroup references an existing Workload, which the API now checks without it.",
+   "provisional": false,
+   "detectable": true,
+   "note": "Hand-authored 2026-09-07. The changelog entry sits under 'Bug or Regression' / 'Other (Cleanup or Flake)', which scripts/readiness-agent/extract-k8s-notes.py deliberately skips, so the generated pipeline could never surface it; it was found by comparing against skyhook-io/radar's 1.37 catalog. The featureGateList condition matches an exact comma-separated list member (the same code path as --feature-gates presence rules), so `PodGroupWorkloadExistsFoo` cannot false-match.",
+   "provenance": [
+    {
+     "name": "kubernetes/kubernetes CHANGELOG-1.37.md",
+     "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/CHANGELOG/CHANGELOG-1.37.md",
+     "matchedText": "Removed the Alpha admission plugin that validated that PodGroup resources reference an existing Workload and match the declared PodGroupTemplate spec. ([#139008](https://github.com/kubernetes/kubernetes/pull/139008)"
+    }
+   ]
   }
  ]
 }

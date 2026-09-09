@@ -24,6 +24,7 @@ type Catalog struct {
 	Advisories       []AdvisoryRule
 	Addons           []Addon
 	AdoptionRules    []AdoptionRule
+	GeneratedRules   []GeneratedRule
 
 	// deprecationByKey and lifecycleByKey are the lookup indexes built at load time.
 	deprecationByKey map[string]DeprecationRule
@@ -95,10 +96,17 @@ func loadFS(fsys fs.FS, root string) (*Catalog, error) {
 		c.Addons = append(c.Addons, a)
 	}
 	sort.Slice(c.Addons, func(i, j int) bool { return c.Addons[i].AddonID < c.Addons[j].AddonID })
+	if c.GeneratedRules, err = loadGeneratedRules(fsys, root); err != nil {
+		return nil, err
+	}
 
 	c.index()
 	return c, nil
 }
+
+// Reindex rebuilds the lookup indexes. Load calls it; a caller that assembles a Catalog by
+// hand (a test, a recorded scan) must call it before any lookup.
+func (c *Catalog) Reindex() { c.index() }
 
 func (c *Catalog) index() {
 	c.deprecationByKey = make(map[string]DeprecationRule, len(c.DeprecationRules))

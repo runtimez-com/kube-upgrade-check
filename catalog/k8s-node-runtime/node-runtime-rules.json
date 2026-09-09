@@ -46,7 +46,7 @@
       "remediation": "Verify each node's ACTUAL cgroup version manually before upgrading to 1.35+ (e.g. `stat -fc %T /sys/fs/cgroup/` on the host \u2014 cgroup2fs means v2, tmpfs means v1). From Kubernetes 1.35, the kubelet's failCgroupV1 config option defaults to true and the kubelet refuses to start on a cgroup v1 host unless you explicitly set failCgroupV1:false (a stop-gap, not a fix \u2014 cgroup v1 is now deprecated). This platform CANNOT auto-detect the host's cgroup version \u2014 no Kubernetes API field exposes it.",
       "provisional": false,
       "detectable": false,
-      "note": "PERMANENTLY NOT DETECTABLE, not merely a current agent-collection gap: verified by inspecting BOTH k8s.io/api/core/v1/types.go NodeSystemInfo (machineID/systemUUID/bootID/kernelVersion/osImage/containerRuntimeVersion/kubeletVersion/kubeProxyVersion/operatingSystem/architecture \u2014 no cgroup field of any kind) AND k8s.io/kubelet/config/v1beta1/types.go KubeletConfiguration (cgroupDriver/cgroupsPerQOS/cgroupRoot/failCgroupV1 are all CONFIGURATION knobs, none of them report the actual detected host cgroup version). The closest adjacent, genuinely detectable signal \u2014 whether a kubelet config has explicitly set failCgroupV1:false (i.e., deliberately disabled the safety net) \u2014 is modeled separately as a DETECTABLE ConfigBreakerCatalog rule (rtz-k8s-kubelet-fail-cgroup-v1-disabled); that rule detects the OVERRIDE, not the underlying cgroup-v1 fact itself. This rule is therefore always surfaced as an advisory the moment target>=1.35, independent of any collected data, and NEVER as a 'detected' finding.",
+      "note": "PERMANENTLY NOT DETECTABLE, not merely a current agent-collection gap: verified by inspecting BOTH k8s.io/api/core/v1/types.go NodeSystemInfo (machineID/systemUUID/bootID/kernelVersion/osImage/containerRuntimeVersion/kubeletVersion/kubeProxyVersion/operatingSystem/architecture \u2014 no cgroup field of any kind) AND k8s.io/kubelet/config/v1beta1/types.go KubeletConfiguration (cgroupDriver/cgroupsPerQOS/cgroupRoot/failCgroupV1 are all CONFIGURATION knobs, none of them report the actual detected host cgroup version). The closest adjacent, genuinely detectable signal \u2014 whether a kubelet config has explicitly set failCgroupV1:false (i.e., deliberately disabled the safety net) \u2014 is modeled separately as a DETECTABLE ConfigBreakerCatalog rule (rtz-k8s-kubelet-fail-cgroup-v1-disabled); that rule detects the OVERRIDE, not the underlying cgroup-v1 fact itself. This rule is therefore always surfaced as an advisory the moment target>=1.35, independent of any collected data, and NEVER as a 'detected' finding. 2026-09-07: settled from the kubelet's own /metrics gauge `kubelet_cgroup_version` (help text: \"cgroup version on the hosts.\", pkg/kubelet/metrics/metrics.go, present since 1.35) by any consumer with nodes/proxy; `detectable` stays false because no Node status field exposes it.",
       "provenance": [
         {
           "name": "kubernetes/kubernetes CHANGELOG-1.35.md (session copy: v135_0.md, identical text confirmed against ch135.md)",
@@ -58,7 +58,12 @@
           "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/staging/src/k8s.io/api/core/v1/types.go",
           "matchedText": "(grep for 'cgroup' case-insensitive across NodeSystemInfo: zero matches \u2014 confirms host cgroup version is not exposed anywhere in the Node API)"
         }
-      ]
+      ],
+      "metric": {
+        "name": "kubelet_cgroup_version",
+        "condition": "valueEquals",
+        "value": "1"
+      }
     },
     {
       "ruleId": "rtz-k8s-node-dockershim-flags-removed",
@@ -190,6 +195,32 @@
           "matchedText": "ACTION-REQUIRED: Dynamic Resource Allocation (DRA) drivers using the v1alpha2 kubelet gRPC API are no longer supported and need to be updated. ([#124316](https://github.com/kubernetes/kubernetes/pull/124316), [@pohly](https://github.com/pohly)) [SIG Node and Testing]"
         }
       ]
+    },
+    {
+      "ruleId": "rtz-k8s-node-cri-losing-support",
+      "kind": "containerRuntime",
+      "statusField": null,
+      "condition": null,
+      "value": null,
+      "removedInVersion": "1.36",
+      "severity": "CRITICAL",
+      "title": "ACTION REQUIRED: the node's container runtime (CRI implementation) loses kubelet support at the target Kubernetes version \u2014 the kubelet reports it via kubelet_cri_losing_support",
+      "remediation": "Upgrade the container runtime on every node the kubelet flags before upgrading the kubelet: the kubelet's `kubelet_cri_losing_support{version=\"1.NN\"}` gauge names the Kubernetes minor at which the currently running CRI implementation is no longer supported (for example containerd 1.x with the deprecated cgroup-driver lookup path). Verify per node with: kubectl get --raw /api/v1/nodes/<node>/proxy/metrics | grep kubelet_cri_losing_support",
+      "provisional": false,
+      "detectable": false,
+      "note": "Hand-authored 2026-09-07 (found against skyhook-io/radar's 'Container runtime support' check). The kubelet has exported this gauge since 1.35; its help text is \"the Kubernetes version that the currently running CRI implementation will lose support on if not upgraded.\" (pkg/kubelet/metrics/metrics.go at v1.36.0). removedInVersion=1.36 is the first minor at which a running runtime can be flagged; the actual version is read from the sample's label per node, so the rule fires only when that label is <= the target. `detectable` stays false: no Node status field carries it, and the shared backend has no kubelet-metrics collector.",
+      "provenance": [
+        {
+          "name": "kubernetes/kubernetes v1.36.0 pkg/kubelet/metrics/metrics.go",
+          "url": "https://github.com/kubernetes/kubernetes/blob/v1.36.0/pkg/kubelet/metrics/metrics.go",
+          "matchedText": "CRILosingSupport = metrics.NewGaugeVec(&metrics.GaugeOpts{Subsystem: KubeletSubsystem, Name: CRILosingSupportKey, Help: \"the Kubernetes version that the currently running CRI implementation will lose support on if not upgraded.\", StabilityLevel: metrics.ALPHA}, []string{\"version\"})"
+        }
+      ],
+      "metric": {
+        "name": "kubelet_cri_losing_support",
+        "condition": "labelVersionAtMostTarget",
+        "label": "version"
+      }
     }
   ]
 }

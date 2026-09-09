@@ -95,7 +95,7 @@ func readFixture(t *testing.T, name string, out any) {
 func cataloguedGateVersions(cat *catalog.Catalog) map[string]map[string]bool {
 	out := map[string]map[string]bool{}
 	for _, rule := range cat.ConfigBreakers {
-		if rule.Value == "" || !strings.HasPrefix(rule.Condition, "featureGate") {
+		if rule.Value == "" || !strings.HasPrefix(rule.Condition, "featureGate") || !namesAFeatureGate(rule) {
 			continue
 		}
 		gate := gateNameOf(rule.Value)
@@ -105,6 +105,19 @@ func cataloguedGateVersions(cat *catalog.Catalog) map[string]map[string]bool {
 		out[gate][rule.AppliesFromVersion] = true
 	}
 	return out
+}
+
+// namesAFeatureGate is true for rules whose value is a feature-gate name. The featureGateList
+// condition is plain list membership and is also used for other comma-separated flags, such as
+// the admission-plugin list, whose members are not gates and must not be checked against the
+// gate fixture.
+func namesAFeatureGate(rule catalog.ConfigBreakerRule) bool {
+	for _, s := range rule.Selectors {
+		if s == "--feature-gates" || s == "featureGates" {
+			return true
+		}
+	}
+	return false
 }
 
 // gateNameOf strips the "=value" half of a locked-gate rule's value.
@@ -157,7 +170,7 @@ func TestNoGateRuleContradictsGroundTruth(t *testing.T) {
 
 	var wrong []string
 	for _, rule := range cat.ConfigBreakers {
-		if rule.Value == "" || !strings.HasPrefix(rule.Condition, "featureGate") {
+		if rule.Value == "" || !strings.HasPrefix(rule.Condition, "featureGate") || !namesAFeatureGate(rule) {
 			continue
 		}
 		gate := gateNameOf(rule.Value)

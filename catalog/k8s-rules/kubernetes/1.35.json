@@ -1,0 +1,350 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-account-deviceclass-quota-charges",
+    "severity": "MEDIUM",
+    "title": "Account for device class quota charges",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine the worst-case number of devices requested or whether the DRAExtendedResource feature is enabled."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "`requests.deviceclass.resource.k8s.io/<deviceclass>` is charged based on the worst-case number of devices requested.",
+    "remediation": "Review ResourceQuota capacity for `requests.deviceclass.resource.k8s.io/<deviceclass>` using the worst-case number of devices requested."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-account-extended-resource-quota-charges",
+    "severity": "MEDIUM",
+    "title": "Account for extended resource quota charges",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine device-class mappings to extended resources or whether the DRAExtendedResource feature is enabled."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "Device classes mapping to an extended resource now consume `requests.<extended resource name>`. ([#134210](https://github.com/kubernetes/kubernetes/pull/134210), [@yliaog](https://github.com/yliaog)) [SIG API Machinery, Apps, Node, Scheduling and Testing]",
+    "remediation": "Review ResourceQuota capacity for `requests.<extended resource name>` used by device classes mapped to an extended resource."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-address-cgroups-v1-kubelet-v1-35",
+    "severity": "CRITICAL",
+    "title": "Address cgroups v1 before upgrading kubelet to v1.35",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether the host uses cgroups v1 and the detected kubelet version are host and runtime conditions not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "vendor: Updated `k8s.io/system-validators` to `v1.12.1`. The cgroups validator now throws an error instead of a warning if cgroups v1 is detected on the host and the provided KubeletVersion is `v1.35` or newer.\n  \n  kubeadm: Started using `k8s.io/system-validators` `v1.12.1` in `kubeadm` `v1.35`. During `kubeadm init`, `kubeadm join`, and `kubeadm upgrade`, the SystemVerification preflight check throws an error if cgroups v1 is detected and the detected `kubelet` version is `v1.35` or newer. For older versions of `kubelet`, a preflight warning is displayed.\n  \n  To allow cgroups v1 with `kubeadm` and `kubelet` version `v1.35` or newer, you must:",
+    "remediation": "If cgroups v1 is detected and kubelet is v1.35 or newer, follow the required kubeadm exception and kubelet-config changes described in the note."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-csi-driver-required-for-pods",
+    "severity": "HIGH",
+    "title": "Verify Pods requiring CSI drivers have those drivers available on eligible nodes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether a Pod requires a particular CSI driver depends on nested volume and storage configuration that cannot be settled by a single collected inventory field."
+    },
+    "quote": "- Prevented Pods from being scheduled onto nodes that lack the required CSI driver. ([#135012](https://github.com/kubernetes/kubernetes/pull/135012), [@gnufied](https://github.com/gnufied)) [SIG API Machinery, Scheduling, Storage and Testing]",
+    "remediation": "Verify manually that every CSI driver required by a Pod is installed on the nodes where that Pod may be scheduled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-dra-device-taint-rules-feature-gate",
+    "severity": "MEDIUM",
+    "title": "Review DRA device taint feature-gate configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate settings are node and control-plane configuration, not represented in cluster inventory."
+    },
+    "quote": "- The DRA device taints and toleration feature received a separate feature gate, `DRADeviceTaintRules`, which controlled support for `DeviceTaintRules`. This allowed disabling it while keeping `DRADeviceTaints` enabled so that tainting via `ResourceSlices` continued to work. ([#135068](https://github.com/kubernetes/kubernetes/pull/135068), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Auth, Node, Scheduling and Testing]",
+    "remediation": "Verify manually whether `DRADeviceTaintRules` should be enabled or disabled independently of `DRADeviceTaints`, while preserving the desired `ResourceSlices` tainting behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-feature-gate-dependency-validation",
+    "severity": "CRITICAL",
+    "title": "Ensure feature-gate dependencies are enabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate settings are kubelet and control-plane command-line or node-host configuration and are not represented in cluster inventory."
+    },
+    "quote": "Feature gate dependencies are now explicit, and validated at startup. A feature can no longer be enabled if it depends on a disabled feature. In particular, this means that `AllAlpha=true` will no longer work without enabling disabled-by-default beta features that are depended on (either with `AllBeta=true` or explicitly enumerating the disabled dependencies). ([#133697](https://github.com/kubernetes/kubernetes/pull/133697), [@tallclair](https://github.com/tallclair)) [SIG API Machinery, Architecture, Cluster Lifecycle and Node]",
+    "remediation": "Verify manually that any enabled feature gates have all required dependencies enabled; in particular, do not rely on `AllAlpha=true` without enabling the depended-on disabled-by-default beta features with `AllBeta=true` or by explicitly enumerating the dependencies."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-flagz-response-format",
+    "severity": "MEDIUM",
+    "title": "Verify flagz consumers support the versioned response",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "External flagz clients, monitoring integrations, and dashboards are not represented in cluster inventory."
+    },
+    "quote": "Introduced a structured and versioned `v1alpha1` response format for the `flagz` endpoint. ([#134995](https://github.com/kubernetes/kubernetes/pull/134995), [@yongruilin](https://github.com/yongruilin)) [SIG API Machinery, Architecture, Instrumentation, Network, Node, Scheduling and Testing]",
+    "remediation": "Verify manually that external flagz clients, monitoring integrations, and dashboards support the structured and versioned `v1alpha1` response format."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-ignore-cgroups-v1-systemverification-error",
+    "severity": "HIGH",
+    "title": "Ignore the cgroups v1 SystemVerification preflight error",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubeadm preflight result and host cgroups version are runtime and host conditions not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Ignore the error from the SystemVerification preflight check by `kubeadm`.",
+    "remediation": "To allow cgroups v1 with kubeadm and kubelet version v1.35 or newer, ignore the error from the SystemVerification preflight check by kubeadm."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-job-managed-by-compatibility",
+    "severity": "MEDIUM",
+    "title": "Verify Jobs using managedBy are compatible with JobManagedBy being locked on",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Job",
+      "target": "managedBy"
+    },
+    "quote": "- Promoted the `JobManagedBy` feature to general availability. The `JobManagedBy` feature gate was locked to `true` and will be removed in a future Kubernetes release. ([#135080](https://github.com/kubernetes/kubernetes/pull/135080), [@dejanzele](https://github.com/dejanzele)) [SIG API Machinery, Apps and Testing]",
+    "remediation": "Verify that Jobs using the `managedBy` field and their controllers are compatible with the `JobManagedBy` feature being enabled and locked to true."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-kubelet-secret-pulled-images",
+    "severity": "MEDIUM",
+    "title": "Verify image-pull credential behavior with KubeletEnsureSecretPulledImages enabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The relevant kubelet image-pull behavior and command-line or node-host configuration are not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "- The `KubeletEnsureSecretPulledImages` feature was promoted to Beta and enabled by default. ([#135228](https://github.com/kubernetes/kubernetes/pull/135228), [@aramase](https://github.com/aramase)) [SIG Auth, Node and Testing]",
+    "remediation": "Verify manually that kubelet image-pull credentials and workloads are compatible with `KubeletEnsureSecretPulledImages` enabled by default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-migrate-kube-proxy-from-ipvs",
+    "severity": "MEDIUM",
+    "title": "Migrate kube-proxy from ipvs to nftables",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kube-proxy mode is held in kube-proxy configuration and cannot be settled from the available cluster inventory fields."
+    },
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "target": "kube-proxy"
+    },
+    "quote": "Marked `ipvs` mode in kube-proxy as deprecated, which will be removed in a future version of Kubernetes. Users are encouraged to migrate to `nftables`. ([#134539](https://github.com/kubernetes/kubernetes/pull/134539), [@adrianmoisey](https://github.com/adrianmoisey))",
+    "remediation": "Migrate kube-proxy from `ipvs` mode to `nftables`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-migrate-mutating-admission-policy-storage",
+    "severity": "MEDIUM",
+    "title": "Review MutatingAdmissionPolicy storage version",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "MutatingAdmissionPolicy",
+      "target": "admissionregistration.k8s.io/v1alpha1"
+    },
+    "quote": "Updated storage version for `MutatingAdmissionPolicy` to `v1beta1`. ([#133715](https://github.com/kubernetes/kubernetes/pull/133715), [@cici37](https://github.com/cici37)) [SIG API Machinery, Etcd and Testing]",
+    "remediation": "Review and migrate any `MutatingAdmissionPolicy` objects using the previous API version to `v1beta1` before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-migrate-nodes-from-cgroup-v1",
+    "severity": "CRITICAL",
+    "title": "Ensure nodes use cgroup v2",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Whether nodes use cgroup v1 is determined by node-host configuration and cannot be settled from cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "ACTION REQUIRED: `failCgroupV1` will be set to true from 1.35. \n  This means that nodes will not start on a cgroup v1 by default. This puts cgroup v1 into a deprecated state. ([#134298](https://github.com/kubernetes/kubernetes/pull/134298), [@kannon92](https://github.com/kannon92))",
+    "remediation": "Ensure nodes use cgroup v2 before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-pod-certificate-request-feature",
+    "severity": "MEDIUM",
+    "title": "Enable the Pod Certificates APIs and feature gate when used",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PodCertificateRequest"
+    },
+    "quote": "- The Pod Certificates feature moved to beta. The `PodCertificateRequest` feature gate is set disabled by default. To use the feature, users must enable the certificates API groups in `v1beta1` and enable the `PodCertificateRequest` feature gate. The `UserAnnotations` field was added to the `PodCertificateProjection` API and the corresponding `UnverifiedUserAnnotations` field was added to the `PodCertificateRequest` API. ([#134624](https://github.com/kubernetes/kubernetes/pull/134624), [@yt2985](https://github.com/yt2985)) [SIG API Machinery, Apps, Auth, Etcd, Instrumentation, Node and Testing]",
+    "remediation": "If Pod Certificates are used, enable the certificates API groups in `v1beta1` and enable the `PodCertificateRequest` feature gate."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-pod-resize-resource-types",
+    "severity": "HIGH",
+    "title": "Verify Pod resize uses only CPU and memory resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected resource types used by Pod resize are nested resource specifications and cannot be settled by a single collected inventory field."
+    },
+    "quote": "- Pod resize now only allows CPU and memory resources; other resource types are forbidden. ([#135084](https://github.com/kubernetes/kubernetes/pull/135084), [@tallclair](https://github.com/tallclair)) [SIG Apps, Node and Testing]",
+    "remediation": "Verify manually that Pods using resize only resize CPU and memory resources; other resource types must be removed from resize operations."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-remove-partitionable-device-resourceslices",
+    "severity": "HIGH",
+    "title": "Remove partitionable-device ResourceSlices before version transitions",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceSlice"
+    },
+    "quote": "Updated the Partitionable Devices feature to support referencing counter sets across ResourceSlices within the same resource pool. Devices from incomplete pools were no longer considered for allocation. This change introduced backwards-incompatible updates to the alpha feature, requiring any ResourceSlices using it to be removed before upgrading or downgrading between v1.34 and v1.35.",
+    "remediation": "Remove any ResourceSlices using the Partitionable Devices alpha feature before upgrading or downgrading between v1.34 and v1.35."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-remove-pod-infra-container-image-flag",
+    "severity": "CRITICAL",
+    "title": "Remove the removed kubelet pod infra container image flag",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet command-line flags and node-host kubelet configuration are not represented in cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Removed the `--pod-infra-container-image` flag from `kubelet` command line. For `non-kubeadm` clusters, users must manually remove this flag from their `kubelet` configuration to prevent startup failures before upgrading `kubelet`. For `kubeadm` clusters, if users pass extra arguments to the `kubelet` like `--pod-infra-container-image`, it will be written to the `kubelet` env file during the `init` phase. `kubeadm` does not remove it during the `init` or `join` phase, so users must manually remove it from `extraArgs` in the `kubelet` configuration file. ([#133779](https://github.com/kubernetes/kubernetes/pull/133779), [@carlory](https://github.com/carlory))",
+    "remediation": "For non-kubeadm clusters, manually remove `--pod-infra-container-image` from the kubelet configuration before upgrading kubelet. For kubeadm clusters, manually remove it from `extraArgs` in the kubelet configuration file."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-remove-storage-version-migration-v1alpha1-resources",
+    "severity": "CRITICAL",
+    "title": "Remove StorageVersionMigration v1alpha1 resources before upgrading",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "StorageVersionMigration",
+      "target": "storagemigration.k8s.io/v1alpha1"
+    },
+    "quote": "Added the `StorageVersionMigration` `v1beta1` API and removed the `v1alpha1` API.\n  \n  ACTION REQUIRED: The `v1alpha1` API is no longer supported. Users must remove any `v1alpha1` resources before upgrading. ([#134784](https://github.com/kubernetes/kubernetes/pull/134784), [@michaelasp](https://github.com/michaelasp)) [SIG API Machinery, Apps, Auth, Etcd and Testing]",
+    "remediation": "Remove any `v1alpha1` resources before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-review-csi-service-account-token-secrets",
+    "severity": "MEDIUM",
+    "title": "Review CSI driver service account token delivery",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "CSIDriver",
+      "target": "serviceAccountTokenInSecrets",
+      "value": "true"
+    },
+    "quote": "CSI drivers can now opt in to receive service account tokens via the secrets field instead of volume context by setting `spec.serviceAccountTokenInSecrets: true` in the CSIDriver object. This prevents tokens from being exposed in logs and other outputs. The feature is gated by the `CSIServiceAccountTokenSecrets` feature gate (beta in `v1.35`). ([#134826](https://github.com/kubernetes/kubernetes/pull/134826), [@aramase](https://github.com/aramase)) [SIG API Machinery, Auth, Storage and Testing]",
+    "remediation": "For CSI drivers that should receive tokens via the secrets field, set `spec.serviceAccountTokenInSecrets: true` and ensure the `CSIServiceAccountTokenSecrets` feature gate is enabled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-review-device-taint-rule-none-effect",
+    "severity": "INFO",
+    "title": "Review DRA DeviceTaintRule None effect usage",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "DeviceTaintRule",
+      "target": "effect",
+      "value": "None"
+    },
+    "quote": "DRA device taints: `DeviceTaintRule` status provides information about the rule, including whether Pods still need to be evicted (`EvictionInProgress` condition). The newly added `None` effect can be used to preview what a `DeviceTaintRule` would do if it used the `NoExecute` effect and to taint devices (`device health`) without immediately affecting scheduling or running Pods. ([#134152](https://github.com/kubernetes/kubernetes/pull/134152), [@pohly](https://github.com/pohly)) [SIG API Machinery, Apps, Auth, Node, Release, Scheduling and Testing]",
+    "remediation": "Review `DeviceTaintRule` objects using the `None` effect and confirm that preview or non-impacting device health taints are intended."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-review-resourceclaim-device-class-quotas",
+    "severity": "MEDIUM",
+    "title": "Review ResourceClaim quotas when DRAExtendedResource is enabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether the DRAExtendedResource feature is enabled or whether ResourceClaims contain device class requests."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "Updated `ResourceQuota` to count device class requests within a `ResourceClaim` as two additional quotas when the `DRAExtendedResource` feature is enabled:",
+    "remediation": "Review ResourceQuota allocations for ResourceClaims with device class requests when the `DRAExtendedResource` feature is enabled."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-service-prefer-close-deprecation",
+    "severity": "INFO",
+    "title": "Replace deprecated Service traffic distribution value",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Service",
+      "target": "trafficDistribution",
+      "value": "PreferClose"
+    },
+    "quote": "- The `PreferSameZone` and `PreferSameNode` values for the Service\n  `trafficDistribution` field graduated to general availability. The\n  `PreferClose` value is now deprecated in favor of the more explicit\n  `PreferSameZone`. ([#134457](https://github.com/kubernetes/kubernetes/pull/134457), [@danwinship](https://github.com/danwinship)) [SIG API Machinery, Apps, Network and Testing]",
+    "remediation": "Replace `PreferClose` with the more explicit `PreferSameZone` value in affected Services."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-set-fail-cgroup-v1-false",
+    "severity": "HIGH",
+    "title": "Set failCgroupV1 to false in kubelet-config",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The required failCgroupV1 setting is a ConfigMap data entry, not a collected top-level spec or status field available to this detection vocabulary."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "namespace": "kube-system"
+    },
+    "quote": "Edit the `kube-system/kubelet-config` ConfigMap and add the `failCgroupV1: false` field before upgrading. ([#134744](https://github.com/kubernetes/kubernetes/pull/134744), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle and Node]",
+    "remediation": "Edit the `kube-system/kubelet-config` ConfigMap and add the `failCgroupV1: false` field before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-statusz-response-format",
+    "severity": "MEDIUM",
+    "title": "Verify statusz consumers support the versioned response",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "External statusz clients, monitoring integrations, and dashboards are not represented in cluster inventory."
+    },
+    "quote": "Introduced a structured and versioned `v1alpha1` response for the `statusz` endpoint. ([#134313](https://github.com/kubernetes/kubernetes/pull/134313), [@richabanker](https://github.com/richabanker)) [SIG API Machinery, Architecture, Instrumentation, Network, Node, Scheduling and Testing]",
+    "remediation": "Verify manually that external statusz clients, monitoring integrations, and dashboards support the structured and versioned `v1alpha1` response."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-verify-dynamic-resource-allocation-feature-gate",
+    "severity": "CRITICAL",
+    "title": "Verify DynamicResourceAllocation is not disabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The DynamicResourceAllocation feature-gate setting is in component startup configuration and is not represented in cluster inventory."
+    },
+    "quote": "DRA: The `DynamicResourceAllocation` feature gate for the core functionality (GA in `v1.34`) has now been locked to enabled-by-default and cannot be disabled anymore. ([#134452](https://github.com/kubernetes/kubernetes/pull/134452), [@pohly](https://github.com/pohly)) [SIG Auth, Node, Scheduling and Testing]",
+    "remediation": "Verify manually that `DynamicResourceAllocation` is not explicitly disabled in component configuration before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-verify-positive-log-flush-frequency",
+    "severity": "CRITICAL",
+    "title": "Verify log-flush-frequency is positive",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The log-flush-frequency command-line setting is in component startup configuration and is not represented in cluster inventory."
+    },
+    "quote": "Added validation to ensure `log-flush-frequency` is a positive value, returning an error instead of causing a panic. ([#133540](https://github.com/kubernetes/kubernetes/pull/133540), [@BenTheElder](https://github.com/BenTheElder)) [SIG Architecture, Instrumentation, Network and Node]",
+    "remediation": "Verify manually that `log-flush-frequency` is set to a positive value."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.35-verify-restart-all-containers-feature-gate",
+    "severity": "MEDIUM",
+    "title": "Verify RestartAllContainersOnContainerExit behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The RestartAllContainersOnContainerExit feature-gate setting and restart policy rules are not fully represented in cluster inventory."
+    },
+    "quote": "All containers are restarted when a source container in a restart policy rule exits. This alpha feature is gated behind `RestartAllContainersOnContainerExit`. ([#134345](https://github.com/kubernetes/kubernetes/pull/134345), [@yuanwang04](https://github.com/yuanwang04)) [SIG Apps, Node and Testing]",
+    "remediation": "Verify manually whether `RestartAllContainersOnContainerExit` is enabled and assess workloads that use restart policy rules."
+  }
+]

@@ -255,3 +255,136 @@ func TestMissingWorkloadsReportsKubeProxyGap(t *testing.T) {
 		t.Errorf("expected an UNAVAILABLE kube-proxy coverage row, got %+v", coverage)
 	}
 }
+
+func metricInv(collected inventory.CollectionState, nodes ...inventory.KubeletMetrics) *inventory.Inventory {
+	in := inv(node("n1", "v1.34.0", "containerd://1.7.0"), node("n2", "v1.34.0", "containerd://2.0.0"))
+	in.KubeletMetrics = nodes
+	in.Collected[inventory.CollectorKubeletMetrics] = collected
+	return in
+}
+
+func cgroupRule() catalog.NodeRuntimeRule {
+	r := undetectableRule("rtz-k8s-node-cgroupv1-fails-1.35", "1.35")
+	r.Severity = catalog.SeverityCritical
+	r.Metric = &catalog.MetricMatch{Name: "kubelet_cgroup_version", Condition: "valueEquals", Value: "1"}
+	return r
+}
+
+func criRule() catalog.NodeRuntimeRule {
+	r := undetectableRule("rtz-k8s-node-cri-losing-support", "1.36")
+	r.Severity = catalog.SeverityCritical
+	r.Metric = &catalog.MetricMatch{Name: "kubelet_cri_losing_support", Condition: "labelVersionAtMostTarget", Label: "version"}
+	return r
+}
+
+func series(name string, value float64, labels map[string]string) map[string][]inventory.MetricSample {
+	return map[string][]inventory.MetricSample{name: {{Labels: labels, Value: value}}}
+}
+
+// A cgroup v1 node is named from its own kubelet's gauge, a v2 node is left alone, and the
+// check reports itself as complete.
+func TestCgroupVersionFromKubeletMetrics(t *testing.T) {
+	in := metricInv(inventory.CollectionState{OK: true},
+		inventory.KubeletMetrics{NodeName: "n1", Reachable: true, Series: series("kubelet_cgroup_version", 1, nil)},
+		inventory.KubeletMetrics{NodeName: "n2", Reachable: true, Series: series("kubelet_cgroup_version", 2, nil)},
+	)
+	findings, coverage := Analyze(in, "1.34", "1.35", []catalog.NodeRuntimeRule{cgroupRule()})
+	f := byRule(findings, "rtz-k8s-node-cgroupv1-fails-1.35")
+	if f == nil {
+		t.Fatal("the cgroup v1 node must be reported")
+	}
+	if f.Severity != catalog.SeverityCritical || f.EnforcementLevel == "advisory" {
+		t.Errorf("a settled rule is a break, got %+v", f)
+	}
+	if len(f.AffectedResources) != 1 || !strings.Contains(f.AffectedResources[0], "n1") {
+		t.Errorf("only n1 runs cgroup v1: %v", f.AffectedResources)
+	}
+	var complete bool
+	for _, c := range coverage {
+		if c.Scope == "kubelet_cgroup_version" && c.State == report.CoverageComplete {
+			complete = true
+		}
+	}
+	if !complete {
+		t.Errorf("a checked metric must be a complete coverage row: %+v", coverage)
+	}
+}
+
+// The CRI gauge names the version at which support ends. It fires on an upgrade that reaches
+// that version and not before.
+func TestCRILosingSupportBoundByTarget(t *testing.T) {
+	in := metricInv(inventory.CollectionState{OK: true},
+		inventory.KubeletMetrics{NodeName: "n1", Reachable: true,
+			Series: series("kubelet_cri_losing_support", 1, map[string]string{"version": "1.36"})},
+	)
+	findings, _ := Analyze(in, "1.34", "1.36", []catalog.NodeRuntimeRule{criRule()})
+	if byRule(findings, "rtz-k8s-node-cri-losing-support") == nil {
+		t.Fatal("a runtime losing support at 1.36 must fire for a 1.36 target")
+	}
+	findings, _ = Analyze(in, "1.34", "1.35", []catalog.NodeRuntimeRule{criRule()})
+	if byRule(findings, "rtz-k8s-node-cri-losing-support") != nil {
+		t.Error("the rule is not on the path to 1.35")
+	}
+	in2 := metricInv(inventory.CollectionState{OK: true},
+		inventory.KubeletMetrics{NodeName: "n1", Reachable: true,
+			Series: series("kubelet_cri_losing_support", 1, map[string]string{"version": "1.38"})},
+	)
+	findings, _ = Analyze(in2, "1.35", "1.36", []catalog.NodeRuntimeRule{criRule()})
+	if byRule(findings, "rtz-k8s-node-cri-losing-support") != nil {
+		t.Error("a runtime supported through 1.38 must not fire for a 1.36 target")
+	}
+}
+
+// Refused metrics leave the rule as the advisory it would be without evidence, plus a gap.
+// Silence here would be a clean report earned by a missing permission.
+func TestUnreadableMetricsKeepTheAdvisoryAndRecordTheGap(t *testing.T) {
+	in := metricInv(inventory.CollectionState{OK: false, Reason: "permission denied: nodes/proxy", VerifyCommand: "kubectl get --raw ..."})
+	findings, coverage := Analyze(in, "1.34", "1.35", []catalog.NodeRuntimeRule{cgroupRule()})
+	f := byRule(findings, "rtz-k8s-node-cgroupv1-fails-1.35")
+	if f == nil || f.EnforcementLevel != "advisory" || f.Severity != catalog.SeverityInfo {
+		t.Fatalf("want the advisory fallback, got %+v", f)
+	}
+	var gap bool
+	for _, c := range coverage {
+		if c.Scope == "kubelet_cgroup_version" && c.State == report.CoverageUnavailable && strings.Contains(c.Reason, "permission denied") {
+			gap = true
+		}
+	}
+	if !gap {
+		t.Errorf("the refusal must be a coverage row: %+v", coverage)
+	}
+}
+
+// Kubelets older than 1.35 do not export the gauge. No node reporting it is not a pass.
+func TestMetricNotReportedIsNotAssessed(t *testing.T) {
+	in := metricInv(inventory.CollectionState{OK: true},
+		inventory.KubeletMetrics{NodeName: "n1", Reachable: true, Series: map[string][]inventory.MetricSample{}},
+	)
+	findings, coverage := Analyze(in, "1.33", "1.35", []catalog.NodeRuntimeRule{cgroupRule()})
+	if byRule(findings, "rtz-k8s-node-cgroupv1-fails-1.35") != nil {
+		t.Error("nothing reported the gauge, so nothing can fire")
+	}
+	if byRule(findings, notAssessedRuleID) == nil {
+		t.Error("an unreported metric must be flagged as not assessed")
+	}
+	var gap bool
+	for _, c := range coverage {
+		if c.Scope == "kubelet_cgroup_version" && c.State == report.CoverageUnavailable {
+			gap = true
+		}
+	}
+	if !gap {
+		t.Errorf("want an unavailable row: %+v", coverage)
+	}
+}
+
+func TestMetricNamesComeFromTheCatalog(t *testing.T) {
+	cat, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := MetricNames(cat.NodeRuntime)
+	if len(names) != 2 || names[0] != "kubelet_cgroup_version" || names[1] != "kubelet_cri_losing_support" {
+		t.Errorf("names = %v", names)
+	}
+}

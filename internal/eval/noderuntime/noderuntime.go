@@ -12,6 +12,7 @@ package noderuntime
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/runtimez-com/kube-upgrade-check/internal/catalog"
@@ -38,7 +39,15 @@ func Analyze(inv *inventory.Inventory, currentVersion, targetVersion string, rul
 	var findings []report.Finding
 	var coverage []report.Coverage
 
-	findings = append(findings, alwaysAdvisory(rules, currentKey, targetKey, targetVersion, inv.ClusterName)...)
+	var plain, metricBacked []catalog.NodeRuntimeRule
+	for _, rule := range rules {
+		if rule.Metric != nil {
+			metricBacked = append(metricBacked, rule)
+		} else {
+			plain = append(plain, rule)
+		}
+	}
+	findings = append(findings, alwaysAdvisory(plain, currentKey, targetKey, targetVersion, inv.ClusterName)...)
 
 	nodesRead := inv.Read(inventory.CollectorNodes) && len(inv.Nodes) > 0
 	if !nodesRead {
@@ -56,9 +65,13 @@ func Analyze(inv *inventory.Inventory, currentVersion, targetVersion string, rul
 		return findings, coverage
 	}
 
-	detectable, detectCoverage := detectableRules(inv, rules, targetKey, targetVersion)
+	detectable, detectCoverage := detectableRules(inv, plain, targetKey, targetVersion)
 	findings = append(findings, detectable...)
 	coverage = append(coverage, detectCoverage...)
+
+	metricFindings, metricCoverage := metricRules(inv, metricBacked, currentKey, targetKey, targetVersion)
+	findings = append(findings, metricFindings...)
+	coverage = append(coverage, metricCoverage...)
 
 	skewFindings, skewCoverage := kubeletSkew(inv, targetVersion)
 	findings = append(findings, skewFindings...)
@@ -389,4 +402,143 @@ func cap50(items []string) []string {
 		return items
 	}
 	return items[:maxNamed]
+}
+
+// MetricNames is every kubelet metric series the catalog's rules read, for the collector.
+func MetricNames(rules []catalog.NodeRuntimeRule) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, rule := range rules {
+		if rule.Metric != nil && rule.Metric.Name != "" && !seen[rule.Metric.Name] {
+			seen[rule.Metric.Name] = true
+			out = append(out, rule.Metric.Name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// metricRules settles the rules whose evidence lives in the kubelet's /metrics endpoint.
+//
+// When the metrics could not be read the rule is still printed, as the advisory it would be
+// without that evidence, and the gap is recorded beside it. A rule that goes quiet because
+// its collector was refused is exactly the false clean this tool exists to prevent.
+func metricRules(inv *inventory.Inventory, rules []catalog.NodeRuntimeRule, currentKey, targetKey int, targetVersion string) ([]report.Finding, []report.Coverage) {
+	var findings []report.Finding
+	var coverage []report.Coverage
+	read := inv.Read(inventory.CollectorKubeletMetrics)
+
+	for _, rule := range rules {
+		removedKey := catalog.MinorKey(rule.RemovedInVersion)
+		if removedKey == 0 || targetKey < removedKey {
+			continue
+		}
+		metric := rule.Metric
+		if !read {
+			state := inv.Collected[inventory.CollectorKubeletMetrics]
+			reason := state.Reason
+			if reason == "" {
+				reason = "kubelet metrics were not collected"
+			}
+			if currentKey == 0 || removedKey > currentKey {
+				findings = append(findings, alwaysAdvisory([]catalog.NodeRuntimeRule{withoutMetric(rule)},
+					currentKey, targetKey, targetVersion, inv.ClusterName)...)
+			}
+			coverage = append(coverage, report.Coverage{
+				Source: "node runtime", Scope: metric.Name, State: report.CoverageUnavailable,
+				Reason: reason, RulesSkipped: 1, VerifyCommand: state.VerifyCommand,
+			})
+			continue
+		}
+
+		var matched []string
+		reported := 0
+		for _, node := range inv.KubeletMetrics {
+			if !node.Reachable {
+				continue
+			}
+			samples, ok := node.Series[metric.Name]
+			if !ok || len(samples) == 0 {
+				continue
+			}
+			reported++
+			for _, sample := range samples {
+				if evidence, hit := metricMatches(metric, sample, targetKey); hit {
+					matched = append(matched, fmt.Sprintf("Node %s (%s)", node.NodeName, evidence))
+					break
+				}
+			}
+		}
+		if reported == 0 {
+			reason := fmt.Sprintf("no kubelet reported %s (kubelets before 1.35 do not export it), so %s could not be checked",
+				metric.Name, rule.RuleID)
+			findings = append(findings, notAssessed(inv.ClusterName, reason))
+			coverage = append(coverage, report.Coverage{
+				Source: "node runtime", Scope: metric.Name, State: report.CoverageUnavailable,
+				Reason: reason, RulesSkipped: 1,
+				VerifyCommand: "kubectl get --raw /api/v1/nodes/<node>/proxy/metrics | grep " + metric.Name,
+			})
+			continue
+		}
+		state := report.CoverageComplete
+		if inv.Collected[inventory.CollectorKubeletMetrics].Partial {
+			state = report.CoveragePartial
+		}
+		coverage = append(coverage, report.Coverage{
+			Source: "node runtime", Scope: metric.Name, State: state,
+			Reason: inv.Collected[inventory.CollectorKubeletMetrics].Reason,
+		})
+		if len(matched) == 0 {
+			continue
+		}
+		sort.Strings(matched)
+		severity := rule.Severity
+		if severity.Rank() == 0 {
+			severity = catalog.SeverityCritical
+		}
+		findings = append(findings, report.Finding{
+			ID:                report.NewID(rule.RuleID, matched[0]),
+			RuleID:            rule.RuleID,
+			Title:             rule.Title + " [target " + targetVersion + "]",
+			Recommendation:    rule.Remediation,
+			Category:          "RELIABILITY",
+			Severity:          severity,
+			ScoreImpact:       severity.ScoreImpact(),
+			ResourceName:      collapse(matched),
+			ResourceType:      "Node",
+			AffectedResources: cap50(matched),
+			AppliesAtVersion:  catalog.MinorOf(rule.RemovedInVersion),
+			Evidence:          matched,
+		})
+	}
+	return findings, coverage
+}
+
+// metricMatches decides one sample against a rule and returns what to print when it matches.
+func metricMatches(m *catalog.MetricMatch, sample inventory.MetricSample, targetKey int) (string, bool) {
+	switch m.Condition {
+	case "valueEquals":
+		want, err := strconv.ParseFloat(strings.TrimSpace(m.Value), 64)
+		if err != nil || sample.Value != want {
+			return "", false
+		}
+		return fmt.Sprintf("%s=%s", m.Name, strings.TrimSpace(m.Value)), true
+	case "labelVersionAtMostTarget":
+		version := sample.Labels[m.Label]
+		key := catalog.MinorKey(version)
+		if key == 0 || key > targetKey {
+			return "", false
+		}
+		return fmt.Sprintf("%s{%s=%q}", m.Name, m.Label, version), true
+	}
+	return "", false
+}
+
+// withoutMetric is the rule as the advisory path sees it: an advisory is what a metric-backed
+// rule falls back to when its evidence could not be read.
+func withoutMetric(rule catalog.NodeRuntimeRule) catalog.NodeRuntimeRule {
+	rule.Metric = nil
+	no := false
+	rule.Detectable = &no
+	return rule
 }

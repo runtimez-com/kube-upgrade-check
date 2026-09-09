@@ -1,0 +1,344 @@
+[
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-authentication-config-v1",
+    "severity": "MEDIUM",
+    "title": "Verify AuthenticationConfiguration uses apiserver.config.k8s.io/v1",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kube-apiserver --authentication-config file and its configured type are not represented in cluster inventory; verify the file manually."
+    },
+    "quote": "- Kube-apiserver: the AuthenticationConfiguration type accepted in `--authentication-config` files has been promoted to `apiserver.config.k8s.io/v1`. ([#131752](https://github.com/kubernetes/kubernetes/pull/131752), [@aramase](https://github.com/aramase)) [SIG API Machinery, Auth and Testing]",
+    "remediation": "Verify that the AuthenticationConfiguration type accepted in the --authentication-config file uses apiserver.config.k8s.io/v1."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-authorize-selector-feature-gates",
+    "severity": "MEDIUM",
+    "title": "Verify locked authorization selector feature gates",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate command-line configuration and authorization behavior are not represented in cluster inventory; verify component feature-gate settings manually."
+    },
+    "quote": "- Promoted the `AuthorizeWithSelectors` and `AuthorizeNodeWithSelectors` feature gates to stable and locked on. ([#132656](https://github.com/kubernetes/kubernetes/pull/132656), [@liggitt](https://github.com/liggitt)) [SIG API Machinery, Auth and Testing]",
+    "remediation": "Verify that configuration does not attempt to disable the AuthorizeWithSelectors or AuthorizeNodeWithSelectors feature gates, which are locked on."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-check-static-pods-api-object-references",
+    "severity": "CRITICAL",
+    "title": "Check static pods that reference API objects",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Static pod manifests and their API object references are node-host configuration and cannot be settled from cluster inventory."
+    },
+    "quote": "Static pods that reference API objects were denied admission by the kubelet so that static pods would not be silently running even after the mirror pod creation failed. ([#131837](https://github.com/kubernetes/kubernetes/pull/131837), [@sreeram-venkitesh](https://github.com/sreeram-venkitesh)) [SIG Auth, Node and Testing]",
+    "remediation": "Check static pods that reference API objects, because they will be denied admission by the kubelet."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-credential-provider-cache-type",
+    "severity": "HIGH",
+    "title": "Set credential provider tokenAttributes.cacheType",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Credential provider configuration files and kubelet configuration are not represented in cluster inventory."
+    },
+    "quote": "Updated the `v1` credential provider configuration to include the `tokenAttributes.cacheType` field. This field is required and must be set to either `ServiceAccount` or `Token` when configuring a provider that uses a service account to fetch registry credentials. ([#132617](https://github.com/kubernetes/kubernetes/pull/132617), [@aramase](https://github.com/aramase)) [SIG Auth, Node and Testing]",
+    "remediation": "When configuring a provider that uses a service account to fetch registry credentials, set the required `tokenAttributes.cacheType` field to either `ServiceAccount` or `Token`."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-credential-provider-token-feature-default",
+    "severity": "MEDIUM",
+    "title": "Verify credential provider service account token behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The feature gate and kubelet credential provider configuration are controlled by kubelet command-line flags or node-host configuration and cannot be settled from cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "The `KubeletServiceAccountTokenForCredentialProviders` feature was beta and enabled by default. ([#133017](https://github.com/kubernetes/kubernetes/pull/133017), [@aramase](https://github.com/aramase)) [SIG Auth and Node]",
+    "remediation": "Verify manually that kubelet credential providers are compatible with the beta feature being enabled by default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-csr-condition-declarative-validation",
+    "severity": "MEDIUM",
+    "title": "Verify CertificateSigningRequest condition validation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected conditionType values are nested within CertificateSigningRequest status.conditions, and the effect also depends on DeclarativeValidation and DeclarativeValidationTakeover feature-gate configuration."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "CertificateSigningRequest",
+      "target": "conditions"
+    },
+    "quote": "The `conditionType` is \"oneof\" approved/denied check of CertificateSigningRequest's `.status.conditions` field was migrated to declarative validation. \n  If the `DeclarativeValidation` feature gate was enabled, mismatches with existing validation are reported via metrics.\n  If the `DeclarativeValidationTakeover` feature gate was enabled, declarative validation was the primary source of errors for migrated fields. ([#133013](https://github.com/kubernetes/kubernetes/pull/133013), [@aaron-prindle](https://github.com/aaron-prindle)) [SIG API Machinery and Auth]",
+    "remediation": "Verify manually that CertificateSigningRequest status conditions use the approved/denied conditionType values and review declarative validation metrics and feature-gate settings."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-downward-api-pod-resource-fallback",
+    "severity": "MEDIUM",
+    "title": "Review Downward API resourceFieldRef fallback behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "resourceFieldRef usage and its nested resource target cannot be settled by a single collected top-level Pod field."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "The fallback behavior of the Downward API's `resourceFieldRef` field was updated to account for pod-level resources: if container-level limits were not set, pod-level limits were now used before falling back to node allocatable resources. ([#132605](https://github.com/kubernetes/kubernetes/pull/132605), [@toVersus](https://github.com/toVersus)) [SIG Node, Scheduling and Testing]",
+    "remediation": "Review Pods using the Downward API's resourceFieldRef field and verify that their behavior is correct when container-level limits are absent and pod-level limits are present."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-dra-admin-access-label-rename",
+    "severity": "HIGH",
+    "title": "Rename the DRA admin-access label",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "ResourceClaim",
+      "target": "resource.k8s.io/admin-access"
+    },
+    "quote": "DRA: Starting with Kubernetes 1.34, the alpha-level `resource.k8s.io/admin-access` label has been updated to `resource.kubernetes.io/admin-access`. Admins using the alpha feature and updating from 1.33 can set both labels, upgrade, then remove `resource.k8s.io/admin-access` when no downgrade is going to happen anymore. ([#131996](https://github.com/kubernetes/kubernetes/pull/131996), [@ritazh](https://github.com/ritazh)) [SIG Node and Testing]",
+    "remediation": "If using the alpha feature while updating from 1.33, set both labels before upgrading, then remove resource.k8s.io/admin-access when no downgrade is going to happen anymore."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-dra-kubelet-grpc-v1alpha4-removal",
+    "severity": "HIGH",
+    "title": "Update DRA drivers using the removed kubelet API",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet gRPC API implemented by a DRA driver is internal to the driver and is not represented in cluster inventory."
+    },
+    "quote": "DRA: removed support for the v1alpha4 kubelet gRPC API (added in 1.31, superseded in 1.32). DRA drivers using the helper package from Kubernetes  >= 1.32 use the v1beta1 API and continue to be supported. ([#132574](https://github.com/kubernetes/kubernetes/pull/132574), [@pohly](https://github.com/pohly))",
+    "remediation": "Verify that DRA drivers do not use the v1alpha4 kubelet gRPC API. Update drivers using the helper package from Kubernetes < 1.32 to use the v1beta1 API."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-dra-prioritized-list-allocation",
+    "severity": "MEDIUM",
+    "title": "Verify DRA prioritized list allocation behavior",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine whether DRA requests use the prioritized list feature or whether their resulting allocation exceeds the allowed devices per claim."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ResourceClaim"
+    },
+    "quote": "DRA: When the prioritized list feature was used in a request and the resulting number of allocated devices exceeded the number of allowed devices per claim, the scheduler aborted the attempt to allocate devices early. Previously, it tried to many different combinations, which could take a long time. ([#130593](https://github.com/kubernetes/kubernetes/pull/130593), [@mortent](https://github.com/mortent)) [SIG Apps, Node, Scheduling and Testing]",
+    "remediation": "Verify ResourceClaims and workloads using the prioritized list feature, particularly requests where the resulting number of allocated devices can exceed the number of allowed devices per claim."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-dra-scheduler-filter-timeout",
+    "severity": "MEDIUM",
+    "title": "Verify DRA scheduler FilterTimeout configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The scheduler plugin configuration and its FilterTimeout value are not available in cluster inventory."
+    },
+    "quote": "DRA: The scheduler plugin prevented abnormal filter runtimes by timing out after 10 seconds. This was configurable via the plugin configuration's `FilterTimeout`. Setting it to zero disabled the timeout and restored the behavior of Kubernetes <= 1.33. ([#132033](https://github.com/kubernetes/kubernetes/pull/132033), [@pohly](https://github.com/pohly)) [SIG Node, Scheduling and Testing]",
+    "remediation": "Verify the DRA scheduler plugin configuration. If the previous behavior is required, set FilterTimeout to zero; otherwise account for the 10-second timeout."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-dra-v1alpha3-resource-migration",
+    "severity": "CRITICAL",
+    "title": "Remove obsolete DRA resources before upgrading",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "target": "v1alpha3"
+    },
+    "quote": "DRA API: resource.k8s.io/v1alpha3 now only contains DeviceTaintRule. All other types got removed because they became obsolete when introducing the v1beta1 API in 1.32.\n  before updating a cluster where resourceclaims, resourceclaimtemplates, deviceclasses, or resourceslices might have been stored using Kubernetes < 1.32, delete all of those resources before updating and recreate them as needed while running Kubernetes >= 1.32. ([#132000](https://github.com/kubernetes/kubernetes/pull/132000), [@pohly](https://github.com/pohly)) [SIG Etcd, Node, Scheduling and Testing]",
+    "remediation": "Before updating, delete resourceclaims, resourceclaimtemplates, deviceclasses, or resourceslices that might have been stored using Kubernetes < 1.32, and recreate them as needed while running Kubernetes >= 1.32."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-headless-service-unsupported-settings",
+    "severity": "INFO",
+    "title": "Headless Services with load balancer, external IP, or session affinity settings",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The warning applies only when a Service is headless and has one or more of three possible settings; no single collected field predicate can settle that combination."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Service"
+    },
+    "quote": "Added warnings when creating headless service with set `loadBalancerIP`,`externalIPs` and/or `SessionAffinity`. ([#132214](https://github.com/kubernetes/kubernetes/pull/132214), [@Peac36](https://github.com/Peac36))",
+    "remediation": "Verify manually that headless Services do not set loadBalancerIP, externalIPs, or SessionAffinity unless the warning is intentional."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-job-pod-replacement-policy-feature-gate",
+    "severity": "MEDIUM",
+    "title": "Verify JobPodReplacementPolicy feature-gate configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate command-line configuration is not represented in cluster inventory; verify kube-apiserver and component feature-gate settings manually."
+    },
+    "quote": "- Promoted Job Pod Replacement Policy to general availability. The `JobPodReplacementPolicy` feature gate was locked to `true` and will be removed in a future Kubernetes release. ([#132173](https://github.com/kubernetes/kubernetes/pull/132173), [@dejanzele](https://github.com/dejanzele)) [SIG Apps and Testing]",
+    "remediation": "Remove any configuration that disables the JobPodReplacementPolicy feature gate and verify it is set to true."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-kubelet-streaming-connection-idle-timeout",
+    "severity": "LOW",
+    "title": "Verify deprecated kubelet configuration",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The kubelet config file and command-line configuration are not available in cluster inventory."
+    },
+    "quote": "Deprecated `StreamingConnectionIdleTimeout` field of the kubelet config. ([#131992](https://github.com/kubernetes/kubernetes/pull/131992), [@lalitc375](https://github.com/lalitc375))",
+    "remediation": "Verify whether the kubelet config uses the deprecated StreamingConnectionIdleTimeout field and plan its removal or replacement according to the supported kubelet configuration."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-migrate-apparmor-annotation-consumers",
+    "severity": "MEDIUM",
+    "title": "Migrate consumers of deprecated AppArmor annotations",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "container.apparmor.security.beta.kubernetes.io/"
+    },
+    "quote": "`AppArmor` profiles specified in the Pod or container `SecurityContext` were no longer copied to deprecated `AppArmor` annotations (prefix `container.apparmor.security.beta.kubernetes.io/`). Anything that inspected the deprecated annotations must be migrated to use the `SecurityContext` fields instead.",
+    "remediation": "Migrate anything that inspected the deprecated annotations to use the `SecurityContext` fields instead."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-multicidr-service-allocator-defaults",
+    "severity": "MEDIUM",
+    "title": "Verify compatibility with updated service allocator defaults",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate and control-plane configuration state for the service allocator cannot be settled from cluster inventory."
+    },
+    "quote": "`MultiCIDRServiceAllocator` was locked and enabled by default, `DisableAllocatorDualWrite` was enabled by default. ([#131318](https://github.com/kubernetes/kubernetes/pull/131318), [@aojea](https://github.com/aojea)) [SIG API Machinery, Apps, Architecture, Auth, Etcd, Network and Testing]",
+    "remediation": "Verify compatibility with `MultiCIDRServiceAllocator` being locked and enabled by default and `DisableAllocatorDualWrite` being enabled by default."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-mutating-admission-policy-beta-storage-migration",
+    "severity": "HIGH",
+    "title": "Migrate MutatingAdmissionPolicy storage after enabling beta",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "MutatingAdmissionPolicy",
+      "target": "admissionregistration.k8s.io/v1alpha1"
+    },
+    "quote": "Introduced the `admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicy` API type. To enable, enable the `MutatingAdmissionPolicy` feature gate (which was off by default) and set `--runtime-config=admissionregistration.k8s.io/v1beta1=true` on the kube-apiserver. \n  Note that the default stored version remained alpha in 1.34, and whoever enabled beta during 1.34 needed to run a storage migration yourself to ensure you don't depend on alpha data in etcd. ([#132821](https://github.com/kubernetes/kubernetes/pull/132821), [@cici37](https://github.com/cici37)) [SIG API Machinery, Etcd and Testing]",
+    "remediation": "If the MutatingAdmissionPolicy feature gate and admissionregistration.k8s.io/v1beta1 runtime configuration were enabled, run a storage migration yourself to ensure you don't depend on alpha data in etcd."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-pod-hugepage-limit-validation",
+    "severity": "HIGH",
+    "title": "Hugepage container limits must fit within pod-level limits",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected condition requires comparing aggregated container hugepage limits and requests with pod-level limits; no single collected top-level field settles that comparison."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resources"
+    },
+    "quote": "Added validation to enforce the hugepage aggregated container limits to be smaller than or equal to pod-level limits. This was already enforced with the defaulted requests from the specified limits, however it did not make it clear about both hugepage requests and limits. ([#131089](https://github.com/kubernetes/kubernetes/pull/131089), [@KevinTMtz](https://github.com/KevinTMtz)) [SIG Apps, Node and Testing]",
+    "remediation": "Verify manually that Pods using pod-level hugepage resources have aggregated container limits smaller than or equal to the pod-level limits."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-pod-level-hugepage-cgroup-propagation",
+    "severity": "MEDIUM",
+    "title": "Pod-level hugepage cgroup propagation changes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory cannot determine from a single top-level field whether pod-level resources contain hugepage resources or whether individual containers omit them."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resources"
+    },
+    "quote": "Changed underlying logic to propagate pod-level hugepage cgroup to containers when they did not specify hugepage resources.",
+    "remediation": "Verify manually that Pods using pod-level hugepage resources behave as expected after the upgrade."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-pod-level-resources-windows",
+    "severity": "HIGH",
+    "title": "Pod-level resources are rejected on Windows",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "A single collected top-level field cannot establish both that a Pod uses pod-level resources and that its Pod.spec.os.name targets Windows."
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Pod",
+      "target": "resources"
+    },
+    "quote": "Added validation to reject Pods using the `PodLevelResources` feature on Windows OS due to lack of support. The API server rejected Pods with pod-level resources and a `Pod.spec.os.name` targeting Windows. Kubelet on nodes running Windows also rejected Pods with pod-level resources at the admission phase. ([#133046](https://github.com/kubernetes/kubernetes/pull/133046), [@toVersus](https://github.com/toVersus)) [SIG Apps and Node]",
+    "remediation": "Verify manually that Pods using pod-level resources do not target Windows, or remove pod-level resources from those Pods."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-remove-kubelet-cloud-config-flag",
+    "severity": "CRITICAL",
+    "title": "Remove the deprecated kubelet cloud-config flag",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kubelet command-line flags are node-host configuration and are not represented in cluster inventory."
+    },
+    "quote": "Kubelet:  removed the deprecated flag `--cloud-config` from the command line. ([#130161](https://github.com/kubernetes/kubernetes/pull/130161), [@carlory](https://github.com/carlory)) [SIG Cloud Provider, Node and Scalability]",
+    "remediation": "Remove the deprecated flag `--cloud-config` from the kubelet command line before upgrading."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-replicationcontroller-scale-declarative-validation",
+    "severity": "MEDIUM",
+    "title": "ReplicationController scale validation uses declarative validation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Feature-gate settings and whether declarative validation differs from existing validation cannot be settled from cluster inventory."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ReplicationController"
+    },
+    "quote": "The validation of `replicas` field in the ReplicationController `/scale` subresource has been migrated to declarative validation.",
+    "remediation": "If the `DeclarativeValidation` feature gate is enabled, monitor metrics for mismatches with existing validation. If the `DeclarativeValidationTakeover` feature gate is enabled, verify that declarative validation is acceptable as the primary source of errors for the migrated field."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-update-apiserver-metric-label-consumers",
+    "severity": "INFO",
+    "title": "Update API server metric label consumers",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Metric consumers such as dashboards and alerting rules are external to cluster inventory."
+    },
+    "quote": "For metrics `apiserver_cache_list_fetched_objects_total`, `apiserver_cache_list_returned_objects_total`, `apiserver_cache_list_total` replace `resource_prefix` label with API `group` and `resource` labels.",
+    "remediation": "Replace the `resource_prefix` label with API `group` and `resource` labels in consumers of these metrics."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-update-dra-kubelet-grpc-api",
+    "severity": "HIGH",
+    "title": "Update DRA drivers for the v1 kubelet gRPC API",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "DRA driver compatibility and whether the driver uses the deprecated kubelet gRPC API are implementation details not settled by cluster inventory."
+    },
+    "quote": "DRA kubelet: gRPC API graduated to v1, v1beta1 was deprecated starting in 1.34. Updating DRA drivers to the `k8s.io/dynamic-resource-allocation/kubeletplugin` helper from 1.34 added support for both API versions. ([#132700](https://github.com/kubernetes/kubernetes/pull/132700), [@pohly](https://github.com/pohly)) [SIG Node and Testing]",
+    "remediation": "Update DRA drivers to the `k8s.io/dynamic-resource-allocation/kubeletplugin` helper from 1.34 so they support both API versions."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-verify-external-load-balancer-exclusion-labels",
+    "severity": "MEDIUM",
+    "title": "Verify nodes using the external load balancer exclusion label",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Node",
+      "target": "node.kubernetes.io/exclude-from-external-load-balancers"
+    },
+    "quote": "[cloud-provider] Respected the `exclude-from-external-load-balancers=false` label. ([#131085](https://github.com/kubernetes/kubernetes/pull/131085), [@kayrus](https://github.com/kayrus)) [SIG Cloud Provider and Network]",
+    "remediation": "Verify that nodes using `exclude-from-external-load-balancers=false` are intended to be handled according to the cloud provider's external load balancer exclusion behavior."
+  },
+  {
+    "ruleId": "rtz-gen-kubernetes-1.34-volume-attributes-class-v1",
+    "severity": "HIGH",
+    "title": "Migrate VolumeAttributesClass resources to storage.k8s.io/v1",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "VolumeAttributesClass",
+      "target": "storage.k8s.io/v1beta1"
+    },
+    "quote": "  - Promoted API `VolumeAttributesClass` and `VolumeAttributesClassList` to `storage.k8s.io/v1`. ([#131549](https://github.com/kubernetes/kubernetes/pull/131549), [@carlory](https://github.com/carlory)) [SIG API Machinery, Apps, Auth, CLI, Etcd, Storage and Testing]",
+    "remediation": "Migrate VolumeAttributesClass resources using storage.k8s.io/v1beta1 to storage.k8s.io/v1."
+  }
+]
