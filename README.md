@@ -81,8 +81,9 @@ An unknown `--fail-on` value is rejected rather than ignored. A typo that quietl
 | Config breakers | Control-plane flags and kubelet settings the target refuses to start with, including feature gates locked to their default | 449 |
 | Volume plugins | In-tree volume plugins that stop mounting | 17 |
 | Node runtime | Container runtime, cgroup version, kubelet and kube-proxy version skew | 9 |
-| Add-on compatibility | Whether Karpenter, ingress-nginx, cert-manager, Argo CD, CoreDNS, Istio and kube-proxy support the target | 7 catalogs |
-| Release-note rules | Rules extracted from each Kubernetes changelog with the sentence they rest on: a deprecated Service field still set, a label or annotation the release stops honouring, an object still written at a retiring apiVersion | 149 (33 settled from objects; the rest print as reading) |
+| Add-on compatibility | Whether Karpenter, ingress-nginx, cert-manager, Argo CD, CoreDNS, Istio, Traefik and kube-proxy support the target | 8 catalogs |
+| Release-note rules | Rules extracted from each Kubernetes changelog with the sentence they rest on: a deprecated Service field still set, a label or annotation the release stops honouring, an object still written at a retiring apiVersion | 143 |
+| Add-on release-note rules | The same, from each add-on's own release notes and migration guides, selected by the add-on's own version range: a Corefile still using `federation`, an Issuer still on a Venafi zone syntax, a Traefik Middleware type that changed shape | 422 across Argo CD, cert-manager, CoreDNS, Istio, Karpenter, kube-proxy and Traefik, plus 5 version-skew rules |
 | Node runtime, from the kubelet | cgroup v1 hosts and container runtimes the kubelet itself reports as losing support, read from each kubelet's `/metrics` | 2 |
 | Upgrade preflight | What stops the upgrade rather than breaks after it: a skipped minor, nodes not Ready, disruption budgets that block a drain, bare pods, Fail-policy admission and CRD conversion webhooks with no ready backend, unavailable aggregated APIs | 8 checks |
 | Advisories | Behaviour changes on the path that no API call can settle | 36 |
@@ -108,7 +109,8 @@ families it checks.
 | Feature gates locked to a new default | no | no | **yes** |
 | In-tree volume plugins that stop mounting | no | no | **17 rules** |
 | Node runtime and version skew | no | no | **yes** |
-| Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **7 catalogs** |
+| Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **8 catalogs** |
+| Add-on release notes settled against your objects | no | no | **422 rules** |
 | Vendor support dates and extended-support cost | no | no | **yes** |
 | Drain, webhook and aggregated-API preflight | no | no | **yes** |
 | Reports what it could **not** check | no | no | **yes** |
@@ -196,6 +198,18 @@ Verdicts are never collapsed into a tick. An add-on can be supported, too old, t
 three kinds of unknown: the vendor publishes no matrix, we could not read your installed version,
 or your version is not in their table. The last three are reported, because an add-on nobody could
 judge is not an add-on that passed.
+
+Each add-on's breaking changes are release-note rules under `catalog/k8s-rules/<addon>/`, one
+file per add-on minor, and they run on the add-on's OWN version range rather than the Kubernetes
+one. With a vendor matrix that range is from the installed version to the lowest release that
+supports the target (the upgrade genuinely forces the move). Without one, an add-on that opts in
+(`currencyHop`) is checked from the installed version to the newest catalogued release, and the
+report says that move is not required by this upgrade. An add-on that is not installed, or whose
+version could not be read, has its rules skipped and the report says so. Rules that read a derived
+view of an object (which plugins a Corefile uses, which blocks an Issuer configures, a ConfigMap's
+key names) derive it here the same way the runtimez agent does, and never carry values: a
+Corefile's upstreams and credentials, a Secret's data and an issuer's server URL stay in the
+cluster.
 
 ```bash
 kube-upgrade-check catalog list        # what the catalog covers

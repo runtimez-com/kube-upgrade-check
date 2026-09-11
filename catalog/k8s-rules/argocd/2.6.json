@@ -1,0 +1,92 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.6-project-filter-broken-before-2-6-6",
+    "severity": "LOW",
+    "title": "API `project` filter is ignored on 2.6.0–2.6.5 — land on 2.6.6 or later",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the affected patch releases and the API clients that filter with `project` are not collected; the target patch of this hop is not known to the inventory"
+    },
+    "quote": "Argo CD 2.4.0 introduced a breaking API change, renaming the `project` filter to `projects`.",
+    "remediation": "Skip 2.6.0–2.6.5 and install 2.6.6 or a later patch, which accepts both `project` and `projects`. Until then, any REST client (or `argocd` CLI at 2.4.0–2.6.5) that lists Applications by `project` gets an unfiltered list — dangerous when that list feeds a deletion."
+  },
+  {
+    "ruleId": "rtz-argocd-2.6-matrix-nested-git-files-generator-broken-in-2-6-5",
+    "severity": "MEDIUM",
+    "title": "2.6.5 breaks git files generators nested second under a matrix — the ApplicationSet may prune every Application",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "generator types inside an ApplicationSet's spec.generators tree are not projected, so which ApplicationSets nest a git files generator under a matrix cannot be settled"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ApplicationSet"
+    },
+    "quote": "Argo CD 2.6.5 introduced a bug in the matrix-nested git files generator. The bug only applies when the git files generator is the second generator nested under a matrix.",
+    "remediation": "Skip 2.6.5: go directly to 2.6.6 or later (or 2.5.15). An ApplicationSet with a matrix whose second nested generator is a git files generator produces no parameters on 2.6.5, and with deletion enabled it prunes every Application it previously created.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.spec.generators[]?.matrix?.generators[1]?.git?.files != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed nest a git files generator second under a matrix — do not run 2.6.5"
+  },
+  {
+    "ruleId": "rtz-argocd-2.6-applicationset-sprig-semver-caret",
+    "severity": "LOW",
+    "title": "Go-templated ApplicationSets: Sprig's `^` semver constraint changes meaning",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ApplicationSet templates are not collected — whether a Go template calls a Sprig semver function with a `^` constraint cannot be settled"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ApplicationSet"
+    },
+    "quote": "Masterminds/semver v3 changed the behavior of the `^` prefix in semantic version constraints. If you are using Go-templated ApplicationSets which include references to Sprig's semver functions and use the `^` prefix, read the Masterminds/semver changelog to understand how your ApplicationSets' behavior may change.",
+    "remediation": "Review every ApplicationSet with `goTemplate: true` whose template uses `semverCompare`/`semver` with a `^` constraint and re-check the intended range against the Masterminds/semver v3 rules before upgrading.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.spec.goTemplate == true) | select((.spec.template | tostring) | test(\"semver\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed are Go-templated and call a semver function — check for a `^` constraint"
+  },
+  {
+    "ruleId": "rtz-argocd-2.6-suspended-jobs-mark-application-suspended",
+    "severity": "LOW",
+    "title": "Applications managing a suspended Job read `Suspended`, no longer `Progressing`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Applications manage a suspended Job is not something the inventory relates; only the Jobs themselves are collected"
+    },
+    "quote": "Prior to Argo CD v2.6, an Application managing a suspended Job would be marked as \"Progressing\". This was confusing/unexpected behavior for many. Starting with v2.6, Argo CD will mark such Applications as \"Suspended\".",
+    "remediation": "Update any automation that waits on `Progressing` (for example a CI step running `argocd app wait`) before upgrading — a suspended Job now surfaces as `Suspended`.",
+    "verifyCommand": "kubectl get jobs -A -o json | jq -r '.items[] | select(.spec.suspend == true) | .metadata.namespace + \"/\" + .metadata.name' # names printed are suspended Jobs — their Application reads Suspended from 2.6"
+  },
+  {
+    "ruleId": "rtz-argocd-2.6-api-tokens-require-aud-claim",
+    "severity": "MEDIUM",
+    "title": "API server rejects OIDC tokens without an `aud` claim",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the OIDC configuration lives in the VALUE of argocd-cm's `oidc.config` key, and ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^oidc\\.config$"
+    },
+    "quote": "Argo CD v2.6 now requires that the `aud` claim be present in the token used to authenticate to the API Server. This is a security improvement, as it prevents tokens from being used against the API Server which were not intended for it.",
+    "remediation": "If your identity provider issues tokens without an `aud` claim, either configure it to include one or set `skipAudienceCheckWhenTokenHasNoAudience: true` in the `oidc.config` block of argocd-cm before upgrading.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.oidc\\.config}' | grep -c skipAudienceCheckWhenTokenHasNoAudience # 0 with an OIDC provider that omits aud = logins fail after the upgrade"
+  },
+  {
+    "ruleId": "rtz-argocd-2.6-argocd-cm-plugins-removal-delayed-to-2-7",
+    "severity": "LOW",
+    "title": "argocd-cm config management plugins still work in 2.6 — removal moved to 2.7",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^configManagementPlugins$",
+      "reason": "ConfigMap KEY names are collected, never values — this rule fires on the presence of the key in the named ConfigMap"
+    },
+    "quote": "Removal of argocd-cm plugin support has been delayed until 2.7 to provide a transition time for users who need to specify plugins by name.",
+    "remediation": "Nothing breaks at 2.6, but the `configManagementPlugins` block in argocd-cm is on its last release: migrate each plugin to a sidecar plugin (specifiable by name from 2.6) before 2.8 removes support.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.configManagementPlugins}' | head -c 400 # non-empty = plugins still declared in argocd-cm"
+  }
+]

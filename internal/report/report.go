@@ -49,6 +49,10 @@ type Finding struct {
 	// which evidence source produced it.
 	Evidence []string `json:"evidence,omitempty"`
 	Tiers    []string `json:"tiers,omitempty"`
+
+	// RuleSource names the rule set a release-note finding came from ("kubernetes", or an
+	// add-on id such as "coredns"), so a reader can tell a Kubernetes note from an add-on's.
+	RuleSource string `json:"ruleSource,omitempty"`
 }
 
 // NewID builds the deterministic finding id the hosted product uses, so the same finding
@@ -121,6 +125,12 @@ type AddonStatus struct {
 	SourceURL         string                `json:"sourceUrl,omitempty"`
 	Stale             bool                  `json:"catalogStale,omitempty"`
 	UpgradeNotes      []catalog.UpgradeNote `json:"upgradeNotes,omitempty"`
+	// RequiredVersion and HopReason describe the add-on version range whose release-note
+	// rules were evaluated: (installedVersion, requiredVersion]. HopReason is K8S_SUPPORT when
+	// the vendor's table forces the move for this Kubernetes target, CURRENCY when the add-on
+	// is merely behind the newest catalogued release and nothing requires the move.
+	RequiredVersion string `json:"requiredVersion,omitempty"`
+	HopReason       string `json:"hopReason,omitempty"`
 }
 
 // PatchCurrency reports whether the cluster is on the newest patch of its own minor.

@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.29-node-kube-proxy-version-field",
+  "severity": "MEDIUM",
+  "title": "Node .status.nodeInfo.kubeProxyVersion may stop being published",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether the gate is enabled is kubelet/apiserver process configuration, which is not collected; the field's presence on Node status today does not say what it will be after the upgrade"
+  },
+  "quote": "Added the `DisableNodeKubeProxyVersion` feature gate. If `DisableNodeKubeProxyVersion` is enabled, the `kubeProxyVersion` field is not set.",
+  "remediation": "Anything reading `.status.nodeInfo.kubeProxyVersion` \u2014 dashboards, drift checks, admission policies \u2014 must stop treating it as always present. The field was never reliable (it reported the kubelet's compiled-in version, not the running kube-proxy), which is why it is going away.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | select(.status.nodeInfo.kubeProxyVersion != null) | \"\\(.metadata.name) \\(.status.nodeInfo.kubeProxyVersion)\"'  # each node printed still publishes the field; readers of it break when the gate turns on"
+ }
+]

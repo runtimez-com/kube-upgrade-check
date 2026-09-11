@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.28-iptables-ownership-cleanup-ga",
+  "severity": "LOW",
+  "title": "KUBE-MARK-DROP and KUBE-MARK-MASQ ownership changed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "host iptables chains are not Kubernetes objects; nothing in the collected inventory, and no read-only kubectl query, shows which components write rules that jump to these chains"
+  },
+  "quote": "The `IPTablesOwnershipCleanup` feature (KEP-3178) is now GA; kubelet no longer creates the `KUBE-MARK-DROP` chain (which has been unused for several releases) or the `KUBE-MARK-MASQ` chain (which is now only created by kube-proxy).",
+  "remediation": "Only matters if something outside kube-proxy writes iptables rules jumping to `KUBE-MARK-MASQ` or `KUBE-MARK-DROP` \u2014 some CNI plugins and node agents do. Those chains now exist only while kube-proxy runs; a rule that jumps to a missing chain is a startup error for whatever installs it.",
+  "verifyCommand": null
+ }
+]

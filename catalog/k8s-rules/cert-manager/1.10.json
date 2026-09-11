@@ -1,0 +1,30 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.10-openshift-seccomp-scc",
+  "severity": "MEDIUM",
+  "title": "On OpenShift the 1.10 seccomp profile can be rejected by SecurityContextConstraints",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "SecurityContextConstraints is an OpenShift admission object the agent does not collect, and whether THIS cluster's SCC admits a RuntimeDefault seccomp profile depends on the OpenShift version and its configuration"
+  },
+  "quote": "In cert-manager 1.10 the secure computing (seccomp) profile for all the Pods is set to `RuntimeDefault`. On some versions and configurations of OpenShift this can cause the Pod to be rejected by the Security Context Constraints admission webhook.",
+  "remediation": "On OpenShift, confirm the cert-manager ServiceAccounts are admitted by an SCC that allows the RuntimeDefault seccomp profile before upgrading.",
+  "verifyCommand": "kubectl get securitycontextconstraints -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.name) seccompProfiles=\\(.seccompProfiles // [] | join(\",\"))\"'  # no output = not OpenShift; otherwise an SCC must allow runtime/default"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.10-container-names-change",
+  "severity": "LOW",
+  "title": "The controller and webhook containers are renamed — automation keyed on `cert-manager` breaks",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment",
+   "objectName": "^cert-manager",
+   "target": "containers[].name",
+   "value": "^cert-manager$",
+   "reason": "the container name is projected; whether any script, log query or sidecar config keys on it is not a cluster fact"
+  },
+  "quote": "The names are changed to better reflect what they do; for example, the container in the controller pod had its name changed from `cert-manager` to `cert-manager-controller`, and the webhook pod had its container name changed from `cert-manager` to `cert-manager-webhook`.",
+  "remediation": "Update anything that addresses the container by name (kubectl logs -c, log pipelines, monitoring selectors) to `cert-manager-controller` and `cert-manager-webhook`.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | \"\\(.metadata.namespace)/\\(.metadata.name): \\([.spec.template.spec.containers[].name] | join(\",\"))\"'  # a container still named plain cert-manager is renamed by 1.10"
+ }
+]

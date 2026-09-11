@@ -1,0 +1,62 @@
+[
+  {
+    "version": "3.0",
+    "note": "Consul provider",
+    "reason": "the Consul provider is not a Kubernetes provider — it discovers configuration from a Consul key-value store, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "ConsulCatalog provider",
+    "reason": "the ConsulCatalog provider is not a Kubernetes provider — it discovers configuration from the Consul service catalog, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "Nomad provider",
+    "reason": "the Nomad provider is not a Kubernetes provider — it discovers configuration from Nomad job specifications, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "ETCD Provider",
+    "reason": "the ETCD provider is not a Kubernetes provider — it discovers configuration from an etcd key-value store, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "Redis Provider",
+    "reason": "the Redis provider is not a Kubernetes provider — it discovers configuration from a Redis key-value store, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "HTTP Provider",
+    "reason": "the HTTP provider is not a Kubernetes provider — it discovers configuration from a remote HTTP endpoint, so nothing it declares is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.0",
+    "note": "Marathon provider",
+    "reason": "the Marathon provider is not a Kubernetes provider, and Marathon reached end of maintenance on 31 October 2021. Its removal only breaks a Traefik that still configures it."
+  },
+  {
+    "version": "3.0",
+    "note": "Rancher v1 Provider",
+    "reason": "the Rancher v1 provider is not a Kubernetes provider — it queried the Rancher 1.x metadata endpoint. Rancher 2.x runs on Kubernetes and is served by the Kubernetes CRD provider, which this corpus already covers."
+  },
+  {
+    "version": "3.0",
+    "note": "SwarmMode",
+    "reason": "this splits the Docker provider into separate Docker and Swarm providers. Docker Swarm is not Kubernetes and no Swarm object is collected."
+  },
+  {
+    "version": "3.0",
+    "note": "InfluxDB v1",
+    "reason": "this removes a Traefik metrics backend, not a routing or Kubernetes behaviour. Traefik's own metrics pipeline is outside what this platform reads."
+  },
+  {
+    "version": "3.0",
+    "note": "Pilot",
+    "reason": "Traefik Pilot was a hosted SaaS dashboard, discontinued on 4 October 2022. There is nothing left to detect or remediate in a cluster."
+  },
+  {
+    "version": "3.6",
+    "note": "Docker provider: minimum Docker Engine version",
+    "reason": "the Docker provider is not a Kubernetes provider, and the Docker Engine API version it requires is a property of the Docker host, not of any Kubernetes object."
+  }
+]

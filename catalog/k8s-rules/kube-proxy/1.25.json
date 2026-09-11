@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.25-winkernel-hns-v1-unsupported",
+  "severity": "MEDIUM",
+  "title": "Windows winkernel proxier drops HNS v1",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the HNS API version a Windows node offers is host state, not a Kubernetes object \u2014 nothing in the collected inventory distinguishes an HNS v1 node from an HNS v2 one"
+  },
+  "quote": "Windows winkernel kube-proxy no longer supports Windows HNS v1 APIs.",
+  "remediation": "Only Windows nodes are affected. Confirm each one runs an HNS v2-capable Windows Server build before upgrading; kube-proxy will not start on a node offering only HNS v1.",
+  "verifyCommand": "kubectl get nodes -l kubernetes.io/os=windows -o name  # each node printed runs the winkernel proxier; check the HNS version it offers before upgrading"
+ }
+]

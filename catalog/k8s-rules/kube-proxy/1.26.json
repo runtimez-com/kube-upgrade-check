@@ -1,0 +1,18 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.26-userspace-proxy-mode",
+  "severity": "HIGH",
+  "title": "userspace proxy mode no longer supported",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "userspace",
+   "reason": "read from the kube-proxy ConfigMap's own mode field; a mode passed only as a --proxy-mode container arg is not read here"
+  },
+  "quote": "The \"userspace\" proxy mode (deprecated for over a year) is no longer supported on either Linux or Windows. Users should use \"iptables\" or \"ipvs\" on Linux, or \"kernelspace\" on Windows.",
+  "remediation": "Switch the mode to `iptables` or `ipvs` (Linux) or `kernelspace` (Windows) BEFORE the upgrade. kube-proxy does not fall back \u2014 it fails to start, and every node it fails on stops programming Service rules.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; userspace no longer starts on 1.26"
+ }
+]

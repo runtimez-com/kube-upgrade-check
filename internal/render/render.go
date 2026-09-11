@@ -214,7 +214,7 @@ func (p *Printer) printAddons(w *errWriter, st style, r report.Result) {
 	const addonPrefix = 4 + 2 + 1 + 2
 	for i, a := range r.Addons {
 		w.printf("    %s %s  %s\n", addonMarker(st, a.Verdict), pad(labels[i], nameWidth),
-			st.wrap(addonVerdict(a), nameWidth+addonPrefix))
+			st.wrap(addonVerdict(a)+addonHop(a), nameWidth+addonPrefix))
 	}
 	w.newline()
 
@@ -421,6 +421,22 @@ func addonVerdict(a report.AddonStatus) string {
 		return "this version is not in the vendor's table, so this could not be checked"
 	default:
 		return strings.ToLower(a.Verdict)
+	}
+}
+
+// addonHop says which of the add-on's own release notes were checked, and why. A currency hop
+// is not a requirement of this Kubernetes upgrade, and the line says so rather than letting a
+// reader take "release notes up to 1.14.7" as "you must upgrade CoreDNS first".
+func addonHop(a report.AddonStatus) string {
+	if a.RequiredVersion == "" {
+		return ""
+	}
+	switch a.HopReason {
+	case "CURRENCY":
+		return fmt.Sprintf("; release notes %s -> %s checked (newest catalogued release; not required by this upgrade)",
+			a.InstalledVersion, a.RequiredVersion)
+	default:
+		return fmt.Sprintf("; release notes %s -> %s checked", a.InstalledVersion, a.RequiredVersion)
 	}
 }
 

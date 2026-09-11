@@ -38,40 +38,6 @@
     "remediation": "If using DRA resource availability visibility, verify the reported partitionable and consumable device numbers after upgrading, accounting for the changes from v1.36."
   },
   {
-    "ruleId": "rtz-gen-kubernetes-1.37-explicitly-set-kube-proxy-mode",
-    "severity": "LOW",
-    "title": "Explicitly set KubeProxyConfiguration mode",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "The affected setting may be absent or nested in kube-proxy configuration, and cluster inventory cannot determine whether it was explicitly set."
-    },
-    "scope": {
-      "kind": "IMAGE_REPOSITORY_PRESENT",
-      "objectKind": "DaemonSet",
-      "namespace": "kube-system",
-      "target": "kube-proxy"
-    },
-    "quote": "Changed `kubeadm` to explicitly set `KubeProxyConfiguration.mode` to iptables when `KubeProxyConfiguration` is not provided or when the `mode` field is empty. In `v1.37`, `kube-proxy` will warn if the field is not explicitly set as part of the planned transition to nftables as the default mode in a future release. ([#139777](https://github.com/kubernetes/kubernetes/pull/139777), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle]",
-    "remediation": "Explicitly set `KubeProxyConfiguration.mode` to `iptables`."
-  },
-  {
-    "ruleId": "rtz-gen-kubernetes-1.37-migrate-kube-proxy-ipvs-mode",
-    "severity": "LOW",
-    "title": "Move kube-proxy away from deprecated ipvs mode",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Determining whether kube-proxy uses ipvs and whether the Linux kernel is new enough for nftables requires configuration and node-host kernel information not settled by cluster inventory."
-    },
-    "scope": {
-      "kind": "IMAGE_REPOSITORY_PRESENT",
-      "objectKind": "DaemonSet",
-      "namespace": "kube-system",
-      "target": "kube-proxy"
-    },
-    "quote": "`kubeadm`: Added a (delayed) warning that `kube-proxy`'s ipvs mode is deprecated since `v1.35` and users on newer Linux kernels should be using the nftables mode instead, which became GA in `v1.33`. For older kernel versions, users can use iptables, which is still the default. ([#139067](https://github.com/kubernetes/kubernetes/pull/139067), [@neolit123](https://github.com/neolit123)) [SIG Cluster Lifecycle]",
-    "remediation": "On newer Linux kernels, use the `nftables` mode instead of `ipvs`; for older kernel versions, use `iptables`, which is still the default."
-  },
-  {
     "ruleId": "rtz-gen-kubernetes-1.37-migrate-podgroup-template-ref-to-workload-ref",
     "severity": "HIGH",
     "title": "Migrate PodGroupTemplateRef to WorkloadRef",

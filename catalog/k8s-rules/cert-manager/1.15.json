@@ -1,0 +1,34 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.15-gateway-api-feature-gate-becomes-a-flag",
+  "severity": "HIGH",
+  "title": "ExperimentalGatewayAPISupport is set — 1.15 replaces it with --enable-gateway-api",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "(?i)ExperimentalGatewayAPISupport",
+   "reason": "checked in the cert-manager workload's container args only — the gate set through a config file or an environment variable is not scanned"
+  },
+  "quote": "If you had previously enabled this feature flag you will now need to pass the flag `--enable-gateway-api` instead. This is because while the feature is now enabled by default, we still need to gate it behind a flag so cert-manager will not crash if the GatewayAPI CRDs are not installed.",
+  "remediation": "Replace the `ExperimentalGatewayAPISupport` feature gate with the `--enable-gateway-api` flag. The feature is on by default from 1.15, but the flag is still what stops cert-manager crashing when the Gateway API CRDs are absent.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].args[]? | select(test(\"GatewayAPI\"))'  # any row still naming the feature gate must become --enable-gateway-api"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.15-startupapicheck-image-split-out",
+  "severity": "MEDIUM",
+  "title": "The cert-manager ctl image is gone — startupapicheck pulls its own image",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the startupapicheck Job exists only during a Helm install/upgrade, so it is not in a steady-state inventory; whether YOUR registry mirrors the new image is not a cluster fact at all"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "As of this release the cert-manager ctl is no longer part of the main repo, it has been broken out into its own project. As such the startupapicheck job uses a new OCI image called startupapicheck. If you run in an environment in which images cannot be pulled, be sure to include the new image.",
+  "remediation": "In an environment where images cannot be pulled freely, mirror the new `startupapicheck` image before upgrading.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image' | sed 's#/[^/]*$##' | sort -u  # the registry prefix printed is the one that must also carry startupapicheck"
+ }
+]

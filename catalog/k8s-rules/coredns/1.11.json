@@ -1,0 +1,174 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.11-kubernetes-endpoint-v1beta-dropped-needs-k8s-1-21",
+  "severity": "HIGH",
+  "title": "Endpoint / EndpointSlice v1beta watches are dropped — CoreDNS 1.11 needs Kubernetes 1.21+",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the question is whether the API server LACKS discovery.k8s.io/v1; detection kinds assert presence (API_VERSION_IN_USE on that group would fire on every current cluster), EndpointSlices are not collected, and the served API versions are not in the snapshot"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "we have dropped support for watching Endpoint and Endpointslice v1beta, since all supported K8s versions now use Endpointslice.",
+  "remediation": "Upgrade Kubernetes to 1.21+ (discovery.k8s.io/v1) BEFORE CoreDNS to 1.11; on an older API server the kubernetes plugin has nothing to watch and service resolution stops.",
+  "verifyCommand": "kubectl api-versions | grep -cx discovery.k8s.io/v1  # 0 = this API server cannot serve EndpointSlice v1, so CoreDNS 1.11+ has nothing to watch — upgrade Kubernetes to 1.21+ BEFORE CoreDNS",
+  "coversNotes": [
+   "plugin/kubernetes: remove Endpoint and EndpointSlice v1beta Support"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-bufsize-default-1232",
+  "severity": "MEDIUM",
+  "title": "bufsize: the default advertised size rises to 1232 (was 512)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the size is a directive-line argument, which is not collected; only the directive's presence is"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^bufsize$"
+  },
+  "quote": "The _bufsize_ plugin changed its default size limit value to 1232",
+  "remediation": "A bare `bufsize` directive now advertises 1232 bytes instead of 512: fewer truncations and TCP retries, but responses between 513 and 1232 bytes can now be IP-fragmented on paths with a small MTU (the upstream README's own caveat). Pin `bufsize 512` to keep the old behaviour.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*bufsize\\\\b\")) | $n + \": \" + .'  # a printed bufsize line with no size argument changes to 1232 at 1.11.0",
+  "coversNotes": [
+   "plugin/bufsize: change default value to 1232"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-forward-metrics-changed",
+  "severity": "MEDIUM",
+  "title": "forward plugin metrics changed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Prometheus rules and dashboards are not collected"
+  },
+  "quote": "Some changes to _forward_ plugin metrics.",
+  "remediation": "Re-validate alerts and dashboards built on `coredns_forward_*` series against a 1.11 instance; 1.11.0 changed them and 1.11.0's own follow-up restored some for compatibility.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_forward_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed use forward-plugin series that changed at 1.11.0",
+  "coversNotes": [
+   "plugin/forward: fix forward metrics for backwards compatibility"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-health-polls-localhost-by-default",
+  "severity": "LOW",
+  "title": "health: the health endpoint self-polls localhost by default",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "runtime behaviour of the health endpoint"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^health$"
+  },
+  "quote": "plugin/health: poll localhost by default",
+  "remediation": "A `health` block bound to a non-loopback address is probed via localhost from 1.11.0; adjust `health <addr>` if the probe target must differ.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*health\\\\b\")) | $n + \": \" + .'  # each printed health directive self-polls localhost after 1.11.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-container-runs-as-non-root",
+  "severity": "MEDIUM",
+  "title": "The container image runs as a non-root user",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "pod securityContext and volume permissions are not in the collected projection"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)(mirrored-coredns-)?coredns([:@]|$)"
+  },
+  "quote": "run coredns as non root.",
+  "remediation": "The 1.11 image runs as a nonroot uid. Manifests that force `runAsUser: 0`, mount the Corefile/certificates root-only, or bind a hostPort under 1024 without NET_BIND_SERVICE need adjusting; port 53 in-container still works via the binary's file capability.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"coredns\"))) | \"\\(.metadata.namespace)/\\(.metadata.name): runAsUser=\\(.spec.template.spec.securityContext.runAsUser // .spec.template.spec.containers[0].securityContext.runAsUser // \"unset\") runAsNonRoot=\\(.spec.template.spec.securityContext.runAsNonRoot // .spec.template.spec.containers[0].securityContext.runAsNonRoot // \"unset\") hostPorts=\\([.spec.template.spec.containers[].ports[]? | select(.hostPort != null) | .hostPort | tostring] | join(\",\"))\"'  # runAsUser=0 pins the old root behaviour and a hostPort below 1024 needs NET_BIND_SERVICE once the image runs as nonroot"
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-dns64-servfail-without-next-plugin",
+  "severity": "LOW",
+  "title": "dns64: SERVFAIL when no next plugin is configured",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "plugin order in the Corefile is fixed by CoreDNS, and whether a resolver follows dns64 is a Corefile fact the projection reduces to directive names"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^dns64$"
+  },
+  "quote": "Return RcodeServerFailure when DNS64 has no next plugin",
+  "remediation": "A server block with `dns64` but no upstream (forward) after it now answers SERVFAIL instead of an empty answer; add the upstream the synthesis needs.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*dns64\\\\b\")) | $n + \": \" + .'  # each printed dns64 block needs a forward after it"
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-tls-paths-relative-to-root",
+  "severity": "LOW",
+  "title": "tls: certificate paths are resolved against the root plugin's directory",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "certificate paths are directive-line arguments, which are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^tls$"
+  },
+  "quote": "plugin/tls: respect the path specified by root plugin",
+  "remediation": "In a server block that also sets `root`, relative `tls` file paths are now resolved under that directory (they were resolved from the working directory). Use absolute paths or move the files.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(tls|root)\\\\b\")) | $n + \": \" + .'  # a block printing both root and a relative tls path resolves the certificates differently after 1.11.2"
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-kubernetes-ptr-only-with-hostname",
+  "severity": "LOW",
+  "title": "kubernetes: PTR records only for endpoints that define a hostname (1.11.4; reverted in 1.12.1)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which pods define a hostname and which clients do reverse lookups are not knowable from the projection"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: only create PTR records for endpoints with hostname defined",
+  "remediation": "At 1.11.4 reverse lookups for pod IPs behind headless Services answer only when the endpoint sets a hostname; 1.12.1 reverts this. If reverse resolution matters, skip 1.11.4 and go to 1.12.1+.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*kubernetes\\\\b\")) | $n + \": \" + .'  # the printed kubernetes block stops answering hostname-less PTRs at exactly 1.11.4"
+ },
+ {
+  "ruleId": "rtz-coredns-1.11-file-parse-errors-are-fatal",
+  "severity": "MEDIUM",
+  "title": "file: a zone file that fails to parse is an error, not a partial load",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "zone files are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(file|auto)$"
+  },
+  "quote": "plugin/file: return error when parsing the file fails",
+  "remediation": "A zone file with a syntax error used to load partially; from 1.11.4 file.Parse reports the error — at startup this stops CoreDNS, at reload the old zone stays. The auto plugin loads its directory through the same parser (plugin/auto/walk.go), so its zone files are affected too. Validate every zone file before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(file|auto)\\\\b\")) | $n + \": \" + .'  # each printed file zone / auto directory must parse cleanly on 1.11.4+"
+ }
+]

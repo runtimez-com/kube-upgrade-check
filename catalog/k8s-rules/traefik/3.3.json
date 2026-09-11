@@ -1,0 +1,71 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.3-acme-dns-challenge-options-reorganized",
+    "severity": "MEDIUM",
+    "title": "ACME DNS challenge options reorganized",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)dnsChallenge\\.(delayBeforeCheck|disablePropagationCheck)\\b",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "In v3.3, DNS challenge configuration options have been reorganized for better clarity.",
+    "remediation": "Move the deprecated DNS challenge options to their new names — `acme.dnsChallenge.delaybeforecheck` becomes `acme.dnsChallenge.propagation.delayBeforeChecks`, and the related disable-check option moves under the same `propagation` section. Certificate issuance is the blast radius, so verify renewal works in staging before relying on it."
+  },
+  {
+    "ruleId": "rtz-traefik-3.3-compress-default-encoding-order",
+    "severity": "MEDIUM",
+    "title": "Compress middleware default algorithm order now favours gzip",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, so a compress middleware's encoding order cannot be read"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^compress$"
+    },
+    "quote": "In v3.3.5, the default compression algorithms have been reordered to favor gzip compression.",
+    "remediation": "Only affects clients that send no `Accept-Encoding` preference or express no order. The new default is `gzip, br, zstd`, chosen for compatibility with older clients. If you deliberately preferred brotli or zstd for bandwidth, set the encodings explicitly rather than relying on the default.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.compress != null) | .metadata.namespace + \"/\" + .metadata.name + \"  encodings=\" + ((.spec.compress.encodings // []) | if length == 0 then \"unset (new default order gzip, br, zstd applies)\" else join(\",\") end)' # rows with encodings unset change preference on upgrade; set the list explicitly to keep brotli or zstd first"
+  },
+  {
+    "ruleId": "rtz-traefik-3.3-otel-request-duration-metric-unit",
+    "severity": "MEDIUM",
+    "title": "OpenTelemetry request duration metric unit standardized",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this concerns Traefik's own metrics output, which this platform does not scrape"
+    },
+    "quote": "In v3.3.4, the OpenTelemetry Request Duration metric unit has been standardized to match other providers and naming conventions.",
+    "remediation": "Update dashboards and alert rules built on the OpenTelemetry request-duration metric. A unit change is the kind that does not break a query outright — the panel keeps rendering, with values off by a constant factor."
+  },
+  {
+    "ruleId": "rtz-traefik-3.3-request-path-sanitization",
+    "severity": "HIGH",
+    "title": "Incoming request paths are cleaned before processing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Starting with v3.3.6, incoming request paths are now automatically cleaned before processing for security and consistency.",
+    "remediation": "Routing and backend paths both change for requests containing `/../`, `/./` or duplicate slashes. Rules written against the uncleaned form may stop matching, and backends that saw the raw path now see the collapsed one. Test representative URLs rather than reasoning from the rules alone.",
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '//|/\\.\\.?(/|$)' # rules printed match on a path with ./ ../ or doubled slashes, which are now collapsed before matching"
+  },
+  {
+    "ruleId": "rtz-traefik-3.3-tracing-global-attributes-renamed",
+    "severity": "LOW",
+    "title": "tracing.globalAttributes renamed to tracing.resourceAttributes",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)tracing\\.globalAttributes",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "In v3.3, the tracing configuration has been clarified to better reflect its purpose.",
+    "remediation": "Rename `tracing.globalAttributes` to `tracing.resourceAttributes`. The old name was misleading: the option sets resource attributes for the collector rather than global span attributes, so check that what you configured there is what you actually intended."
+  }
+]

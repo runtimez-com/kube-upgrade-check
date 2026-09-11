@@ -1,0 +1,69 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.28-0.28.0-is-incompatible-with-kubernetes-1.26",
+    "severity": "HIGH",
+    "title": "Karpenter 0.28.0 exactly is incompatible with Kubernetes 1.26+",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the condition is a PATCH version (0.28.0 but not 0.28.1+), and the add-on version this platform resolves is the minor — a rule keyed on the minor would accuse every 0.28.x install"
+    },
+    "quote": "Karpenter `0.28.0` is incompatible with Kubernetes version 1.26+, which can result in additional node scale outs when using `--cloudprovider=external`, which is the default for the EKS Optimized AMI. See: https://github.com/aws/karpenter-core/pull/375. Karpenter `0.28.1`+ fixes this issue and is compatible with Kubernetes version 1.26+.",
+    "remediation": "If you are landing on 0.28, land on 0.28.1 or later. 0.28.0 with `--cloudprovider=external` — the default on the EKS optimized AMI — scales out extra nodes on Kubernetes 1.26+.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.28-global-settings-node-name-convention-removed",
+    "severity": "LOW",
+    "title": "aws.nodeNameConvention is silently ignored",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^karpenter-global-settings$",
+      "target": "keys[]",
+      "value": "^aws\\.nodeNameConvention$",
+      "reason": "reads the ConfigMap's key NAMES, which is all that is collected — the value is never synced"
+    },
+    "quote": "The `aws.nodeNameConvention` setting is now removed from the `karpenter-global-settings` ConfigMap. Because Karpenter is now driving its orchestration of capacity through Machines, it no longer needs to know the node name, making this setting obsolete. Karpenter ignores configuration that it doesn't recognize in the `karpenter-global-settings` ConfigMap, so leaving the `aws.nodeNameConvention` in the ConfigMap will simply cause this setting to be ignored.",
+    "remediation": "Drop the `aws.nodeNameConvention` key from karpenter-global-settings. Karpenter ignores settings it does not recognise, so leaving it in place is harmless but permanently misleading: the ConfigMap claims a naming policy that nothing enforces.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"karpenter-global-settings\") | \"\\(.metadata.namespace)/\\(.metadata.name) keys=\\((.data // {}) | keys | join(\",\"))\"'  # any row printed is a karpenter-global-settings ConfigMap that is still in place"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.28-machine-crd-must-be-installed-before-0.28",
+    "severity": "HIGH",
+    "title": "Karpenter 0.28 needs the Machine CRD, which Helm will not install for you",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this fires on the ABSENCE of a CRD, and every detection kind here settles on presence — an absent row is indistinguishable from a kind that was never collected"
+    },
+    "quote": "`0.28.0` introduces the Machine CustomResource into the `karpenter.sh` API Group and requires this CustomResourceDefinition to run properly. Karpenter now orchestrates its CloudProvider capacity through these in-cluster Machine CustomResources. When performing a scheduling decision, Karpenter will create a Machine, resulting in launching CloudProvider capacity. The kubelet running on the new capacity will then register the node to the cluster shortly after launch.",
+    "remediation": "Apply the Karpenter CRDs yourself before upgrading, or install the standalone `karpenter-crd` chart. Helm installs CRDs only on a chart's FIRST install and never on upgrade, so a cluster that has run Karpenter since before 0.28 will not have machines.karpenter.sh and the controller cannot orchestrate capacity without it.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^karpenter\\.(sh|k8s\\.aws)$"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves",
+    "coversNotes": [
+      "If, after upgrading to `0.28.0`+, a rollback to an older version of Karpenter needs to be performed …"
+    ]
+  },
+  {
+    "ruleId": "rtz-karpenter-0.28-controller-metrics-port-moves-to-8000",
+    "severity": "LOW",
+    "title": "Anything scraping the Karpenter pod on 8080 stops collecting",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the scrape configuration lives in Prometheus (a ServiceMonitor, PodMonitor or a scrape config file), none of which are collected"
+    },
+    "quote": "The metrics port for the Karpenter deployment was changed from 8080 to 8000. Users who scrape the pod directly for metrics rather than the service will need to adjust the commands they use to reference port 8000. Any users who scrape metrics from the service should be unaffected.",
+    "remediation": "Repoint any pod-level scrape of the Karpenter controller from 8080 to 8000. Scrapes that go through the Service are unaffected.",
+    "verifyCommand": "kubectl get servicemonitor,podmonitor -A -o json 2>/dev/null | jq -r '.items[]? | select((.metadata.name // \"\") | test(\"karpenter\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # each monitor printed scrapes Karpenter and may still name the old port"
+  }
+]

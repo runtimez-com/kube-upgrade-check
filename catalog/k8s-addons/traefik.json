@@ -1,0 +1,21 @@
+{
+  "addonId": "traefik",
+  "displayName": "Traefik",
+  "detect": {
+    "imageSuffixes": [
+      "traefik"
+    ]
+  },
+  "source": {
+    "url": "https://doc.traefik.io/traefik/migrate/v3/",
+    "ref": "traefik/traefik @ v3.7.12 (docs/content/migrate/v3.md, docs/content/migrate/v2-to-v3-details.md) + v2.11.56 (docs/content/migration/v2.md)",
+    "lastVerified": "2026-09-02",
+    "note": "Traefik publishes NO Kubernetes compatibility matrix anywhere in the repo (docs/content/** checked at the pinned refs) — supportWindows is deliberately NULL, unlike Istio's supportStatus.yml-derived rows. The only two Kubernetes-version floors that exist are prose, not a matrix: EndpointSlices support requires k8s >=1.21 (introduced v3.1), and the removal of */v1beta1 API support requires k8s >=1.22 (v3.0) — neither is a per-add-on-version row and neither is transcribed as a supportWindow. latestKnownVersion is 3.7 (the newest minor with a committed release tag, v3.7.12) so the analyzer can still compute a currency hop (installed -> latest known minor) for rule selection; this hop is NOT a Kubernetes-compatibility claim and every surface that renders it must say so (see AddonCompatAnalyzer.HopReason.CURRENCY). rules and upgradeNotes are deliberately EMPTY: unlike the hand-curated add-ons, Traefik's breaking changes are transcribed into kb/traefik/notes-*.md and evaluated through the generated-rules pipeline (sourceId 'traefik'), exactly like Istio. Detection: a single bare 'traefik' image suffix matches every observed repo path (docker.io/traefik official, ghcr.io/traefik/traefik, rancher/mirrored-library-traefik on k3s/RKE2 — confirmed live via ClickHouse: cluster_88613846051f runs rancher/mirrored-library-traefik:3.6.13) because 'traefik' is a distinctive brand name; it does NOT match traefik-hub or traefikee (neither repo path ends in the literal substring 'traefik'). Traefik Hub (hub.traefik.io, a separate commercial product with its own CRD group) is deliberately NOT fingerprinted here — it would need its own add-on entry, never evidence for this one."
+  },
+  "supportWindows": null,
+  "latestKnownVersion": "3.7",
+  "currencyHop": true,
+  "rules": [],
+  "upgradeNotes": [],
+  "inventoryKinds": []
+}

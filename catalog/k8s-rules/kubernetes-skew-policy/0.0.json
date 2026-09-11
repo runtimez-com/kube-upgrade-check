@@ -1,0 +1,66 @@
+[
+ {
+  "ruleId": "rtz-skew-0.0-kubelet-skew-exceeds-supported-window",
+  "severity": "HIGH",
+  "title": "Node kubelet too far behind the target control plane",
+  "detection": {
+   "kind": "VERSION_SKEW_EXCEEDS",
+   "target": "kubelet",
+   "value": "3",
+   "reason": "compares each Node's reported kubelet version against the TARGET control-plane minor; a node whose status is unreadable is reported as a data error, never as aligned"
+  },
+  "quote": "kubelet must not be newer than kube-apiserver, and may be up to three minor versions older than kube-apiserver (kubelet < 1.25 may only be up to two minor versions older). Upgrading the control plane widens the existing gap: nodes already one minor behind become two minors behind after a one-minor control-plane upgrade.",
+  "remediation": "Upgrade the named nodes BEFORE this control-plane hop. Once the control plane moves, a kubelet outside the window is unsupported: it may fail to register, and the API server is under no obligation to serve it correctly.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | \"\\(.metadata.name) \\(.status.nodeInfo.kubeletVersion)\"'  # each node's kubelet minor must be within three of the target control-plane minor"
+ },
+ {
+  "ruleId": "rtz-skew-0.0-kube-proxy-skew-exceeds-supported-window",
+  "severity": "HIGH",
+  "title": "kube-proxy too far behind the target control plane",
+  "detection": {
+   "kind": "VERSION_SKEW_EXCEEDS",
+   "target": "kube-proxy",
+   "value": "3",
+   "reason": "reads the image tag on the kube-proxy DaemonSet in kube-system \u2014 the version kube-proxy actually runs; a cluster whose proxy is embedded in the node agent (k3s and friends) ships no such DaemonSet and is reported as not detectable, not as aligned"
+  },
+  "quote": "kube-proxy must not be newer than kube-apiserver, and may be up to three minor versions older than kube-apiserver. kube-proxy runs as a DaemonSet in kube-system and its installed version is the tag on its container image.",
+  "remediation": "Roll the kube-proxy DaemonSet to a version within three minors of the target control plane before the hop. A kube-proxy this far behind stops programming Service rules correctly for API shapes it does not understand, which shows up as intermittent Service connectivity rather than a clean failure.",
+  "verifyCommand": "kubectl -n kube-system get ds -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | .metadata.name + \" \" + (.spec.template.spec.containers[].image)'  # the tag is the kube-proxy version; it must be within three minors of the target"
+ },
+ {
+  "ruleId": "rtz-skew-0.0-control-plane-components-behind-apiserver",
+  "severity": "MEDIUM",
+  "title": "Control-plane components must not lead the API server",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "kube-controller-manager, kube-scheduler and cloud-controller-manager are control-plane processes; on a managed cluster they run no pods the inventory can see, and on a self-hosted one their version is the image tag of a static pod the agent does not collect"
+  },
+  "quote": "kube-controller-manager, kube-scheduler, and cloud-controller-manager must not be newer than kube-apiserver, and are expected to be at most one minor version older than kube-apiserver.",
+  "remediation": "Upgrade the API server first and these components after it, never the other way round. On a managed control plane the provider handles this and there is nothing to do.",
+  "verifyCommand": "kubectl -n kube-system get pods -o json | jq -r '.items[] | select(.metadata.name | test(\"kube-controller-manager|kube-scheduler|cloud-controller-manager\")) | .metadata.name + \" \" + (.spec.containers[].image)'  # empty on a managed control plane, where the provider owns these versions"
+ },
+ {
+  "ruleId": "rtz-skew-0.0-ha-apiserver-instances-within-one-minor",
+  "severity": "MEDIUM",
+  "title": "HA API server instances must be within one minor of each other",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the inventory sees one API server \u2014 the endpoint the agent talks to \u2014 so it cannot compare the versions of the other instances behind a load balancer"
+  },
+  "quote": "In highly-available clusters, the newest and oldest kube-apiserver instances must be within one minor version of each other.",
+  "remediation": "During a rolling control-plane upgrade, do not let the spread exceed one minor: finish the roll rather than pausing it half-done across two minors. Skew beyond one minor between instances makes which instance served a request part of its outcome.",
+  "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[] | .metadata.name + \" \" + (.spec.containers[].image)'  # empty on a managed control plane; otherwise every instance's minor must be within one"
+ },
+ {
+  "ruleId": "rtz-skew-0.0-upgrade-nodes-between-control-plane-hops",
+  "severity": "MEDIUM",
+  "title": "Upgrade nodes between control-plane hops",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "this is sequencing advice about the upgrade you are planning, not a state any single snapshot of the cluster can be in"
+  },
+  "quote": "Because the supported skew between control plane and nodes is limited, a control-plane upgrade should be followed by node upgrades before further control-plane upgrades; skipping node upgrades across multiple control-plane hops eventually leaves kubelets outside the supported window and they may fail to register or function.",
+  "remediation": "If this plan crosses more than one minor, upgrade the nodes between the hops rather than at the end. The kubelet skew rule reports where you stand today; it cannot see a second hop you have not made yet.",
+  "verifyCommand": null
+ }
+]

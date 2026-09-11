@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.22-service-topologykeys-removed",
+  "severity": "HIGH",
+  "title": "Service topologyKeys removed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "topologyKeys is a Service spec field the collected projection does not carry \u2014 Services are projected for their ports and selectors, not their alpha topology fields"
+  },
+  "quote": "Remove support for the Service `topologyKeys` field (alpha) and the `kube-proxy` implementation of it. This field was deprecated several cycles ago. This functionality is replaced by the combination of automatic topology hints per-endpoint (alpha) and the Service `internalTrafficPolicy` field (alpha).",
+  "remediation": "Replace `topologyKeys` with topology-aware hints plus `internalTrafficPolicy`. The field stops routing traffic the way it used to rather than being rejected, so a Service that still sets it silently spreads traffic cluster-wide after the upgrade.",
+  "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.topologyKeys != null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each Service printed still sets a field removed in 1.22"
+ }
+]

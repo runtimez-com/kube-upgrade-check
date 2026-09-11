@@ -1,0 +1,35 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.24-global-settings-configmap-no-longer-hot-reloaded",
+    "severity": "LOW",
+    "title": "karpenter-global-settings edits need a controller restart",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^karpenter-global-settings$",
+      "reason": "matches a ConfigMap named karpenter-global-settings in any namespace"
+    },
+    "quote": "Settings are no longer updated dynamically while Karpenter is running. If you manually make a change to the `karpenter-global-settings` ConfigMap, you will need to reload the containers by restarting the deployment with `kubectl rollout restart -n karpenter deploy/karpenter`",
+    "remediation": "After editing karpenter-global-settings, restart the Karpenter deployment — the controller stops picking settings up while running. Plan a restart into any change window that touches this ConfigMap, and prefer moving the settings to container environment variables (which 0.33 makes mandatory anyway).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"karpenter-global-settings\") | \"\\(.metadata.namespace)/\\(.metadata.name) keys=\\((.data // {}) | keys | join(\",\"))\"'  # any row printed is a karpenter-global-settings ConfigMap that is still in place"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.24-global-settings-aws-tags-becomes-a-json-object",
+    "severity": "MEDIUM",
+    "title": "aws.tags in karpenter-global-settings changes shape",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the condition is the SHAPE of a ConfigMap VALUE (dotted aws.tags.<key> entries versus one JSON object), and ConfigMap data values are never collected — only the key names are"
+    },
+    "quote": "`aws.tags` in `karpenter-global-settings` ConfigMap is now a top-level field and expects the value associated with this key to be a JSON object of string to string. This is change from previous versions where keys were given implicitly by providing the key-value pair `aws.tags.<key>: value` in the ConfigMap.",
+    "remediation": "Rewrite the ConfigMap so `aws.tags` is a single key whose value is a JSON object of string to string, instead of one `aws.tags.<key>` entry per tag. Karpenter silently ignores settings it does not recognise, so the old form stops applying your tags without any error.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^karpenter-global-settings$",
+      "target": "keys[]",
+      "value": "^aws\\.tags"
+    },
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"karpenter-global-settings\") | .metadata.namespace + \"/\" + .metadata.name + \" \" + ((.data // {}) | keys | map(select(startswith(\"aws.tags\"))) | join(\",\"))'  # a dotted aws.tags.something entry printed here is the old per-key shape, which stops applying after the upgrade"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.29-0.29.1-leaks-file-descriptors-and-memory",
+    "severity": "HIGH",
+    "title": "Karpenter 0.29.1 exactly is OOMKilled in a loop",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the condition is a PATCH version (0.29.1 but not 0.29.2+); the resolved add-on version is the minor, so a rule keyed on it would accuse every 0.29.x install"
+    },
+    "quote": "Karpenter `0.29.1` contains a file descriptor and memory leak bug that leads to Karpenter getting OOMKilled and restarting at the point that it hits its memory or file descriptor limit. Karpenter `0.29.2`+ fixes this leak.",
+    "remediation": "If you are landing on 0.29, land on 0.29.2 or later — 0.29.1 leaks file descriptors and memory until the controller is OOMKilled, then restarts and does it again.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.29-security-group-and-subnet-drift-starts-replacing-nodes",
+    "severity": "MEDIUM",
+    "title": "Nodes now drift on Security Group and Subnet changes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the comparison is between an EC2 instance's live Security Groups or Subnet and the selectors on its node template — both sides are AWS state, not Kubernetes objects"
+    },
+    "quote": "Karpenter will now reconcile nodes that are drifted due to their Security Groups or their Subnets. If your AWSNodeTemplate's Security Groups differ from the Security Groups used for an instance, Karpenter will consider it drifted. If the Subnet used by an instance is not contained in the allowed list of Subnets for an AWSNodeTemplate, Karpenter will also consider it drifted.",
+    "remediation": "Before upgrading, confirm the Security Groups and Subnets your existing instances actually run with still match what their node template selects. Anything that has drifted apart — often after a manual change in the AWS console — is replaced as soon as this version starts up.",
+    "verifyCommand": null
+  }
+]

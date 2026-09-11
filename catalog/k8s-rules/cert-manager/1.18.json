@@ -1,0 +1,50 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.18-rotation-policy-default-becomes-always",
+  "severity": "HIGH",
+  "title": "Certificates that do not set rotationPolicy start rotating their private key on every renewal",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "Certificate",
+   "target": "rotationPolicySet",
+   "value": "false",
+   "reason": "the agent writes this boolean on every Certificate, so a clean result means every Certificate sets the policy explicitly"
+  },
+  "quote": "We have changed the default value of `Certificate.Spec.PrivateKey.RotationPolicy` from `Never` to `Always`.",
+  "remediation": "Set `privateKey.rotationPolicy: Never` explicitly on any Certificate that must keep its key across renewals (anything with a pinned public key, a registered fingerprint, or a key distributed out of band). Otherwise accept the new default, which is the more secure one.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.rotationPolicy == null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row starts re-keying on every renewal after the upgrade"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.18-revision-history-limit-default-becomes-one",
+  "severity": "MEDIUM",
+  "title": "Certificates that do not set revisionHistoryLimit keep only the latest CertificateRequest",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "Certificate",
+   "target": "revisionHistoryLimitSet",
+   "value": "false",
+   "reason": "the agent writes this boolean on every Certificate, so a clean result means every Certificate sets the limit explicitly"
+  },
+  "quote": "We have changed the default value of `Certificate.Spec.RevisionHistoryLimit` from `nil` to `1`.",
+  "remediation": "Set `revisionHistoryLimit` explicitly on Certificates whose older CertificateRequests you audit or keep for evidence — after the upgrade all but the newest revision is garbage-collected.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.revisionHistoryLimit == null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row loses every CertificateRequest revision but the newest",
+  "coversNotes": [
+   "The default value of `Certificate.Spec.RevisionHistoryLimit` is now `1`"
+  ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.18-http01-ingress-pathtype-exact",
+  "severity": "HIGH",
+  "title": "HTTP-01 challenge Ingresses switch to PathType Exact — older ingress-nginx rejects them",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "solverTypes[]",
+   "value": "^ingress$",
+   "reason": "whether a solver uses an Ingress is projected; which controller serves that class, and its version, is not a fact of the issuer — the command settles it"
+  },
+  "quote": "This change is incompatible with certain versions and configurations of the `ingress-nginx` Ingress controller.",
+  "remediation": "If those solvers are served by ingress-nginx below v1.12.6 / v1.13.2 with `strict-validate-path-type` on, upgrade ingress-nginx, disable that option, or set the `ACMEHTTP01IngressPathTypeExact: false` feature gate on cert-manager.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .spec.template.spec.containers[].image | select(test(\"ingress-nginx/controller\"))' | sort -u  # a controller older than v1.12.6 / v1.13.2 rejects the Exact challenge path when strict-validate-path-type is on (its default since 1.12.0); NO rows = no ingress-nginx"
+ }
+]

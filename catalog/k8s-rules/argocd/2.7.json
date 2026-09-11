@@ -1,0 +1,119 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.7-rbac-wildcards-grant-new-extensions-resource",
+    "severity": "MEDIUM",
+    "title": "RBAC policies with `*` resource and `*` action silently gain the new `extensions` privilege",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "RBAC policies are the VALUE of argocd-rbac-cm's `policy.csv` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-rbac-cm$",
+      "target": "keys[]",
+      "value": "^policy\\.csv$"
+    },
+    "quote": "When you upgrade to 2.7, RBAC policies with `*` in the *resource* field and `*` in the action field, it will automatically grant the `extensions` privilege.",
+    "remediation": "Review argocd-rbac-cm for `p, <subject>, *, *, ...` rows and decide whether those subjects should be able to use proxy extensions; replace wildcards with explicit resources where they should not.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.csv}' | grep -E '^p, *[^,]+, *\\*, *\\*,' # rows printed grant every resource and action, including the new extensions resource"
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-bundled-kustomize-major-bump-5-0",
+    "severity": "LOW",
+    "title": "Bundled Kustomize jumps a major version (4.5.7 to 5.0.1)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Applications render through Kustomize, and what their kustomizations contain, is not collected — a major-version bump of the bundled binary can only be checked by rendering"
+    },
+    "quote": "Note that bundled Kustomize version has been upgraded from 4.5.7 to 5.0.1.",
+    "remediation": "Render your Kustomize-based Applications with kustomize 5.0.x before upgrading; Kustomize 5 removed fields deprecated in 4.x, so a kustomization that still relies on them fails to build in the repo-server."
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-notifications-sprig-semver-caret",
+    "severity": "LOW",
+    "title": "Notification templates: Sprig's `^` semver constraint changes meaning",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "notification templates are the VALUES of argocd-notifications-cm keys; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-notifications-cm$",
+      "target": "keys[]",
+      "value": "^(template|trigger)\\."
+    },
+    "quote": "Masterminds/semver v3 changed the behavior of the `^` prefix in semantic version constraints. If you are using sprig template functions in your notifications templates which include references to Sprig's semver functions and use the `^` prefix, read the Masterminds/semver changelog to understand how your notifications' behavior may change.",
+    "remediation": "Review every `template.*` and `trigger.*` entry in argocd-notifications-cm that calls a Sprig semver function with a `^` constraint and re-check the intended range against Masterminds/semver v3.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-notifications-cm -o json | jq -r '(.data // {}) | to_entries[] | select(.value | test(\"semver\")) | .key' # keys printed are templates or triggers calling a semver function — check for a `^` constraint"
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-tini-entrypoint-manifests-must-change",
+    "severity": "LOW",
+    "title": "Manifests move from `entrypoint.sh` to `tini` — update them before 2.8",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].command[]",
+      "value": "entrypoint\\.sh",
+      "reason": "checked in the Argo CD workloads' container command only (Deployment or StatefulSet named argocd-*)"
+    },
+    "quote": "This means that the deployment manifests have to be updated after upgrading to 2.7, and before upgrading to 2.8 later. In case the manifests are updated before moving to 2.8, the containers will not be able to start.",
+    "remediation": "Apply the 2.7 manifests (which drop `entrypoint.sh` from the container command) after this upgrade and before moving to 2.8 — but not before: 2.6 images have no `tini`. Any custom overlay that still runs `entrypoint.sh` needs the same change.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[] | select([.spec.template.spec.containers[].command[]?] | any(test(\"entrypoint.sh\"))) | .kind + \" \" + .metadata.name' # objects printed still start through entrypoint.sh — their manifests must change before 2.8"
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-deep-links-template-syntax",
+    "severity": "LOW",
+    "title": "Deep link templates change syntax — `resource.links`/`project.links`/`application.links` need rewriting",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^(resource|project|application)\\.links$",
+      "reason": "ConfigMap KEY names are collected, never values — this rule fires on the presence of the key in the named ConfigMap"
+    },
+    "quote": "Deep Links now allow you to access other values like `cluster`, `project`, `application` and `resource` in the url and condition templates for specific categories of links. The templating syntax has also been updated to be prefixed with the type of resource you want to access",
+    "remediation": "Rewrite the url and condition templates of every deep link in argocd-cm to the prefixed form (`{{ .resource.metadata.name }}` instead of `{{ .metadata.name }}`) before upgrading, or the links render empty.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o json | jq -r '.data | to_entries[] | select(.key | test(\"\\\\.links$\")) | .key + \": \" + (.value | .[0:200])' # templates printed use the pre-2.7 unprefixed syntax if they reference .metadata directly"
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-helm-resource-policy-keep-annotation-honoured",
+    "severity": "LOW",
+    "title": "`helm.sh/resource-policy: keep` now prevents deletion on Application delete",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the annotation may sit on any kind; whether a resource carrying it is managed by an Application is not something the inventory relates"
+    },
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Deployment|StatefulSet|DaemonSet|Service|ConfigMap|Secret|PersistentVolumeClaim|Ingress|Job|CronJob",
+      "target": "helm.sh/resource-policy"
+    },
+    "quote": "Argo CD now supports the `helm.sh/resource-policy` annotation to control the deletion of resources. The behavior is the same as the behavior of `argocd.argoproj.io/sync-options: Delete=false` annotation: if the annotation is present and set to `keep`, the resource will not be deleted when the application is deleted.",
+    "remediation": "Expect resources annotated `helm.sh/resource-policy: keep` to survive Application deletion from 2.7; if you relied on Argo CD pruning them regardless, remove the annotation or delete them explicitly.",
+    "verifyCommand": "kubectl get deploy,sts,ds,svc,cm,secret,pvc,ingress -A -o json | jq -r '.items[] | select(.metadata.annotations[\"helm.sh/resource-policy\"] == \"keep\") | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # objects printed are kept on Application deletion from 2.7"
+  },
+  {
+    "ruleId": "rtz-argocd-2.7-kustomize-patches-on-redis-arg",
+    "severity": "LOW",
+    "title": "Install manifests no longer pass `--redis` — a Kustomize patch on that argument breaks",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the stock 2.6 repo-server command passes `--redis` too, so its presence proves nothing; whether a Kustomize JSON patch targets it lives in your overlay, which is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].command[]",
+      "value": "--redis"
+    },
+    "quote": "If your environment uses Kustomize JSON patches to modify the Redis server name, the patch might break when you upgrade to the 2.7 manifests. If it does, you can remove the patch and instead set the Redis server name via the `redis.server` field in the argocd-cmd-params-cm ConfigMap.",
+    "remediation": "Search your Argo CD overlay for a JSON patch on the `--redis` argument; drop it and set `redis.server` in argocd-cmd-params-cm instead before applying the 2.7 manifests.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[] | select(([.spec.template.spec.containers[].command[]?, .spec.template.spec.containers[].args[]?] | tostring) | test(\"--redis\")) | .kind + \" \" + .metadata.name' # objects printed pass --redis today — check your kustomization for a patch on it"
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.3-reserved-capacity-type-splits-the-on-demand-selector",
+    "severity": "MEDIUM",
+    "title": "Pods pinned to capacity-type on-demand cannot use reserved capacity",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Pod",
+      "target": "nodeSelector",
+      "value": "^karpenter\\.sh/capacity-type=on-demand$",
+      "reason": "read from Pod rows as key=value pairs — nodeSelector is collected per pod, and node affinity is not scanned, so a clean result here does not clear an affinity term"
+    },
+    "quote": "With the `ReservedCapacity` feature flag, Karpenter introduces a new `karpenter.sh/capacity-type` value (`reserved`). This means any applications that explicitly select on `on-demand` with a `nodeSelector` and want to utilize ODCR capacity may need to update their requirements to use `nodeAffinity` to opt-in to using both `reserved` and `on-demand` capacity.",
+    "remediation": "Only relevant if you enable the `ReservedCapacity` feature gate and use ODCR capacity. These pods select `capacity-type=on-demand` with a nodeSelector, which cannot express two values; rewrite them as a `nodeAffinity` term listing both `reserved` and `on-demand` so they can land on either.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.spec.nodeSelector[\"karpenter.sh/capacity-type\"] == \"on-demand\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each pod printed can never schedule onto reserved capacity while it uses a nodeSelector"
+  }
+]

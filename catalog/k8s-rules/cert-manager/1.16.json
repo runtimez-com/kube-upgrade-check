@@ -1,0 +1,44 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.16-helm-schema-validation",
+  "severity": "HIGH",
+  "title": "1.16 adds Helm schema validation — an unknown key in your values fails the upgrade",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Helm values live in the release secret and in your own repository, not in the collected inventory"
+  },
+  "quote": "Helm schema validation may reject your existing Helm values files if they contain typos or unrecognized fields. For more details, refer to the Helm section in the release notes.",
+  "remediation": "Check every key in your values override against the 1.16 chart's values.schema.json and remove typos and unrecognised fields before upgrading.",
+  "verifyCommand": "helm list -A -f cert-manager -o json | jq -r '.[] | \"helm get values \\(.name) -n \\(.namespace)   [chart \\(.chart)]\"'  # run each command printed; every key it returns must exist in the 1.16 chart's values.schema.json"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.16-venafi-duration-policy-conflict",
+  "severity": "MEDIUM",
+  "title": "Venafi issuers fail renewals when the requested duration conflicts with CA policy",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^venafi$",
+   "reason": "the issuer TYPE is projected; the Venafi CA's own minimum/maximum policy lives in Venafi, not on the cluster, so these issuers are the population to check rather than a confirmed failure"
+  },
+  "quote": "Venafi Issuer may fail to renew certificates if the requested duration conflicts with the CA’s minimum or maximum policy settings in Venafi. For more details, refer to the Venafi Issuer section in the release notes.",
+  "remediation": "For each Venafi issuer, compare the durations its Certificates request against the CA's minimum and maximum policy in Venafi before upgrading.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.duration) | \"\\(.metadata.namespace)/\\(.metadata.name) duration=\\(.spec.duration) issuer=\\(.spec.issuerRef.name)\"'  # each duration must sit inside the issuing CA's policy window in Venafi"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.16-venafi-tpp-username-password",
+  "severity": "MEDIUM",
+  "title": "Venafi TPP issuers using username/password authentication may fail renewals",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^venafi$",
+   "reason": "the issuer TYPE is projected; which credential FORM a TPP issuer uses lives in the Secret it references, which is never read"
+  },
+  "quote": "Venafi Issuer may fail to renew Certificates if the issuer has been configured for TPP with username-password authentication. For more details, refer to the Venafi Issuer section in the release notes.",
+  "remediation": "Move Venafi TPP issuers to access-token authentication rather than username and password before upgrading.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.venafi.tpp) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) credentialsRef=\\(.spec.venafi.tpp.credentialsRef.name)\"'  # check each named Secret for username/password rather than access-token"
+ }
+]

@@ -1,0 +1,91 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.7-federation-plugin-removed",
+  "severity": "HIGH",
+  "title": "The federation plugin is removed — a Corefile still naming it stops CoreDNS",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^federation$",
+   "reason": "read from the directive names the agent extracts off every kube-system ConfigMap whose name contains coredns, each scanned as its own Corefile (an AKS coredns-custom fragment included) — names only, never values; import lines are not followed"
+  },
+  "quote": "The *federation* plugin (which allows for v1 Kubernetes federation) has been removed.",
+  "remediation": "Delete the federation block from the Corefile before upgrading to 1.7. CoreDNS exits at startup on an unknown directive, taking cluster DNS down with it.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*federation\\\\b\")) | $n + \": \" + .'  # a printed line = the Corefile still loads the removed plugin",
+  "coversNotes": [
+   "plugin/federation: Remove already-deprecated federation plugin"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.7-metric-names-renamed",
+  "severity": "MEDIUM",
+  "title": "Metric names change wholesale — dashboards and alerts on coredns_*_count_total go dark",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Prometheus rules and dashboards are not collected; the renamed series only exist at scrape time"
+  },
+  "quote": "We mostly dropped `count` from `_total` metrics names:",
+  "remediation": "Rewrite alert rules and dashboards from the pre-1.7 names (`coredns_dns_request_count_total`, `coredns_forward_request_count_total`, `coredns_cache_size`, …) to the new ones listed in the 1.7.0 notes; the old series stop being emitted the moment 1.7 starts.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_[a-z_]+_count_total|coredns_cache_size\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed reference pre-1.7 metric names and match nothing after the upgrade; also review Grafana dashboards outside the cluster",
+  "coversNotes": [
+   "Better metrics names.",
+   "metrics: Better metrics names"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.7-kubernetes-resyncperiod-upstream-removed",
+  "severity": "HIGH",
+  "title": "kubernetes: resyncperiod and upstream options are removed",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.kubernetes[]",
+   "value": "^(resyncperiod|upstream)$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "plugin/kubernetes: Remove already-deprecated options `resyncperiod` and `upstream`",
+  "remediation": "Delete `resyncperiod` and `upstream` lines from the kubernetes block before upgrading; CoreDNS 1.7 refuses to parse them and cluster DNS does not start.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(resyncperiod|upstream)\\\\b\")) | $n + \": \" + .'  # a printed line inside the kubernetes block is rejected by 1.7"
+ },
+ {
+  "ruleId": "rtz-coredns-1.7-cache-defaults-to-dnssec",
+  "severity": "LOW",
+  "title": "cache: DNSSEC (DO bit) is now set by default on cached lookups",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "request-time behaviour of the cache plugin; no Corefile option distinguishes the old default"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^cache$"
+  },
+  "quote": "plugin/cache: cache: default to DNSSEC",
+  "remediation": "Upstreams now receive DO-set queries from the cache; upstream resolvers that mishandle DNSSEC (or middleboxes that drop larger responses) surface as SERVFAILs after 1.7.1. Verify upstream behaviour with `dig +dnssec` before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*cache\\\\b\")) | $n + \": \" + .'  # each printed cache block queries upstream with DO set after 1.7.1"
+ },
+ {
+  "ruleId": "rtz-coredns-1.7-trace-debug-mode-only-with-debug-plugin",
+  "severity": "LOW",
+  "title": "trace: debug-level tracing only when the debug plugin is active",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "logging volume is runtime behaviour; the projection carries the directive name only"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^trace$"
+  },
+  "quote": "plugin/trace: Only with *debug* active enable debug mode for tracing - removes extra logging",
+  "remediation": "Trace spans lose their debug detail unless the `debug` directive is also present; add it if you relied on that output.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(trace|debug)\\\\b\")) | $n + \": \" + .'  # trace without a debug line prints less after 1.7.1"
+ }
+]

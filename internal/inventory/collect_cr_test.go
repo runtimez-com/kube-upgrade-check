@@ -42,7 +42,8 @@ func newInventory() *Inventory {
 }
 
 func TestCollectCustomResourcesReadsSpecLabelsAndAnnotationKeys(t *testing.T) {
-	c := fakeClient(nodePool("default", map[string]any{"nodeClassRef": map[string]any{"name": "bottlerocket"}}))
+	c := fakeClient(nodePool("default", map[string]any{"template": map[string]any{"spec": map[string]any{
+		"nodeClassRef": map[string]any{"group": "karpenter.k8s.aws", "kind": "EC2NodeClass", "name": "bottlerocket"}}}}))
 	inv := newInventory()
 
 	collectKinds(t, c, inv, map[string]schema.GroupVersionResource{
@@ -62,10 +63,16 @@ func TestCollectCustomResourcesReadsSpecLabelsAndAnnotationKeys(t *testing.T) {
 	if len(rows[0].AnnotationKeys) != 1 || rows[0].AnnotationKeys[0] != "karpenter.sh/do-not-disrupt" {
 		t.Errorf("annotation keys not carried: %v", rows[0].AnnotationKeys)
 	}
-	// Values must not be carried: they can hold arbitrary configuration, and a finding is
-	// printed to a terminal and pasted into tickets.
+	// The spec is the PROJECTED view for a kind that has one: a NodePool carries its node class
+	// reference and the derived completeness flag, not the raw template.
 	if _, hasSpec := rows[0].Spec["nodeClassRef"]; !hasSpec {
 		t.Errorf("spec not carried: %+v", rows[0].Spec)
+	}
+	if complete, _ := rows[0].Spec["nodeClassRefComplete"].(bool); !complete {
+		t.Errorf("nodeClassRefComplete must be derived on the row: %+v", rows[0].Spec)
+	}
+	if _, raw := rows[0].Spec["template"]; raw {
+		t.Errorf("the raw template must not be carried: %+v", rows[0].Spec)
 	}
 }
 

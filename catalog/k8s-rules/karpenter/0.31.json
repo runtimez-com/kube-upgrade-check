@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.31-security-context-narrows-to-the-karpenter-container",
+    "severity": "LOW",
+    "title": "Sidecars lose the pod-wide securityContext they inherited",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which container inherited its securityContext from the pod cannot be recovered from the rendered workload — an inherited value and an explicit one look the same"
+    },
+    "quote": "Karpenter moved its `securityContext` constraints from pod-wide to only applying to the Karpenter container exclusively. If you were previously relying on the pod-wide `securityContext` for your sidecar containers, you will now need to set these values explicitly in your sidecar container configuration.",
+    "remediation": "If you run sidecars alongside Karpenter, set their `securityContext` explicitly. The constraints move to the Karpenter container alone, so anything that was relying on the pod-wide settings comes up with the cluster defaults instead.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs -- then read each container's securityContext"
+  }
+]

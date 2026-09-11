@@ -116,9 +116,13 @@ func runCheck(cmd *cobra.Command, opts checkOptions) error {
 	// Which custom resources matter is decided by the add-on catalogs, so the list is read from
 	// them rather than hard-coded here.
 	inventory.CollectCustomResources(ctx, client, inv, addonInventoryKinds(cat))
+	// Which add-on rule sets are on the path depends on the add-ons' own version ranges, which
+	// the workloads just read decide. Resolved here so the rule-object collector reads the kinds
+	// those rules look at, and again inside the add-on tier when it reports.
+	hops := addons.Hops(inv, cat.Addons, targetVersion)
 	// Release-note rules read a few fields of a few more kinds; the projection keeps the read
 	// cheap on a large cluster. A kind the add-on collector already read in full is not read twice.
-	inventory.CollectRuleObjects(ctx, client, inv, generated.Wants(cat, currentVersion, targetVersion))
+	inventory.CollectRuleObjects(ctx, client, inv, generated.Wants(cat, currentVersion, targetVersion, hops))
 	// Metric-backed node rules read each kubelet's /metrics; the names come from the catalog.
 	inventory.CollectKubeletMetrics(ctx, client, inv, noderuntime.MetricNames(cat.NodeRuntime))
 	// Disruption budgets, admission webhooks and aggregated APIs decide whether the upgrade can
@@ -200,17 +204,19 @@ func assemble(inv *inventory.Inventory, evidence source.Result, cat *catalog.Cat
 
 	findings = append(findings, advisory.Analyze(currentVersion, targetVersion, inv.ClusterName, cat.Advisories)...)
 
-	genFindings, genCoverage := generated.Analyze(inv, evidence.Served, currentVersion, targetVersion, cat)
-	findings = append(findings, genFindings...)
-	coverage = append(coverage, genCoverage...)
-
 	pfFindings, pfCoverage := preflight.Analyze(inv, currentVersion, targetVersion)
 	findings = append(findings, pfFindings...)
 	coverage = append(coverage, pfCoverage...)
 
+	// The add-on tier runs before the release-note rules: its resolved hops are what select
+	// each add-on's rule set.
 	addonResult := addons.Analyze(inv, currentVersion, targetVersion, cat.Addons, now)
 	findings = append(findings, addonResult.Findings...)
 	coverage = append(coverage, addonResult.Coverage...)
+
+	genFindings, genCoverage := generated.Analyze(inv, evidence.Served, currentVersion, targetVersion, cat, addonResult.Hops)
+	findings = append(findings, genFindings...)
+	coverage = append(coverage, genCoverage...)
 
 	report.Sort(findings)
 	scoreValue, level := score.Compute(findings)

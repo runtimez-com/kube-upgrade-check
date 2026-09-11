@@ -1,0 +1,47 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.5-proxyprotocol-option-deprecated",
+    "severity": "MEDIUM",
+    "title": "TCP LoadBalancer proxyProtocol option deprecated",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the proxyProtocol setting lives on a service under spec.routes[].services[], nested inside the routes array rather than at the top level of the projection"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "IngressRouteTCP"
+    },
+    "quote": "Starting with `v3.5.2`, the `proxyProtocol` option for TCP LoadBalancer is deprecated. This option can now be configured at the `TCPServersTransport` level, please check out the documentation for more details.",
+    "remediation": "Move `proxyProtocol` from the TCP service definition to a `TCPServersTransport`. Getting this wrong is not silent — a backend expecting the PROXY protocol header and not receiving it (or receiving it unexpectedly) fails the connection outright.",
+    "verifyCommand": "kubectl get ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.proxyProtocol != null) | $o.metadata.namespace + \"/\" + $o.metadata.name' # names printed still set proxyProtocol on the service"
+  },
+  {
+    "ruleId": "rtz-traefik-3.5-tls-certs-metric-renamed",
+    "severity": "MEDIUM",
+    "title": "TLS certificate expiry metric renamed to seconds",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this concerns Traefik's own metrics output, which this platform does not scrape"
+    },
+    "quote": "Starting with `v3.5.4`, and when using OpenTelemetry, the `traefik_tls_certs_not_after_milliseconds` metric is renamed to `traefik_tls_certs_not_after_seconds`. This change aligns the metric name with its real unit precision, which is in seconds.",
+    "remediation": "Update any dashboard or alert using `traefik_tls_certs_not_after_milliseconds` to the `_seconds` name. Certificate-expiry alerting is exactly the kind that fails silently — the query stops returning data and the alert simply never fires."
+  },
+  {
+    "ruleId": "rtz-traefik-3.5-trace-verbosity-defaults-to-minimal",
+    "severity": "MEDIUM",
+    "title": "traceVerbosity defaults to minimal, producing fewer spans",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik static or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Starting with `v3.5.0`, a new `traceVerbosity` option is available for both entrypoints and routers. This option allows you to control the level of detail for tracing spans.",
+    "remediation": "If you rely on tracing, set `traceVerbosity` explicitly. Existing configurations default to `minimal`, which produces fewer spans than before — one server span and one client span per request. Traces will look thinner after the upgrade without anything appearing to fail.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |traceVerbosity|tracing' # rows show whether tracing is on and traceVerbosity set; with tracing on and the option unset, traces get thinner (minimal) after the upgrade; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  }
+]

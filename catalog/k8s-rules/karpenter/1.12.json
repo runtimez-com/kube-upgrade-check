@@ -1,0 +1,15 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.12-ca-bundle-hashing-marks-every-existing-node-drifted",
+    "severity": "HIGH",
+    "title": "Every node this NodePool owns is replaced after the upgrade",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NodePool",
+      "reason": "the new hash marks EVERY existing node drifted, so any NodePool with nodes is affected — there is no narrower predicate to apply"
+    },
+    "quote": "This version adds support for drift on CA bundle. The updated hashing logic will mark existing nodes as drifted.",
+    "remediation": "Expect fleet-wide node replacement. The CA-bundle hashing change marks every existing node as drifted, so Karpenter replaces the lot. Set `spec.disruption.budgets` on these NodePools first if that churn needs a ceiling, and schedule the upgrade when a full roll is acceptable.",
+    "verifyCommand": "kubectl get nodeclaims --no-headers 2>/dev/null | wc -l; kubectl get nodepools -o json 2>/dev/null | jq -r '.items[]? | \"\\(.metadata.name) budgets=\\((.spec.disruption.budgets // []) | length)\"'  # every node counted is replaced on upgrade, and a NodePool with 0 budgets has no ceiling on that churn"
+  }
+]

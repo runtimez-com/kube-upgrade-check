@@ -131,22 +131,6 @@
     "remediation": "Verify manually that kubelet image-pull credentials and workloads are compatible with `KubeletEnsureSecretPulledImages` enabled by default."
   },
   {
-    "ruleId": "rtz-gen-kubernetes-1.35-migrate-kube-proxy-from-ipvs",
-    "severity": "MEDIUM",
-    "title": "Migrate kube-proxy from ipvs to nftables",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "The kube-proxy mode is held in kube-proxy configuration and cannot be settled from the available cluster inventory fields."
-    },
-    "scope": {
-      "kind": "IMAGE_REPOSITORY_PRESENT",
-      "objectKind": "DaemonSet",
-      "target": "kube-proxy"
-    },
-    "quote": "Marked `ipvs` mode in kube-proxy as deprecated, which will be removed in a future version of Kubernetes. Users are encouraged to migrate to `nftables`. ([#134539](https://github.com/kubernetes/kubernetes/pull/134539), [@adrianmoisey](https://github.com/adrianmoisey))",
-    "remediation": "Migrate kube-proxy from `ipvs` mode to `nftables`."
-  },
-  {
     "ruleId": "rtz-gen-kubernetes-1.35-migrate-mutating-admission-policy-storage",
     "severity": "MEDIUM",
     "title": "Review MutatingAdmissionPolicy storage version",

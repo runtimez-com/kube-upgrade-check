@@ -1,0 +1,48 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.3-venafi-cloud-zone-syntax",
+  "severity": "HIGH",
+  "title": "Venafi Cloud issuers must move to the OutagePREDICT zone syntax",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^venafi$",
+   "reason": "the issuer TYPE is projected, the zone string is not — these issuers are the ones whose zone has to be rewritten, which is the whole population"
+  },
+  "quote": "The only impact to Venafi Cloud users is the change in zone syntax. The zone is now `<Application Name>\\<Issuing Template Alias>` (e.g. `My Application\\My CIT`).",
+  "remediation": "Create an Application in OutagePREDICT with an Issuing Template and set each Venafi issuer's zone to `<Application Name>\\<Issuing Template Alias>` instead of the DA Zone ID (a UUID).",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.venafi.cloud) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) zone=\\(.spec.venafi.zone)\"'  # a zone that looks like a UUID is the old DA style and stops resolving"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.3-renew-before-expiration-duration-flag",
+  "severity": "HIGH",
+  "title": "--renew-before-expiration-duration is removed — the controller will not start with it",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "renew-before-expiration-duration",
+   "reason": "checked in the cert-manager workload's container args only — a flag passed through a config file is not scanned"
+  },
+  "quote": "The `--renew-before-expiration-duration` flag has been removed from the cert-manager controller, having been deprecated in the previous release.",
+  "remediation": "Remove the flag from the controller's args before upgrading and set `spec.renewBefore` on the Certificates that relied on it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"renew-before-expiration-duration\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller still started with the flag; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.3-certificaterequests-become-immutable",
+  "severity": "LOW",
+  "title": "CertificateRequest spec and annotations become immutable — patching tooling breaks",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "CertificateRequest objects are not collected, and what breaks is the automation that edits them, which is not a cluster object at all"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "Certificate"
+  },
+  "quote": "`CertificateRequests` are now immutable - the `spec` and `metadata.annotations` fields cannot be changed after creation. They were always designed to be immutable but this behavior is now *enforced* by the cert-manager webhook.",
+  "remediation": "Find anything that patches CertificateRequest spec or annotations after creation (approval tooling, GitOps reconcilers, scripts) and stop it: the webhook rejects those writes from 1.3.",
+  "verifyCommand": "kubectl get certificaterequests -A -o json --show-managed-fields | jq -r '.items[] | select([.metadata.managedFields[]?.manager] | map(select(test(\"cert-manager|cainjector\") | not)) | .[0] != null) | \"\\(.metadata.namespace)/\\(.metadata.name) managers=\\([.metadata.managedFields[].manager] | unique | join(\",\"))\"'  # each row was written by something other than cert-manager; those writes are rejected after 1.3"
+ }
+]

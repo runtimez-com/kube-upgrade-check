@@ -1,0 +1,106 @@
+[
+  {
+    "ruleId": "rtz-gen-istio-1.28-enable-sidecar-seccomp-profile",
+    "severity": "MEDIUM",
+    "title": "Enable seccompProfile for Sidecar Containers",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The setting is controlled by Istio configuration and container-level security context, which is not represented by a single supported cluster-inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "- **Enabling seccompProfile for Sidecar Containers** — To enable the `RuntimeDefault` seccomp profile for `istio-validation` and `istio-proxy` containers, set the following in your Istio configuration: ```yaml global: proxy: seccompProfile: type: RuntimeDefault ``` This change allows for better security practices by using the default seccomp profile provided by the container runtime.",
+    "remediation": "Set `global.proxy.seccompProfile.type` to `RuntimeDefault` in your Istio configuration for the `istio-validation` and `istio-proxy` containers.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | [.metadata.namespace,.metadata.name,([.spec.containers[]? | select(.name==\"istio-validation\" or .name==\"istio-proxy\") | .name] | join(\",\"))] | @tsv' # what output means: lists candidate pods and the affected sidecar containers; verify their container securityContext seccompProfile manually"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-migrate-backendtlspolicy-v1alpha3",
+    "severity": "HIGH",
+    "title": "Migrate BackendTLSPolicy from v1alpha3 to v1",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "BackendTLSPolicy",
+      "target": "v1alpha3"
+    },
+    "quote": "- **`BackendTLSPolicy` alpha removal** — The support for the `v1alpha3 version of `BackendTLSPolicy` has been removed. Only `v1` `BackendTLSPolicy` is supported. Please note that, prior to this release, `BackendTLSPolicy` was ignored by Istio unless the `PILOT_ENABLE_ALPHA_GATEWAY_API=true` option was explicitly enabled. As the policy is now `v1`, this setting is no longer required.",
+    "remediation": "Migrate `BackendTLSPolicy` resources to `v1`; the `PILOT_ENABLE_ALPHA_GATEWAY_API=true` setting is no longer required.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.names.kind==\"BackendTLSPolicy\") | [.metadata.name,([.spec.versions[] | select(.served==true) | .name] | join(\",\"))] | @tsv' # what output means: a served v1alpha3 version indicates the removed BackendTLSPolicy version is still available"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-migrate-inferencepool-rc1-port-field",
+    "severity": "HIGH",
+    "title": "Update InferencePool port field and API version",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The API group is not stated, and the affected nested fields are not single top-level collected fields supported by the detection vocabulary."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "InferencePool"
+    },
+    "quote": "- **InferencePool** — The InferencePool API v1.0.0-rc.1 has been replaced with v1.0.0-rc.2. In this version, `inferencePool.spec.endpointPickerRef.portNumber` field has been replaced with `inferencePool.spec.endpointPickerRef.port.number`. The `inferencePool.spec.endpointPickerRef.port` field is a non-pointer and required when `inferencePool.spec.endpointPickerRef.kind` is unset or \"Service\". The port number 9002 is no longer inferred. Update your configurations to use the new API version.",
+    "remediation": "Update InferencePool configurations to v1.0.0-rc.2, replace `inferencePool.spec.endpointPickerRef.portNumber` with `inferencePool.spec.endpointPickerRef.port.number`, provide the required port field when applicable, and do not rely on port number 9002 being inferred.",
+    "verifyCommand": "kubectl get inferencepools -A -o json | jq -r '.items[] | [.metadata.namespace,.metadata.name,.apiVersion,(.spec.endpointPickerRef.portNumber // \"\"),(.spec.endpointPickerRef.port.number // \"\"),(.spec.endpointPickerRef.kind // \"\")] | @tsv' # what output means: identifies InferencePool objects using the old field or missing the replacement port value"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-migrate-inferencepool-rc2-to-v1",
+    "severity": "MEDIUM",
+    "title": "Migrate InferencePool API v1.0.0-rc.2 to v1.0.0",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The API group is not stated, and these release-version identifiers cannot be matched to a supported cluster-inventory API-version predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "InferencePool"
+    },
+    "quote": "- **InferencePool** — The InferencePool API v1.0.0-rc.2 has been replaced with v1.0.0. No API changes exist between rc2 and v1.0.0.",
+    "remediation": "Update InferencePool configurations from API v1.0.0-rc.2 to v1.0.0.",
+    "verifyCommand": "kubectl get inferencepools -A -o json | jq -r '.items[] | [.metadata.namespace,.metadata.name,.apiVersion] | @tsv' # what output means: lists InferencePool objects and their API versions for manual verification"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-migrate-inferencepool-v1alpha2",
+    "severity": "HIGH",
+    "title": "Migrate removed v1alpha2 InferencePool API",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "InferencePool",
+      "target": "v1alpha2"
+    },
+    "quote": "- **InferencePool** — The v1alpha2 InferencePool API type has been removed. Please use the v1 InferencePool API type instead. Update your configurations to use the new API version.",
+    "remediation": "Use the v1 InferencePool API type and update your configurations to the new API version.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.names.kind==\"InferencePool\") | [.metadata.name,([.spec.versions[] | select(.served==true) | .name] | join(\",\"))] | @tsv' # what output means: a served v1alpha2 version indicates the old InferencePool API remains present and requires migration"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-migrate-metric-eviction-flags",
+    "severity": "MEDIUM",
+    "title": "Migrate to the new metric eviction mechanism",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The removed Pilot environment flags and the required Istio stats eviction configuration are not represented by a single supported cluster-inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Deployment"
+    },
+    "quote": "- **Migrate to the new metric eviction mechanism** — The Pilot environment flags `METRIC_ROTATION_INTERVAL` and `METRIC_GRACEFUL_DELETION_INTERVAL` have been removed. Use the pod annotation `sidecar.istio.io/statsEvictionInterval` with the new stats eviction API instead.",
+    "remediation": "Remove `METRIC_ROTATION_INTERVAL` and `METRIC_GRACEFUL_DELETION_INTERVAL`, and use the pod annotation `sidecar.istio.io/statsEvictionInterval` with the new stats eviction API instead.",
+    "verifyCommand": "kubectl get deployments -A -o json | jq -r '.items[] | [.metadata.namespace,.metadata.name,([.spec.template.spec.containers[]?.env[]? | select(.name==\"METRIC_ROTATION_INTERVAL\" or .name==\"METRIC_GRACEFUL_DELETION_INTERVAL\") | .name] | join(\",\"))] | @tsv' # what output means: deployments listing either removed flag are candidates for manual migration to the pod annotation"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.28-update-ztunnel-for-passthrough-services",
+    "severity": "MEDIUM",
+    "title": "Update ztunnel before using PASSTHROUGH services",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ServiceEntry",
+      "target": "resolution",
+      "value": "NONE"
+    },
+    "quote": "- **Ambient data plane behavior changes for ServiceEntries with resolution set to `NONE`** — During an upgrade from a previous version to one supporting \"PASSTHROUGH\" services, old ztunnel images will report a NACK in XDS because they do not support this new service type. This is expected and should not be overly problematic, however it may represent a data plane behavior change when you see the NACK. During the upgrade, a NACK could result in: 1. The data plane configuration was not updated because it could not handle the new service type. This is effectively a noop update. 2. The service is new and configuration was not accepted by the data plane. This will result in behavior where the data plane behaves as if the ServiceEntry doesn't exist. This results in passthrough behavior where ztunnel does not recognize the service and can not determine if a waypoint is required. In both cases, the NACK behavior will resolve once ztunnel is updated to a version that supports the new service type.",
+    "remediation": "Update ztunnel to a version that supports the new service type; expect NACKs and possible passthrough behavior during the upgrade for ServiceEntries with resolution set to `NONE`.",
+    "verifyCommand": "kubectl get serviceentries -A -o json | jq -r '.items[] | select(.spec.resolution==\"NONE\") | [.metadata.namespace,.metadata.name,.spec.resolution] | @tsv' # what output means: listed ServiceEntries are candidates for the documented ztunnel NACK and behavior change"
+  }
+]

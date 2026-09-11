@@ -1,0 +1,16 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.9-redis-networkpolicy-drops-egress-restrictions",
+    "severity": "MEDIUM",
+    "title": "`argocd-redis` NetworkPolicy loses its Egress restrictions from 2.9.16",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NetworkPolicy",
+      "objectName": "^argocd-redis(-ha-haproxy)?-network-policy$",
+      "reason": "fires when the stock redis/haproxy NetworkPolicy exists — its Egress section is what the 2.9.16 manifests open up"
+    },
+    "quote": "Starting with Argo CD 2.9.16, the NetworkPolicy for the `argocd-redis` and `argocd-redis-ha-haproxy` dropped Egress restrictions. This change was made to allow access to the Kubernetes API to create a secret to secure Redis access.",
+    "remediation": "If your policy required Redis to be egress-locked, add back an Egress rule that allows the Kubernetes API plus the traffic Redis itself needs (the note's example), instead of the unrestricted egress the new manifests ship.",
+    "verifyCommand": "kubectl -n argocd get networkpolicy -o json | jq -r '.items[] | select(.metadata.name | test(\"redis\")) | .metadata.name + \": egress=\" + (.spec.egress | tostring | .[0:120])' # a redis policy printed with egress=null or [] restricts nothing after the upgrade"
+  }
+]

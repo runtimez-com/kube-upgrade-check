@@ -1,0 +1,291 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.0-fine-grained-rbac-no-longer-inherits-to-subresources",
+    "severity": "HIGH",
+    "title": "`update`/`delete` RBAC on applications no longer covers their managed resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "RBAC policies are the VALUE of argocd-rbac-cm's `policy.csv` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-rbac-cm$",
+      "target": "keys[]",
+      "value": "^policy\\.csv$"
+    },
+    "quote": "Starting with v3, the `update` or `delete` actions only apply to the application itself. New policies must be defined to allow the `update/*` or `delete/*` actions on an Application's managed resources.",
+    "remediation": "Add `applications, update/*` and `applications, delete/*` rows for every role that must keep acting on managed resources, or set `server.rbac.disableApplicationFineGrainedRBACInheritance: \"false\"` in argocd-cm to keep the v2 behaviour.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.csv}' | grep -E '^p, *[^,]+, *applications, *(update|delete),' # rows printed stop covering managed resources at 3.0 unless a matching update/* or delete/* row exists"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-logs-rbac-enforced-by-default",
+    "severity": "HIGH",
+    "title": "Logs RBAC is enforced by default — the pod Logs tab disappears without an explicit `logs, get` grant",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the affected condition is the ABSENCE of `policy.default` in argocd-rbac-cm combined with the value of `server.rbac.log.enforce.enable` in argocd-cm; only key names are collected and absence of a key is not a projected fact"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-(rbac-)?cm$"
+    },
+    "quote": "Starting from 3.0, this flag is removed and the logs RBAC is enforced by default, meaning the `logs` tab on `pod` view will not be visible without granting explicit `logs, get` permissions to the users/groups/roles requiring it.",
+    "remediation": "Before upgrading, add `p, role:<role>, logs, get, */*, allow` to every role that has `applications, get` (or a default policy that does), unless `server.rbac.log.enforce.enable: \"true\"` was already set or `policy.default` is `role:readonly`/`role:admin`. Remove the flag from argocd-cm afterwards.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.default}'; echo; kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.server\\.rbac\\.log\\.enforce\\.enable}' # affected when the first line is empty AND the second is empty or false"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-default-resource-exclusions",
+    "severity": "LOW",
+    "title": "argocd-cm ships default `resource.exclusions` — high-churn kinds stop being tracked",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether any Application syncs one of the newly excluded kinds is not related in the inventory; only the presence of your own `resource.exclusions` key is"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$"
+    },
+    "quote": "Argo CD manifest now contains a default configuration for `resource.exclusions` in the `argocd-cm` to exclude resources that are known to be created by controllers and not usually managed in Git.",
+    "remediation": "If you manage Endpoints, Leases, CertificateRequests, Kyverno reports or Cilium identities through Argo CD, override or remove the default `resource.exclusions` in argocd-cm; otherwise nothing to do.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.resource\\.exclusions}' | head -c 600 # empty = the 3.0 defaults take effect; non-empty = your list wins, check it still covers what you need"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-legacy-controller-metrics-removed",
+    "severity": "LOW",
+    "title": "`argocd_app_sync_status` / `argocd_app_health_status` / `argocd_app_created_time` metrics are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the env var that re-enabled these metrics (`ARGOCD_LEGACY_CONTROLLER_METRICS` on the application controller) is not collected — container environment names are not part of the projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "StatefulSet|Deployment",
+      "objectName": "^argocd-application-controller$",
+      "target": "containers[].image",
+      "value": "argoproj/argocd"
+    },
+    "quote": "Starting with 1.5.0, these metrics are only available if `ARGOCD_LEGACY_CONTROLLER_METRICS` is explicitly set to `true`. If it is not set to true, you can safely upgrade with no changes.",
+    "remediation": "Move dashboards and alerts to the labels on `argocd_app_info` before upgrading if the controller runs with `ARGOCD_LEGACY_CONTROLLER_METRICS=true`.",
+    "verifyCommand": "kubectl -n argocd get sts argocd-application-controller -o json 2>/dev/null | jq -r '.spec.template.spec.containers[].env[]? | select(.name == \"ARGOCD_LEGACY_CONTROLLER_METRICS\") | .name + \"=\" + (.value // \"(valueFrom)\")' # printed = the legacy metrics are on (also check a Deployment-shaped controller)"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-dex-rbac-subject-changes-to-federated-user-id",
+    "severity": "MEDIUM",
+    "title": "Dex SSO: the RBAC subject switches from the `sub` claim to `federated_claims.user_id`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Dex connector configuration is the VALUE of argocd-cm's `dex.config` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^dex\\.config$"
+    },
+    "quote": "If you were using the Dex sub claim in RBAC policies, you will need to update them to maintain the same access.",
+    "remediation": "Decode the current `sub` claims bound in argocd-rbac-cm (`g, <subject>, role:...`) to their `user_id` and rewrite those bindings before upgrading; users and CLIs must re-login to get tokens with the new claims.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.csv}' | grep -E '^g, ' | head -40 # bindings printed on a Dex-issued sub claim must be rewritten to the federated user_id"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-legacy-repo-config-in-argocd-cm-removed",
+    "severity": "HIGH",
+    "title": "Repositories declared in argocd-cm are no longer read",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^(repositories|repository\\.credentials|helm\\.repositories)$",
+      "reason": "ConfigMap KEY names are collected, never values — this rule fires on the presence of the key in the named ConfigMap"
+    },
+    "quote": "Before repositories were managed as Secrets, they were configured in the argocd-cm ConfigMap. The argocd-cm option has been deprecated for some time and is no longer available in Argo CD 3.0.",
+    "remediation": "Convert every entry under `repositories`, `repository.credentials` and `helm.repositories` in argocd-cm into a repository Secret (label `argocd.argoproj.io/secret-type: repository` / `repo-creds`) before upgrading; Applications on those repositories fail to fetch afterwards.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o json | jq '.data | keys[] | select(. == \"repositories\" or . == \"repository.credentials\" or . == \"helm.repositories\")' # any key printed = repository config that 3.0 ignores"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-applicationset-apply-nested-selectors-always-on",
+    "severity": "MEDIUM",
+    "title": "ApplicationSet nested selectors are always applied — generated Applications may disappear",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ApplicationSet",
+      "target": "nestedSelectorsUnapplied",
+      "value": "true",
+      "reason": "composite presence projection: the agent emits nestedSelectorsUnapplied=true only when a selector sits inside a matrix/merge child generator AND applyNestedSelectors is unset or false — an ApplicationSet that already opted in (applyNestedSelectors: true) changes nothing at 3.0 and is not named"
+    },
+    "quote": "Starting in Argo CD 3.0, the field is ignored, and behavior is always the same as if `applyNestedSelectors` was set to `true`. In other words, nested selectors are always applied.",
+    "remediation": "For each ApplicationSet named here whose `applyNestedSelectors` is unset or false, remove the nested selectors (they were being ignored) before upgrading — otherwise they start filtering and the Applications they exclude get pruned.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r 'def nested: .generators[]? | (has(\"selector\") or ((.matrix?, .merge?) | select(. != null) | nested)); .items[] | select(.spec.applyNestedSelectors != true and any(.spec.generators[]? | (.matrix?, .merge?) | select(. != null); nested)) | .metadata.namespace + \"/\" + .metadata.name' # names printed have a generator-level selector under a matrix/merge child (not the cluster-secret selector inside clusters), which starts applying at 3.0"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-helm-3-17-null-values-override",
+    "severity": "MEDIUM",
+    "title": "Bundled Helm 3.17.1: a `null` object in values.yaml now overrides the subchart value",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values files live in Git; which Helm-rendered Application carries a `null` object in its values cannot be settled from the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Application",
+      "target": "helm",
+      "value": "true"
+    },
+    "quote": "In Helm 3.17.1, this behavior changed and `null` object in `values.yaml` still results in this warning upon performing `helm template`, but the resulting K8s object will be overridden with the invalid `null` value.",
+    "remediation": "Run `helm template` with Helm 3.17.x over every Helm-rendered Application and remove `null` objects from values files that produce the `cannot overwrite table with non table` warning — they now render as null.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.source.helm != null or ([.spec.sources[]?.helm] | any(. != null))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Helm — check their values files for null objects"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-annotation-based-tracking-default",
+    "severity": "HIGH",
+    "title": "Resource tracking switches from labels to annotations by default",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the affected condition is `application.resourceTrackingMethod` being ABSENT or `label` in argocd-cm; only key names are collected, and absence is not a projected fact"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$"
+    },
+    "quote": "The default behavior for tracking resources has changed to use annotation-based tracking instead of label-based tracking.",
+    "remediation": "Either set `application.resourceTrackingMethod: annotation` deliberately before upgrading, or opt out with `label`. After switching, sync every Application once (even if in sync) so orphan detection works on the next sync; resources you track by label outside Argo CD need the tracking annotation instead.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.application\\.resourceTrackingMethod}' # empty or label = the default switch to annotation tracking applies at 3.0"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-apply-out-of-sync-only-apps-need-explicit-sync",
+    "severity": "HIGH",
+    "title": "Applications with `ApplyOutOfSyncOnly=true` must be synced explicitly after the tracking switch",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "syncOptions[]",
+      "value": "^ApplyOutOfSyncOnly=true$",
+      "reason": "presence-only projection of the Application spec, as the agent emits it (keys, never repository URLs or credentials)"
+    },
+    "quote": "If you are using label-based tracking, it is also important to detect whether you have Applications that use `ApplyOutOfSyncOnly=true` syncOptions, as such Applications are likely to have orphan resources after switching to `annotation` tracking method and need to be synced explicitly right after the upgrade.",
+    "remediation": "Right after upgrading, run an explicit sync WITHOUT `ApplyOutOfSyncOnly` on each Application named here (UI, or the API with the option cleared) so their resources receive the tracking annotation; otherwise they read as orphans.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.syncPolicy.syncOptions[]? == \"ApplyOutOfSyncOnly=true\") | .metadata.namespace + \"/\" + .metadata.name' # names printed need an explicit full sync after the upgrade"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-in-cluster-disabled-applications-go-unknown",
+    "severity": "MEDIUM",
+    "title": "`cluster.inClusterEnabled: \"false\"` — in-cluster Applications become Unknown and cannot sync",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the setting is the VALUE of an argocd-cm key; ConfigMap KEY names are collected, values are not"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^cluster\\.inClusterEnabled$"
+    },
+    "quote": "When `cluster.inClusterEnabled: \"false\"` is explicitly configured, Applications currently configured to sync on the in-cluster cluster will now be in an Unknown state, without the possibility to sync resources.",
+    "remediation": "Before upgrading with in-cluster disabled, migrate or clean up every Application whose destination is `https://kubernetes.default.svc` / `in-cluster` (re-enable in-cluster temporarily to delete them cleanly).",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.cluster\\.inClusterEnabled}'; echo; kubectl get applications -A -o json | jq -r '.items[] | select(.spec.destination.server == \"https://kubernetes.default.svc\" or .spec.destination.name == \"in-cluster\") | .metadata.namespace + \"/\" + .metadata.name' # affected when the first line is false and names follow"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-default-ignore-resource-updates",
+    "severity": "LOW",
+    "title": "argocd-cm ships default `resource.customizations.ignoreResourceUpdates` — status churn no longer triggers refreshes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether any Application depends on status-driven refreshes is runtime behaviour; only your own `resource.customizations.ignoreResourceUpdates` keys are collected, by name"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^resource\\.customizations\\.ignoreResourceUpdates"
+    },
+    "quote": "Argo CD manifest now contains a default configuration for `resource.customizations.ignoreResourceUpdates` in the `argocd-cm` to exclude common resources that are often mutated in Kubernetes.",
+    "remediation": "Override or remove the default `resource.customizations.ignoreResourceUpdates` entries in argocd-cm if you rely on refreshes triggered by `.status` changes; otherwise nothing to do.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o json | jq -r '.data | keys[] | select(startswith(\"resource.customizations.ignoreResourceUpdates\"))' # keys printed are your overrides; none = the 3.0 defaults apply"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-application-status-no-longer-persists-resource-health",
+    "severity": "MEDIUM",
+    "title": "Resource health leaves the Application CR's `.status.resources[]` — tools parsing it break",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`controller.resource.health.persist` is the VALUE of an argocd-cmd-params-cm key; values are not collected, and which tools parse Application status is not on the cluster"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cmd-params-cm$"
+    },
+    "quote": "The health status of each object used to be persisted under `/status` in the Application CR by default. Any health churn in the resources deployed by the Application put load on the application controller. Now, the health status is stored externally.",
+    "remediation": "Point tooling that reads `.status.resources[].health` at the argocd CLI/API instead, or set `controller.resource.health.persist: \"true\"` in argocd-cmd-params-cm to keep the old behaviour.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cmd-params-cm -o jsonpath='{.data.controller\\.resource\\.health\\.persist}' # empty = health leaves the Application status at 3.0; true = kept"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-plugins-receive-empty-env-vars",
+    "severity": "LOW",
+    "title": "Config management plugins now receive empty environment variables",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "what a plugin sidecar does with an empty environment variable is plugin code, not inventory"
+    },
+    "quote": "In Argo CD 3.0, empty environment variables are now passed to config management plugins.",
+    "remediation": "Check plugin scripts that test for a variable being unset — an empty string is now passed where the variable used to be absent.",
+    "verifyCommand": "kubectl -n argocd get deploy argocd-repo-server -o json | jq -r '.spec.template.spec.containers[1:][].name' # names printed are plugin sidecars whose scripts may now see empty variables"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-ignore-differences-also-ignore-resource-updates",
+    "severity": "LOW",
+    "title": "System-level `ignoreDifferences` now also ignore resource updates",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a field you ignore in diffs must still trigger a refresh is runtime behaviour; only the `resource.customizations.ignoreDifferences` key names are collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^resource\\.customizations\\.ignoreDifferences"
+    },
+    "quote": "By default, the existing system-level `ignoreDifferences` customizations will be added to ignore resource updates as well.",
+    "remediation": "Set `ignoreDifferencesOnResourceUpdates: \"false\"` in argocd-cm if a field you ignore in diffs must still trigger a refresh when it changes.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o json | jq -r '.data | keys[] | select(startswith(\"resource.customizations.ignoreDifferences\"))' # keys printed now also suppress refreshes on those fields"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-status-field-ignored-in-diffs-for-all-kinds",
+    "severity": "LOW",
+    "title": "`.status` is ignored in diffs for all resources, not only CRDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether any desired state intentionally includes a `.status` block lives in Git, not in the inventory"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^resource\\.compareoptions$"
+    },
+    "quote": "By default, the compare options to ignore the status field has been changed from `crd` to `all` resources.",
+    "remediation": "If a manifest in Git deliberately carries `.status`, set `resource.compareoptions` with `ignoreResourceStatusField: crd` in argocd-cm to keep the v2 default.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.resource\\.compareoptions}' # empty = status differences stop being detected for every kind at 3.0"
+  },
+  {
+    "ruleId": "rtz-argocd-3.0-crd-preserve-unknown-fields-no-longer-ignored",
+    "severity": "MEDIUM",
+    "title": "CRDs with `spec.preserveUnknownFields: false` show OutOfSync",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the CRD projection carries group, kind and served versions, not `spec.preserveUnknownFields`"
+    },
+    "quote": "This means that CRD deployed with Argo CD containing `spec.preserveUnknownFields: false` will be out of sync. To address this problem, the `preserveUnknownFields` field can be removed from the CRD spec.",
+    "remediation": "Drop `spec.preserveUnknownFields` from CRDs you deploy through Argo CD (it is deprecated in CRD v1), or add an `ignoreDifferences` entry for it on the Application or globally in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.preserveUnknownFields == false) | .metadata.name' # CRDs printed go OutOfSync at 3.0 if an Application manages them"
+  }
+]

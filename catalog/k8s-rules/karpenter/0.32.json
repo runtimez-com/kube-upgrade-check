@@ -1,0 +1,63 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.32-alpha-apis-still-served-must-migrate-to-v1beta1",
+    "severity": "HIGH",
+    "title": "Provisioner/AWSNodeTemplate/Machine alpha CRDs are still served",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "provisioners",
+      "target": "v1alpha5"
+    },
+    "quote": "Karpenter `0.32.0` introduces v1beta1 APIs, including _significant_ changes to the API and installation procedures for the Karpenter controllers. **Do not** upgrade to `0.32.0`+ without referencing the v1beta1 Migration Upgrade Procedure.",
+    "remediation": "Follow the v1beta1 Migration Upgrade Procedure before upgrading. 0.32 serves BOTH the alpha APIs (Provisioner, AWSNodeTemplate, Machine) and the new beta ones (NodePool, EC2NodeClass, NodeClaim) so you can migrate without downtime — but 0.33 drops the alpha side entirely, so this is the only release where both exist.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves",
+    "coversNotes": [
+      "This version includes dual support for both alpha and beta APIs to ensure that you can slowly migrate your …"
+    ]
+  },
+  {
+    "ruleId": "rtz-karpenter-0.32-rollback-from-0.32-only-works-to-0.31.4",
+    "severity": "MEDIUM",
+    "title": "Only 0.31.4 can take a rollback from 0.32",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this constrains which version you may roll BACK to; nothing in the cluster's current state decides it"
+    },
+    "quote": "Note that if you are rolling back after upgrading to `0.32.0`, note that __only__ versions `0.31.4` support handling rollback after you have deployed the v1beta1 APIs to your cluster.",
+    "remediation": "If you may need to roll 0.32 back, make sure the version you roll back to is 0.31.4 — earlier 0.31 patches cannot handle a cluster that has already had the v1beta1 APIs applied to it.",
+    "verifyCommand": null
+  },
+  {
+    "ruleId": "rtz-karpenter-0.32-interruption-queue-setting-and-flag-renamed",
+    "severity": "MEDIUM",
+    "title": "settings.aws.interruptionQueueName and its CLI flag are renamed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the old setting arrives as a Helm value or a container ENVIRONMENT VARIABLE VALUE, and env values are never collected — only the container's args are"
+    },
+    "quote": "Karpenter now uses `settings.InterruptionQueue` instead of `settings.aws.InterruptionQueueName` in its helm chart. The CLI argument also changed to `--interruption-queue`.",
+    "remediation": "Rename the Helm value to `settings.interruptionQueue` (and the flag to `--interruption-queue`) before upgrading. Karpenter ignores settings it no longer recognises, so the old name leaves interruption handling quietly switched off rather than failing loudly.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[0].env[]? | .name] | join(\",\"))'  # an INTERRUPTION_QUEUE_NAME entry printed here is the old name and stops being read"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.32-disruption-taint-replaces-the-unschedulable-taint",
+    "severity": "HIGH",
+    "title": "Pods tolerating node.kubernetes.io/unschedulable are now evicted during disruption",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Pod",
+      "target": "tolerations[].key",
+      "value": "^node\\.kubernetes\\.io/unschedulable$",
+      "reason": "read from Pod rows — tolerations are collected per pod, not on the owning Deployment, StatefulSet or DaemonSet, so the workload that owns each pod named here is the thing to edit"
+    },
+    "quote": "Karpenter now uses the `karpenter.sh/disruption:NoSchedule=disrupting` taint instead of the upstream `node.kubernetes.io/unschedulable` taint for nodes spawned with a NodePool to prevent pods from scheduling to nodes being disrupted. Pods that previously tolerated the `node.kubernetes.io/unschedulable` taint that previously weren't evicted during termination will now be evicted. This most notably affects DaemonSets, which have the `node.kubernetes.io/unschedulable` toleration by default, where Karpenter will now remove these pods during termination. If you want your specific pods to not be evicted when nodes are scaled down, you should add a toleration to the pods with the following: `Key=karpenter.sh/disruption, Effect=NoSchedule, Operator=Equals, Values=disrupting`.",
+    "remediation": "These pods tolerate `node.kubernetes.io/unschedulable` and therefore survived node disruption before. Karpenter now taints disrupting nodes with `karpenter.sh/disruption:NoSchedule=disrupting` instead, which they do not tolerate, so they are evicted. DaemonSet pods carry that toleration by default and are the usual surprise here. To keep a pod in place, add a toleration for `Key=karpenter.sh/disruption, Effect=NoSchedule, Operator=Equals, Values=disrupting`.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(any(.spec.tolerations[]?; .key == \"node.kubernetes.io/unschedulable\")) | select(all(.spec.tolerations[]?; .key != \"karpenter.sh/disruption\")) | \"\\(.metadata.namespace)/\\(.metadata.name) owner=\\(.metadata.ownerReferences[0].kind // \"none\")/\\(.metadata.ownerReferences[0].name // \"-\")\"'  # each pod printed tolerates only the old taint and is evicted during disruption after the upgrade"
+  }
+]

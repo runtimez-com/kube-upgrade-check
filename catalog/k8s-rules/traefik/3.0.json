@@ -1,0 +1,196 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.0-containo-api-group-removed",
+    "severity": "CRITICAL",
+    "title": "Traefik CRDs on the removed traefik.containo.us API group",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "traefik.containo.us"
+    },
+    "quote": "In v3, the Kubernetes CRDs API Group `traefik.containo.us` has been removed. Please use the API Group `traefik.io` instead.",
+    "remediation": "Re-apply every listed object under the `traefik.io` API group before upgrading Traefik to v3. Traefik v3 does not serve `traefik.containo.us`, so any object left on it stops routing traffic the moment the new version starts. Install the v3 CRDs and update the RBAC to cover `traefik.io` first, then migrate the objects.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.containo.us,ingressroutetcps.traefik.containo.us,middlewares.traefik.containo.us -A 2>/dev/null # any rows = objects still on the removed API group; no output (or a NotFound error) = nothing left to migrate"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-content-type-auto-detection-removed",
+    "severity": "HIGH",
+    "title": "Content-Type is no longer auto-detected",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "In v3, the `Content-Type` header is not auto-detected anymore when it is not set by the backend. One should use the `ContentType` middleware to enable the `Content-Type` header value auto-detection.",
+    "remediation": "Identify backends that rely on Traefik guessing their Content-Type and attach the `ContentType` middleware to those routers. Otherwise responses reach clients without the header, and browsers fall back to sniffing or refuse to render — a change that shows up as broken pages rather than as an error in Traefik.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.contentType != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed re-enable auto-detection for the routers that reference them; nothing printed means no backend gets a guessed Content-Type in v3"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-crd-apiextensions-v1beta1-removed",
+    "severity": "HIGH",
+    "title": "Traefik CRDs defined with apiextensions.k8s.io/v1beta1",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "CustomResourceDefinition",
+      "target": "apiextensions.k8s.io/v1beta1"
+    },
+    "quote": "In v3, the Traefik CRD API Version `apiextensions.k8s.io/v1beta1` (removed since Kubernetes v1.22) support has been removed.",
+    "remediation": "Re-install the Traefik CRDs from the v3 manifests, which declare `apiextensions.k8s.io/v1`. A CRD still defined with the v1beta1 API version cannot be applied on Kubernetes 1.22+, so this usually surfaces as a failed chart upgrade rather than a routing outage.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.apiVersion == \"apiextensions.k8s.io/v1beta1\") | .metadata.name' # names printed are defined with the removed CRD API version"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-deprecated-options-removed",
+    "severity": "HIGH",
+    "title": "A batch of deprecated options is removed in v3",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)tracing\\.datadog\\.globaltag|\\.tls\\.caOptional",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "- The `tracing.datadog.globaltag` option has been removed.",
+    "remediation": "Audit the static configuration and middleware definitions for the whole removed set, not just the Datadog tag: `tls.caOptional` (ForwardAuth and the HTTP/Consul/Etcd/Redis/ZooKeeper/Consul Catalog/Docker providers), the Headers middleware's `sslRedirect`, `sslTemporaryRedirect`, `sslHost`, `sslForceHost` and `featurePolicy`, and StripPrefix's `forceSlash`. Traefik refuses to start on an unknown option, so each survivor is a failed rollout.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select((.spec.headers.sslRedirect // .spec.headers.sslHost // .spec.headers.featurePolicy // .spec.stripPrefix.forceSlash // .spec.forwardAuth.tls.caOptional) != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set an option removed in v3"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-experimental-http3-option-removed",
+    "severity": "HIGH",
+    "title": "experimental.http3 is removed and blocks startup",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)experimental\\.http3",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "In v3, HTTP/3 is no longer an experimental feature. It can be enabled on entry points without the associated `experimental.http3` option, which is now removed.",
+    "remediation": "Remove `http3` from the `experimental` section and enable HTTP/3 on the entryPoint instead. Traefik refuses to start on the removed option, so leaving it in place turns the upgrade into a CrashLoopBackOff rather than a degraded route.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"experimental.http3\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed will fail to start on v3; also check the Helm values and any static config ConfigMap"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-gateway-api-experimental-channel-off",
+    "severity": "MEDIUM",
+    "title": "Gateway API experimental channel resources are off by default",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "TLSRoute and TCPRoute belong to the Gateway API (gateway.networking.k8s.io), which this add-on's collection does not claim; only IngressRoute, IngressRouteTCP and Middleware are collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "In v3, the Kubernetes Gateway API provider does not enable support for the experimental channel API resources by default.",
+    "remediation": "If any TLSRoute or TCPRoute is in use, set the `experimentalChannel` option on the Kubernetes Gateway provider before upgrading. Without it those routes are simply not reconciled in v3 — the objects stay in the cluster and look healthy, so the failure shows up as traffic that stops being routed rather than as an error.",
+    "verifyCommand": "kubectl get tlsroutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io -A 2>/dev/null # any rows = experimental-channel routes that need experimentalChannel enabled; a NotFound error = the CRDs are absent and this does not apply"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-ingress-networking-v1beta1-removed",
+    "severity": "HIGH",
+    "title": "Ingress objects on networking.k8s.io/v1beta1, which Traefik v3 no longer reads",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "objectKind": "Ingress",
+      "target": "networking.k8s.io/v1beta1"
+    },
+    "quote": "In v3, the Kubernetes Ingress API Group `networking.k8s.io/v1beta1` (removed since Kubernetes v1.22) support has been removed.",
+    "remediation": "Re-apply the listed Ingress objects under `networking.k8s.io/v1`. Kubernetes itself removed this API group in 1.22, so on any supported cluster these objects are already being served through the v1 API — the risk is in manifests and GitOps templates that still declare the old apiVersion.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select(.apiVersion == \"networking.k8s.io/v1beta1\") | .metadata.namespace + \"/\" + .metadata.name' # names printed are still on the removed group; no output = clean"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-ingress-path-matching-no-regex",
+    "severity": "MEDIUM",
+    "title": "Kubernetes Ingress default path matching no longer supports regexes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this concerns the path values of Kubernetes Ingress objects and the Traefik annotations on them, neither of which is part of the Traefik CR projection this source evaluates"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Ingress",
+      "target": "rules[].paths[].path",
+      "value": "\\{[A-Za-z_][A-Za-z0-9_]*(:[^}]*)?\\}"
+    },
+    "quote": "In v3, the Kubernetes Ingress default path matching does not support regexes anymore.",
+    "remediation": "Find Ingress paths that rely on regex behaviour and pick one of the two documented remediations: keep v2 interpretation of `PathPrefix` via the install configuration or the `traefik.ingress.kubernetes.io/router.rulesyntax` annotation, or rewrite the path as a Go-syntax regex and select the `PathRegexp` matcher with `traefik.ingress.kubernetes.io/router.pathmatcher`.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | select(.path | test(\"[\\\\[\\\\]().*+?^$|]\")) | $i.metadata.namespace + \"/\" + $i.metadata.name + \"  \" + .path' # paths printed contain regex metacharacters and change meaning under v3"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-ipwhitelist-renamed-ipallowlist",
+    "severity": "MEDIUM",
+    "title": "IPWhiteList middleware renamed to IPAllowList",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^ipWhiteList$"
+    },
+    "quote": "In v3, we renamed the `IPWhiteList` middleware to `IPAllowList` without changing anything to the configuration.",
+    "remediation": "Rename the middleware type from `ipWhiteList` to `ipAllowList` in every Middleware object and in any router that references one. The configuration body is unchanged, so this is a pure rename — but a Middleware left on the old type is not recognised by v3 and the router referencing it fails to load.",
+    "verifyCommand": "kubectl get middlewares.traefik.io,middlewares.traefik.containo.us -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.ipWhiteList != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still use the removed ipWhiteList type"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-open-connections-metric-replaced",
+    "severity": "MEDIUM",
+    "title": "Per-level open connections metrics replaced by a single global metric",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this concerns Traefik's own metrics output, which this platform does not scrape"
+    },
+    "quote": "In v3, the open connections metric has been replaced with a global one because it was erroneously at the HTTP level, and providing misleading information.",
+    "remediation": "Rebuild any dashboard or alert using `traefik_entrypoint_open_connections`, `traefik_router_open_connections` or `traefik_service_open_connections`. They are replaced by one global metric, so per-entrypoint and per-service breakdowns are no longer available — panels keep rendering while quietly returning nothing."
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-rbac-tcpserverstransport",
+    "severity": "HIGH",
+    "title": "KubernetesCRD RBAC and CRDs must be updated for TCPServersTransport",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the agent collects IngressRoute, IngressRouteTCP and Middleware, not the ClusterRole backing Traefik's own service account, so the grant this note is about is outside the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In v3, the support of `TCPServersTransport` has been introduced. When using the KubernetesCRD provider, it is therefore necessary to update RBAC and CRDs (See requirements).",
+    "remediation": "Apply the v3 CRD manifests and the matching ClusterRole before upgrading. Traefik reads the new `TCPServersTransport` kind at startup; without the CRD and the RBAC grant it logs permission errors and the KubernetesCRD provider degrades rather than failing loudly.",
+    "verifyCommand": "kubectl get crd tcpserverstransports.traefik.io >/dev/null 2>&1 && echo \"CRD present\" || echo \"MISSING tcpserverstransports.traefik.io\"; kubectl get clusterrole -o json | jq -r '.items[] | select(.rules[]?.resources[]? == \"tcpserverstransports\") | .metadata.name' # a name confirms the RBAC grant exists"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-router-rule-matcher-syntax",
+    "severity": "HIGH",
+    "title": "Router rules must move to the v3 matcher syntax",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute|IngressRouteTCP",
+      "target": "routes[].match",
+      "value": "\\b(Headers|HeadersRegexp|HostHeader)\\s*\\(|\\{[A-Za-z_][A-Za-z0-9_]*(:[^}]*)?\\}",
+      "reason": "checked spec.routes[].match on IngressRoute and IngressRouteTCP for the v2-only constructs the v3 syntax drops — Headers()/HeadersRegexp() (renamed Header/HeaderRegexp), HostHeader() (removed) and {name} path placeholders; a rule that parses under both syntaxes but changes meaning is not scanned"
+    },
+    "quote": "In v3, a new rule matchers syntax has been introduced for HTTP and TCP routers. The default rule matchers syntax is now the v3 one, but for backward compatibility this can be configured.",
+    "remediation": "Audit every router rule for the v2 constructs the v3 syntax renames or drops — `Headers`/`HeadersRegexp` become `Header`/`HeaderRegexp`, and `PathPrefix` no longer accepts a regular expression. Either migrate the expressions, or set the `defaultRuleSyntax` install option (or the per-router rule-syntax annotation) to `v2` to buy time; that fallback is itself deprecated and goes away in the next major version.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io,ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]? | select(.match | test(\"Headers\\\\(|HeadersRegexp\\\\(\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .match' # rows printed use v2-only matchers; also review any PathPrefix that contains a regex"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-tcp-lb-termination-delay-deprecated",
+    "severity": "MEDIUM",
+    "title": "TCP LoadBalancer terminationDelay moved to TCPServersTransport",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the setting lives on a service under spec.routes[].services[], nested inside the routes array rather than at the top level of the projection"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "IngressRouteTCP"
+    },
+    "quote": "The TCP LoadBalancer `terminationDelay` option has been deprecated. This option can now be configured directly on the `TCPServersTransport` level, please take a look at this documentation",
+    "remediation": "Move `terminationDelay` from the TCP service definition onto a `TCPServersTransport`. The option governs how long Traefik waits before closing a half-open TCP connection, so dropping it silently changes connection teardown for long-lived TCP traffic.",
+    "verifyCommand": "kubectl get ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.terminationDelay != null) | $o.metadata.namespace + \"/\" + $o.metadata.name' # names printed still set the deprecated option on the service"
+  }
+]

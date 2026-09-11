@@ -1,0 +1,116 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.33-alpha-apis-are-dropped-upgrade-through-0.32-first",
+    "severity": "HIGH",
+    "title": "Alpha CRDs are still served — 0.33 will not read them",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "provisioners",
+      "target": "v1alpha5"
+    },
+    "quote": "`0.33.0`+ _only_ supports Karpenter v1beta1 APIs and will not work with existing Provisioner, AWSNodeTemplate or Machine alpha APIs. **Do not** upgrade to `0.33.0`+ without first upgrading to `0.32.x`. This version supports both the alpha and beta APIs, allowing you to migrate all of your existing APIs to beta APIs without experiencing downtime.",
+    "remediation": "Upgrade to 0.32.x first and migrate every Provisioner, AWSNodeTemplate and Machine to the v1beta1 NodePool, EC2NodeClass and NodeClaim APIs. 0.33 does not read the alpha objects at all: going straight there leaves the cluster with node configuration Karpenter cannot see.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-webhook-ports-must-be-reachable-when-network-policies-apply",
+    "severity": "MEDIUM",
+    "title": "Re-enabled webhooks need ports 8000, 8001, 8081 and 8443 reachable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a NetworkPolicy actually blocks these ports for the Karpenter pods depends on the policy's selectors and rules, which are not part of the collected projection"
+    },
+    "quote": "Webhooks have been re-enabled by default starting in `0.33.8` to faciliate migration to `v1.0`. If your cluster has network policies that block Ingress then ports `8000`, `8001`, `8081`, `8443` will need to be allowlisted. You may still choose to disable webhooks through the helm chart.",
+    "remediation": "Karpenter re-enables its webhooks from 0.33.8. If any NetworkPolicy restricts ingress to the Karpenter namespace, allowlist ports 8000, 8001, 8081 and 8443 — a blocked webhook fails the API calls it intercepts rather than being skipped.",
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NetworkPolicy"
+    },
+    "verifyCommand": "kubectl get networkpolicy -A -o json | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) types=\\((.spec.policyTypes // []) | join(\",\"))\"'  # check any policy in the Karpenter namespace against ports 8000, 8001, 8081 and 8443"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-provisioner-name-label-no-longer-selects-nodes",
+    "severity": "HIGH",
+    "title": "Workloads still select nodes on karpenter.sh/provisioner-name",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Pod",
+      "target": "nodeSelector",
+      "value": "^karpenter\\.sh/provisioner-name=",
+      "reason": "read from Pod rows as key=value pairs — nodeSelector is collected per pod, not on the owning workload, and node affinity and topology spread constraints are not scanned at all, so a clean result here does not clear those two"
+    },
+    "quote": "Karpenter no longer supports using the `karpenter.sh/provisioner-name` label in NodePool labels and requirements or in application node selectors, affinities, or topologySpreadConstraints. If you were previously using this label to target applications to specific Provisioners, you should update your applications to use the `karpenter.sh/nodepool` label instead before upgrading. If you upgrade without changing these labels, you may begin to see pod scheduling failures for these applications.",
+    "remediation": "Replace `karpenter.sh/provisioner-name` with `karpenter.sh/nodepool` in these pods' node selectors, and check their owning workloads for the same label in `affinity` and `topologySpreadConstraints`, which this check cannot see. Left alone, the label matches nothing after the upgrade and the pods simply stop being scheduled.",
+    "verifyCommand": "kubectl get pods,deploy,statefulset,daemonset -A -o json | jq -r '.items[] | select((.spec.template.spec // .spec) | tostring | test(\"karpenter.sh/provisioner-name\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # each object printed still references the retired label in a selector, affinity or spread constraint"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-karpenter-should-run-in-kube-system",
+    "severity": "LOW",
+    "title": "Karpenter runs outside kube-system and gets generic API priority",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is a recommendation about where to install Karpenter, not a breakage — and moving it changes the ServiceAccount namespace, which only the operator's IRSA trust policy records"
+    },
+    "quote": "We now recommend that you set the installation namespace for your Karpenter controllers to `kube-system` to denote Karpenter as a critical cluster component. This ensures that requests from the Karpenter controllers are treated with higher priority by assigning them to a different PriorityLevelConfiguration than generic requests from other namespaces. For more details on API Priority and Fairness, read the Kubernetes API Priority and Fairness Conceptual Docs. Note: Changing the namespace for your Karpenter release will cause the service account namespace to change. If you are using IRSA for authentication with AWS, you will need to change scoping set in the controller's trust policy from `karpenter:karpenter` to `kube-system:karpenter`.",
+    "remediation": "Consider moving the Karpenter controllers to `kube-system` so their API requests are treated as a critical cluster component rather than as generic traffic. If you do, remember the ServiceAccount namespace changes with it: an IRSA trust policy scoped to `karpenter:karpenter` has to become `kube-system:karpenter` or authentication breaks.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-global-settings-configmap-support-is-dropped",
+    "severity": "HIGH",
+    "title": "karpenter-global-settings is no longer read at all",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap",
+      "objectName": "^karpenter-global-settings$"
+    },
+    "quote": "`0.33.0` drops support for passing settings through the `karpenter-global-settings` ConfigMap. You should pass settings through the container environment variables in the Karpenter deployment manifest. View the Global Settings Section of the v1beta1 Migration Guide for more details.",
+    "remediation": "Move every setting out of this ConfigMap into container environment variables on the Karpenter deployment BEFORE upgrading. 0.33 stops reading the ConfigMap entirely and does not warn about it, so settings like the interruption queue silently revert to their defaults while the ConfigMap sits there looking authoritative.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"karpenter-global-settings\") | \"\\(.metadata.namespace)/\\(.metadata.name) keys=\\((.data // {}) | keys | join(\",\"))\"'  # any row printed is a karpenter-global-settings ConfigMap that is still in place"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-drift-is-enabled-by-default",
+    "severity": "MEDIUM",
+    "title": "Drift starts replacing nodes that no longer match their NodePool",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the outcome depends on whether each existing node's configuration still matches its NodePool, a comparison against AWS instance state this platform does not hold"
+    },
+    "quote": "`0.33.0` enables `Drift=true` by default in the `FEATURE_GATES`. If you previously didn't enable the feature gate, Karpenter will now check if there is a difference between the desired state of your nodes declared in your NodePool and the actual state of your nodes. View the Drift Section of Disruption Conceptual Docs for more details.",
+    "remediation": "Expect node replacement after this upgrade if you had not already enabled the `Drift` feature gate. Karpenter starts comparing every node against its NodePool and replaces the ones that no longer match. Set disruption budgets first if that churn needs a ceiling.",
+    "verifyCommand": "kubectl get nodeclaims -o json 2>/dev/null | jq -r '.items[]? | \"\\(.metadata.name) \\((.status.conditions[]? | select(.type == \"Drifted\") | .status) // \"-\")\"'  # NodeClaims already reporting Drifted are the ones this replaces first"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-zap-logger-config-configmap-discovery-is-dropped",
+    "severity": "LOW",
+    "title": "A zap-logger-config ConfigMap key stops being discovered",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^zap-logger-config$",
+      "reason": "reads ConfigMap key NAMES, which is all that is collected"
+    },
+    "quote": "`0.33.0` drops looking up the `zap-logger-config` through ConfigMap discovery. Instead, Karpenter now expects the logging config to be mounted on the filesystem if you are using this to configure Zap logging. This is not enabled by default, but can be enabled through `--set logConfig.enabled=true` in the Helm values. If you are setting any values in the `logConfig` from the `0.32.x` upgrade, such as `logConfig.logEncoding`, note that you will have to explicitly set `logConfig.enabled=true` alongside it. Also, note that setting the Zap logging config is a deprecated feature in beta and is planned to be dropped at v1. View the Logging Configuration Section of the v1beta1 Migration Guide for more details.",
+    "remediation": "Karpenter no longer looks this ConfigMap up; the logging config has to be mounted onto the filesystem instead, which needs `logConfig.enabled=true` in the Helm values. If you set any `logConfig` value during the 0.32 upgrade, it stops applying until you set that flag alongside it.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select((.data // {}) | has(\"zap-logger-config\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each ConfigMap printed carries a logging config that is no longer discovered"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.33-comma-delimited-selector-tag-lists-are-dropped",
+    "severity": "MEDIUM",
+    "title": "Comma-delimited tag values in subnet, security-group and AMI selectors stop matching",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the selectors live on AWSNodeTemplate (the v1alpha5 alpha API) and on EC2NodeClass selector TERMS, whose tag values are never collected"
+    },
+    "quote": "`0.33.0` drops support for comma delimited lists on tags for `SubnetSelectorTerm`, `SecurityGroupsSelectorTerm`, and `AMISelectorTerm`. Karpenter now supports multiple terms for each of the selectors which means that we can specify a more explicit OR-based constraint through separate terms rather than a comma-delimited list of values.",
+    "remediation": "Split any comma-delimited tag value in a `SubnetSelectorTerm`, `SecurityGroupsSelectorTerm` or `AMISelectorTerm` into separate terms. The comma form stops being interpreted as a list, so the selector matches nothing and Karpenter cannot launch nodes for that node class.",
+    "verifyCommand": "kubectl get ec2nodeclasses,awsnodetemplates -o json 2>/dev/null | jq -r '.items[]? | \"\\(.kind)/\\(.metadata.name)\"'   # inspect each object's selector terms for a tag value containing a comma"
+  }
+]

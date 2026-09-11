@@ -43,6 +43,81 @@ type Result struct {
 	Findings []report.Finding
 	Addons   []report.AddonStatus
 	Coverage []report.Coverage
+	// Hops is the add-on version range each detected add-on has to cross, keyed by add-on id.
+	// It is what selects that add-on's release-note rules; an add-on absent here has none
+	// evaluated.
+	Hops map[string]Hop
+}
+
+// Hop reasons. The two are NOT interchangeable when shown to a reader.
+const (
+	// HopK8sSupport: the vendor's compatibility table says the installed version does not
+	// support the target Kubernetes minor, so this Kubernetes upgrade genuinely requires
+	// crossing to RequiredVersion first.
+	HopK8sSupport = "K8S_SUPPORT"
+	// HopCurrency: the vendor publishes no compatibility table; the installed version is merely
+	// behind the newest release the catalog knows about. Nothing about the Kubernetes upgrade
+	// requires the move, and every surface that shows this hop says so.
+	HopCurrency = "CURRENCY"
+)
+
+// Hop is one add-on's forced version range (installed, required].
+type Hop struct {
+	AddonID          string
+	InstalledVersion string
+	RequiredVersion  string
+	Reason           string
+}
+
+// Hops resolves the add-on hops for a scan without producing the rest of the add-on report.
+//
+// It runs before the rule-object collector, which needs to know which add-on rule sets are on
+// the path in order to read only the kinds those rules look at; the full Analyze runs later and
+// computes the same hops again from the same inventory.
+func Hops(inv *inventory.Inventory, addons []catalog.Addon, targetVersion string) map[string]Hop {
+	out := map[string]Hop{}
+	if !inv.Read(inventory.CollectorWorkloads) {
+		return out
+	}
+	for _, d := range detect(inv, addons) {
+		if hop, ok := forcedHop(d, targetVersion); ok {
+			out[d.addon.AddonID] = hop
+		}
+	}
+	return out
+}
+
+// forcedHop is the add-on version range this scan's target forces, if any.
+//
+// With a vendor matrix: the lowest catalogued version whose window covers the target, when it
+// is above the installed one (K8S_SUPPORT). Without a matrix and with currencyHop opted in:
+// the catalog's latest known version, when above the installed one (CURRENCY). No readable
+// installed version: no hop, and the add-on tier already reports that as its own finding.
+func forcedHop(d detection, targetVersion string) (Hop, bool) {
+	installed := d.version
+	if !catalog.IsParseable(installed) {
+		return Hop{}, false
+	}
+	addon := d.addon
+	if len(addon.SupportWindows) == 0 {
+		if !addon.CurrencyHop {
+			return Hop{}, false
+		}
+		latest := addon.LatestKnownVersion
+		if !catalog.IsParseable(latest) || catalog.CompareVersions(latest, installed) <= 0 {
+			return Hop{}, false
+		}
+		return Hop{AddonID: addon.AddonID, InstalledVersion: installed, RequiredVersion: latest, Reason: HopCurrency}, true
+	}
+	targetKey := catalog.MinorKey(targetVersion)
+	if targetKey == 0 {
+		return Hop{}, false
+	}
+	covering := minimumCovering(addon.SupportWindows, targetKey)
+	if covering == "" || catalog.CompareVersions(covering, installed) <= 0 {
+		return Hop{}, false
+	}
+	return Hop{AddonID: addon.AddonID, InstalledVersion: installed, RequiredVersion: covering, Reason: HopK8sSupport}, true
 }
 
 // Analyze detects installed add-ons and judges them against the target version.
@@ -85,10 +160,15 @@ func Analyze(inv *inventory.Inventory, currentVersion, targetVersion string, add
 
 	registry := predicates.Registry()
 	var skipped []skippedRule
+	result.Hops = map[string]Hop{}
 
 	for _, d := range detected {
 		status, findings := judge(inv, d, currentVersion, targetVersion, registry, &skipped)
 		status.Stale = stale[d.addon.AddonID]
+		if hop, ok := forcedHop(d, targetVersion); ok {
+			result.Hops[d.addon.AddonID] = hop
+			status.RequiredVersion, status.HopReason = hop.RequiredVersion, hop.Reason
+		}
 		result.Addons = append(result.Addons, status)
 		result.Findings = append(result.Findings, findings...)
 	}
@@ -170,15 +250,18 @@ type detection struct {
 // The match is a suffix on the image's repository path, never the whole reference: the same
 // software is published to a dozen registries and mirrored into private ones, and the trailing
 // path is the part that stays stable.
+//
+// When several workloads carry the image, the LOWEST readable version is the add-on's version.
+// A cluster mid-migration runs two CoreDNS Deployments at once, and the older one is the one
+// whose upgrade path still has notes on it; taking whichever workload the API listed first
+// made the hop depend on list order, and the hosted product's detector takes the lowest for
+// the same reason.
 func detect(inv *inventory.Inventory, addons []catalog.Addon) []detection {
 	var out []detection
 
 	for _, addon := range addons {
-		found := false
+		var best *detection
 		for _, w := range inv.Workloads {
-			if found {
-				break
-			}
 			for _, c := range append(append([]inventory.Container{}, w.Containers...), w.InitContainers...) {
 				if !matchesImage(c.Image, addon.Detect.ImageSuffixes) {
 					continue
@@ -191,10 +274,20 @@ func detect(inv *inventory.Inventory, addons []catalog.Addon) []detection {
 					// images where it says nothing at all.
 					d.version, d.versionSource = label, "label"
 				}
-				out = append(out, d)
-				found = true
+				switch {
+				case best == nil:
+					best = &d
+				case best.version == "" && d.version != "":
+					// A readable version beats an unreadable one whatever the order.
+					best = &d
+				case d.version != "" && catalog.CompareVersions(d.version, best.version) < 0:
+					best = &d
+				}
 				break
 			}
+		}
+		if best != nil {
+			out = append(out, *best)
 		}
 	}
 	return out

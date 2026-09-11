@@ -1,0 +1,18 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.35-ipvs-mode-deprecated",
+  "severity": "HIGH",
+  "title": "ipvs mode deprecated",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "ipvs",
+   "reason": "read from the kube-proxy ConfigMap's own mode field; a mode passed only as a --proxy-mode container arg is not read here"
+  },
+  "quote": "Marked `ipvs` mode in kube-proxy as deprecated, which will be removed in a future version of Kubernetes. Users are encouraged to migrate to `nftables`.",
+  "remediation": "Plan the move to `nftables` (GA since 1.33) on nodes with a recent enough kernel, or to `iptables` on older ones. Nothing breaks at 1.35 \u2014 this is the deprecation, and the removal comes later \u2014 but the migration is a data-plane change worth doing outside an upgrade window.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; ipvs is deprecated from 1.35"
+ }
+]

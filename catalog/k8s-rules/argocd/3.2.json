@@ -1,0 +1,61 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.2-hydration-paths-must-be-non-root",
+    "severity": "HIGH",
+    "title": "Source Hydrator: Applications hydrating into the repository root stop working",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "hydratorPath",
+      "value": "^\\.?/?$",
+      "reason": "hydratorPath is projected as the Application's spec.sourceHydrator.syncSource.path, and as an empty string when the hydrator is configured without a path"
+    },
+    "quote": "Source hydration (with Source Hydrator) now requires that every application specify a non-root path. Using the repository root (for example, \"\" or \".\") is no longer supported.",
+    "remediation": "Set `spec.sourceHydrator.syncSource.path` to a subdirectory (for example `apps/guestbook`) on each Application named here before upgrading, then delete stale hydration output left at the repository root.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.sourceHydrator != null) | select((.spec.sourceHydrator.syncSource.path // \"\") | test(\"^[./]*$\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed hydrate into the repository root"
+  },
+  {
+    "ruleId": "rtz-argocd-3.2-kustomize-version-honoured-from-argocd-source-yaml",
+    "severity": "LOW",
+    "title": "`.argocd-source.yaml` can now pin the Kustomize version",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`.argocd-source.yaml` lives in the repository, not on the cluster"
+    },
+    "quote": "Starting with Argo CD v3.2, you can now set the Kustomize version in the `.argocd-source.yaml` file like this:",
+    "remediation": "If a repository already carries `kustomize.version` in `.argocd-source.yaml`, it now takes effect — make sure that version is registered under `kustomize.versions` in argocd-cm, or rendering fails."
+  },
+  {
+    "ruleId": "rtz-argocd-3.2-cronjob-health-affects-application-health",
+    "severity": "MEDIUM",
+    "title": "CronJobs now carry health — Applications may turn Degraded",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which CronJobs an Application manages is not related in the inventory; the hint names CronJobs that carry the Argo CD tracking annotation"
+    },
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "CronJob",
+      "target": "argocd.argoproj.io/tracking-id"
+    },
+    "quote": "After the upgrade, Application's status may transition to `Degraded` depending on the CronJob health.",
+    "remediation": "Decide per CronJob: accept the new health, override it via `resource.customizations.health.batch_CronJob` in argocd-cm, or annotate the CronJob `argocd.argoproj.io/ignore-healthcheck: \"true\"` to keep it out of the Application's aggregated health.",
+    "verifyCommand": "kubectl get cronjobs -A -o json | jq -r '.items[] | select(.metadata.annotations[\"argocd.argoproj.io/tracking-id\"] != null or .metadata.labels[\"app.kubernetes.io/instance\"] != null) | .metadata.namespace + \"/\" + .metadata.name' # CronJobs printed are Argo CD managed and start contributing health at 3.2"
+  },
+  {
+    "ruleId": "rtz-argocd-3.2-applicationset-status-resources-capped-at-5000",
+    "severity": "LOW",
+    "title": "ApplicationSet `status.resources` is capped at 5000 entries",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the size of an ApplicationSet's status.resources list is not projected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ApplicationSet"
+    },
+    "quote": "The `resources` field of the `status` resource of an ApplicationSet is now limited to 5000 elements by default. This is to prevent status bloat and exceeding etcd limits.",
+    "remediation": "If an ApplicationSet generates more than 5000 Applications and your tooling reads `status.resources`, raise `applicationsetcontroller.status.max.resources.count` in argocd-cmd-params-cm or read the Applications directly.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.status.resources[4999] != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed already exceed 5000 generated Applications"
+  }
+]

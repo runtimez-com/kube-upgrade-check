@@ -1,0 +1,166 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.6-cpu-flag-removed",
+  "severity": "HIGH",
+  "title": "The -cpu flag is removed — CoreDNS exits on it",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "coredns",
+   "target": "containers[].args[]",
+   "value": "^--?cpu(=.*)?$",
+   "reason": "container args of the Deployment/DaemonSet whose name contains coredns only — a CoreDNS image under another workload name is not scanned (the command lists those too), and a flag set through an entrypoint script or env is not scanned"
+  },
+  "quote": "The `-cpu` flag is removed from this version.",
+  "remediation": "Drop `-cpu` from the CoreDNS container args before upgrading; an unknown flag stops the binary at startup and takes cluster DNS down with it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select((.metadata.name | test(\"coredns\")) or ([.spec.template.spec.containers[].image] | any(test(\"coredns\")))) | select([.spec.template.spec.containers[].args[]?] | any(test(\"^--?cpu\"))) | \"\\(.metadata.namespace)/\\(.metadata.name): \" + ([.spec.template.spec.containers[].image] | join(\" \"))'  # each workload printed still passes -cpu, which CoreDNS 1.6+ rejects at startup; the rule itself reads workloads NAMED *coredns*, the command also lists a CoreDNS image under another name"
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-kubernetes-resyncperiod-removed",
+  "severity": "LOW",
+  "title": "kubernetes: resyncperiod is ignored (removed outright in 1.7)",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.kubernetes[]",
+   "value": "^resyncperiod$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "removes the `resyncperiod` option.",
+  "remediation": "Delete the line now: 1.6 accepts and ignores it, 1.7 refuses to parse it.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*resyncperiod\\\\b\")) | $n + \": \" + .'  # a printed line = the option is still there",
+  "coversNotes": [
+   "plugin/kubernetes: Remove resyncperiod"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-federation-plugin-removed",
+  "severity": "MEDIUM",
+  "title": "federation plugin moves out of tree — removed in 1.7.0",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^federation$",
+   "reason": "read from the directive names the agent extracts off every kube-system ConfigMap whose name contains coredns, each scanned as its own Corefile (an AKS coredns-custom fragment included) — names only, never values; import lines are not followed"
+  },
+  "quote": "Upcoming deprecation: the kubernetes *federation* plugin",
+  "remediation": "Remove the federation block from the Corefile before 1.7.0. Kubernetes v1 federation itself is long retired, so the block is almost certainly vestigial; at 1.7.0 CoreDNS exits on the unknown directive.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*federation\\\\b\")) | $n + \": \" + .'  # a printed line = the Corefile still loads federation, which 1.7.0 removes",
+  "coversNotes": [
+   "In this release we have moved the federation plugin to github.com/coredns/federation, but",
+   "Note that 1.7.0 will contain a bunch of backward incompatible changes: the federation"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-log-timestamps-removed",
+  "severity": "LOW",
+  "title": "Log lines no longer carry a timestamp",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "what parses CoreDNS log lines (a log pipeline's grok/regex) is not a Kubernetes object"
+  },
+  "quote": "We've removed the time stamping from `pkg/log`",
+  "remediation": "Log parsers that anchored on the leading timestamp of CoreDNS log lines need their pattern changed; the container runtime / journald timestamp is what remains.",
+  "verifyCommand": null,
+  "coversNotes": [
+   "pkg/log: remove timestamp"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-transfer-plugin-announced-conversion-lands-in-1-8",
+  "severity": "LOW",
+  "title": "Outgoing zone transfers move to the transfer plugin (file/auto/secondary/kubernetes convert in 1.8)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether a plugin block carries a `transfer to` line is an option inside the block; the block's option keys are projected only by agent 0.4.58+ and the 1.8 rule reads them — this note is the announcement"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(file|auto|secondary|kubernetes)$"
+  },
+  "quote": "Plugins that already implement zone transfers are expected to move to it in the 1.7.0 release.",
+  "remediation": "Plan to rewrite `transfer to …` lines inside file/auto/secondary/kubernetes blocks as a top-level `transfer { to … }` block; the conversion actually landed in 1.8.0 (see that rule).",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\s+to\\\\b\")) | $n + \": \" + .'  # a printed line is an in-block transfer that must move to the transfer plugin"
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-miekg-dns-security-fix",
+  "severity": "INFO",
+  "title": "1.6.6 carries a DNS library security fix",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a fix you get by running the release; nothing in the cluster's objects is configured differently"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)(mirrored-coredns-)?coredns([:@]|$)"
+  },
+  "quote": "The github.com/miekg/dns dependency has been updated to v1.1.25 to fix a DNS related security vulnerability",
+  "remediation": "Upgrade to 1.6.6 or later to pick up the miekg/dns fix (miekg/dns#1043).",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"coredns\"))) | \"\\(.metadata.namespace)/\\(.metadata.name): \" + ([.spec.template.spec.containers[].image] | join(\" \"))'  # prints every CoreDNS workload with its image tag"
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-file-missing-zonefile-no-longer-fatal",
+  "severity": "LOW",
+  "title": "file: a missing zone file no longer stops CoreDNS starting",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "zone file paths are directive-line arguments, which are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^file$"
+  },
+  "quote": "plugin/file: Make non-existent file non-fatal",
+  "remediation": "A typo'd or unmounted zone file used to fail startup loudly; from 1.6.0 CoreDNS starts and keeps retrying at each reload. Make sure something alerts on the file plugin's load errors if you relied on the crash.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*file\\\\b\")) | $n + \": \" + .'  # printed file directives now tolerate a missing zone file at startup"
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-upstream-healthcheck-intervals-shorter",
+  "severity": "LOW",
+  "title": "forward/grpc upstream health-check intervals are shorter by default",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the health-check cadence is a default inside the binary; the Corefile's forward line is not collected beyond the directive name"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(forward|grpc)$"
+  },
+  "quote": "plugin/pkg/up: Make default intervals shorter",
+  "remediation": "Upstream resolvers see more frequent health probes from CoreDNS after 1.6.8. Rate-limited or metered upstreams should get an explicit `health_check` interval.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(forward|grpc)\\\\b\")) | $n + \": \" + .'  # each printed upstream is probed more often unless health_check sets the interval"
+ },
+ {
+  "ruleId": "rtz-coredns-1.6-hosts-nodata-handling-changed",
+  "severity": "LOW",
+  "title": "hosts: NODATA handling changed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "answer-shape changes are request-time behaviour, not configuration"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^hosts$"
+  },
+  "quote": "plugin/hosts: Modifies NODATA handling",
+  "remediation": "Clients querying a hosts-served name for a type the hosts plugin has no data for get a different (NODATA) answer shape; check split-horizon setups that relied on fallthrough here.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*hosts\\\\b\")) | $n + \": \" + .'  # each printed hosts block answers unsupported types differently after 1.6.8"
+ }
+]

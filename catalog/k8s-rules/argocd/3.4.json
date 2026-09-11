@@ -1,0 +1,97 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.4-cluster-generator-version-selector-format",
+    "severity": "HIGH",
+    "title": "Cluster version label switches to `vMajor.Minor.Patch` in 3.4 — cluster generators on the old form match nothing",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ApplicationSet",
+      "target": "clusterGeneratorVersionSelectors[]",
+      "value": "^\\d+\\.\\d+$",
+      "reason": "the agent projects every value an ApplicationSet's cluster generators select on the argocd.argoproj.io/kubernetes-version label (matrix/merge nesting included); a bare Major.Minor value is the pre-change form. Evaluated only when the gate finds a cluster Secret carrying auto-label-cluster-info — the condition upstream states"
+    },
+    "gate": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Secret",
+      "target": "argocd.argoproj.io/auto-label-cluster-info",
+      "reason": "upstream conditions the breakage on cluster Secrets that carry argocd.argoproj.io/auto-label-cluster-info — only those have their kubernetes-version label rewritten to vMajor.Minor.Patch; a label you maintain by hand keeps matching"
+    },
+    "quote": "Application Sets with Cluster Generators, that fetch clusters based on their Kubernetes version and use `argocd.argoproj.io/auto-label-cluster-info` on the cluster secret, need to be updated to use `argocd.argoproj.io/kubernetes-version` with the `vMajor.Minor.Patch` format instead of the previous `Major.Minor` format.",
+    "remediation": "These ApplicationSets select on the old `Major.Minor` form and at least one cluster Secret carries `argocd.argoproj.io/auto-label-cluster-info`, so the label they match is rewritten to `vMajor.Minor.Patch` at this version: change the selector values (for example `v1.32.13` instead of `1.32`) before upgrading. The breakage is SILENT: the generator matches no cluster and its Applications disappear without an error or an event.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select([.. | .\"argocd.argoproj.io/kubernetes-version\"? // empty | tostring] | map(test(\"^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$\") | not) | any) | .metadata.namespace + \"/\" + .metadata.name' # names printed still select on the old Major.Minor format, which matches no cluster after the change",
+    "coversNotes": [
+      "More detailed cluster version"
+    ]
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-application-health-missing-only-when-all-resources-missing",
+    "severity": "LOW",
+    "title": "Application health reads `Missing` only when every resource is missing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which automation reads Application health to detect missing resources is outside the cluster"
+    },
+    "quote": "Applications now show `Missing` health **only when ALL resources are missing** (e.g., before the first sync)",
+    "remediation": "Point automation that used `Missing` health to detect absent resources at the `OutOfSync` sync status instead, and inspect individual resource health where needed."
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-grpc-dns-txt-service-config-disabled",
+    "severity": "LOW",
+    "title": "gRPC service-config DNS TXT lookups are disabled by default",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether you serve gRPC service config over DNS TXT records is a DNS fact, not inventory"
+    },
+    "quote": "The environment variable `GRPC_ENABLE_TXT_SERVICE_CONFIG` is now set to `false` by default for all ArgoCD components",
+    "remediation": "Only if you rely on `_grpc_config.<hostname>` TXT records: set `controller.grpc.enable.txt.service.config: \"true\"` in argocd-cmd-params-cm. Everyone else gains fewer DNS queries in dual-stack clusters."
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-dex-2-45-gomplate-and-connector-failure-continue",
+    "severity": "LOW",
+    "title": "Bundled Dex 2.45: gomplate preprocessing and `ContinueOnConnectorFailure` on by default",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Dex configuration is the VALUE of argocd-cm's `dex.config` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^dex\\.config$"
+    },
+    "quote": "Gomplate is used internally, but users that have configured Dex for preprocessing may be impacted.",
+    "remediation": "If `dex.config` uses templated preprocessing, re-test it against gomplate; set `dexserver.connector.failure.continue: \"false\"` in argocd-cmd-params-cm if a failing connector must still stop Dex.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.dex\\.config}' | grep -E 'type:' # connectors printed are what Dex 2.45 loads; check any templated preprocessing"
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-go-oidc-token-verification-order",
+    "severity": "LOW",
+    "title": "go-oidc 3.17: an expired token signed by a rotated key no longer redirects to SSO",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the identity provider's key-rotation grace period is not something the cluster records; the hint names argocd-cm when OIDC is configured"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^oidc\\.config$"
+    },
+    "quote": "For a token that is both **expired** and **signed by a key that has since removed from JWKS due to rotation**, the signature verification failure will not redirect the user to SSO. Instead the user would be redirected to the login page and would need to manually initiate the SSO login.",
+    "remediation": "Ask the identity provider to keep serving rotated keys in its JWKS for longer than the token lifetime; otherwise users with stale sessions land on the login page instead of being re-authenticated.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.oidc\\.config}' | grep -E 'issuer' # the issuer printed must serve rotated keys for a grace period longer than the token lifetime"
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-opentelemetry-semantic-conventions-1-40",
+    "severity": "LOW",
+    "title": "OpenTelemetry 1.42 / semantic conventions 1.40: metric names and attributes change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Grafana dashboards and alerts built on Argo CD's OTel metrics are not on the cluster"
+    },
+    "quote": "Please see semantic conventions release notes for a list of changed metric names and dropped attributes, which may require changes in your Argo CD Grafana dashboards/alerts based on OTEL.",
+    "remediation": "Review dashboards and alerts that query Argo CD's OTel-exported metrics against the semantic-conventions 1.40 rename list before upgrading."
+  }
+]

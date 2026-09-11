@@ -1,0 +1,131 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.5-helm-4-plain-http-oci-repos-need-explicit-flag",
+    "severity": "HIGH",
+    "title": "Helm 4: plain-HTTP OCI registries must be registered with `--insecure-oci-force-http`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a repository Secret's `url` is a VALUE (not collected) and the `insecureOCIForceHttp` key is what must be ADDED — its absence is not a projected fact; the hint names the repository and credential Secrets in the argocd namespace"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Secret",
+      "namespace": "argocd",
+      "target": "argocd.argoproj.io/secret-type"
+    },
+    "quote": "In Helm v4, the OCI implementation is more strict: if the registry doesn't speak TLS, it is required to explicitly use `--plain-http` upon `helm push`, `helm registry login` and upon `helm dependency build`.",
+    "remediation": "For every OCI repository (and every OCI chart dependency registry) that speaks plain HTTP, re-add it with `argocd repo add ... --insecure-oci-force-http --upsert` or set `insecureOCIForceHttp: \"true\"` on its Secret before upgrading. Do not combine it with `--insecure-skip-server-verification` on the same chain — Helm 4 then drops `--plain-http`.",
+    "verifyCommand": "kubectl -n argocd get secret -l argocd.argoproj.io/secret-type=repository -o json | jq -r '.items[] | select((.data.url // \"\" | @base64d) | startswith(\"http://\")) | select(.data.insecureOCIForceHttp == null) | .metadata.name' # names printed are plain-HTTP repositories without the flag; add insecureOCIForceHttp: \"true\"",
+    "coversNotes": [
+      "Helm Upgraded"
+    ]
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-helm-4-ignores-spec-source-helm-version",
+    "severity": "LOW",
+    "title": "`spec.source.helm.version` is ignored — Helm 4 renders every chart",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "helmVersion",
+      "value": "\\S",
+      "reason": "helmVersion is projected on every Application — spec.source.helm.version (or the first such value under spec.sources) when set, \"\" otherwise — so an Application without the setting is a clean row, not a projection gap"
+    },
+    "quote": "If you historically have the following setting on your Helm application, the setting is ignored and Argo CD will use Helm v4 only to render your charts:",
+    "remediation": "Nothing to change — the field can stay — but expect these Applications to render with Helm 4 from now on; re-render them once to catch Helm 4 behaviour differences.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.source.helm.version != null or ([.spec.sources[]?.helm.version] | any(. != null))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed pin a Helm version that 3.5 ignores"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-ui-extensions-must-externalize-react-jsx-runtime",
+    "severity": "LOW",
+    "title": "UI extensions built for React 16 fail to load until rebuilt for React 19",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "UI extensions are installed into the argocd-server pod by init containers or a custom image; ordinary init containers are not projected"
+    },
+    "quote": "The Argo CD UI was upgraded from React 16 to React 19 in 3.5. UI extensions built against an older Argo CD UI may fail to load with a `TypeError` until they are rebuilt to externalize `react/jsx-runtime`.",
+    "remediation": "Rebuild each installed UI extension to externalize `react/jsx-runtime` (the React 19 upgrade guide) before or right after upgrading; no action without extensions.",
+    "verifyCommand": "kubectl -n argocd get deploy argocd-server -o json | jq -r '.spec.template.spec.initContainers[]?.name' # init containers printed are extension installers whose bundles need a React 19 rebuild"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-impersonation-applies-to-all-server-operations",
+    "severity": "MEDIUM",
+    "title": "Impersonation now covers UI/API operations, not only syncs — destination service accounts need more verbs",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "AppProject",
+      "target": "destinationServiceAccounts",
+      "value": "true",
+      "reason": "presence-only projection of spec.destinationServiceAccounts on the AppProject; whether impersonation is enabled in argocd-cm is a ConfigMap VALUE and is not scanned"
+    },
+    "quote": "When impersonation is enabled, it now applies to all API server operations, not just sync operations.",
+    "remediation": "Grant the service accounts listed under `destinationServiceAccounts` on the AppProjects named here the verbs the note tabulates (get/patch/delete on resources, list on events, get on pods/log, create for actions) before upgrading, or those UI/API actions start failing.",
+    "verifyCommand": "kubectl get appprojects -A -o json | jq -r '.items[] | select(.spec.destinationServiceAccounts != null) | .metadata.name + \": \" + ([.spec.destinationServiceAccounts[].defaultServiceAccount] | join(\",\"))' # projects printed impersonate these service accounts for every operation from 3.5"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-ssh-known-hosts-from-configmap-for-credential-less-repos",
+    "severity": "LOW",
+    "title": "SSH repositories without credentials now validate host keys against `argocd-ssh-known-hosts-cm`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the repo-server image bakes in a custom ~/.ssh/known_hosts is not collected; the hint names the repo-server when it mounts a volume that looks like an SSH or known_hosts override"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "^argocd-repo-server$",
+      "target": "volumes[].name",
+      "value": "(?i)ssh|known"
+    },
+    "quote": "If your repo server image / pod previously relied on a custom `~/.ssh/known_hosts` (e.g. baked into a custom image or mounted in via a volume) for SSH repositories without configured credentials, add those host keys to `argocd-ssh-known-hosts-cm` instead.",
+    "remediation": "Copy any host keys you kept in a custom known_hosts (image or volume) into argocd-ssh-known-hosts-cm before upgrading, or credential-less SSH repositories fail with `knownhosts: key mismatch`.",
+    "verifyCommand": "kubectl -n argocd get deploy argocd-repo-server -o json | jq -r '.spec.template.spec.volumes[] | select(.name | test(\"(?i)ssh|known\")) | .name' # volumes printed may carry a custom known_hosts that 3.5 stops reading"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-gnupg-signature-keys-replaced-by-source-integrity",
+    "severity": "MEDIUM",
+    "title": "AppProject `signatureKeys` (GnuPG verification) is deprecated in favour of `sourceIntegrity`",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "AppProject",
+      "target": "signatureKeys",
+      "value": "true",
+      "reason": "presence-only projection of spec.signatureKeys on the AppProject — key IDs are never collected"
+    },
+    "quote": "Declaring `.spec.signatureKeys` in `AppProject` is deprecated. Configure `sourceIntegrity` in `AppProject` YAML instead.",
+    "remediation": "Migrate each AppProject named here from `spec.signatureKeys` to a `sourceIntegrity` block (the Source Integrity upgrade guide); the legacy form still works with a warning but must not coexist with the new one.",
+    "verifyCommand": "kubectl get appprojects -A -o json | jq -r '.items[] | select((.spec.signatureKeys // [] | length) != 0) | .metadata.name + (if .spec.sourceIntegrity != null then \" (ALSO sourceIntegrity — unsupported together)\" else \"\" end)' # projects printed still use GnuPG signatureKeys"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-gnupg-keys-configmap-in-use",
+    "severity": "LOW",
+    "title": "GnuPG keys are loaded into argocd-gpg-keys-cm — verification moves to Source Integrity",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-gpg-keys-cm$",
+      "target": "keys[]",
+      "value": ".",
+      "reason": "fires when argocd-gpg-keys-cm carries any key (key names only — the public keys themselves are never collected)"
+    },
+    "quote": "The GnuPG key verification feature has been replaced by Source Integrity, a more versatile subsystem for verifying the integrity of application sources.",
+    "remediation": "Plan the move of the keys in argocd-gpg-keys-cm to Source Integrity; the legacy configuration keeps working temporarily with a warning.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-gpg-keys-cm -o json | jq -r '.data | keys[]' # key IDs printed are the GnuPG keys still configured"
+  },
+  {
+    "ruleId": "rtz-argocd-3.5-repo-server-strict-tls-flag-deprecated",
+    "severity": "LOW",
+    "title": "`--repo-server-strict-tls` is deprecated in favour of `--repo-server-ca-cert-path`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].args[]",
+      "value": "repo-server-strict-tls",
+      "reason": "checked in the Argo CD workloads' container args only — the same setting made through argocd-cmd-params-cm or an environment variable is not scanned"
+    },
+    "quote": "The `--repo-server-strict-tls` boolean flag is deprecated across all components:",
+    "remediation": "Replace the flag on server, application-controller, applicationset-controller and notifications-controller with `--repo-server-ca-cert-path` (or its environment variable) before 3.6 may remove it; both work together in 3.5.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[] | select([.spec.template.spec.containers[].args[]?] | any(test(\"repo-server-strict-tls\"))) | .kind + \" \" + .metadata.name' # workloads printed still pass the deprecated flag"
+  }
+]

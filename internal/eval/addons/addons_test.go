@@ -182,8 +182,10 @@ func TestIngressNginxCeilingQuirks(t *testing.T) {
 	}
 }
 
-// An add-on with no published matrix must say so, and must still show its upgrade notes.
-func TestNoVendorDataStillRendersNotes(t *testing.T) {
+// An add-on with no published matrix must say so. Its release notes live in the k8s-rules
+// set, selected by the CURRENCY hop from the installed version to the newest catalogued one,
+// so that hop must resolve; without it the add-on whose notes matter most would have none.
+func TestNoVendorDataResolvesACurrencyHop(t *testing.T) {
 	cat := realCatalog(t)
 	addon, ok := cat.AddonByID("coredns")
 	if !ok {
@@ -197,10 +199,60 @@ func TestNoVendorDataStillRendersNotes(t *testing.T) {
 	if verdict != VerdictNoVendorData {
 		t.Errorf("got %s, want NO_VENDOR_DATA", verdict)
 	}
-	// Without the latest-known-version fallback there is no version anchor and the notes would
-	// silently never render, on exactly the add-on whose notes matter most.
-	if notes := notesOnPath(addon, "1.9.0"); len(notes) == 0 {
-		t.Error("upgrade notes must still render for an add-on with no support windows")
+	hop, ok := forcedHop(detection{addon: addon, version: "1.9.0"}, "1.34")
+	if !ok || hop.Reason != HopCurrency || hop.RequiredVersion != addon.LatestKnownVersion {
+		t.Errorf("a currency hop to %s was expected, got %+v (ok=%v)", addon.LatestKnownVersion, hop, ok)
+	}
+	if _, ok := forcedHop(detection{addon: addon, version: addon.LatestKnownVersion}, "1.34"); ok {
+		t.Error("an add-on already at the newest catalogued version has no hop")
+	}
+	// Opt-in, never inferred from the shape: the same catalog without the flag resolves nothing.
+	optedOut := addon
+	optedOut.CurrencyHop = false
+	if _, ok := forcedHop(detection{addon: optedOut, version: "1.9.0"}, "1.34"); ok {
+		t.Error("a currency hop must be opted into by the catalog")
+	}
+}
+
+// With a vendor matrix the hop is the lowest catalogued version covering the target, and only
+// when the installed one does not already cover it.
+func TestSupportWindowsResolveAK8sSupportHop(t *testing.T) {
+	addon := catalog.Addon{AddonID: "x", SupportWindows: []catalog.SupportWindow{
+		{Version: "1.0", MinK8s: "1.28", MaxK8s: "1.30"},
+		{Version: "1.1", MinK8s: "1.29", MaxK8s: "1.32"},
+		{Version: "1.2", MinK8s: "1.30", MaxK8s: "1.34"},
+	}}
+	hop, ok := forcedHop(detection{addon: addon, version: "1.0.5"}, "1.32")
+	if !ok || hop.Reason != HopK8sSupport || hop.RequiredVersion != "1.1" || hop.InstalledVersion != "1.0.5" {
+		t.Errorf("want a K8S_SUPPORT hop 1.0.5 -> 1.1, got %+v (ok=%v)", hop, ok)
+	}
+	if _, ok := forcedHop(detection{addon: addon, version: "1.1.3"}, "1.32"); ok {
+		t.Error("an installed version that already covers the target forces no hop")
+	}
+	if _, ok := forcedHop(detection{addon: addon, version: ""}, "1.32"); ok {
+		t.Error("an unreadable version resolves no hop; the add-on tier reports that itself")
+	}
+}
+
+// Two workloads carry the image at different versions: the LOWER one is the add-on's version,
+// whichever the API listed first, because its path is the one with notes still on it.
+func TestLowestVersionAmongSeveralWorkloadsWins(t *testing.T) {
+	cat := realCatalog(t)
+	for _, order := range [][]inventory.Workload{
+		{deployment("kube-system", "coredns", "registry.k8s.io/coredns/coredns:v1.11.3", nil),
+			deployment("kube-system", "coredns-legacy", "registry.k8s.io/coredns/coredns:v1.4.0", nil)},
+		{deployment("kube-system", "coredns-legacy", "registry.k8s.io/coredns/coredns:v1.4.0", nil),
+			deployment("kube-system", "coredns", "registry.k8s.io/coredns/coredns:v1.11.3", nil)},
+	} {
+		inv := workloadInv(order...)
+		result := Analyze(inv, "1.30", "1.31", cat.Addons, now)
+		st := statusOf(result, "coredns")
+		if st == nil || st.InstalledVersion != "v1.4.0" {
+			t.Errorf("want the lowest version v1.4.0, got %+v", st)
+		}
+		if hop, ok := result.Hops["coredns"]; !ok || hop.InstalledVersion != "v1.4.0" {
+			t.Errorf("the hop must start at the lowest version, got %+v", result.Hops)
+		}
 	}
 }
 

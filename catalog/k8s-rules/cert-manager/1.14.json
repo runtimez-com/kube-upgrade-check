@@ -1,0 +1,80 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.14-install-the-latest-1-14-patch",
+  "severity": "MEDIUM",
+  "title": "1.14.0 and 1.14.1 ship known bugs — install 1.14.2 or newer",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the add-on version is resolved to a MINOR from the controller image tag, so no rule can compare patch levels"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager-controller"
+  },
+  "quote": "The following bugs were found in `v1.14.1` and have been fixed in `v1.14.2`:",
+  "remediation": "Pin at least v1.14.2: 1.14.0 shipped the wrong cainjector image and 1.14.1 copied the CSR's critical flag instead of recalculating it.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image'  # any 1.14.0 or 1.14.1 tag here is one of the two buggy patches",
+  "coversNotes": [
+   "During the release of `v1.14.0`, the Helm chart for this version was found to use the…",
+   "A bug in cmctl namespace detection prevents it being used as a `startupapicheck` image in…",
+   "A bug in cmctl causes `cmctl experimental install` to panic."
+  ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.14-startupapicheck-image-changed",
+  "severity": "MEDIUM",
+  "title": "The startupapicheck job pulls a new image, which a restricted registry may not have",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the startupapicheck Job exists only during a Helm install/upgrade, so it is not in a steady-state inventory; whether YOUR registry mirrors the new image is not a cluster fact at all"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "The startupapicheck job uses a new OCI image called startupapicheck, instead of the ctl image. If you run in an environment in which images cannot be pulled, be sure to include the new image.",
+  "remediation": "If images are mirrored or restricted, add the `startupapicheck` image to the allow-list/mirror before upgrading — the `ctl` image is no longer used.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image' | sed 's#/[^/]*$##' | sort -u  # the registry prefix printed is the one that must also carry startupapicheck"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.14-acme-preferred-chain-selects-wrong-chain",
+  "severity": "LOW",
+  "title": "Known issue in 1.12–1.14: preferredChain may pick the wrong Let's Encrypt chain",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "`preferredChain` is not in the issuer projection"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^acme$"
+  },
+  "quote": "The problem is that the `preferredChain` feature matches the issuer CN of **any** certificate in the chain.",
+  "remediation": "If the target is one of these minors and an ACME issuer sets `preferredChain: ISRG Root X1`, either remove the field and renew, or accept the longer cross-signed chain while `DST Root CA X3` is trusted.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row is an issuer the known issue can affect; NO rows = clean",
+  "coversNotes": [
+   "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is…"
+  ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.14-csr-keyusage-basicconstraints-critical",
+  "severity": "MEDIUM",
+  "title": "CSRs now mark KeyUsage and BasicConstraints critical — strict external CAs may refuse them",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether an external CA honours critical extensions is a property of that CA, not of any collected object"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^(vault|venafi)$"
+  },
+  "quote": "The KeyUsage and BasicConstraints extensions will now be encoded as critical in the CertificateRequest's CSR blob.",
+  "remediation": "Issue one test Certificate through each Vault and Venafi issuer after the upgrade and confirm the CA accepts the critical extensions.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.vault or .spec.venafi) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name)\"'  # each row signs CSRs the upgrade changes the encoding of"
+ }
+]

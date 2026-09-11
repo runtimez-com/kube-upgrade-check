@@ -1,0 +1,15 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.0-v1-apis-arrive-with-conversion-webhooks",
+    "severity": "HIGH",
+    "title": "The v1beta1 CRDs are still served and need the v1 migration",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "karpenter.sh",
+      "target": "v1beta1"
+    },
+    "quote": "Karpenter `1.0.0` introduces the `v1` APIs and uses conversion webhooks to support existing `v1beta1` APIs. **Do not** upgrade to `1.0.0`+ without following the `v1` Migration Guide.",
+    "remediation": "Follow the v1 Migration Guide before upgrading. 1.0 introduces the v1 APIs and keeps v1beta1 working through conversion webhooks — this is the release where both are available, and 1.1 removes v1beta1 entirely, so the migration has to happen here.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves"
+  }
+]

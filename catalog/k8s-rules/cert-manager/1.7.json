@@ -1,0 +1,54 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.7-deprecated-api-versions-removed",
+  "severity": "HIGH",
+  "title": "cert-manager CRDs still carry a removed API version",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "CustomResourceDefinition",
+   "objectName": "cert-manager\\.io$",
+   "target": "versions[].name",
+   "value": "^v1(alpha[23]|beta1)$",
+   "reason": "the CRDs' version LIST is projected; which version each resource is STORED at in etcd is not, so a clean result here means the CRDs no longer declare the removed versions, not that etcd has been migrated"
+  },
+  "quote": "⚠ Following their deprecation in version 1.5, the cert-manager API versions v1alpha2, v1alpha3, and v1beta1 have been removed. You must ensure that all cert-manager custom resources are stored in etcd at version v1 and that all cert-manager `CustomResourceDefinition`s have only v1 as the stored version **before** upgrading. Please read [Migrating Deprecated API Resources] for full instructions.",
+  "remediation": "Migrate stored resources to v1 (`cmctl upgrade migrate-api-version`, or re-apply every cert-manager resource) and make v1 the only version the CRDs declare, BEFORE upgrading.",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.status.storedVersions[] | select(. != \"v1\") | \"\\($c.metadata.name) still stores \\(.)\"'  # each row is a CRD whose etcd contents must be migrated to v1; NO rows = clean",
+  "coversNotes": [
+   "Removal of Deprecated APIs",
+   "Removal of Deprecated APIs (release notes)"
+  ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.7-http01-ingress-class-annotation-restored",
+  "severity": "MEDIUM",
+  "title": "HTTP-01 solver Ingresses go back to the kubernetes.io/ingress.class annotation",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "solverTypes[]",
+   "value": "^ingress$",
+   "reason": "whether a solver uses an Ingress is projected; the class VALUE and which controller serves it are not"
+  },
+  "quote": "If you are using Traefik, Istio, Ambassador, or ingress-nginx _and_ you are using a non-default value for the class (e.g., `istio-internal`), or if you experience any issues with your HTTP-01 challenges please read the [notes on Ingress v1 compatibility].",
+  "remediation": "If the solver's class is a non-default value on Traefik, Istio, Ambassador or ingress-nginx, confirm the controller honours the `kubernetes.io/ingress.class` annotation, or set the solver's `ingressClassName` explicitly.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | . as $i | .spec.acme.solvers[]? | select(.http01.ingress.class) | \"\\($i.kind)/\\($i.metadata.namespace // \"cluster\")/\\($i.metadata.name) class=\\(.http01.ingress.class)\"'  # each row's class is applied as an annotation again from 1.7"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.7-crd-managedfields-cainjector-entry",
+  "severity": "MEDIUM",
+  "title": "Server-side-applied CRDs keep a cainjector managedFields entry that blocks the upgrade",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "managedFields are stripped from every collected object"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "CustomResourceDefinition",
+   "objectName": "\\.cert-manager\\.io$"
+  },
+  "quote": "As part of the work to remove deprecated APIs cert-manager `CustomResourceDefinition`s no longer require a conversion webhook. The related change in cert-manager `CustomResourceDefinition` specs results in invalid `CustomResourceDefinition` configurations for users who are upgrading to cert-manager 1.7 using `kubectl apply --server-side=true -f <manifests>`.",
+  "remediation": "Before applying the 1.7 CRDs with server-side apply, remove the `cainjector` entry from each cert-manager CRD's managedFields (the vendor's note carries the patch loop).",
+  "verifyCommand": "kubectl get crd -o json --show-managed-fields | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\\\\.io$\")) | select([.metadata.managedFields[]?.manager] | index(\"cainjector\")) | .metadata.name'  # each row still carries the cainjector entry; NO rows = clean"
+ }
+]

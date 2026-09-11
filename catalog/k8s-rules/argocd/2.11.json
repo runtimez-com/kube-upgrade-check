@@ -1,0 +1,28 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.11-application-crd-gains-initiatedby",
+    "severity": "LOW",
+    "title": "Application CRD gains `initiatedBy` — apply the 2.11 CRDs with the upgrade",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the CRD's schema is not collected, so whether the installed Application CRD already carries initiatedBy cannot be settled from the inventory"
+    },
+    "quote": "In order to address argoproj/argo-cd#16612, initiatedBy has been added in the Application CRD.",
+    "remediation": "Upgrade the CRDs together with the controllers (the install manifests include them); a Helm install must have `crds.install` enabled or apply the CRDs separately, or the new field is rejected on write.",
+    "verifyCommand": "kubectl get crd applications.argoproj.io -o json | jq '[.. | objects | select(has(\"initiatedBy\"))] | length' # 0 = the installed CRD predates 2.11; apply the 2.11 CRDs"
+  },
+  {
+    "ruleId": "rtz-argocd-2.11-redis-networkpolicy-drops-egress-restrictions",
+    "severity": "MEDIUM",
+    "title": "`argocd-redis` NetworkPolicy loses its Egress restrictions from 2.11.2",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NetworkPolicy",
+      "objectName": "^argocd-redis(-ha-haproxy)?-network-policy$",
+      "reason": "fires when the stock redis/haproxy NetworkPolicy exists — its Egress section is what the 2.11.2 manifests open up"
+    },
+    "quote": "Starting with Argo CD 2.11.2, the NetworkPolicy for the `argocd-redis` and `argocd-redis-ha-haproxy` dropped Egress restrictions. This change was made to allow access to the Kubernetes API to create a secret to secure Redis access.",
+    "remediation": "If your policy required Redis to be egress-locked, add back an Egress rule that allows the Kubernetes API plus the traffic Redis itself needs (the note's example), instead of the unrestricted egress the new manifests ship.",
+    "verifyCommand": "kubectl -n argocd get networkpolicy -o json | jq -r '.items[] | select(.metadata.name | test(\"redis\")) | .metadata.name + \": egress=\" + (.spec.egress | tostring | .[0:120])' # a redis policy printed with egress=null or [] restricts nothing after the upgrade"
+  }
+]

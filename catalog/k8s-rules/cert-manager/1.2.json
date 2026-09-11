@@ -1,0 +1,17 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.2-renew-before-expiration-duration-flag",
+  "severity": "MEDIUM",
+  "title": "--renew-before-expiration-duration is deprecated in 1.2 and removed in 1.3",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "renew-before-expiration-duration",
+   "reason": "checked in the cert-manager workload's container args only — a flag passed through a config file is not scanned"
+  },
+  "quote": "The `--renew-before-expiration-duration` flag of the cert-manager controller-manager has been deprecated. Please set the `Certificate.Spec.RenewBefore` field instead. This flag will be removed in the next release.",
+  "remediation": "Drop the flag from the controller's args and set `spec.renewBefore` on the Certificates that relied on it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"renew-before-expiration-duration\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller still started with the flag; NO rows = clean"
+ }
+]

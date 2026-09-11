@@ -1,0 +1,289 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.6-alias-headers-strategy-replaces-underscore",
+    "severity": "MEDIUM",
+    "title": "underscoreHeadersStrategy replaced by aliasHeadersStrategy",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)underscoreHeadersStrategy",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "Please use the `aliasHeadersStrategy` option instead, which handles every aliasing character instead of the underscore only.",
+    "remediation": "Rename `underscoreHeadersStrategy` to `aliasHeadersStrategy` in the entryPoint configuration. The replacement is broader — it covers every aliasing character, not just the underscore — so a header the old option let through may now be dropped or rewritten.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"underscoreHeadersStrategy\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still pass the deprecated option",
+    "coversNotes": [
+      "UnderscoreHeadersStrategy"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-basicauth-requires-non-empty-users",
+    "severity": "HIGH",
+    "title": "BasicAuth middleware without users unmounts its routers",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^basicAuth$"
+    },
+    "quote": "From version `v3.6.19` onwards, the BasicAuth middleware requires a non-empty users configuration in order to be built successfully. Previously, the middleware would be built successfully but always return a 401 status code for any request. Now, an error occurs and any routers using it will be unmounted. For the same request, a 404 status code is served instead of a 401 status code.",
+    "remediation": "Give every BasicAuth middleware a non-empty `users` list (or a resolving secret reference) before upgrading past 3.6.19. A middleware that previously returned 401 now fails to build, and every router referencing it is unmounted and serves 404.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.basicAuth != null) | select(((.spec.basicAuth.users // []) | length) == 0 and (.spec.basicAuth.secret // \"\") == \"\") | .metadata.namespace + \"/\" + .metadata.name' # names printed have no users and will unmount their routers"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-chain-middleware-honors-allow-cross-namespace",
+    "severity": "HIGH",
+    "title": "Chain middleware now honors allowCrossNamespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Chain's referenced middlewares live in the middleware's own spec body, which the projection reduces to top-level type key names only, so the cross-namespace references cannot be read"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^chain$"
+    },
+    "quote": "In `v3.6.14`, the `Chain` middleware now honors the Kubernetes CRD provider's `allowCrossNamespace` option. Previously, a `Chain` could reference middlewares in other namespaces regardless of the `allowCrossNamespace` configuration.",
+    "remediation": "Find every Chain middleware that references a middleware in another namespace. Unless `allowCrossNamespace` is enabled, those references stop resolving after 3.6.14 and the routers using the Chain fail to load. Either move the referenced middlewares into the same namespace or enable the option deliberately — it was previously being bypassed, so this is a security fix, not a regression.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.chain != null) | . as $m | .spec.chain.middlewares[]? | select((.namespace // \"\") != \"\" and (.namespace != $m.metadata.namespace)) | $m.metadata.namespace + \"/\" + $m.metadata.name + \" -> \" + .namespace + \"/\" + .name' # rows printed are cross-namespace Chain references that now require allowCrossNamespace"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-crds-must-be-updated-for-new-options",
+    "severity": "MEDIUM",
+    "title": "New middleware and load-balancer options require applying the updated CRDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this needs the CRD schema, and only the served VERSIONS of a CRD are collected, not its openAPIV3Schema"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^traefik\\.(io|containo\\.us)$"
+    },
+    "quote": "To use the new `leasttime` load-balancer algorithm with the Kubernetes CRD provider, you need to update your CRDs.",
+    "remediation": "Apply the v3.6 CRD manifests before using `leasttime` load balancing or the ForwardAuth `maxResponseBodySize` option. Both are additive, so the upgrade is safe without them — but until the CRDs carry the fields the API server strips them and the settings silently have no effect.",
+    "coversNotes": [
+      "Kubernetes CRD Provider"
+    ],
+    "verifyCommand": "kubectl get crd ingressroutes.traefik.io middlewares.traefik.io -o json | grep -oE 'leasttime|maxResponseBodySize' | sort -u # both names must print; a missing one means the CRDs predate v3.6 and the API server strips that option"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-cross-provider-namespaces",
+    "severity": "MEDIUM",
+    "title": "crossProviderNamespaces controls cross-provider references",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik static/provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In `v3.6.17`, a new `crossProviderNamespaces` option is available on the Kubernetes CRD, Ingress, and Gateway providers.",
+    "remediation": "Set this deliberately rather than inheriting the default: it governs whether resources under one provider may reference resources under another, and enabling it widens what a namespace owner can reach.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |crossProviderNamespaces' # rows show whether crossProviderNamespaces is set on the providers; nothing printed means the default applies, decide it explicitly; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true",
+    "severity": "HIGH",
+    "title": "Encoded-character options default to true, disabling the 3.6.4 hardening",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point configuration rather than a property of a collected object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Since `v3.6.7`, the options for encoded characters now have a `true` default value. This means that Traefik will not reject requests with a path containing a specific set of encoded characters by default. It is now up to the users to configure the security hardening of encoded characters.",
+    "remediation": "Read this together with the 3.6.4 change: the hardening introduced there is OFF again by default from 3.6.7, and securing it is now explicitly the operator's job. If you relied on 3.6.4 rejecting encoded characters, set those options back to `false` explicitly — otherwise upgrading past 3.6.7 silently reopens what 3.6.4 closed.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |encoded' # rows show any encoded-character option set on an entry point; nothing printed means the relaxed default (true) applies from this version, set them to false explicitly to keep the hardening; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-encoded-characters-rejected-by-default",
+    "severity": "HIGH",
+    "title": "Requests with certain encoded characters are rejected with 400",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-path handling at runtime, not a field on any collected object"
+    },
+    "quote": "Starting with `v3.6.4`, for security reasons, Traefik now rejects requests with a path containing a specific set of encoded characters by default.",
+    "remediation": "Check whether any client legitimately sends encoded characters in the path — some SDKs and legacy integrations encode slashes. Those requests start returning 400. Confirm the behaviour against your traffic before upgrading, and use the encoded-character options to relax it only where a real caller needs it.",
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed expect percent-encoded characters in the path; the clients sending them may now receive 400 unless the encoded-character options are relaxed"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-errors-middleware-error-request-headers",
+    "severity": "MEDIUM",
+    "title": "errorRequestHeaders needs updated CRDs to be usable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^errors$"
+    },
+    "quote": "The `errorRequestHeaders` option, introduced in `v3.6.15` for the Errors middleware, was not exposed on the Kubernetes CRD provider. Starting with `v3.6.24`, it can now be configured on the `Middleware` CRD.",
+    "remediation": "Apply the updated CRD manifest for this Traefik minor BEFORE upgrading if you intend to use `errorRequestHeaders` on the Errors middleware. Until the CRD carries the field the API server strips it, so the option appears to apply and silently does nothing.",
+    "verifyCommand": "kubectl get crd middlewares.traefik.io -o json | jq -e '.spec.versions[].schema.openAPIV3Schema.properties.spec.properties.errors.properties.errorRequestHeaders' >/dev/null 2>&1 && echo \"errorRequestHeaders present in CRD schema\" || echo \"CRD schema predates errorRequestHeaders\""
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-forwardauth-max-response-body-size",
+    "severity": "MEDIUM",
+    "title": "ForwardAuth maxResponseBodySize defaults to unlimited",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^forwardAuth$"
+    },
+    "quote": "In `v3.6.9`, a new `maxResponseBodySize` option has been added to the ForwardAuth middleware configuration. The default value for this option is -1, which means there is no limit to the response body size. However, it is strongly recommended to set this option to a suitable value to avoid performance and security issues, such as DoS attacks and memory exhaustion.",
+    "remediation": "Set `maxResponseBodySize` on every ForwardAuth middleware. The default of -1 is unlimited, so a hostile or malfunctioning auth server can exhaust Traefik's memory. Using the new option also requires the updated CRDs.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.forwardAuth != null) | select(.spec.forwardAuth.maxResponseBodySize == null) | .metadata.namespace + \"/\" + .metadata.name' # names printed accept an unlimited auth response body"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-forwardauth-trust-forward-header-deprecated",
+    "severity": "MEDIUM",
+    "title": "ForwardAuth trustForwardHeader deprecated in favour of entry point trusted IPs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^forwardAuth$"
+    },
+    "quote": "Starting with `v3.6.14`, the `trustForwardHeader` option has been deprecated and will be removed in the next major version. Configure the trusted IPs at the EntryPoint level by using the `forwardedHeaders.trustedIPs` option, and set `trustForwardHeader` to `true` on this middleware.",
+    "remediation": "Move trust to the entry point: set `forwardedHeaders.trustedIPs` there, then set `trustForwardHeader` to `true` on the middleware. Set it explicitly either way — when it is left unset Traefik logs a warning because the behaviour is inconsistent, forwarding some `X-Forwarded-*` headers while stripping others.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.forwardAuth != null) | select(.spec.forwardAuth.trustForwardHeader == null) | .metadata.namespace + \"/\" + .metadata.name' # names printed leave trustForwardHeader unset and get the inconsistent behaviour plus a warning"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-gateway-api-requires-spec-v1-4-0-crds",
+    "severity": "MEDIUM",
+    "title": "Gateway API provider requires the v1.4.0 specification CRDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Gateway API CRDs belong to gateway.networking.k8s.io, which this add-on's collection does not claim"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.6.0`, the Kubernetes Gateway API provider only supports version v1.4.0 of the specification, which requires the Gateway API CRDs to be updated.",
+    "remediation": "Update the Gateway API CRDs to specification v1.4.0 before upgrading Traefik, and do it first — Traefik 3.6 supports only that version, so a cluster left on older CRDs stops reconciling Gateway routes.",
+    "verifyCommand": "kubectl get crd gateways.gateway.networking.k8s.io -o jsonpath='{.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version}{\"\\n\"}' 2>/dev/null # prints the installed Gateway API bundle version; it must be v1.4.0 or later"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-gateway-client-qps-burst-increased",
+    "severity": "LOW",
+    "title": "Gateway API provider Kubernetes client QPS and Burst raised 10x",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik static/provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.6.19`, the QPS and Burst values of the Kubernetes client used by the Kubernetes Gateway API provider have been increased to `50` and `100` respectively (10x the default values of the Kubernetes client).",
+    "remediation": "No action in most clusters. Note it only if your API server is rate-limit sensitive or you run many Traefik replicas, since each one may now issue ten times the previous request rate against the API server during reconciliation.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |kubernetesgateway' # rows show whether the Gateway provider is on and how many replicas share the API server; each replica may now issue 10x the previous request rate; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-gateway-generated-name-hash-changed",
+    "severity": "MEDIUM",
+    "title": "Gateway API generated router names change their hash suffix",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the routers this note describes are generated by Traefik at runtime from Gateway API objects; they are not Kubernetes objects the agent can collect"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.6.25`, the Kubernetes Gateway API provider derives the hash suffix of the router names it generates from all the route, Gateway, and listener identifying fields, instead of from the route rule alone.",
+    "remediation": "Generated router names change on upgrade. Update anything that pins them — dashboards, metrics queries and alert rules built on router name labels will silently stop matching. The change itself is a correctness fix that prevents distinct routes colliding onto one router name.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,tlsroutes.gateway.networking.k8s.io -A 2>/dev/null # every route listed gets a new generated router name on upgrade; nothing listed (or no such CRDs) means the Gateway provider has nothing to rename"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-health-check-path-must-be-relative",
+    "severity": "MEDIUM",
+    "title": "Health check path is now validated as a relative URL",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "health check configuration lives in the service definition inside spec.routes[].services[], which is nested and not a top-level projected field"
+    },
+    "quote": "Since `v3.6.8`, the configured path for the health check request is now verified to be a relative URL, and the health check will fail if it is not.",
+    "remediation": "Audit health check paths for absolute URLs. Previously an absolute URL was tolerated; now the health check fails outright, which marks the server unhealthy and takes it out of the load-balancer pool — the upgrade symptom is backends disappearing rather than an obvious configuration error.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io,traefikservices.traefik.io -A -o json | jq -r '.items[] | . as $o | [.. | objects | select(.healthCheck != null) | .healthCheck.path // \"\"] | .[] | \"\\($o.kind) \\($o.metadata.namespace)/\\($o.metadata.name)  \\(.)\"' | grep -iE '  [a-z][a-z0-9+.-]*://' # rows printed use an absolute health-check URL, which now fails and drops the server from the pool"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-http1-connect-rejected",
+    "severity": "LOW",
+    "title": "HTTP/1 CONNECT requests now return 501",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Starting with `v3.6.24`, HTTP/1 `CONNECT` requests are rejected with a `501 Not Implemented` response.",
+    "remediation": "No action for almost every deployment: HTTP/1 CONNECT was non-functional before this change, so the rejection makes existing behaviour explicit rather than removing a capability."
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-ingress-nginx-provider-no-longer-experimental",
+    "severity": "MEDIUM",
+    "title": "KubernetesIngressNGINX provider is no longer experimental",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)experimental\\.kubernetesIngressNGINX",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "The KubernetesIngressNGINX Provider is no longer experimental in v3.6.2 and can be enabled without the `experimental.kubernetesIngressNGINX` option.",
+    "remediation": "Remove `kubernetesIngressNGINX` from the `experimental` section and configure the provider directly. Leaving the experimental option set is the post-upgrade failure to look for.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"experimental.kubernetesIngressNGINX\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set the removed experimental option"
+  },
+  {
+    "ruleId": "rtz-traefik-3.6-strip-prefix-rejects-non-normalised-paths",
+    "severity": "HIGH",
+    "title": "StripPrefix returns 400 when the stripped path is not normalised",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^stripPrefix$"
+    },
+    "quote": "From version `v3.6.19` onwards, the StripPrefix middleware and the StripPrefixRegex middleware reject requests (`400 Bad Request`) when stripping the configured prefix produces a path that differs from its normalised form (i.e. a path containing `.` or `..` segments that would be collapsed by normalisation).",
+    "remediation": "Check any caller that relies on `.`/`..` segments surviving a StripPrefix — those requests now receive a 400. The fix is normally to correct the caller's path rather than to work around the middleware.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.stripPrefix != null or .spec.stripPrefixRegex != null) | .metadata.namespace + \"/\" + .metadata.name + \"  \" + ((.spec.stripPrefix.prefixes // .spec.stripPrefixRegex.regex // []) | join(\",\"))' # names printed strip a prefix; a caller whose path still carries . or .. segments after stripping now receives 400"
+  }
+]

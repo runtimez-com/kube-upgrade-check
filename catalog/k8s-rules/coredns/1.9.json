@@ -1,0 +1,87 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.9-kubernetes-wildcard-queries-removed",
+  "severity": "HIGH",
+  "title": "kubernetes: wildcard queries are no longer answered",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether any client issues wildcard queries is request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "Wildcard queries are no longer supported by the _kubernetes_ plugin.",
+  "remediation": "Clients resolving `*.<ns>.svc` / `any.<ns>.svc` names get NXDOMAIN from 1.9.0. Run 1.8.7 first and grep its logs for the deprecation warning to find them.",
+  "verifyCommand": "kubectl -n kube-system logs deploy/coredns --tail=5000 2>/dev/null | grep -ci wildcard  # non-zero on CoreDNS 1.8.7+ = clients are still issuing wildcard queries that 1.9.0 stops answering; 0 proves nothing on older versions, which log no warning",
+  "coversNotes": [
+   "plugin/kubernetes: remove wildcard query functionality"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.9-route53-plaintext-credentials-deprecated",
+  "severity": "MEDIUM",
+  "title": "route53: plaintext AWS credentials in the Corefile are deprecated",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.route53[]",
+   "value": "^aws_access_key$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the key NAME only is ever collected"
+  },
+  "quote": "plugin/route53: deprecate plaintext secret in Corefile for route53 plugin",
+  "remediation": "Move the credentials out of the Corefile: use an IAM role (IRSA / instance profile) or the standard AWS environment/shared-config; the `aws_access_key` option is deprecated and will be removed.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | select(any((.data // {})[]; test(\"^\\\\s*aws_access_key\\\\b\"))) | .metadata.name'  # each ConfigMap printed still embeds AWS credentials in its Corefile (values deliberately not printed)"
+ },
+ {
+  "ruleId": "rtz-coredns-1.9-template-servfail-on-regex-no-match",
+  "severity": "LOW",
+  "title": "template: SERVFAIL when the zone matches but no regex does",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "template regexes are option values, which are never collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^template$"
+  },
+  "quote": "plugin/template: return SERVFAIL for zone-match regex-no-match case",
+  "remediation": "Names inside a template's zone that matched none of its `match` regexes used to fall through silently; from 1.9.3 they get SERVFAIL unless `fallthrough` is set. Add `fallthrough` where the next plugin was meant to answer.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*template\\\\b\")) | $n + \": \" + .'  # each printed template block SERVFAILs unmatched names unless fallthrough is set"
+ },
+ {
+  "ruleId": "rtz-coredns-1.9-forward-sockets-open-metric-removed",
+  "severity": "LOW",
+  "title": "coredns_forward_sockets_open is removed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Prometheus rules and dashboards are not collected"
+  },
+  "quote": "plugin/forward: remove unused coredns_forward_sockets_open metric",
+  "remediation": "Drop the series from dashboards and alerts.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_forward_sockets_open\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed reference a series removed in 1.9.4"
+ },
+ {
+  "ruleId": "rtz-coredns-1.9-forward-health-checks-respect-force-tcp",
+  "severity": "MEDIUM",
+  "title": "forward: health checks honour force_tcp",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.forward[]",
+   "value": "^force_tcp$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "Health-checks should respect force_tcp",
+  "remediation": "With `force_tcp` set, upstream health probes switch from UDP to TCP at 1.9.0. An upstream that answers UDP but blocks TCP/53 is marked unhealthy and dropped from rotation after the upgrade — check TCP reachability to every upstream first.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*force_tcp\\\\b\")) | $n + \": \" + .'  # each printed forward block now health-checks its upstreams over TCP"
+ }
+]
