@@ -1,0 +1,32 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.5-ingress-shim-ingress-v1-migration",
+  "severity": "MEDIUM",
+  "title": "Ingress-shim annotations and HTTP-01 solvers cross the Ingress v1 migration",
+  "detection": {
+   "kind": "ANNOTATION_KEY_PRESENT",
+   "objectKind": "Ingress",
+   "target": "cert-manager.io/",
+   "reason": "names the Ingresses that carry a cert-manager shim annotation; whether THIS ingress controller has a known v1 issue is what the vendor's compatibility page answers, and that is not on the cluster"
+  },
+  "quote": "If you are currently using HTTP-01 challenges or the Ingress shim annotations, please read the Ingress class compatibility notes to see if your Ingress controller has any known issues with the migration to Ingress v1.",
+  "remediation": "Read the vendor's Ingress class compatibility notes for your ingress controller before upgrading, then re-check that these Ingresses still get certificates issued.",
+  "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations // {}) | keys[] | test(\"^cert-manager\\\\.io/\")) | \"\\(.metadata.namespace)/\\(.metadata.name) class=\\(.spec.ingressClassName // \"-\")\"'  # each row is an Ingress whose certificate depends on the shim"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.5-legacy-api-versions-deprecated",
+  "severity": "LOW",
+  "title": "cert-manager CRDs still declare v1alpha2/v1alpha3/v1beta1 — deprecated, gone at 1.6",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "CustomResourceDefinition",
+   "objectName": "cert-manager\\.io$",
+   "target": "versions[].name",
+   "value": "^v1(alpha[23]|beta1)$",
+   "reason": "the CRDs' version LIST is projected; which version each resource is STORED at in etcd is not"
+  },
+  "quote": "Additionally, the cert-manager API versions `v1alpha2`, `v1alpha3` and `v1beta1` are now deprecated, and will be removed in cert-manager 1.7. Please change all your YAML manifests that use a deprecated API version to use `cert-manager.io/v1` instead, and re-apply them.",
+  "remediation": "Re-apply every cert-manager resource as `cert-manager.io/v1` (or run `cmctl upgrade migrate-api-version` once on 1.7) so nothing is stored at a deprecated version when 1.6 stops serving them.",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.status.storedVersions[] | select(. != \"v1\") | \"\\($c.metadata.name) still stores \\(.)\"'  # each row is a CRD whose etcd contents must be migrated to v1 before 1.6; NO rows = clean"
+ }
+]

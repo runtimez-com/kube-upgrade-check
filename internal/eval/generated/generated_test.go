@@ -48,7 +48,7 @@ func TestSpecFieldPresentNamesTheObjects(t *testing.T) {
 		{Kind: "Service", Namespace: "a", Name: "legacy", Spec: map[string]any{"externalIPs": []any{"10.0.0.1"}}},
 		{Kind: "Service", Namespace: "a", Name: "clean", Spec: map[string]any{}},
 	}
-	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r))
+	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r), nil)
 	f := byRule(findings, "ext-ips")
 	if f == nil {
 		t.Fatal("expected the rule to fire")
@@ -72,7 +72,7 @@ func TestUnreadKindBecomesACoverageRow(t *testing.T) {
 	r := rule("ext-ips", "1.36", "", catalog.Detection{Kind: catalog.DetectSpecFieldPresent, ObjectKind: "Service", Target: "externalIPs"})
 	in := inv()
 	in.CRUnread["Service"] = "permission denied: services is forbidden"
-	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r))
+	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r), nil)
 	if byRule(findings, "ext-ips") != nil {
 		t.Error("an unread kind must not fire")
 	}
@@ -90,7 +90,7 @@ func TestNotServedKindIsNotAGap(t *testing.T) {
 	r := rule("ctb", "1.37", "", catalog.Detection{Kind: catalog.DetectKindPresent, ObjectKind: "PodCertificateRequest"})
 	in := inv()
 	in.CRNotServed["PodCertificateRequest"] = true
-	findings, coverage := Analyze(in, nil, "1.36", "1.37", cat(r))
+	findings, coverage := Analyze(in, nil, "1.36", "1.37", cat(r), nil)
 	if len(findings) != 0 || len(coverage) != 0 {
 		t.Errorf("want nothing, got findings=%d coverage=%d", len(findings), len(coverage))
 	}
@@ -99,7 +99,7 @@ func TestNotServedKindIsNotAGap(t *testing.T) {
 // A kind nobody collected is a gap: absence of data is not absence of objects.
 func TestNotCollectedKindIsAGap(t *testing.T) {
 	r := rule("ctb", "1.37", "", catalog.Detection{Kind: catalog.DetectKindPresent, ObjectKind: "PodCertificateRequest"})
-	_, coverage := Analyze(inv(), nil, "1.36", "1.37", cat(r))
+	_, coverage := Analyze(inv(), nil, "1.36", "1.37", cat(r), nil)
 	if len(coverage) != 1 {
 		t.Fatalf("want one gap, got %+v", coverage)
 	}
@@ -110,7 +110,7 @@ func TestKeyMatchingModes(t *testing.T) {
 	r := rule("lbl", "1.34", "", catalog.Detection{Kind: catalog.DetectLabelKeyPresent, ObjectKind: "Node", Target: "exclude-from-external-load-balancers"})
 	in := inv()
 	in.Nodes = []inventory.Node{{Name: "n1", Labels: map[string]string{"node.kubernetes.io/exclude-from-external-load-balancers": "true"}}}
-	findings, _ := Analyze(in, nil, "1.33", "1.34", cat(r))
+	findings, _ := Analyze(in, nil, "1.33", "1.34", cat(r), nil)
 	f := byRule(findings, "lbl")
 	if f == nil {
 		t.Fatal("short-form target must match the name part of a qualified key")
@@ -134,7 +134,7 @@ func TestNotDetectableIsAnAdvisoryWithReasonAndHint(t *testing.T) {
 	r.Scope = &catalog.ScopeHint{Kind: catalog.DetectKindPresent, ObjectKind: "Node"}
 	in := inv()
 	in.Nodes = []inventory.Node{{Name: "n1"}, {Name: "n2"}}
-	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r))
+	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r), nil)
 	f := byRule(findings, "adv")
 	if f == nil {
 		t.Fatal("expected an advisory")
@@ -162,7 +162,7 @@ func TestWindowIsExclusiveBelowInclusiveAbove(t *testing.T) {
 		rule("next", "1.36", "", catalog.Detection{Kind: catalog.DetectNotDetectable, Reason: "x"}),
 		rule("far", "1.37", "", catalog.Detection{Kind: catalog.DetectNotDetectable, Reason: "x"}),
 	)
-	findings, _ := Analyze(inv(), nil, "v1.35.2", "1.36", rules)
+	findings, _ := Analyze(inv(), nil, "v1.35.2", "1.36", rules, nil)
 	if byRule(findings, "old") != nil || byRule(findings, "now") != nil || byRule(findings, "far") != nil {
 		t.Errorf("only the 1.36 rule is on the path, got %d findings", len(findings))
 	}
@@ -179,7 +179,7 @@ func TestAPIVersionInUseReadsManagedFields(t *testing.T) {
 		{Kind: "MutatingAdmissionPolicy", Name: "old", WrittenAt: []string{"admissionregistration.k8s.io/v1alpha1"}, Managers: []string{"helm"}},
 		{Kind: "MutatingAdmissionPolicy", Name: "new", WrittenAt: []string{"admissionregistration.k8s.io/v1beta1"}},
 	}
-	findings, _ := Analyze(in, nil, "1.36", "1.37", cat(r))
+	findings, _ := Analyze(in, nil, "1.36", "1.37", cat(r), nil)
 	f := byRule(findings, "api")
 	if f == nil {
 		t.Fatal("expected the v1alpha1 writer to be found")
@@ -200,11 +200,11 @@ func TestAPIVersionInUseDefersToTheRemovedAPICatalog(t *testing.T) {
 	c.Reindex()
 	in := inv()
 	in.CRs["Workload"] = []inventory.CustomResource{{Kind: "Workload", Name: "w", WrittenAt: []string{"scheduling.k8s.io/v1alpha2"}}}
-	findings, coverage := Analyze(in, nil, "1.36", "1.37", c)
+	findings, coverage := Analyze(in, nil, "1.36", "1.37", c, nil)
 	if len(findings) != 0 || len(coverage) != 0 {
 		t.Errorf("the static catalog owns this apiVersion; got findings=%d coverage=%d", len(findings), len(coverage))
 	}
-	if _, ok := Wants(c, "1.36", "1.37")["Workload"]; ok {
+	if _, ok := Wants(c, "1.36", "1.37", nil)["Workload"]; ok {
 		t.Error("nothing should be collected for a rule the static catalog owns")
 	}
 }
@@ -212,11 +212,11 @@ func TestAPIVersionInUseDefersToTheRemovedAPICatalog(t *testing.T) {
 // A group-level rule with no kind cannot be enumerated here and says so, rather than clearing.
 func TestGroupLevelRuleWithoutKindDeclines(t *testing.T) {
 	r := rule("grp", "1.36", "", catalog.Detection{Kind: catalog.DetectAPIVersionInUse, Target: "apidiscovery.k8s.io/v2beta1"})
-	_, coverage := Analyze(inv(), map[string]bool{}, "1.35", "1.36", cat(r))
+	_, coverage := Analyze(inv(), map[string]bool{}, "1.35", "1.36", cat(r), nil)
 	if len(coverage) != 1 || !strings.Contains(coverage[0].VerifyCommand, "/apis/apidiscovery.k8s.io/v2beta1") {
 		t.Fatalf("want a gap with the raw API path to check, got %+v", coverage)
 	}
-	_, coverage = Analyze(inv(), map[string]bool{"apidiscovery.k8s.io/v2beta1": false}, "1.35", "1.36", cat(r))
+	_, coverage = Analyze(inv(), map[string]bool{"apidiscovery.k8s.io/v2beta1": false}, "1.35", "1.36", cat(r), nil)
 	if len(coverage) != 0 {
 		t.Error("a group-version the scan knows is not served has nothing to enumerate")
 	}
@@ -230,7 +230,7 @@ func TestWantsProjectsToTheFieldsRulesRead(t *testing.T) {
 		rule("c", "1.36", "", catalog.Detection{Kind: catalog.DetectKindPresent, ObjectKind: "ServiceCIDR"}),
 		rule("d", "1.36", "", catalog.Detection{Kind: catalog.DetectLabelKeyPresent, ObjectKind: "Node", Target: "k"}),
 	)
-	w := Wants(c, "1.35", "1.36")
+	w := Wants(c, "1.35", "1.36", nil)
 	if got := w["Pod"].Keep; len(got) != 2 || got[0] != "resize" || got[1] != "containers" {
 		t.Errorf("Pod projection = %v", got)
 	}
@@ -249,7 +249,7 @@ func TestSpecPathMatchesWalksArrays(t *testing.T) {
 		{Kind: "Pod", Namespace: "kube-system", Name: "kp", Spec: map[string]any{"containers": []any{map[string]any{"image": "registry.k8s.io/kube-proxy:v1.35.0"}}}},
 		{Kind: "Pod", Namespace: "default", Name: "app", Spec: map[string]any{"containers": []any{map[string]any{"image": "nginx"}}}},
 	}
-	findings, _ := Analyze(in, nil, "1.35", "1.36", cat(r))
+	findings, _ := Analyze(in, nil, "1.35", "1.36", cat(r), nil)
 	f := byRule(findings, "path")
 	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "kube-system/kp" {
 		t.Fatalf("want kube-system/kp only, got %+v", f)
@@ -265,7 +265,7 @@ func TestRealCatalogAgainstAnEmptyInventory(t *testing.T) {
 	}
 	in := inv()
 	delete(in.Collected, inventory.CollectorNodes)
-	findings, coverage := Analyze(in, map[string]bool{}, "1.31", "1.37", c)
+	findings, coverage := Analyze(in, map[string]bool{}, "1.31", "1.37", c, nil)
 	advisories, breaks := 0, 0
 	for _, f := range findings {
 		if f.EnforcementLevel == "advisory" {
@@ -289,7 +289,7 @@ func TestRealCatalogAgainstAnEmptyInventory(t *testing.T) {
 	}
 	// Static-catalog handoffs are the only detectable rules allowed to vanish; count the rest.
 	detectable, owned := 0, 0
-	for _, r := range onPath(c, "1.31", "1.37") {
+	for _, r := range onPath(c, "1.31", "1.37", nil).rules {
 		if r.Detection.Kind == catalog.DetectNotDetectable {
 			continue
 		}

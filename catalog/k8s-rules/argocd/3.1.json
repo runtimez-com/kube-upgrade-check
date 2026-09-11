@@ -1,0 +1,51 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.1-staticassets-symlinks-outside-directory-fail",
+    "severity": "LOW",
+    "title": "API server: symlinks in `--staticassets` pointing outside the directory return 500",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "what the `--staticassets` directory contains inside the argocd-server image is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "^argocd-server$",
+      "target": "containers[].args[]",
+      "value": "staticassets"
+    },
+    "quote": "The `--staticassets` directory in the API server (`/app/shared` by default) is now protected against out-of-bounds symlinks. This is to help protect against symlink attacks. If you have any symlinks in your `--staticassets` directory to a location outside the directory, they will return a 500 error starting with 3.1.",
+    "remediation": "If you ship custom UI assets via a custom image or a mounted volume, replace symlinks that leave the static-assets directory with real files.",
+    "verifyCommand": "kubectl -n argocd get deploy argocd-server -o json | jq -r '.spec.template.spec.containers[].args[]? | select(test(\"staticassets\"))' # printed = a custom static-assets directory; check it for out-of-bounds symlinks"
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-v1-resource-actions-api-deprecated",
+    "severity": "LOW",
+    "title": "The v1 resource-actions API endpoint is deprecated in favour of `/actions/v2`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "API clients that call the resource-actions endpoint are not on the cluster"
+    },
+    "quote": "The `/api/v1/applications/{name}/resource/actions` endpoint is deprecated in favor of `/api/v1/applications/{name}/resource/actions/v2`.",
+    "remediation": "Move scripts and integrations that run resource actions to the v2 endpoint (parameters in a JSON body) before a later release removes v1; the CLI already falls back on its own."
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-oidc-pkce-flow-handled-by-server",
+    "severity": "MEDIUM",
+    "title": "OIDC with PKCE: the authorization code flow moves from the UI to the server — redirect URI changes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`enablePKCEAuthentication` is inside the VALUE of argocd-cm's `oidc.config` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^oidc\\.config$"
+    },
+    "quote": "The server now always handles this flow, PKCE being enabled or not.",
+    "remediation": "If `oidc.config` sets `enablePKCEAuthentication: true`, add `<argocd-url>/auth/callback` to the OIDC client's redirect URIs at your identity provider before upgrading, or logins fail.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.oidc\\.config}' | grep enablePKCEAuthentication # printed true = register /auth/callback as a redirect URI"
+  }
+]

@@ -1,0 +1,227 @@
+[
+  {
+    "version": "0.22",
+    "note": "Do not upgrade to this version unless you are on Kubernetes >= v1.21.",
+    "reason": "a Kubernetes VERSION FLOOR (Karpenter 0.22 needs k8s 1.21+ and supports up to 1.25). The catalog's own support matrix already carries that window and the add-on tier evaluates it as a hop, so a rule here would report the same fact through a second engine."
+  },
+  {
+    "version": "0.24",
+    "note": "Karpenter no longer filters out instance types internally.",
+    "reason": "instance-type filtering lives in Provisioner requirements and pod node selectors on the alpha v1alpha5 API, which this platform does not collect; the note prescribes tightening a requirement rather than naming a Kubernetes object that breaks."
+  },
+  {
+    "version": "0.25",
+    "note": "Cluster Endpoint can now be automatically discovered.",
+    "reason": "an additive convenience (clusterEndpoint may now be omitted) whose only requirement is an AWS IAM permission on the controller role; nothing in the cluster changes or breaks."
+  },
+  {
+    "version": "0.26",
+    "note": "The `controller.image` value in the Helm chart has been broken out to a map consisting of …",
+    "reason": "a Helm VALUES restructure (controller.image becomes repository/tag/digest). It changes the chart's input, not any object in the cluster, and a rendered Deployment looks identical either way."
+  },
+  {
+    "version": "0.27",
+    "note": "The following controller metrics changed and moved under the `controller_runtime` metrics namespace:",
+    "reason": "a Prometheus metrics change (moved under the controller_runtime namespace). It affects dashboards, recording rules and alerts, none of which are Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.27",
+    "note": "The following controller metric names changed, affecting the `controller` label value under …",
+    "reason": "a Prometheus metrics change (controller label values renamed). It affects dashboards, recording rules and alerts, none of which are Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.27",
+    "note": "The `karpenter_allocation_controller_scheduling_duration_seconds` metric name changed to …",
+    "reason": "a Prometheus metrics change (the scheduling-duration metric renamed). It affects dashboards, recording rules and alerts, none of which are Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.28",
+    "note": "The `extraObjects` value is now removed from the Helm chart.",
+    "reason": "a removed Helm VALUE (extraObjects). Nothing in the cluster breaks; charts that used it fail to render at upgrade time, which the operator sees immediately from Helm itself."
+  },
+  {
+    "version": "0.28",
+    "note": "Karpenter now defines a set of \"restricted tags\" which can't be overridden with custom tagging in the …",
+    "reason": "AWS resource TAGS on EC2 instances, volumes and ENIs. They are cloud-provider metadata, not Kubernetes objects, and nothing in the cluster records which tag overrides an operator configured."
+  },
+  {
+    "version": "0.28",
+    "note": "The following metrics changed their meaning, based on the introduction of the Machine resource:",
+    "reason": "a Prometheus metrics change (three node metrics change meaning with the Machine resource). Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.28",
+    "note": "Karpenter creates a mapping between CloudProvider machines and CustomResources in the cluster for capacity …",
+    "reason": "AWS instance TAG KEYS Karpenter uses to map cloud capacity to in-cluster Machines. Cloud metadata, not a Kubernetes object."
+  },
+  {
+    "version": "0.28",
+    "note": "Because Karpenter takes this dependency, any user that has the ability to Create/Delete these tags on …",
+    "reason": "a threat-model note about who can create or delete AWS tags. It prescribes an IAM review, not a change to any Kubernetes object."
+  },
+  {
+    "version": "0.28",
+    "note": "Karpenter marks CloudProvider capacity as \"managed by\" a Machine using the `karpenter-sh/managed-by` tag on …",
+    "reason": "an AWS-tag cleanup instruction for the upgrade/rollback/upgrade sequence. The tags live on EC2 capacity, which this platform does not read."
+  },
+  {
+    "version": "0.29",
+    "note": "Karpenter has changed the default metrics service port from 8080 to 8000 and the default webhook service port …",
+    "reason": "default metrics and webhook SERVICE PORTS change. The remediation is to update a Prometheus scraper, which is not a Kubernetes object this platform collects."
+  },
+  {
+    "version": "0.32",
+    "note": "Karpenter now serves the webhook prometheus metrics server on port `8001`.",
+    "reason": "the WEBHOOK metrics server moves to port 8001. A port collision is possible only under hostNetwork, and the remediation is a Helm value; no collected object records it."
+  },
+  {
+    "version": "0.32",
+    "note": "Karpenter now exposes the ability to disable webhooks through the `webhook.enabled=false` value.",
+    "reason": "an additive Helm value (webhook.enabled=false) that lets you turn webhooks off. Nothing breaks by default and the change is opt-in."
+  },
+  {
+    "version": "0.32",
+    "note": "Karpenter now moves all logging configuration for the Zap logger into the `logConfig` values block.",
+    "reason": "Zap LOGGING configuration moves into a Helm values block. It changes how the chart is configured, not any object in the cluster."
+  },
+  {
+    "version": "0.32",
+    "note": "The default log encoding changed from `console` to `json`.",
+    "reason": "the default LOG ENCODING changes from console to json. It affects log parsers, which are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.33",
+    "note": "Karpenter now tags `spot-instances-request` with the same tags that it tags instances, volumes, and primary …",
+    "reason": "a new AWS IAM permission (ec2:CreateTags on spot-instances-request) on the controller role. IAM policy is not a Kubernetes object this platform collects."
+  },
+  {
+    "version": "0.33",
+    "note": "`0.33.0` disables mutating and validating webhooks by default in favor of using Common Expression Language …",
+    "reason": "struck through in the upstream guide — the vendor retracted it. The webhook/CEL default it describes was reversed by the 0.33.8 re-enablement note in this same version."
+  },
+  {
+    "version": "0.33",
+    "note": "`0.33.0` change the default `LOG_LEVEL` from `debug` to `info` by default.",
+    "reason": "the default LOG_LEVEL changes from debug to info. A logging verbosity default with no action required and no Kubernetes object to check."
+  },
+  {
+    "version": "0.35",
+    "note": "Karpenter OCI tags and Helm chart version are now valid semantic versions, meaning that the `v` prefix from …",
+    "reason": "OCI image tags and the Helm chart version drop their leading v to become valid semver. It changes the string you pin in your chart values, not any object in the cluster."
+  },
+  {
+    "version": "0.36",
+    "note": "Karpenter changed the name of the `karpenter_cloudprovider_instance_type_price_estimate` metric to …",
+    "reason": "a Prometheus metric rename (instance_type_price_estimate gains offering, and loses its region label). Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "0.37",
+    "note": "Karpenter no longer updates the logger name when creating controller loggers.",
+    "reason": "controller LOGGER NAMING moves to the controller-runtime standard. It changes log field layout, which log parsers read and no Kubernetes object records."
+  },
+  {
+    "version": "0.37",
+    "note": "Karpenter updated the NodeClass controller naming in the following way: `nodeclass` -> `nodeclass.status` …",
+    "reason": "NodeClass CONTROLLER NAMES change, which affects logs and metrics labels only."
+  },
+  {
+    "version": "0.37",
+    "note": "Karpenter's NodeClaim status conditions no longer include the `severity` field",
+    "reason": "the severity field leaves NodeClaim STATUS CONDITIONS. Status conditions on NodeClaims are not part of the collected projection and nothing acts on that field."
+  },
+  {
+    "version": "1.0",
+    "note": "Refer to the `v1` Migration Guide for the full changelog.",
+    "reason": "a pointer to the migration guide's changelog rather than a change of its own. The migration itself is covered by the v1 APIs rule on this same version."
+  },
+  {
+    "version": "1.1",
+    "note": "Karpenter drops the internal `karpenter.k8s.aws/cluster` tag used for launch template management in favor of …",
+    "reason": "an internal AWS TAG (karpenter.k8s.aws/cluster) used for launch-template management is replaced by eks:eks-cluster-name. Cloud metadata, not a Kubernetes object."
+  },
+  {
+    "version": "1.1",
+    "note": "Generic operator metrics have been have been deprecated and replaced by resource-specific metrics.",
+    "reason": "generic OPERATOR METRICS are deprecated in favour of resource-specific ones. Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.2",
+    "note": "We have recently updated our labels on `karpenter_voluntary_disruption_queue_failures_total` and …",
+    "reason": "metric REASON LABEL values change from camel case to snake case. Alerting and dashboard queries are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.2",
+    "note": "Nodeclass status and termination controllers have been merged into a single `nodeclass` controller.",
+    "reason": "two controllers merge, changing the controller name in LOGS AND METRICS. No Kubernetes object records which controller emitted a line."
+  },
+  {
+    "version": "1.3",
+    "note": "`karpenter_ignored_pod_count` alpha metric had its name changed to `karpenter_scheduler_ignored_pod_count`",
+    "reason": "an alpha METRIC RENAME. Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.6",
+    "note": "Support a new configuration option `MinValuesPolicy` which controls how the Karpenter scheduler treats min …",
+    "reason": "a new configuration option (MinValuesPolicy) whose default of Strict preserves the existing behaviour. Opt-in, and the vendor says so in the note."
+  },
+  {
+    "version": "1.6",
+    "note": "Support a new configuration option `DisableDryRun` which disables the dry run calls made during EC2NodeClass …",
+    "reason": "a new opt-in configuration option (DisableDryRun) that changes nothing unless it is set."
+  },
+  {
+    "version": "1.7",
+    "note": "Instance profile path changes:",
+    "reason": "an AWS IAM change: instance profiles move to a structured path and the controller role needs iam:ListInstanceProfiles. The note states no action is required for existing profiles, and IAM is not a Kubernetes object this platform collects."
+  },
+  {
+    "version": "1.7",
+    "note": "The `karpenter_pods_pods_drained_total` metric has been renamed to `karpenter_pods_drained_total`",
+    "reason": "a METRIC RENAME (karpenter_pods_pods_drained_total loses its duplicated word)."
+  },
+  {
+    "version": "1.7",
+    "note": "The `karpenter_nodeclaims_disrupted_total` metric reason `liveness` has been renamed to `registration_timeout`",
+    "reason": "a metric REASON LABEL rename (liveness becomes registration_timeout)."
+  },
+  {
+    "version": "1.9",
+    "note": "The IAM policy in the getting started guide's cloudformation template has been split into 5 policies …",
+    "reason": "the getting-started CloudFormation IAM policy is split into five policies. IAM is not a Kubernetes object this platform collects, and the note states the granted permissions are unchanged."
+  },
+  {
+    "version": "1.10",
+    "note": "In the getting started guide's cloudformation template, there is an extra `detail-type` for EventBridge rules …",
+    "reason": "an extra EventBridge detail-type in the getting-started CloudFormation template. AWS event rules are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.11",
+    "note": "In the getting started guide's cloudformation template, there are new changes to IAM permissions in the …",
+    "reason": "new AWS IAM permissions for placement groups on the controller role. IAM is not a Kubernetes object this platform collects."
+  },
+  {
+    "version": "1.12",
+    "note": "This version adds support for AWS Application Recovery Controller Zonal Shift.",
+    "reason": "an opt-in AWS feature (ARC Zonal Shift) that is disabled by default and needs a new IAM permission. Nothing changes unless it is enabled."
+  },
+  {
+    "version": "1.12",
+    "note": "In the getting started guide's cloudformation template, there is a new required `ec2:DescribeInstanceStatus` …",
+    "reason": "a new required AWS IAM permission (ec2:DescribeInstanceStatus) on the controller role. IAM is not a Kubernetes object this platform collects."
+  },
+  {
+    "version": "1.14",
+    "note": "This version adds support for Dynamic Resource Allocation (DRA), including consumable capacity and …",
+    "reason": "additive DRA support that the note says requires no configuration changes to existing NodePools."
+  },
+  {
+    "version": "1.14",
+    "note": "This version adds a Balanced consolidation policy.",
+    "reason": "a new consolidation policy that the note says leaves existing NodePools unaffected unless you opt into it."
+  },
+  {
+    "version": "1.14",
+    "note": "This version adds support for preview instance types, allowing Karpenter to consider instance types that do …",
+    "reason": "preview instance types behind an existing feature gate, described by the note as opt-in."
+  }
+]

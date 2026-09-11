@@ -1,0 +1,48 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.31-nodeport-addresses-primary",
+  "severity": "MEDIUM",
+  "title": "nodePortAddresses should be set explicitly",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the recommendation is about a flag that is ABSENT, and absence of an arg cannot be told apart from a value set in the config file the projection does not carry"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)kube-proxy([:@]|$)"
+  },
+  "quote": "This is strongly recommended, if you were not previously using --nodeport-addresses, to avoid surprising behavior.",
+  "remediation": "Set `nodePortAddresses` to `primary` unless you deliberately want NodePort connections accepted on every address of every node. Leaving it unset keeps the old listen-on-everything behaviour on iptables and ipvs, which is the surprising case upstream is warning about.",
+  "verifyCommand": "kubectl -n kube-system get ds -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | .metadata.name + \": \" + ([.spec.template.spec.containers[].args[]? | select(test(\"nodeport-addresses\"))] | join(\" \") | if . == \"\" then \"--nodeport-addresses NOT set\" else . end)'  # says whether the flag is set on the kube-proxy DaemonSet"
+ },
+ {
+  "ruleId": "rtz-kube-proxy-1.31-node-kube-proxy-version-field",
+  "severity": "MEDIUM",
+  "title": "Node .status.kubeProxyVersion no longer set by default",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the field's presence on Node status today does not say what it will be after the upgrade \u2014 the gate is kubelet process configuration, which is not collected"
+  },
+  "quote": "Graduated the `DisableNodeKubeProxyVersion` feature gate to beta. By default, the kubelet no longer attempts to set the `.status.kubeProxyVersion` field for its associated Node.",
+  "remediation": "The gate is beta and ON at 1.31, so the field stops being populated on upgraded nodes by default. Fix readers of `.status.nodeInfo.kubeProxyVersion` before the hop, not after.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | select(.status.nodeInfo.kubeProxyVersion != null) | \"\\(.metadata.name) \\(.status.nodeInfo.kubeProxyVersion)\"'  # each node printed still publishes the field; it stops being set after the upgrade"
+ },
+ {
+  "ruleId": "rtz-kube-proxy-1.31-nftables-mode-requires-newer-nft-and-kernel",
+  "severity": "MEDIUM",
+  "title": "nftables mode requires nft 1.0.1 and kernel 5.13",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "nftables",
+   "reason": "read from the kube-proxy ConfigMap's own mode field; the node's nft version and kernel version are host state and are not collected"
+  },
+  "quote": "The (alpha) nftables mode of kube-proxy now requires version 1.0.1 or later of the nft command-line, and kernel 5.13 or later.",
+  "remediation": "This cluster runs the nftables mode, so the node requirement applies: nft 1.0.1+ and kernel 5.13+. Check the node image before upgrading \u2014 kube-proxy refuses to start on an older kernel unless `nftables.skipKernelVersionCheck` is set, which upstream does not recommend in production.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; nftables means the node nft/kernel floor applies"
+ }
+]

@@ -1,0 +1,56 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.12-acme-preferred-chain-selects-wrong-chain",
+  "severity": "LOW",
+  "title": "Known issue in 1.12–1.14: preferredChain may pick the wrong Let's Encrypt chain",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "`preferredChain` is not in the issuer projection"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^acme$"
+  },
+  "quote": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is configured: see 1.14 release notes for more information.",
+  "remediation": "If the target is one of these minors and an ACME issuer sets `preferredChain: ISRG Root X1`, either remove the field and renew, or accept the longer cross-signed chain while `DST Root CA X3` is trusted.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row is an issuer the known issue can affect; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.12-duplicate-secret-name-certificaterequest-storm",
+  "severity": "HIGH",
+  "title": "Known issue in 1.12: two Certificates sharing a secretName spawn endless CertificateRequests",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "`secretName` is deliberately left out of the Certificate projection (it names a Secret), so two Certificates pointing at one Secret cannot be paired from the inventory"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "Certificate"
+  },
+  "quote": "If two Certificate resources are incorrectly configured to have the same target Secret resource, cert-manager will generate a MANY CertificateRequests, possibly causing high CPU usage and/ or high costs due to the large number of certificates issued (see https://github.com/cert-manager/cert-manager/pull/6406).",
+  "remediation": "Give every Certificate in a namespace its own `secretName` before moving onto 1.12, or skip to 1.13.2 or later where the storm is fixed.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items | group_by(.metadata.namespace + \"/\" + .spec.secretName) | .[] | select(.[1] != null) | \"\\(.[0].metadata.namespace) secret shared by \\([.[].metadata.name] | join(\",\"))\"'  # each row is a Secret two Certificates fight over; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.12-install-the-latest-1-12-patch",
+  "severity": "LOW",
+  "title": "v1.12.0–v1.12.2 leak memory in cainjector and ship a broken cmctl check — install the latest 1.12 patch",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the patch version you will install is not a fact of the current cluster"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "cainjector contains a memory leak due to re-assignment of a log variable (see https://github.com/cert-manager/cert-manager/issues/6217). The fix will be released in v1.12.3. See https://github.com/cert-manager/cert-manager/pull/6232 for context.",
+  "remediation": "Install the latest 1.12 patch (1.12.3 or later), not 1.12.0–1.12.2.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # after the upgrade every tag should be v1.12.3 or later",
+  "coversNotes": [
+   "`cmctl` API check is broken in v1.12.1."
+  ]
+ }
+]

@@ -1,0 +1,66 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.4-legacy-api-versions-deprecated",
+  "severity": "LOW",
+  "title": "cert-manager CRDs still declare v1alpha2/v1alpha3/v1beta1 — deprecated, gone at 1.6",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "CustomResourceDefinition",
+   "objectName": "cert-manager\\.io$",
+   "target": "versions[].name",
+   "value": "^v1(alpha[23]|beta1)$",
+   "reason": "the CRDs' version LIST is projected; which version each resource is STORED at in etcd is not"
+  },
+  "quote": "These APIs will be removed in cert-manager 1.6.",
+  "remediation": "Re-apply every cert-manager resource as `cert-manager.io/v1` (or run `cmctl upgrade migrate-api-version` once on 1.7) so nothing is stored at a deprecated version when 1.6 stops serving them.",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.status.storedVersions[] | select(. != \"v1\") | \"\\($c.metadata.name) still stores \\(.)\"'  # each row is a CRD whose etcd contents must be migrated to v1 before 1.6; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.4-helm-chart-runs-as-non-root",
+  "severity": "MEDIUM",
+  "title": "The chart sets runAsNonRoot — a cert-manager image that runs as root stops starting",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a container's effective uid is decided by its image, which the inventory records only by repository and tag; `runAsUser` is projected only when the manifest sets it, so its absence cannot clear the rule"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "⛔️ If you are using custom containers that run as root with the Helm chart, you will need to set this back to `false`.",
+  "remediation": "If you ship custom cert-manager images that run as root, set `securityContext.runAsNonRoot: false` in your values (or rebuild the images to run as a non-root user).",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[] | \"\\(.image) runAsUser=\\(.securityContext.runAsUser // \"unset\")\"'  # an image outside quay.io/jetstack, or runAsUser=0, is what the new default rejects"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.4-ca-crt-tls-crt-chain-ordering",
+  "severity": "MEDIUM",
+  "title": "CA/Vault/Venafi issuers rewrite tls.crt ordering and what ca.crt holds",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^(ca|vault|venafi)$",
+   "reason": "the issuer TYPE is projected; which consumers read `ca.crt` out of the issued Secrets is not a cluster fact"
+  },
+  "quote": "⛔️ You may need to adjust systems that consume the `ca.crt` from Secrets managed by cert-manager with the CA issuer.",
+  "remediation": "Check anything that consumes `ca.crt` or parses `tls.crt` from Secrets issued by these issuers: the chain is now leaf-first and de-duplicated, and `ca.crt` may no longer be the self-signed root.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.ca or .spec.vault or .spec.venafi) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name)\"'  # Secrets issued by each row change shape on the next renewal"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.4-default-renewal-moves-to-two-thirds",
+  "severity": "MEDIUM",
+  "title": "Certificates longer than 90 days without renewBefore now renew at 2/3 of duration",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "`duration` and `renewBefore` are not in the Certificate projection"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "Certificate"
+  },
+  "quote": "The renewal behavior has changed when a Certificate has a `duration` value of more than 90 days and `renewBefore` has not been set.",
+  "remediation": "Set `renewBefore: 720h` on Certificates that relied on the old 30-days-before-expiry default, or accept the earlier renewal.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.renewBefore == null and (.spec.duration // \"\" | test(\"^[0-9]+h\"))) | select(([(.spec.duration | sub(\"h.*$\"; \"\") | tonumber), 2160] | max) != 2160) | \"\\(.metadata.namespace)/\\(.metadata.name) duration=\\(.spec.duration)\"'  # each row renews earlier after the upgrade; NO rows = clean"
+ }
+]

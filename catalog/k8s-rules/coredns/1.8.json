@@ -1,0 +1,294 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.8-dnstap-api-changed-for-external-plugins",
+  "severity": "LOW",
+  "title": "External plugins using dnstap must move to the new API",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "affects plugins you compile into your own CoreDNS build; a custom build is not visible from cluster objects"
+  },
+  "quote": "If you're using `dnstap` in your plugin, you'll need to upgrade to the new API",
+  "remediation": "Only custom CoreDNS builds with external plugins are affected — rebuild them against the 1.8 dnstap API. Stock images need nothing.",
+  "verifyCommand": null,
+  "coversNotes": [
+   "plugin/dnstap: remove config struct",
+   "plugin/dnstap: remove custom encoder"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-caddy-import-path-for-external-plugins",
+  "severity": "LOW",
+  "title": "External plugins must import github.com/coredns/caddy",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "affects plugins you compile into your own CoreDNS build; a custom build is not visible from cluster objects"
+  },
+  "quote": "*all* plugins need to fix the import path from: `github.com/caddyserver/caddy` to `github.com/coredns/caddy`",
+  "remediation": "Only custom builds are affected: change the caddy import path and rebuild. Stock images need nothing.",
+  "verifyCommand": null
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-zone-transfers-move-to-transfer-plugin",
+  "severity": "HIGH",
+  "title": "Outgoing zone transfers move to the transfer plugin — in-block `transfer to` in kubernetes stops parsing",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.kubernetes[]",
+   "value": "^transfer$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the kubernetes block; the other converted plugins have sibling rules (secondary is hinted: its still-required `transfer from` projects to the same key)"
+  },
+  "quote": "outgoing zone transfers now use this plugin: *file*, *auto*, *secondary* and *kubernetes* are converted. For this you must change your Corefile",
+  "remediation": "Rewrite every `transfer to …` line inside file, auto, secondary and kubernetes blocks as a top-level `transfer { to … }` block in the same server block, as the 1.8.0 notes show; the in-block form is rejected by 1.8.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\s+to\\\\b\")) | $n + \": \" + .'  # a printed line is an in-block transfer that 1.8 refuses to parse"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-zone-transfers-move-to-transfer-plugin-file",
+  "severity": "HIGH",
+  "title": "Outgoing zone transfers move to the transfer plugin — in-block `transfer to` in file stops parsing",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.file[]",
+   "value": "^transfer$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the file block; the other converted plugins have sibling rules (secondary is hinted: its still-required `transfer from` projects to the same key)"
+  },
+  "quote": "outgoing zone transfers now use this plugin: *file*, *auto*, *secondary* and *kubernetes* are converted. For this you must change your Corefile",
+  "remediation": "Rewrite every `transfer to …` line inside file, auto, secondary and kubernetes blocks as a top-level `transfer { to … }` block in the same server block, as the 1.8.0 notes show; the in-block form is rejected by 1.8.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\s+to\\\\b\")) | $n + \": \" + .'  # a printed line is an in-block transfer that 1.8 refuses to parse"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-zone-transfers-move-to-transfer-plugin-auto",
+  "severity": "HIGH",
+  "title": "Outgoing zone transfers move to the transfer plugin — in-block `transfer to` in auto stops parsing",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.auto[]",
+   "value": "^transfer$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the auto block; the other converted plugins have sibling rules (secondary is hinted: its still-required `transfer from` projects to the same key)"
+  },
+  "quote": "outgoing zone transfers now use this plugin: *file*, *auto*, *secondary* and *kubernetes* are converted. For this you must change your Corefile",
+  "remediation": "Rewrite every `transfer to …` line inside file, auto, secondary and kubernetes blocks as a top-level `transfer { to … }` block in the same server block, as the 1.8.0 notes show; the in-block form is rejected by 1.8.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\s+to\\\\b\")) | $n + \": \" + .'  # a printed line is an in-block transfer that 1.8 refuses to parse"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-zone-transfers-move-to-transfer-plugin-secondary",
+  "severity": "HIGH",
+  "title": "Outgoing zone transfers move to the transfer plugin — in-block `transfer to` in secondary stops parsing",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the projection keeps option KEYS only: `transfer from` (still required inside secondary) and the moved `transfer to` both project as `transfer`, so the key cannot settle it"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^secondary$"
+  },
+  "quote": "outgoing zone transfers now use this plugin: *file*, *auto*, *secondary* and *kubernetes* are converted. For this you must change your Corefile",
+  "remediation": "Rewrite every `transfer to …` line inside file, auto, secondary and kubernetes blocks as a top-level `transfer { to … }` block in the same server block, as the 1.8.0 notes show; the in-block form is rejected by 1.8. Inside secondary only `transfer to` moves; `transfer from` stays (and 1.12.2 makes it mandatory).",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\s+to\\\\b\")) | $n + \": \" + .'  # a printed line is an in-block transfer that 1.8 refuses to parse"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-doh-server-without-tls-is-fatal",
+  "severity": "HIGH",
+  "title": "A DNS-over-HTTPS server block without a tls config now fails to start",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "server-block zone lines (https://…) are not collected — only the plugin names inside the block"
+  },
+  "quote": "core: doh support: make no TLS config fatal",
+  "remediation": "Every `https://` server block needs a `tls` directive from 1.8.0; without one CoreDNS used to start silently and now exits.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*https://\")) | $n + \": \" + .'  # each printed DoH server block must carry a tls directive"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-trace-root-span-names-drop-query-data",
+  "severity": "LOW",
+  "title": "trace: root span names no longer contain the query name/type",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "tracing backends and their dashboards are outside the cluster inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^trace$"
+  },
+  "quote": "plugin/trace: root span names no longer contain the query data",
+  "remediation": "Trace searches or dashboards keyed on the span name (which used to embed the query) need to filter on span tags instead.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*trace\\\\b\")) | $n + \": \" + .'  # each printed trace setup emits differently-named root spans after 1.8.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-kubernetes-needs-endpointslices-rbac",
+  "severity": "HIGH",
+  "title": "CoreDNS must be granted list/watch on endpointslices (Kubernetes >= 1.19)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the ClusterRole projection keeps only pod-subresource rules, so an endpointslices grant is not visible in the snapshot"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "CoreDNS must be granted `list` and `watch` access to `endpointslices`.",
+  "remediation": "Add `endpointslices` (group discovery.k8s.io, verbs list+watch) to the system:coredns ClusterRole before upgrading CoreDNS to 1.8.1+ on Kubernetes 1.19+; without it the kubernetes plugin cannot watch endpoints and new pods stop resolving.",
+  "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name + \": endpointslices list+watch \" + (if ([.rules[]? | select((.resources // []) | index(\"endpointslices\")) | .verbs[]?] | (index(\"list\") != null and index(\"watch\") != null)) then \"granted\" else \"NOT granted\" end)'  # NOT granted = CoreDNS 1.8.1+ cannot watch EndpointSlices and stops resolving new endpoints",
+  "coversNotes": [
+   "plugin/kubernetes: Watch EndpointSlices"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-forward-refused-when-max-concurrent-exceeded",
+  "severity": "MEDIUM",
+  "title": "forward: max_concurrent overflow now answers REFUSED",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.forward[]",
+   "value": "^max_concurrent$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "plugin/forward: respond with REFUSED when max_concurrent is exceeded",
+  "remediation": "Clients used to see SERVFAIL (which resolvers retry) when `max_concurrent` was hit; from 1.8.1 they see REFUSED, which many resolvers treat as final. Re-check the value against real query rates before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*max_concurrent\\\\b\")) | $n + \": \" + .'  # each printed limit now turns overflow into REFUSED"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-transfer-outgoing-axfr-tcp-only",
+  "severity": "MEDIUM",
+  "title": "transfer: outgoing AXFR is served over TCP only",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which transport a secondary uses to pull the zone is the secondary's configuration, not this cluster's"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^transfer$"
+  },
+  "quote": "plugin/transfer: only allow outgoing axfr over tcp",
+  "remediation": "Secondaries that pull zones from CoreDNS over UDP stop getting them after 1.8.2; make sure they use TCP for AXFR.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\b\")) | $n + \": \" + .'  # each printed transfer block serves AXFR over TCP only",
+  "coversNotes": [
+   "plugin/transfer: reply with refused"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-kubernetes-unready-endpoints-excluded",
+  "severity": "LOW",
+  "title": "kubernetes: not-ready endpoints are excluded from EndpointSlice answers",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which headless Services have clients that depend on not-ready pods resolving is not knowable from the inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: Exclude unready endpoints from endpointslices",
+  "remediation": "Headless Services whose clients relied on not-ready pods appearing in DNS (StatefulSet bootstrap is the usual case) need `publishNotReadyAddresses: true`, otherwise those pods vanish from answers after 1.8.4.",
+  "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.clusterIP == \"None\" and (.spec.publishNotReadyAddresses != true)) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # headless Services printed stop resolving NOT-ready pods after 1.8.4; set publishNotReadyAddresses if clients relied on them"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-metrics-rr-type-label-removed",
+  "severity": "MEDIUM",
+  "title": "metrics: the type label is removed from the request-duration histograms",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Prometheus rules and dashboards are not collected"
+  },
+  "quote": "plugin/metrics: remove RR type",
+  "remediation": "1.8.4 drops the `type` (record type) label from `coredns_dns_request_duration_seconds` and `coredns_forward_request_duration_seconds` (coredns/coredns ed3f287fe, label-cardinality fix). Alert rules or dashboards that filter or group those histograms by `type` match nothing afterwards; `coredns_dns_requests_total` keeps its `type` label, so move per-type counting there.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_(dns|forward)_request_duration_seconds\\\\{[^}]*type=\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed filter a request-duration histogram by the type label that 1.8.4 removes"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-cache-misses-total-deprecated",
+  "severity": "MEDIUM",
+  "title": "coredns_cache_misses_total is deprecated",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Prometheus rules and dashboards are not collected"
+  },
+  "quote": "the `coredns_cache_misses_total` metric is deprecated.",
+  "remediation": "Rewrite promQL to `coredns_cache_requests_total - coredns_cache_hits_total`; the deprecated series is removed in a later release.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"coredns_cache_misses_total\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # rules printed use the deprecated cache-miss series",
+  "coversNotes": [
+   "plugin/cache: Update cache metrics and add a total cache request counter to follow"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-kubernetes-transfers-only-authoritative-zones",
+  "severity": "LOW",
+  "title": "kubernetes: zone transfers answered only for authoritative zones",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which zones a downstream pulls via AXFR is the downstream's configuration"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: Only answer transfer requests for authoritative zones",
+  "remediation": "Secondaries transferring a zone the kubernetes plugin is not authoritative for (a parent or reverse zone it merely serves) get REFUSED after 1.8.5.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*transfer\\\\b\")) | $n + \": \" + .'  # each printed transfer block hands out only authoritative zones after 1.8.5"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-kubernetes-long-pod-names-lose-dns-label",
+  "severity": "LOW",
+  "title": "kubernetes: pod names longer than 63 characters are no longer DNS labels",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "pod names are collected but which clients resolve pods by name is not"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: Don't use pod names longer than 63 characters as dns labels",
+  "remediation": "Pods with names over 63 characters stop resolving as `<pod>.<svc>.<ns>.svc` after 1.8.6 (the label was never RFC-valid). Rename the generating workload if anything resolves them.",
+  "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^.{64,}\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each pod printed has a name longer than 63 characters and loses its pod DNS label after 1.8.6"
+ },
+ {
+  "ruleId": "rtz-coredns-1.8-kubernetes-wildcard-queries-deprecated",
+  "severity": "MEDIUM",
+  "title": "kubernetes: wildcard queries are deprecated (removed in 1.9.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether any client issues wildcard queries (`*.ns.svc`, `any.ns.svc`) is request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "This release will also log deprecation warnings when wildcard queries are received by kubernetes. The wildcard functionality will be completely removed from kubernetes plugin in future releases.",
+  "remediation": "Find clients that resolve `*.<ns>.svc` / `any.<ns>.svc` style names (1.8.7 logs a warning per query) and move them to explicit names before 1.9.0 removes the feature.",
+  "verifyCommand": "kubectl -n kube-system logs deploy/coredns --tail=5000 2>/dev/null | grep -ci wildcard  # non-zero on CoreDNS 1.8.7+ = clients are still issuing wildcard queries that 1.9.0 stops answering; 0 proves nothing on older versions, which log no warning",
+  "coversNotes": [
+   "plugin/kubernetes: Add wildcard warnings"
+  ]
+ }
+]

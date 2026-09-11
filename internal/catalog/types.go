@@ -262,10 +262,16 @@ type Addon struct {
 	// LatestKnownVersion carries the ceiling for add-ons that publish no compatibility
 	// matrix at all. Without it, an add-on with no windows has no version anchor and its
 	// upgrade notes never render.
-	LatestKnownVersion string        `json:"latestKnownVersion"`
-	InventoryKinds     []string      `json:"inventoryKinds"`
-	Rules              []AddonRule   `json:"rules"`
-	UpgradeNotes       []UpgradeNote `json:"upgradeNotes"`
+	LatestKnownVersion string `json:"latestKnownVersion"`
+	// CurrencyHop opts an add-on with NO support windows into a "you are behind the newest
+	// release we know about" hop from the installed version to LatestKnownVersion. Opt-in, never
+	// inferred from the shape: a currency hop selects release-note rules the same way a support
+	// hop does, but it is not a claim that the Kubernetes upgrade requires the move, and every
+	// surface that shows it says so.
+	CurrencyHop    bool          `json:"currencyHop"`
+	InventoryKinds []string      `json:"inventoryKinds"`
+	Rules          []AddonRule   `json:"rules"`
+	UpgradeNotes   []UpgradeNote `json:"upgradeNotes"`
 }
 
 // ---------- k8s-adoption/adoption-suggestions.json ----------

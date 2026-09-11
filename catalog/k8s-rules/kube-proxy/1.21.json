@@ -1,0 +1,34 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.21-ipvs-mode-no-longer-sets-route-localnet",
+  "severity": "MEDIUM",
+  "title": "IPVS mode no longer sets route_localnet",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "ipvs",
+   "reason": "read from the kube-proxy ConfigMap's own mode field, which the agent extracts as a single token; a mode passed only as a --proxy-mode container arg is not read here"
+  },
+  "quote": "Kube-proxy's IPVS proxy mode no longer sets the net.ipv4.conf.all.route_localnet sysctl parameter. Nodes upgrading will have net.ipv4.conf.all.route_localnet set to 1 but new nodes will inherit the system default (usually 0).",
+  "remediation": "Only nodes JOINED after the upgrade inherit the system default. Existing nodes keep route_localnet=1, so the breakage appears gradually as nodes are replaced. If anything depends on it (NodePort traffic to 127.0.0.1 is the usual case), set the sysctl explicitly in your node image or a privileged init DaemonSet before rolling nodes.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; ipvs means this note applies to this cluster"
+ },
+ {
+  "ruleId": "rtz-kube-proxy-1.21-cleanup-ipvs-flag-removed",
+  "severity": "MEDIUM",
+  "title": "--cleanup-ipvs flag removed",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^kube-proxy",
+   "target": "containers[].args[]",
+   "value": "--cleanup-ipvs",
+   "reason": "container args only \u2014 a flag set through a config file or an env var is not scanned"
+  },
+  "quote": "remove deprecated --cleanup-ipvs flag of kube-proxy, and make --cleanup flag always to flush IPVS",
+  "remediation": "Drop `--cleanup-ipvs` from the kube-proxy DaemonSet. `--cleanup` now always flushes IPVS, so the behaviour you wanted is what you get by default; kube-proxy fails to start on an unknown flag.",
+  "verifyCommand": "kubectl -n kube-system get ds -o json | jq -r '.items[] | select([.spec.template.spec.containers[].args[]?] | any(test(\"--cleanup-ipvs\"))) | .metadata.name'  # each DaemonSet printed still passes a flag removed in 1.21"
+ }
+]

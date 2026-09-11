@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.14-capacitybuffers-crd-must-be-installed-alongside-the-controller",
+    "severity": "MEDIUM",
+    "title": "The new capacitybuffers CRD will not arrive with a Helm upgrade",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this fires on the ABSENCE of a CRD, and every detection kind here settles on presence — an absent row is indistinguishable from a kind that was never collected"
+    },
+    "quote": "This version graduates the Capacity Buffers API to `v1beta1` and ships a new `autoscaling.x-k8s.io_capacitybuffers` CRD. If you use the standalone `karpenter-crd` Helm chart, upgrade it alongside the controller so the new CRD is installed. See CRD Upgrades above.",
+    "remediation": "Upgrade the standalone `karpenter-crd` chart alongside the controller, or apply the CRDs yourself. Helm installs CRDs only on a chart's first install, so the new `autoscaling.x-k8s.io_capacitybuffers` CRD never appears on an upgrade and the Capacity Buffers API stays unavailable while the controller expects it.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^karpenter\\.(sh|k8s\\.aws)$"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.metadata.name | test(\"capacitybuffers|karpenter\")) | .metadata.name'  # capacitybuffers.autoscaling.x-k8s.io missing from this list means the CRD chart is behind the controller"
+  }
+]

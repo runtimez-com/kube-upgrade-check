@@ -1,0 +1,56 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.12-project-scoped-cluster-secrets-no-longer-shared",
+    "severity": "HIGH",
+    "title": "Cluster secrets scoped to a project stop serving Applications and ApplicationSets of other projects",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Secret's `project` KEY is collected but its value is not, and the Applications that use the cluster are not related to it in the inventory"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Secret",
+      "namespace": "argocd",
+      "target": "keys[]",
+      "value": "^project$"
+    },
+    "quote": "What this means is that if you have a cluster secret scoped to `project-a`, an application scoped to `project-b` can no longer make use of the secret. If you have a cluster secret that's intended to be used by applications in multiple projects, you need to **unset** the `project` field.",
+    "remediation": "For each cluster secret carrying a `project`, confirm only Applications of that project (and no ApplicationSet git generator) target it; unset `project` on secrets meant to be shared before upgrading.",
+    "verifyCommand": "kubectl -n argocd get secret -l argocd.argoproj.io/secret-type=cluster -o json | jq -r '.items[] | select(.data.project != null) | .metadata.name + \" project=\" + (.data.project | @base64d)' # secrets printed are project-scoped — Applications of other projects lose them at 2.12"
+  },
+  {
+    "ruleId": "rtz-argocd-2.12-redis-haproxy-images-move-to-ecr",
+    "severity": "MEDIUM",
+    "title": "`redis` and `haproxy` images move from Docker Hub to ECR",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether your registry mirror, allow-list or image-signature policy admits public.ecr.aws is not something the cluster inventory records"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].image",
+      "value": "(^|/)(redis|haproxy)([:@]|$)"
+    },
+    "quote": "As part of the upgrade, the image registry for `redis` and `haproxy` was changed from DockerHub to ECR.",
+    "remediation": "Add `public.ecr.aws` to your registry allow-list / mirror / Cosign policy, or override the redis and haproxy image repositories in your overlay, before applying the 2.12 manifests.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"redis|haproxy\")) | .image' | sort -u # images printed are what the 2.12 manifests re-point to public.ecr.aws"
+  },
+  {
+    "ruleId": "rtz-argocd-2.12-applicationset-selectors-become-atomic-under-ssa",
+    "severity": "LOW",
+    "title": "ApplicationSet label selectors become atomic — two field managers can no longer share one",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "field managers of an ApplicationSet's selector fields are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ApplicationSet"
+    },
+    "quote": "If you are using server-side apply with multiple field managers to manage a single `selector` or `labelSelector` field in an ApplicationSet, that field management must be changed to be atomic starting with 2.12.",
+    "remediation": "Where more than one tool server-side-applies parts of an ApplicationSet's generator selectors, make one of them own the whole selector (`matchLabels` and `matchExpressions` together) before upgrading the CRD.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.metadata.managedFields[1] != null) | .metadata.namespace + \"/\" + .metadata.name + \": \" + ([.metadata.managedFields[].manager] | unique | join(\",\"))' # ApplicationSets printed have several field managers — check whether two of them touch one selector"
+  }
+]

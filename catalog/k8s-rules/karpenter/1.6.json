@@ -1,0 +1,19 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.6-open-odcrs-are-abandoned-without-selector-terms",
+    "severity": "HIGH",
+    "title": "An EC2NodeClass with no capacityReservationSelectorTerms stops using open ODCRs",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "EC2NodeClass",
+      "target": "capacityReservationSelectorTermsPresent",
+      "value": "false"
+    },
+    "quote": "If you use ODCRs with `open` instance eligibility but have **not** set `spec.capacityReservationSelectorTerms` on your EC2NodeClasses, Karpenter stops using those reservations after this upgrade and falls back to on-demand — leaving reservations unused but still billed. Configure it **before** upgrading; see the native ODCR support guide.",
+    "remediation": "Set `spec.capacityReservationSelectorTerms` on these node classes BEFORE upgrading if you use On-Demand Capacity Reservations with `open` instance eligibility. Native ODCR support turns on by default at 1.6, and a node class that does not name its reservations stops using them and falls back to on-demand — the reservations keep billing while nothing runs on them.",
+    "verifyCommand": "kubectl get ec2nodeclasses -o json 2>/dev/null | jq -r '.items[]? | select(.spec.capacityReservationSelectorTerms == null) | .metadata.name'  # each node class printed stops using open ODCRs, which stay billed but idle",
+    "coversNotes": [
+      "Native ODCR support has graduated to beta and is enabled by default."
+    ]
+  }
+]

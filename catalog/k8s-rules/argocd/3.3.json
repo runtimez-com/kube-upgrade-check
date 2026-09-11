@@ -1,0 +1,141 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.3-applicationset-crd-client-side-apply-annotation",
+    "severity": "HIGH",
+    "title": "ApplicationSet CRD was written with client-side apply — the 3.3 upgrade fails on the annotation size limit",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^applicationsets\\.argoproj\\.io$",
+      "target": "lastAppliedConfigurationPresent",
+      "value": "true",
+      "reason": "the agent projects whether the CRD carries a kubectl.kubernetes.io/last-applied-configuration annotation (as a boolean — never the annotation itself, which is a copy of the ~1.4MB schema)"
+    },
+    "quote": "In this version, the ApplicationSet CRD exceeds the size limit for client-side apply, meaning that the previous upgrade methods will result in `The CustomResourceDefinition \"applicationsets.argoproj.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`",
+    "remediation": "Re-apply the Argo CD manifests with Server-Side Apply before or as part of the 3.3 upgrade: `kubectl apply -n argocd --server-side --force-conflicts -f manifests/install.yaml`, or `ServerSideApply=true` in the syncOptions of the Application that manages Argo CD itself. A Helm install is not affected. Absence of this finding is not proof of Server-Side Apply — a Helm-managed CRD sets neither marker. If you set `ClientSideApplyMigration=false` as a workaround on 3.3.0/3.3.1, remove it after 3.3.2.",
+    "verifyCommand": "kubectl get crd applicationsets.argoproj.io --show-managed-fields -o json | jq -r '(.metadata.annotations[\"kubectl.kubernetes.io/last-applied-configuration\"] != null | tostring) + \" \" + ([(.metadata.managedFields // [])[].manager] | unique | join(\",\"))' # true, or kubectl-client-side-apply among the managers = client-side applied; upgrade with --server-side --force-conflicts"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-applicationset-crd-client-side-apply-field-manager",
+    "severity": "HIGH",
+    "title": "ApplicationSet CRD carries the `kubectl-client-side-apply` field manager — the 3.3 upgrade fails on the annotation size limit",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^applicationsets\\.argoproj\\.io$",
+      "target": "clientSideApplyManager",
+      "value": "true",
+      "reason": "the agent projects whether any managedFields entry on the CRD names the kubectl-client-side-apply manager — the signal that survives where an operator pruned the annotation"
+    },
+    "quote": "In this version, the ApplicationSet CRD exceeds the size limit for client-side apply, meaning that the previous upgrade methods will result in `The CustomResourceDefinition \"applicationsets.argoproj.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes`",
+    "remediation": "Re-apply the Argo CD manifests with Server-Side Apply before or as part of the 3.3 upgrade: `kubectl apply -n argocd --server-side --force-conflicts -f manifests/install.yaml`, or `ServerSideApply=true` in the syncOptions of the Application that manages Argo CD itself. A Helm install is not affected. Absence of this finding is not proof of Server-Side Apply — a Helm-managed CRD sets neither marker. If you set `ClientSideApplyMigration=false` as a workaround on 3.3.0/3.3.1, remove it after 3.3.2.",
+    "verifyCommand": "kubectl get crd applicationsets.argoproj.io --show-managed-fields -o json | jq -r '(.metadata.annotations[\"kubectl.kubernetes.io/last-applied-configuration\"] != null | tostring) + \" \" + ([(.metadata.managedFields // [])[].manager] | unique | join(\",\"))' # true, or kubectl-client-side-apply among the managers = client-side applied; upgrade with --server-side --force-conflicts"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-source-hydrator-tracks-state-in-git-notes",
+    "severity": "LOW",
+    "title": "Source Hydrator stops committing on every DRY commit — hydration state moves to git notes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether any automation depends on a hydrated commit per DRY commit lives outside the cluster; the hint names the Applications that use the Source Hydrator"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Application",
+      "target": "sourceHydrator",
+      "value": "true"
+    },
+    "quote": "**Starting with v3.3, the Source Hydrator uses git notes to record the state of the most recently hydrated DRY commit instead of creating a hydrated commit on every DRY commit.**",
+    "remediation": "Update automation that used hydrated commits as a signal to consult the git note in the Source Hydrator namespace instead; no action otherwise.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.sourceHydrator != null) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed use the Source Hydrator"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-source-hydrator-no-longer-cleans-application-path",
+    "severity": "MEDIUM",
+    "title": "Source Hydrator no longer deletes stale files in the application path",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a hydration path accumulates files nobody else cleans up is a repository fact; the hint names the Applications that use the Source Hydrator"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Application",
+      "target": "sourceHydrator",
+      "value": "true"
+    },
+    "quote": "Starting with v3.3, this cleaning logic has been removed. The hydrator will now only overwrite or create files that correspond to the current manifest output; any additional files or obsolete data in the application path will remain untouched unless explicitly overwritten.",
+    "remediation": "If your workflow relied on the hydrator wiping the path (renamed or removed manifests), add your own cleanup step for the hydrated paths of the Applications named here.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.sourceHydrator != null) | .metadata.namespace + \"/\" + .metadata.name + \" -> \" + (.spec.sourceHydrator.syncSource.path // \"\")' # paths printed no longer get cleaned before each hydration"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-cluster-generator-version-selector-format",
+    "severity": "HIGH",
+    "title": "Cluster version label switches to `vMajor.Minor.Patch` in 3.3.3 — cluster generators on the old form match nothing",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ApplicationSet",
+      "target": "clusterGeneratorVersionSelectors[]",
+      "value": "^\\d+\\.\\d+$",
+      "reason": "the agent projects every value an ApplicationSet's cluster generators select on the argocd.argoproj.io/kubernetes-version label (matrix/merge nesting included); a bare Major.Minor value is the pre-change form. Evaluated only when the gate finds a cluster Secret carrying auto-label-cluster-info — the condition upstream states"
+    },
+    "gate": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Secret",
+      "target": "argocd.argoproj.io/auto-label-cluster-info",
+      "reason": "upstream conditions the breakage on cluster Secrets that carry argocd.argoproj.io/auto-label-cluster-info — only those have their kubernetes-version label rewritten to vMajor.Minor.Patch; a label you maintain by hand keeps matching"
+    },
+    "quote": "Application Sets with Cluster Generators, that fetch clusters based on their Kubernetes version and use `argocd.argoproj.io/auto-label-cluster-info` on the cluster secret, need to be updated to use `argocd.argoproj.io/kubernetes-version` with the `vMajor.Minor.Patch` format instead of the previous `Major.Minor` format.",
+    "remediation": "These ApplicationSets select on the old `Major.Minor` form and at least one cluster Secret carries `argocd.argoproj.io/auto-label-cluster-info`, so the label they match is rewritten to `vMajor.Minor.Patch` at this version: change the selector values (for example `v1.32.13` instead of `1.32`) before upgrading. The breakage is SILENT: the generator matches no cluster and its Applications disappear without an error or an event.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select([.. | .\"argocd.argoproj.io/kubernetes-version\"? // empty | tostring] | map(test(\"^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$\") | not) | any) | .metadata.namespace + \"/\" + .metadata.name' # names printed still select on the old Major.Minor format, which matches no cluster after the change",
+    "coversNotes": [
+      "Helm Upgraded to 3.19.4",
+      "More detailed cluster version"
+    ]
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-k8s-server-side-timeout-separate-env",
+    "severity": "LOW",
+    "title": "`ARGOCD_K8S_TCP_TIMEOUT` no longer sets the Kubernetes server-side timeout",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "container environment variable names are not part of the projection; the hint names the Argo CD workloads whose env would carry ARGOCD_K8S_TCP_TIMEOUT"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].image",
+      "value": "argoproj/argocd"
+    },
+    "quote": "From now onwards, the Kubernetes server-side timeout is controlled by a separate environment variable.",
+    "remediation": "If you tuned `ARGOCD_K8S_TCP_TIMEOUT` to lengthen slow API-server requests, set `ARGOCD_K8S_SERVER_SIDE_TIMEOUT` as well — the old variable now only governs the TCP timeout.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[] | select(.spec.template.spec.containers[].env[]?.name == \"ARGOCD_K8S_TCP_TIMEOUT\") | .kind + \" \" + .metadata.name' # workloads printed set the TCP timeout — add ARGOCD_K8S_SERVER_SIDE_TIMEOUT if the server-side timeout was the point"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-self-heal-backoff-cooldown-flag-deprecated",
+    "severity": "LOW",
+    "title": "`--self-heal-backoff-cooldown-seconds` on the application controller is deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "StatefulSet|Deployment",
+      "objectName": "^argocd-application-controller$",
+      "target": "containers[].args[]",
+      "value": "self-heal-backoff-cooldown-seconds",
+      "reason": "checked in the application controller's container args only — the same setting made through argocd-cmd-params-cm is a ConfigMap VALUE and is not scanned"
+    },
+    "quote": "The `--self-heal-backoff-cooldown-seconds` flag of the `argocd-application-controller` has been deprecated and will be removed in a future release.",
+    "remediation": "Drop the flag from the controller's args (and the matching `controller.self.heal.backoff.cooldown.seconds` parameter) before a later release removes it and the controller refuses to start.",
+    "verifyCommand": "kubectl -n argocd get sts,deploy -o json | jq -r '.items[] | select([.spec.template.spec.containers[].args[]?] | any(test(\"self-heal-backoff-cooldown-seconds\"))) | .kind + \" \" + .metadata.name' # workloads printed still pass the deprecated flag"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-bundled-kustomize-5-8-1",
+    "severity": "LOW",
+    "title": "Bundled Kustomize 5.8.1: exec-plugin argument parsing and Helm namespace propagation change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Applications render through Kustomize exec plugins or Helm charts inside kustomizations lives in Git, not in the inventory"
+    },
+    "quote": "However, note that Kustomize 5.7.1 introduces code to replace the `shlex` library used for parsing arguments in exec plugins. If any existing manifests become corrupted, please follow the instructions in the 5.7.1 release notes.",
+    "remediation": "Render kustomizations that use exec plugins or Helm charts with Kustomize 5.8.x before upgrading; argument quoting for exec plugins and namespace propagation into Helm charts both changed."
+  }
+]

@@ -1,0 +1,91 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.2-crds-must-be-updated-for-new-options",
+    "severity": "MEDIUM",
+    "title": "New optional CRD fields require applying the updated CRDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this needs the CRD schema, and only the served VERSIONS of a CRD are collected, not its openAPIV3Schema"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^traefik\\.(io|containo\\.us)$"
+    },
+    "quote": "New optional fields have been added to several CRDs. These updates are backward compatible and only add new functionality.",
+    "remediation": "Apply the v3.2 CRD manifests before using the new TraefikService, RateLimit, InFlightReq or Compress options. The additions are backward compatible, so the upgrade itself is safe without them — but until the CRDs are applied the API server strips the new fields and they silently do nothing.",
+    "verifyCommand": "kubectl get crd middlewares.traefik.io -o jsonpath='{.metadata.annotations.traefik\\.io/version}{\"\\n\"}' # compare against the Traefik version you are upgrading to",
+    "coversNotes": [
+      "Kubernetes CRD Provider"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.2-gateway-experimental-backendtlspolicy-rbac",
+    "severity": "MEDIUM",
+    "title": "Experimental channel pins Gateway v1.2.x and needs BackendTLSPolicy RBAC",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Gateway API bundle the cluster runs is recorded only in a CRD annotation, and CRD objects are collected as served versions without their metadata; the ClusterRole grant is likewise not among the collected kinds"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Due to breaking changes in Kubernetes Gateway v1.2.0-rc1, Traefik v3.3 only supports Kubernetes Gateway v1.2.x when experimental features are enabled.",
+    "remediation": "Only relevant with the Gateway API experimental channel enabled. Pin the Gateway API CRDs to v1.2.x and add `backendtlspolicies` and `backendtlspolicies/status` to Traefik's ClusterRole. A different Gateway API minor is the breaking case here, not the Traefik upgrade itself.",
+    "verifyCommand": "kubectl get crd gateways.gateway.networking.k8s.io -o jsonpath='{.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version}{\"\\n\"}' 2>/dev/null; kubectl get clusterroles -o json | jq -r '.items[] | select(any(.rules[]?; (.resources // []) | index(\"backendtlspolicies\"))) | \"grant: \" + .metadata.name' # with the experimental channel on, the first line must read v1.2.x and a grant line must follow; otherwise add backendtlspolicies and backendtlspolicies/status to the Traefik ClusterRole"
+  },
+  {
+    "ruleId": "rtz-traefik-3.2-gateway-grpcroute-rbac",
+    "severity": "HIGH",
+    "title": "Gateway provider needs GRPCRoute RBAC",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is a grant on Traefik's own ClusterRole, which is not among the collected kinds"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with v3.2, the Kubernetes Gateway Provider now supports GRPCRoute resources.",
+    "remediation": "Add `grpcroutes` and `grpcroutes/status` to Traefik's ClusterRole before upgrading. Without the grant the provider cannot list GRPCRoutes; it logs the RBAC failure and serves no gRPC routes rather than refusing to start.",
+    "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select(.rules[]?.apiGroups[]? == \"gateway.networking.k8s.io\") | .metadata.name as $n | .rules[] | select(.resources[]? == \"grpcroutes\") | $n' # a name confirms the grpcroutes grant is present"
+  },
+  {
+    "ruleId": "rtz-traefik-3.2-swarm-labels-deprecated",
+    "severity": "LOW",
+    "title": "Swarm-specific traefik.docker.* labels deprecated",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "these are Docker Swarm service labels; the Swarm provider is not a Kubernetes provider and no such object is collected"
+    },
+    "quote": "In v3.2.2, Swarm-specific labels have been deprecated and will be removed in a future version.",
+    "remediation": "Kubernetes-only deployments are unaffected. If the same Traefik also runs the Swarm provider, rename `traefik.docker.network` to `traefik.swarm.network` and `traefik.docker.lbswarm` to `traefik.swarm.lbswarm`.",
+    "coversNotes": [
+      "Swarm Provider Label Updates"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.2-x-forwarded-prefix-stripped-when-untrusted",
+    "severity": "HIGH",
+    "title": "X-Forwarded-Prefix is stripped from untrusted sources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In v3.2.1, the `X-Forwarded-Prefix` header is now handled like other `X-Forwarded-*` headers - Traefik removes it when sent from untrusted sources.",
+    "remediation": "If a backend reads `X-Forwarded-Prefix` to build absolute URLs, add the sender to the entryPoint's `forwardedHeaders.trustedIPs` (or `insecure`). Otherwise the header silently disappears and the backend generates links against the wrong prefix — a redirect loop or 404, not a Traefik error.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |forwardedHeaders' # rows show the entry points' trusted IPs; X-Forwarded-Prefix now only survives from senders listed there; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  }
+]

@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.33-nftables-skip-kernel-version-check-env",
+  "severity": "LOW",
+  "title": "KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK now needs a non-empty value",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "container environment variable NAMES are not in the collected projection (only hasEnvApiRefs), so an env var set on the kube-proxy DaemonSet cannot be read"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)kube-proxy([:@]|$)"
+  },
+  "quote": "The kernel version check is now skipped only when this variable is explicitly set to a non-empty value.",
+  "remediation": "Only matters if you set this variable to skip the kernel check. An empty value used to skip the check and now does not, so a node below the kernel floor that used to start will stop starting. Set it to a non-empty value, or raise the kernel.",
+  "verifyCommand": "kubectl -n kube-system get ds -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | .spec.template.spec.containers[].env[]? | select(.name == \"KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK\") | .name + \"=\" + (.value // \"\")'  # an empty value no longer skips the kernel check"
+ }
+]

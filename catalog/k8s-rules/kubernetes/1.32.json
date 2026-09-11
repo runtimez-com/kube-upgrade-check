@@ -111,17 +111,6 @@
     "verifyCommand": "kubectl get --raw /api | grep -i resourceslice # shows only core API discovery; client usage of ResourceSliceList remains outside cluster inventory"
   },
   {
-    "ruleId": "rtz-gen-kubernetes-1.32-review-disable-node-kube-proxy-version-gate",
-    "severity": "MEDIUM",
-    "title": "Review DisableNodeKubeProxyVersion feature-gate configuration",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Feature-gate command-line configuration is not represented in cluster inventory; verify component configuration manually."
-    },
-    "quote": "- Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year from deprecation announcement in 1.29 to clearing the field by default, per the [Kubernetes deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/). ([#126720](https://github.com/kubernetes/kubernetes/pull/126720), [@liggitt](https://github.com/liggitt)) [SIG Architecture and Node]",
-    "remediation": "Verify manually whether any component relies on the `DisableNodeKubeProxyVersion` feature gate being enabled, and update the configuration for the default-off behavior."
-  },
-  {
     "ruleId": "rtz-gen-kubernetes-1.32-review-kubelet-fine-grained-authz",
     "severity": "MEDIUM",
     "title": "Review RBAC access to kubelet subresources",

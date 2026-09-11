@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.36-configz-serialization-changed",
+  "severity": "LOW",
+  "title": "/configz now serializes APIVersion and Kind",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "who reads a component's /configz endpoint is outside the cluster's object model \u2014 no collected object records a consumer of it"
+  },
+  "quote": "Updated the `/configz` endpoint of `kubelet`, `kube-scheduler`, cloud controller manager, and `kube-proxy` to serialize the `APIVersion` and `Kind` fields and use public types instead of internal.",
+  "remediation": "Only affects tooling that scrapes `/configz` and parses the JSON. The payload now carries `apiVersion` and `kind` and uses the public types, so a strict parser that rejected unknown fields, or one keyed on the internal type names, needs updating.",
+  "verifyCommand": null
+ }
+]

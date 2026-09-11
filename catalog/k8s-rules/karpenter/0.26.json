@@ -1,0 +1,33 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.26-do-not-evict-annotation-no-longer-blocks-node-deletion",
+    "severity": "MEDIUM",
+    "title": "karpenter.sh/do-not-evict stops protecting pods from node deletion",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "karpenter.sh/do-not-evict"
+    },
+    "quote": "The `karpenter.sh/do-not-evict` annotation no longer blocks node termination when running `kubectl delete node`. This annotation on pods will only block automatic deprovisioning that is considered \"voluntary,\" that is, disruptions that can be avoided. Disruptions that Karpenter deems as \"involuntary\" and will ignore the `karpenter.sh/do-not-evict` annotation include spot interruption and manual deletion of the node. See Disabling Deprovisioning for more details.",
+    "remediation": "The annotation now blocks only VOLUNTARY disruption. Pods that relied on it to survive `kubectl delete node`, a spot interruption or a manual node deletion no longer do. For the workloads named here, add a PodDisruptionBudget or accept the eviction — the annotation alone is no longer the guarantee it was.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations[\"karpenter.sh/do-not-evict\"] != null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each pod printed relies on an annotation that no longer blocks involuntary disruption"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.26-helm-chart-drops-default-controller-resources",
+    "severity": "MEDIUM",
+    "title": "Karpenter's controller loses its default resource requests and limits",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the running resources came from the chart's defaults or from your own values cannot be told apart from the rendered workload — both look like an explicit request"
+    },
+    "quote": "Default resources `requests` and `limits` are removed from the Karpenter's controller deployment through the Helm chart. If you have not set custom resource `requests` or `limits` in your Helm values and are using Karpenter's defaults, you will now need to set these values in your Helm chart deployment.",
+    "remediation": "Set `resources.requests` and `resources.limits` explicitly in your Helm values before upgrading. If you were relying on the chart's defaults, the controller comes back with none, which on a busy cluster is the difference between a scheduled pod and an evicted one.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs -- then read its resources block"
+  }
+]

@@ -380,21 +380,5 @@
     },
     "quote": "Graduated the `MultiCIDRServiceAllocator` feature gate to stable, and the `DisableAllocatorDualWrite` feature gate to beta (disabled by default).\n**Action required** for Kubernetes cluster administrators and for distributions that manage the cluster Service CIDR.\nKubernetes now allows users to define the cluster Service CIDR via an API object: ServiceCIDR.\nDistributions or administrators of Kubernetes may want to control that new Service CIDRs added to the cluster do not overlap with other networks on the cluster, that only belong to a specific range of IPs. Administrators may also prefer to retain the existing behavior of only having one ServiceCIDR per cluster. You can use `ValidatingAdmissionPolicy` to achieve this. ([#128971](https://github.com/kubernetes/kubernetes/pull/128971), [@aojea](https://github.com/aojea)) [SIG Apps, Architecture, Auth, CLI, Etcd, Network, Release and Testing]",
     "remediation": "Use `ValidatingAdmissionPolicy` to ensure newly added ServiceCIDRs do not overlap with other cluster networks, remain within the permitted IP range, and, if desired, preserve the existing behavior of only having one ServiceCIDR per cluster."
-  },
-  {
-    "ruleId": "rtz-gen-kubernetes-1.33-verify-kube-proxy-nftables-kernel-check-setting",
-    "severity": "MEDIUM",
-    "title": "Verify the kube-proxy nftables kernel version check setting",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "The kube-proxy environment variable configuration is held in the component's pod or node configuration and the intended environment-variable value cannot be settled by the permitted inventory predicates."
-    },
-    "scope": {
-      "kind": "IMAGE_REPOSITORY_PRESENT",
-      "objectKind": "DaemonSet",
-      "target": "kube-proxy"
-    },
-    "quote": "Fixed the behavior of the `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` environment variable in the nftables proxier. The kernel version check is now skipped only when this variable is explicitly set to a non-empty value. To skip the check, set the `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` environment variable. ([#130401](https://github.com/kubernetes/kubernetes/pull/130401), [@ryota-sakamoto](https://github.com/ryota-sakamoto))",
-    "remediation": "Verify kube-proxy configuration and set `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` to a non-empty value if the kernel version check should be skipped."
   }
 ]

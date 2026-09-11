@@ -1,0 +1,147 @@
+[
+  {
+    "version": "2.6",
+    "note": "`argocd app create` for old CLI versions fails with API version >=2.6.7",
+    "reason": "a CLI-side incompatibility: the fix is to upgrade the argocd CLI on the operator's machine, and nothing on the cluster records which CLI versions are in use."
+  },
+  {
+    "version": "2.7",
+    "note": "Upgraded Helm Version",
+    "reason": "a bundled-tool bump within a major (3.10.3 to 3.11.2) with no breaking change stated by the note; nothing on the cluster settles it."
+  },
+  {
+    "version": "2.7",
+    "note": "`argocd applicationset` CLI incompatibilities for ApplicationSets with list generators",
+    "reason": "a CLI-vs-server version mismatch on 2.7.0-2.7.2: the fix is to run CLI and server both at 2.7.3 or later, and CLI versions are not something the cluster records."
+  },
+  {
+    "version": "2.8",
+    "note": "Filtering applied to cluster `List` API endpoint",
+    "reason": "an API-response behaviour change for clients of the cluster List endpoint; nothing on the cluster records which clients pass query parameters they expected to be ignored."
+  },
+  {
+    "version": "2.9",
+    "note": "Upgraded Kustomize Version",
+    "reason": "a bundled-tool bump within a major (5.1.0 to 5.2.1) with no breaking change stated by the note."
+  },
+  {
+    "version": "2.10",
+    "note": "Upgraded Helm Version",
+    "reason": "a bundled-tool bump within a major (3.13.2 to 3.14.3) with no breaking change stated by the note."
+  },
+  {
+    "version": "2.10",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients, plus an end-of-life advisory for the series; nothing on the cluster settles either."
+  },
+  {
+    "version": "2.11",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients, plus an end-of-life advisory for the series; nothing on the cluster settles either."
+  },
+  {
+    "version": "2.12",
+    "note": "Upgraded Helm Version",
+    "reason": "a bundled-tool bump within a major (3.14.4 to 3.15.2) with no breaking change stated by the note."
+  },
+  {
+    "version": "2.12",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients, plus an end-of-life advisory for the series; nothing on the cluster settles either."
+  },
+  {
+    "version": "2.13",
+    "note": "Upgraded Helm Version",
+    "reason": "a bundled-tool bump within a major (3.15.2 to 3.15.4) with no breaking change stated by the note."
+  },
+  {
+    "version": "2.13",
+    "note": "Change in Log File Extension for Downloaded Logs",
+    "reason": "a UI download-file naming change (.txt to .log) that affects tooling on the operator's machine, not anything on the cluster."
+  },
+  {
+    "version": "2.14",
+    "note": "Upgraded Helm Version",
+    "reason": "a bundled-tool bump within a major (to 3.16.2) whose only stated change is a new opt-in skipSchemaValidation flag; nothing on the cluster settles it."
+  },
+  {
+    "version": "2.14",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.0",
+    "note": "Images missing release notes on GitHub",
+    "reason": "a release-process note (GitHub release notes missing for 3.0.7-3.0.10); nothing to check on a cluster."
+  },
+  {
+    "version": "3.0",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.1",
+    "note": "Helm Upgraded to 3.18.4",
+    "reason": "the note itself states there are no breaking changes in Helm 3.18; nothing to check."
+  },
+  {
+    "version": "3.1",
+    "note": "Kustomize Upgraded to 5.7.0",
+    "reason": "the note itself states there are no breaking changes in Kustomize 5.7; nothing to check."
+  },
+  {
+    "version": "3.1",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.2",
+    "note": "Deprecated fields in the repo-server GRPC service",
+    "reason": "an internal gRPC API deprecation for direct clients of the repo-server service; the note says no user-facing functionality changed, and such clients are not on the cluster."
+  },
+  {
+    "version": "3.2",
+    "note": "Sanitized project API response",
+    "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.2",
+    "note": "Added Healthchecks",
+    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
+  },
+  {
+    "version": "3.3",
+    "note": "Anonymous call to Settings API returns fewer fields",
+    "reason": "an API-response change for anonymous callers of the Settings API; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.3",
+    "note": "Added Healthchecks",
+    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
+  },
+  {
+    "version": "3.4",
+    "note": "Custom Healthchecks Added",
+    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
+  },
+  {
+    "version": "3.5",
+    "note": "Event-listing gRPC methods now return an Argo CD `EventList` type",
+    "reason": "a gRPC/OpenAPI schema change for generated clients of three event-listing RPCs; the CLI, UI and REST consumers are unaffected per the note, and generated clients are not on the cluster."
+  },
+  {
+    "version": "3.5",
+    "note": "GnuPG signature verification result",
+    "reason": "a REST API field deprecation (`verifyResult` to `sourceIntegrityResult`) for API clients; nothing on the cluster settles it."
+  },
+  {
+    "version": "3.5",
+    "note": "Release `sbom.tar.gz` contents",
+    "reason": "a change to the release archive's SBOM file layout for supply-chain tooling; nothing on the cluster."
+  },
+  {
+    "version": "3.5",
+    "note": "mTLS support for repo-server",
+    "reason": "an opt-in feature that is off by default; the note itself says no action is required for operators who do not configure it."
+  }
+]

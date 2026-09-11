@@ -1,0 +1,18 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.23-userspace-proxy-mode",
+  "severity": "HIGH",
+  "title": "userspace proxy mode deprecated, removal in 1.25",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "userspace",
+   "reason": "read from the kube-proxy ConfigMap's own mode field; a mode passed only as a --proxy-mode container arg is not read here"
+  },
+  "quote": "A deprecation notice has been added when using the kube-proxy userspace proxier, which will be removed in v1.25.",
+  "remediation": "Move to `iptables` (or `ipvs`) on Linux, or `kernelspace` on Windows, before 1.25 \u2014 this mode is removed there, not merely warned about.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; userspace is removed in 1.26"
+ }
+]

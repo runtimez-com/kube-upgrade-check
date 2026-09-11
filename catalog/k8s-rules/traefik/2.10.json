@@ -1,0 +1,39 @@
+[
+  {
+    "ruleId": "rtz-traefik-2.10-containo-api-group-deprecated",
+    "severity": "HIGH",
+    "title": "Traefik CRDs still on the deprecated traefik.containo.us API group",
+    "detection": {
+      "kind": "API_VERSION_IN_USE",
+      "target": "traefik.containo.us"
+    },
+    "quote": "In `v2.10`, the Kubernetes CRDs API Group `traefik.containo.us` is deprecated, and its support will end starting with Traefik v3. Please use the API Group `traefik.io` instead.",
+    "remediation": "Migrate the listed objects to the `traefik.io` API group while still on v2, where BOTH groups are served and the move is reversible. This is the single most valuable thing to do before a v3 upgrade: v3 removes `traefik.containo.us` outright, so anything left on it stops routing the moment the new version starts.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.containo.us,ingressroutetcps.traefik.containo.us,middlewares.traefik.containo.us -A 2>/dev/null # any rows = objects to migrate before v3; a NotFound error = the legacy CRDs are already gone"
+  },
+  {
+    "ruleId": "rtz-traefik-2.10-nomad-namespace-deprecated",
+    "severity": "LOW",
+    "title": "Nomad provider namespace option deprecated",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Nomad provider is not part of any Kubernetes object collected for this cluster"
+    },
+    "quote": "In `v2.10`, the `namespace` option of the Nomad provider is deprecated, please use the `namespaces` options instead.",
+    "remediation": "Not applicable to a Kubernetes-only deployment. If the same configuration also drives a Nomad provider, switch `namespace` to the plural `namespaces`."
+  },
+  {
+    "ruleId": "rtz-traefik-2.10-traefik-hub-configuration-removed",
+    "severity": "LOW",
+    "title": "Traefik Hub configuration removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)(^|[^a-z])(experimental\\.)?hub\\.",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "In `v2.10`, Traefik Hub configuration has been removed because Traefik Hub v2 doesn't require this configuration.",
+    "remediation": "Remove any leftover Traefik Hub block from the static configuration; Hub v2 does not need it. Note this concerns Traefik Hub, a separate product from Traefik Proxy."
+  }
+]

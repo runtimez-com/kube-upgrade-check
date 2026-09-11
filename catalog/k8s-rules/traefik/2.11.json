@@ -1,0 +1,479 @@
+[
+  {
+    "ruleId": "rtz-traefik-2.11-alias-headers-strategy-replaces-underscore",
+    "severity": "MEDIUM",
+    "title": "underscoreHeadersStrategy replaced by aliasHeadersStrategy",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)underscoreHeadersStrategy",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "From version `v2.11.56` onwards, a new `aliasHeadersStrategy` entry point option deprecates and replaces the `underscoreHeadersStrategy` option introduced in `v2.11.51`.",
+    "remediation": "Move the entry point from `underscoreHeadersStrategy` to `aliasHeadersStrategy`. The replacement covers every aliasing character rather than the underscore alone, so re-check which header names you actually intend to accept before switching.",
+    "coversNotes": [
+      "UnderscoreHeadersStrategy"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-basicauth-requires-non-empty-users",
+    "severity": "HIGH",
+    "title": "BasicAuth middleware without users unmounts its routers",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^basicAuth$"
+    },
+    "quote": "From version `v2.11.48` onwards, the BasicAuth middleware requires a non-empty users configuration in order to be built successfully.",
+    "remediation": "Give every BasicAuth middleware a non-empty `users` list (or a resolving secret reference) before upgrading past 2.11.48. A middleware that previously returned 401 now fails to build, and every router referencing it is unmounted and serves 404 instead.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.basicAuth != null) | select(((.spec.basicAuth.users // []) | length) == 0 and (.spec.basicAuth.secret // \"\") == \"\") | .metadata.namespace + \"/\" + .metadata.name' # names printed have no users and will unmount their routers"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-chain-middleware-honors-allow-cross-namespace",
+    "severity": "HIGH",
+    "title": "Chain middleware now honors allowCrossNamespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Chain's referenced middlewares live in the middleware's own spec body, which the projection reduces to top-level type key names only, so the cross-namespace references cannot be read"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^chain$"
+    },
+    "quote": "In `v2.11.43`, the `Chain` middleware now honors the Kubernetes CRD provider's `allowCrossNamespace` option.",
+    "remediation": "Find every Chain that references a middleware in another namespace. Unless `allowCrossNamespace` is enabled, those references stop resolving on 2.11.43 and the routers using the Chain fail to load. Either colocate the middlewares or enable the option deliberately — it was previously being bypassed, so this is a security fix rather than a regression.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.chain != null) | . as $m | .spec.chain.middlewares[]? | select((.namespace // \"\") != \"\" and (.namespace != $m.metadata.namespace)) | $m.metadata.namespace + \"/\" + $m.metadata.name + \" -> \" + .namespace + \"/\" + .name' # rows printed are cross-namespace Chain references that now require allowCrossNamespace"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-cluster-wide-default-tlsoption-tlsstore",
+    "severity": "HIGH",
+    "title": "A default TLSOption or TLSStore in any namespace is cluster-wide",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "TLSOption and TLSStore are not among the collected kinds (IngressRoute, IngressRouteTCP and Middleware), so their existence cannot be read from the synced inventory"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "IngressRoute|IngressRouteTCP",
+      "target": "tls"
+    },
+    "quote": "In the Kubernetes CRD provider, the `TLSOption` and the `TLSStore` named `default` are cluster-wide, whatever the namespace they are defined in.",
+    "remediation": "Treat the ability to create a TLSOption or TLSStore named `default` as a cluster-wide privilege and restrict it with RBAC. Anyone who can create one in any namespace can replace the TLS policy — mutual TLS included — of every router that does not reference TLS options explicitly.",
+    "verifyCommand": "kubectl get tlsoptions.traefik.containo.us,tlsstores.traefik.containo.us,tlsoptions.traefik.io,tlsstores.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name == \"default\") | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # any row is a cluster-wide default owned by that namespace"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-conflicting-tls-options-fall-back-to-default",
+    "severity": "HIGH",
+    "title": "Routers sharing a host name with different TLS options fall back to default",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "IngressRoute",
+      "target": "tls"
+    },
+    "quote": "The TLS options are configured on a router, but they are applied during the TLS handshake, before the routing occurs, and are therefore mapped to the host names found in the router rule rather than to the router itself.",
+    "remediation": "Review the listed routes: where two serve the same host name on the same entry point with different TLS options, Traefik cannot choose and applies the `default` options for that host name. Consolidate to one TLS option per host name, or split the host names across entry points. The failure is silent — a route can look strictly configured while serving the default policy.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.tls != null) | .metadata.namespace + \"/\" + .metadata.name + \"  entryPoints=\" + ((.spec.entryPoints // []) | join(\",\")) + \"  tlsOptions=\" + (.spec.tls.options.name // \"default\")' | sort # two rows sharing a host with different tlsOptions both fall back to default"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-connection-headers-removed-earlier",
+    "severity": "MEDIUM",
+    "title": "Connection header directives are stripped before the middleware chain",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "In `v2.11.3`, the handling of the request Connection headers directives has changed to prevent any abuse. Before, Traefik removed any header listed in the Connection header just before forwarding the request to the backends. Now, Traefik removes the headers listed in the Connection header as soon as the request is handled.",
+    "remediation": "If any middleware reads a header that clients list in `Connection`, it no longer sees it — the header is now removed as the request is handled rather than just before forwarding. Use the new `<entrypoint>.forwardedHeaders.connection` option to allow specific headers through the middleware chain before removal.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |forwardedHeaders\\.connection' # rows show any Connection allow-list on the entry points; a header that clients name in Connection is now removed unless listed there; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-cross-provider-namespaces",
+    "severity": "MEDIUM",
+    "title": "crossProviderNamespaces controls cross-provider references",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In `v2.11.46`, a new `crossProviderNamespaces` option is available on the Kubernetes CRD, Ingress, and Gateway providers.",
+    "remediation": "Set this deliberately rather than inheriting the default: it governs whether resources under one provider may reference resources under another, and enabling it widens what a namespace owner can reach.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |crossProviderNamespaces' # rows show whether crossProviderNamespaces is set on the providers; nothing printed means the default applies, decide it explicitly; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-docker-minimum-engine-version",
+    "severity": "LOW",
+    "title": "Docker provider requires Docker Engine v19.03 or above",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this concerns the Docker provider, which is not part of any Kubernetes object collected for this cluster"
+    },
+    "quote": "Starting with `v2.11.45`, the Docker provider requires Docker API version v1.40 or above (Docker Engine v19.03).",
+    "remediation": "Not applicable to a Kubernetes-only deployment. If the same Traefik configuration is also used against a Docker host, update that engine or pin `DOCKER_API_VERSION`."
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-encoded-characters-defaults-flipped-to-true",
+    "severity": "HIGH",
+    "title": "Encoded-character options default to true, disabling the 2.11.32 hardening",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Since `v2.11.35`, the options for encoded characters now have a `true` default value. This means that Traefik will not reject requests with a path containing a specific set of encoded characters by default. It is now up to the users to configure the security hardening of encoded characters.",
+    "remediation": "Read this together with 2.11.32: the hardening added there is OFF again by default from 2.11.35, and securing it becomes explicitly the operator's job. If you relied on 2.11.32 rejecting encoded characters, set those options back to `false` explicitly — otherwise moving past 2.11.35 silently reopens what 2.11.32 closed.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |encoded' # rows show any encoded-character option set on an entry point; nothing printed means the relaxed default (true) applies from this version, set them to false explicitly to keep the hardening; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-encoded-characters-rejected-by-default",
+    "severity": "HIGH",
+    "title": "Requests with certain encoded characters are rejected with 400",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Since `v2.11.32`, for security reasons Traefik now rejects requests with a path containing a specific set of encoded characters by default. When such a request is received, Traefik responds with a `400 Bad Request` status code.",
+    "remediation": "Check whether any client legitimately encodes those characters in the path — some SDKs and legacy integrations encode slashes. Those requests start returning 400 on 2.11.32.",
+    "verifyCommand": "( kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed expect percent-encoded characters in the path; the clients sending them may now receive 400 unless the encoded-character options are relaxed"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-errors-middleware-error-request-headers",
+    "severity": "MEDIUM",
+    "title": "errorRequestHeaders needs updated CRDs to be usable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^errors$"
+    },
+    "quote": "The `errorRequestHeaders` option, introduced in `v2.11.44` for the Errors middleware, was not exposed on the Kubernetes CRD provider. Starting with `v2.11.53`, it can now be configured on the `Middleware` CRD.",
+    "remediation": "Apply the updated CRD manifest for this Traefik minor BEFORE upgrading if you intend to use `errorRequestHeaders` on the Errors middleware. Until the CRD carries the field the API server strips it, so the option appears to apply and silently does nothing.",
+    "verifyCommand": "kubectl get crd middlewares.traefik.io -o json | jq -e '.spec.versions[].schema.openAPIV3Schema.properties.spec.properties.errors.properties.errorRequestHeaders' >/dev/null 2>&1 && echo \"errorRequestHeaders present in CRD schema\" || echo \"CRD schema predates errorRequestHeaders\""
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-forwardauth-max-response-body-size",
+    "severity": "MEDIUM",
+    "title": "ForwardAuth maxResponseBodySize defaults to unlimited",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^forwardAuth$"
+    },
+    "quote": "In `v2.11.38`, a new `maxResponseBodySize` option has been added to the ForwardAuth middleware configuration. The default value for this option is -1, which means there is no limit to the response body size.",
+    "remediation": "Set `maxResponseBodySize` on every ForwardAuth middleware. The default of -1 is unlimited, so a hostile or malfunctioning auth server can exhaust Traefik's memory.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.forwardAuth != null) | select(.spec.forwardAuth.maxResponseBodySize == null) | .metadata.namespace + \"/\" + .metadata.name' # names printed accept an unlimited auth response body"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-forwardauth-trust-forward-header-unset-warns",
+    "severity": "MEDIUM",
+    "title": "ForwardAuth trustForwardHeader left unset behaves inconsistently",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^forwardAuth$"
+    },
+    "quote": "In `v2.11.43`, when `trustForwardHeader` is not explicitly set, Traefik logs a warning as its behavior is inconsistent: some `X-Forwarded-*` headers (e.g. `X-Forwarded-For`, `X-Forwarded-Proto`) are removed while others (e.g. `X-Forwarded-Prefix`) are forwarded untouched.",
+    "remediation": "Set `trustForwardHeader` explicitly to `true` or `false` on every ForwardAuth middleware. Leaving it unset is the case that warns, and the inconsistency is the security-relevant part: the auth server sees some forwarded headers stripped and others passed through untouched.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.forwardAuth != null) | select(.spec.forwardAuth.trustForwardHeader == null) | .metadata.namespace + \"/\" + .metadata.name' # names printed leave it unset and get the inconsistent behaviour"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-gateway-router-rule-values-quoted",
+    "severity": "MEDIUM",
+    "title": "Gateway API router rules now quote embedded values, changing generated names",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the routers this note describes are generated by Traefik at runtime from Gateway API objects; they are not Kubernetes objects the agent can collect"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v2.11.55`, the Kubernetes Gateway API provider quotes the values it takes from `HTTPRoute`, `TCPRoute` and `TLSRoute` resources when it builds router rules, so that a value can no longer alter the rule it is embedded in.",
+    "remediation": "This is a rule-injection fix: a value taken from a route could previously alter the router rule it was embedded in. Generated router and service names embed a hash of the rule, so they change too — update anything pinning those names.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,tlsroutes.gateway.networking.k8s.io -A 2>/dev/null # every route listed gets a new generated router name on upgrade; nothing listed (or no such CRDs) means the Gateway provider has nothing to rename"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-go122-minimum-tls-version-12",
+    "severity": "HIGH",
+    "title": "Minimum TLS version served is now 1.2",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "TLS handshake behaviour comes from the Go runtime Traefik is built with, not from any collected object"
+    },
+    "quote": "By default, the minimum version offered by `crypto/tls` servers is now TLS 1.2 if not specified with config.MinimumVersion,",
+    "remediation": "Identify clients still negotiating TLS 1.0/1.1 before upgrading; they will fail to connect unless a TLSOption sets a lower minimum explicitly. The `tls10server=1` GODEBUG setting reverts it, but raising the client floor is the real remediation.",
+    "verifyCommand": "kubectl get tlsoptions.traefik.containo.us,tlsoptions.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \"  minVersion=\" + (.spec.minVersion // \"unset -> defaults to TLS 1.2\")' # rows with minVersion unset now serve TLS 1.2 as the floor"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-go122-tls-ciphersuites-without-ecdhe",
+    "severity": "HIGH",
+    "title": "Cipher suites without ECDHE no longer offered before TLS 1.3",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "TLS handshake behaviour comes from the Go runtime Traefik is built with, not from any collected object"
+    },
+    "quote": "By default, cipher suites without ECDHE support are no longer offered by either clients or servers during pre-TLS 1.3 handshakes.",
+    "remediation": "Check for legacy clients or backends that can only negotiate non-ECDHE (RSA key exchange) cipher suites — they stop connecting after this upgrade. The `tlsrsakex=1` GODEBUG setting restores the old behaviour as a temporary bridge, but treat it as time-boxed rather than a fix."
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-http-provider-max-response-body-size",
+    "severity": "MEDIUM",
+    "title": "HTTP provider maxResponseBodySize defaults to unlimited",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In `v2.11.41`, a new `maxResponseBodySize` option has been added to the HTTP provider configuration. The default value for this option is -1, which means there is no limit to the response body size.",
+    "remediation": "If the HTTP provider is in use, set `maxResponseBodySize` on it. Unlimited means the configuration endpoint can exhaust Traefik's memory — this is the provider-side twin of the ForwardAuth option added in 2.11.38.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |providers\\.http' # rows show the HTTP provider settings; a provider without maxResponseBodySize accepts an unlimited configuration response; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-http1-connect-rejected",
+    "severity": "LOW",
+    "title": "HTTP/1 CONNECT requests now return 501",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Starting with `v2.11.53`, HTTP/1 `CONNECT` requests are rejected with a `501 Not Implemented` response.",
+    "remediation": "No action for almost every deployment: HTTP/1 CONNECT was non-functional before this change, so the rejection makes existing behaviour explicit rather than removing a capability."
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-ipwhitelist-deprecated",
+    "severity": "MEDIUM",
+    "title": "IPWhiteList middleware deprecated in favour of IPAllowList",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^ipWhiteList$"
+    },
+    "quote": "In `v2.11`, the `IPWhiteList` middleware is deprecated, please use the IPAllowList middleware instead.",
+    "remediation": "Rename every `ipWhiteList` middleware to `ipAllowList` while still on v2 — the configuration body is unchanged. Doing it here rather than during the v3 jump matters: in v3 the old name is removed outright, so a Middleware left on it stops being recognised and the routers referencing it fail to load.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.ipWhiteList != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still use the deprecated type"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-maximum-router-priority-value-changed",
+    "severity": "MEDIUM",
+    "title": "Maximum user-defined router priority value changed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the router rule lives in spec.routes[].match, nested inside the routes array; the evaluator matches only TOP-LEVEL fields of the collected projection"
+    },
+    "quote": "Before v2.11.1, the maximum user-defined router priority value is:",
+    "remediation": "If any router sets an explicit high `priority`, re-check it against the new maximum. Priority decides which router wins when several match the same request, so a value that is silently clamped changes routing rather than erroring.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.routes[]? | select(.priority != null) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  priority=\" + (.priority|tostring)' # review any large explicit priority"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-multipath-tcp-removed",
+    "severity": "LOW",
+    "title": "MultiPath TCP support removed again",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Since `v2.11.28`, the MultiPath TCP support introduced with `v2.11.26` has been removed.",
+    "remediation": "Only relevant if you enabled MPTCP during the 2.11.26–2.11.27 window; remove that configuration. It was withdrawn because enabling it on some platforms could stop Traefik outright.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |multipath|mptcp' # nothing printed means MPTCP was never enabled and the removal is a no-op; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-read-timeout-default-60s",
+    "severity": "HIGH",
+    "title": "EntryPoint readTimeout now defaults to 60 seconds",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Starting with `v2.11.2` the entryPoints `readTimeout` option default value changed to 60 seconds.",
+    "remediation": "Anything relying on the previous unbounded read now gets cut at 60s — long uploads, streaming request bodies and slow clients are the ones to check. Set `readTimeout` explicitly on the affected entry point rather than depending on the default either way.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |readTimeout' # rows show explicit readTimeout settings; an entry point without one now cuts request reads at 60s; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-request-path-normalization-and-reserved-chars",
+    "severity": "HIGH",
+    "title": "Paths are RFC 3986 normalized and reserved characters stay encoded when matching",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Since `v2.11.25`, the reserved characters (as per RFC 3986) are kept encoded in the request path when matching the router rules. Those characters, when decoded, change the meaning of the request path for routing purposes, and Traefik now keeps them encoded to avoid any ambiguity.",
+    "remediation": "Read this with the 2.11.25 normalization change: unreserved characters are decoded and percent-encodings uppercased, while reserved characters stay encoded for matching. The upstream note's own example is the one to check — `/foo%2Fbar` matched `PathPrefix(`/foo/bar`)` on 2.11.24 and no longer does on 2.11.25. Any rule relying on an encoded separator being decoded before matching needs rewriting.",
+    "coversNotes": [
+      "Request Path Normalization",
+      "Request Path Matching Examples"
+    ],
+    "verifyCommand": "( kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; re-test them against real request URLs, reserved characters now stay encoded while unreserved ones are decoded"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-request-path-sanitization",
+    "severity": "HIGH",
+    "title": "Request paths are cleaned before rule matching and forwarding",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Since `v2.11.24`, the incoming request path is now cleaned before being used to match the router rules and sent to the backends. Any `/../`, `/./` or duplicate slash segments in the request path is interpreted and/or collapsed.",
+    "remediation": "Routing and backend paths both change for any request containing `/../`, `/./` or duplicate slashes. Rules written against the uncleaned form may stop matching, and backends that received the raw path now receive the collapsed one. Test representative URLs before upgrading rather than reasoning about the rules alone.",
+    "verifyCommand": "( kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '//|/\\.\\.?(/|$)' # rules printed match on a path with ./ ../ or doubled slashes, which are now collapsed before matching"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-responding-timeouts-sections-removed",
+    "severity": "MEDIUM",
+    "title": "respondingTimeouts.tcp and .http sections added then removed within 2.11",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)respondingTimeouts\\.(tcp|http)\\.",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "Starting with `v2.11.2` the `respondingTimeouts.tcp` and `respondingTimeouts.http` sections introduced in `v2.11.1` have been removed. To configure the responding timeouts, please use the `respondingTimeouts` section.",
+    "remediation": "If you adopted the `respondingTimeouts.tcp`/`.http` sections on 2.11.1, move that configuration back to the flat `respondingTimeouts` section before going further. The same applies to `tcp.lingeringTimeout`, added in 2.11.1 and removed in 2.11.2. Configuration left on the short-lived shape is simply not read.",
+    "coversNotes": [
+      "EntryPoint.Transport.RespondingTimeouts.<Timeout>",
+      "EntryPoint.Transport.RespondingTimeouts.TCP.LingeringTimeout",
+      "LingeringTimeout"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-safe-naming-provider-option",
+    "severity": "MEDIUM",
+    "title": "safeNaming changes generated router, middleware and service names",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Starting with `v2.11.55`, the new `safeNaming` provider option enables collision-safe naming for the routers, middlewares and services generated by the Kubernetes CRD provider, instead of the current naming scheme, under which names can collide across namespaces or resources.",
+    "remediation": "Enabling `safeNaming` is the safer configuration but it renames generated routers, middlewares and services. Update anything pinned to those names — dashboards, metrics queries, alert rules — in the same change. Leaving it off keeps a real cross-namespace collision risk.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |safeNaming' # nothing printed means safeNaming is unset; enabling it renames every generated router, middleware and service; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-strip-prefix-rejects-non-normalised-paths",
+    "severity": "HIGH",
+    "title": "StripPrefix returns 400 when the stripped path is not normalised",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "types[]",
+      "value": "^stripPrefix$"
+    },
+    "quote": "From version `v2.11.48` onwards, the StripPrefix middleware and the StripPrefixRegex middleware reject requests (`400 Bad Request`) when stripping the configured prefix produces a path that differs from its normalised form",
+    "remediation": "Check any caller relying on `.`/`..` segments surviving a StripPrefix — those requests now receive a 400. The fix is normally to correct the caller's path rather than to work around the middleware.",
+    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.stripPrefix != null or .spec.stripPrefixRegex != null) | .metadata.namespace + \"/\" + .metadata.name + \"  \" + ((.spec.stripPrefix.prefixes // .spec.stripPrefixRegex.regex // []) | join(\",\"))' # names printed strip a prefix; a caller whose path still carries . or .. segments after stripping now receives 400"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-tcp-udp-negative-weights-rejected",
+    "severity": "MEDIUM",
+    "title": "Negative weights in TCP/UDP weighted services are now rejected",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "service weights live in spec.routes[].services[], nested inside the routes array, so they are not a top-level field the evaluator can match"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "IngressRouteTCP"
+    },
+    "quote": "Negative weights in a TCP or UDP weighted service are now rejected when the service is built.",
+    "remediation": "Remove any negative weight from TCP and UDP weighted services — the service now fails to build instead of being accepted. Worth fixing regardless of the upgrade: on earlier builds the same configuration spins the load-balancer selection loop while holding its lock, pinning a CPU core and blocking every subsequent connection to that service until Traefik restarts.",
+    "verifyCommand": "kubectl get ingressroutetcps.traefik.containo.us,ingressroutetcps.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select((.weight // 0) < 0) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  weight=\" + (.weight|tostring)' # rows printed now fail to build"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-weighted-service-child-errors-reported",
+    "severity": "LOW",
+    "title": "A weighted service with an unbuildable child now reports disabled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the setting lives on a service under spec.routes[].services[], nested inside the routes array rather than at the top level of the projection"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "IngressRouteTCP"
+    },
+    "quote": "When a child of a TCP or UDP weighted service cannot be built, for instance because it does not exist, the parent weighted service is now reported as `disabled` in the API, with the error attached, as the HTTP weighted service already was.",
+    "remediation": "No configuration change is required — this only changes what the API reports. Note it when debugging: a TCP/UDP weighted service whose child is missing now shows as `disabled` with the error attached, where before it reported neither an error nor a status. The routers referencing it were already not created either way.",
+    "verifyCommand": "kubectl get ingressroutetcps.traefik.containo.us,ingressrouteudps.traefik.containo.us,ingressroutetcps.traefik.io,ingressrouteudps.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | select((.services // [])[1] != null) | .services[] | \"\\($r.kind) \\($r.metadata.namespace)/\\($r.metadata.name) child \\(.namespace // $r.metadata.namespace)/\\(.name):\\(.port)\"' # every child Service printed must exist; a missing child now marks the parent weighted service disabled in the API"
+  },
+  {
+    "ruleId": "rtz-traefik-2.11-x-forwarded-prefix-stripped-when-untrusted",
+    "severity": "MEDIUM",
+    "title": "X-Forwarded-Prefix is stripped when sent from an untrusted source",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik entry point or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "In `v2.11.14`, the `X-Forwarded-Prefix` header is now handled like the other `X-Forwarded-*` headers: Traefik removes it when it's sent from an untrusted source.",
+    "remediation": "Backends that depend on `X-Forwarded-Prefix` stop receiving it unless the sender is in the entry point's trusted IPs. Add the upstream proxy to `forwardedHeaders.trustedIPs`, or have the backend stop relying on the header. This is a security fix — the header was previously forwarded untouched from anyone.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |forwardedHeaders' # rows show the entry points' trusted IPs; X-Forwarded-Prefix now only survives from senders listed there; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  }
+]

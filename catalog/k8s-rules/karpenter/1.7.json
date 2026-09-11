@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.7-pods-with-resourceclaims-are-ignored-by-the-scheduler",
+    "severity": "HIGH",
+    "title": "Workloads requesting a ResourceClaim stop being scheduled by Karpenter",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the agent writes hasResourceClaims only when a workload HAS one, so a cluster with none cannot be told apart from an older agent that never wrote the key — the hint names the workloads that do carry claims"
+    },
+    "quote": "Pods with `ResourceClaim` requests are explicitly ignored. Older revisions of Karpenter are not aware of the field and would ignore those requests. DRA is not currently supported by Karpenter.",
+    "remediation": "Karpenter now explicitly ignores pods that request a ResourceClaim, and Dynamic Resource Allocation is not supported. The workloads named here get no capacity provisioned for them: they stay Pending unless a node they fit already exists. Older Karpenter releases ignored the field unknowingly and behaved the same way, so this makes an existing gap explicit rather than introducing one.",
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Deployment|StatefulSet|DaemonSet|Pod",
+      "target": "hasResourceClaims",
+      "value": "true"
+    },
+    "verifyCommand": "kubectl get pods,deploy,statefulset,daemonset -A -o json | jq -r '.items[] | select(((.spec.template.spec // .spec).resourceClaims // []) != []) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # each workload printed requests a ResourceClaim and gets no Karpenter capacity"
+  }
+]

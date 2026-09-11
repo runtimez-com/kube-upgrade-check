@@ -27,6 +27,48 @@ type GeneratedRule struct {
 	VerifyCommand    string     `json:"verifyCommand"`
 	Detection        Detection  `json:"detection"`
 	Scope            *ScopeHint `json:"scope"`
+	// Gate is a precondition on ANOTHER kind that a detectable rule needs before its detection
+	// means anything (Argo CD's selector-format change only bites clusters whose cluster Secret
+	// carries auto-label-cluster-info). No object satisfies it: the rule clears with the
+	// precondition stated. Its kind could not be read: the rule declines.
+	Gate *Gate `json:"gate"`
+	// CoversNotes names further upstream notes this one rule answers. Coverage bookkeeping for
+	// the authoring side; nothing here reads it.
+	CoversNotes []string `json:"coversNotes"`
+	// Enabled is absent for almost every rule; a rule switched off in the catalog stays listed
+	// there so the decision is visible, and is skipped here.
+	Enabled *bool `json:"enabled"`
+}
+
+// IsEnabled reports whether the rule is evaluated at all. Absent means enabled.
+func (r GeneratedRule) IsEnabled() bool { return r.Enabled == nil || *r.Enabled }
+
+// Slug is the rule id minus its source and version segments: "rtz-coredns-1.7-cpu-flag-removed"
+// yields "cpu-flag-removed". A vendor that repeats a note per release ships it under one slug at
+// several versions, and a hop crossing them fires each on the same objects; the slug is what
+// lets the evaluator count that as one finding.
+func (r GeneratedRule) Slug() string {
+	prefix := "rtz-" + r.SourceID + "-" + r.AppliesAtVersion + "-"
+	if strings.HasPrefix(r.RuleID, prefix) {
+		return strings.TrimPrefix(r.RuleID, prefix)
+	}
+	// A hand-numbered id: drop the leading "rtz-<source>-" and the first dotted segment.
+	rest := strings.TrimPrefix(r.RuleID, "rtz-"+r.SourceID+"-")
+	if i := strings.Index(rest, "-"); i > 0 && strings.Contains(rest[:i], ".") {
+		return rest[i+1:]
+	}
+	return rest
+}
+
+// Gate is the precondition schema: the scope-hint vocabulary, plus the reason it exists.
+type Gate struct {
+	Kind       string `json:"kind"`
+	ObjectKind string `json:"objectKind"`
+	Namespace  string `json:"namespace"`
+	ObjectName string `json:"objectName"`
+	Target     string `json:"target"`
+	Value      string `json:"value"`
+	Reason     string `json:"reason"`
 }
 
 // Detection says how a rule is decided. Kind names the predicate; the other fields are its
@@ -48,6 +90,7 @@ type ScopeHint struct {
 	Kind       string `json:"kind"`
 	ObjectKind string `json:"objectKind"`
 	Namespace  string `json:"namespace"`
+	ObjectName string `json:"objectName"` // regex over metadata.name, narrows the candidates
 	Target     string `json:"target"`
 	Value      string `json:"value"`
 }
@@ -109,6 +152,11 @@ func (r GeneratedRule) Validate() error {
 		if d.ObjectKind == "" {
 			return fmt.Errorf("%s: KIND_PRESENT without an objectKind", r.RuleID)
 		}
+	case DetectVersionSkewExceeds:
+		// Names a component (kubelet, kube-proxy) and the minors it may lag by; no object kind.
+		if d.Target == "" || d.Value == "" {
+			return fmt.Errorf("%s: VERSION_SKEW_EXCEEDS needs a target component and a value", r.RuleID)
+		}
 	default:
 		if d.ObjectKind == "" || d.Target == "" {
 			return fmt.Errorf("%s: %s needs objectKind and target", r.RuleID, d.Kind)
@@ -119,6 +167,9 @@ func (r GeneratedRule) Validate() error {
 	}
 	if r.Scope != nil && (r.Scope.Kind == "" || r.Scope.ObjectKind == "") {
 		return fmt.Errorf("%s: scope hint needs kind and objectKind", r.RuleID)
+	}
+	if r.Gate != nil && (r.Gate.Kind == "" || r.Gate.ObjectKind == "" || r.Gate.Reason == "") {
+		return fmt.Errorf("%s: gate needs kind, objectKind and a reason", r.RuleID)
 	}
 	return nil
 }

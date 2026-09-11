@@ -1,0 +1,82 @@
+[
+ {
+  "version": "1.23",
+  "note": "Fix kube-proxy regression on UDP services because the logic to detect stale connections",
+  "reason": "a bug FIX upstream shipped, not a change an operator must make: stale UDP conntrack entries are now cleaned up correctly. No object on the cluster has to change, and a rule here would ask someone to verify a fix."
+ },
+ {
+  "version": "1.24",
+  "note": "Add 2 new options for kube-proxy running in winkernel mode. `--forward-healthcheck-vip`,",
+  "reason": "two NEW optional Windows-only flags. Nothing breaks by not setting them; a rule would name every Windows cluster to tell it an option now exists."
+ },
+ {
+  "version": "1.24",
+  "note": "Adds support for `InterfaceNamePrefix` and `BridgeInterface` as arguments to",
+  "reason": "additive: new accepted values for --detect-local-mode plus two new optional flags. Existing values keep working."
+ },
+ {
+  "version": "1.26",
+  "note": "Added a kube-proxy flag (`--iptables-localhost-nodeports`, default true) to allow",
+  "reason": "a new flag whose default (true) preserves the previous behaviour, so an untouched cluster is unaffected by the upgrade."
+ },
+ {
+  "version": "1.27",
+  "note": "Enabled usage of `kube-proxy`, `kube-scheduler` and `kubelet` HTTP APIs for changing the",
+  "reason": "additive: runtime log-verbosity changes over the components' HTTP APIs for JSON output. No existing configuration stops working."
+ },
+ {
+  "version": "1.27",
+  "note": "kube-proxy now accepts any value that is not \"disabled\" for these annotations, enabling",
+  "reason": "a LOOSENING: kube-proxy accepts topology annotation values it previously rejected. Nothing that worked before stops working."
+ },
+ {
+  "version": "1.28",
+  "note": "Kube-proxy: added `--logging-format` flag to support structured logging.",
+  "reason": "additive opt-in flag; the default output format is unchanged."
+ },
+ {
+  "version": "1.29",
+  "note": "Stopped accepting component configuration for `kube-proxy` and `kubelet` during `kubeadm",
+  "reason": "a change to the `kubeadm upgrade plan --config` CLI workflow, not to anything running on the cluster. No Kubernetes object is affected and no read-only query on a cluster can show whether an operator used that flag."
+ },
+ {
+  "version": "1.29",
+  "note": "The `kube-proxy` command-line documentation was updated to clarify that",
+  "reason": "a DOCUMENTATION correction about what --bind-address does. Behaviour is unchanged."
+ },
+ {
+  "version": "1.29",
+  "note": "`kube-proxy` now has a new nftables-based mode, available by running",
+  "reason": "introduces an opt-in ALPHA mode behind a feature gate. Nothing breaks by not adopting it; the notes that do bite (its nft/kernel floor at 1.31, its GA at 1.33) carry their own rules."
+ },
+ {
+  "version": "1.29",
+  "note": "`kube-proxy`: Added an option/flag for configuring the `nf_conntrack_tcp_be_liberal`",
+  "reason": "additive opt-in flag for users of asymmetric routing; the default behaviour is unchanged."
+ },
+ {
+  "version": "1.31",
+  "note": "Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year",
+  "reason": "a REVERT that postpones the change: the kubeProxyVersion field keeps being published for another year. The change it defers is covered by the node-kube-proxy-version-field rules at 1.29 and 1.31, which tell the operator to stop depending on the field either way."
+ },
+ {
+  "version": "1.31",
+  "note": "Made kube-proxy Windows service control manager integration (`--windows-service`)",
+  "reason": "additive: an existing flag becomes settable through v1alpha1 component config as well. The flag still works."
+ },
+ {
+  "version": "1.32",
+  "note": "Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year",
+  "reason": "the same revert as 1.31, re-listed in the 1.32 changelog. Covered by the node-kube-proxy-version-field rules."
+ },
+ {
+  "version": "1.32",
+  "note": "kube-proxy now reconciles Service/Endpoint changes with conntrack table and cleans up only",
+  "reason": "an internal correctness improvement to conntrack cleanup. No configuration or object changes."
+ },
+ {
+  "version": "1.37",
+  "note": "Added an opt-in userspace TCP proxy to the nftables `kube-proxy` backend to serve",
+  "reason": "opt-in, off by default, and only for localhost NodePort Services on the nftables backend."
+ }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.10-managed-namespace-metadata-drops-client-side-labels",
+    "severity": "MEDIUM",
+    "title": "`managedNamespaceMetadata` no longer preserves client-side-applied namespace labels/annotations",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Application",
+      "target": "managedNamespaceMetadata",
+      "value": "true",
+      "reason": "presence of spec.syncPolicy.managedNamespaceMetadata on the Application, as the agent projects it"
+    },
+    "quote": "This change affects the `managedNamespaceMetadata` field of the `Application` CRD. Previously, labels and annotations applied via a client-side apply would be preserved when `managedNamespaceMetadata` was enabled. Now, those existing labels and annotation will be removed.",
+    "remediation": "For every Application that sets `managedNamespaceMetadata`, migrate the target namespace's labels and annotations from client-side to server-side apply (the kubectl resource-upgrade guide) before upgrading, or declare them in `managedNamespaceMetadata` itself — otherwise the next sync strips them.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.syncPolicy.managedNamespaceMetadata != null) | .metadata.namespace + \"/\" + .metadata.name + \" -> \" + .spec.destination.namespace' # Applications printed manage their namespace metadata — check the namespace for client-side-applied labels"
+  },
+  {
+    "ruleId": "rtz-argocd-2.10-redis-networkpolicy-drops-egress-restrictions",
+    "severity": "MEDIUM",
+    "title": "`argocd-redis` NetworkPolicy loses its Egress restrictions from 2.10.11",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NetworkPolicy",
+      "objectName": "^argocd-redis(-ha-haproxy)?-network-policy$",
+      "reason": "fires when the stock redis/haproxy NetworkPolicy exists — its Egress section is what the 2.10.11 manifests open up"
+    },
+    "quote": "Starting with Argo CD 2.10.11, the NetworkPolicy for the `argocd-redis` and `argocd-redis-ha-haproxy` dropped Egress restrictions. This change was made to allow access to the Kubernetes API to create a secret to secure Redis access.",
+    "remediation": "If your policy required Redis to be egress-locked, add back an Egress rule that allows the Kubernetes API plus the traffic Redis itself needs (the note's example), instead of the unrestricted egress the new manifests ship.",
+    "verifyCommand": "kubectl -n argocd get networkpolicy -o json | jq -r '.items[] | select(.metadata.name | test(\"redis\")) | .metadata.name + \": egress=\" + (.spec.egress | tostring | .[0:120])' # a redis policy printed with egress=null or [] restricts nothing after the upgrade"
+  }
+]

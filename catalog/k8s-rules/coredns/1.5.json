@@ -1,0 +1,161 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.5-proxy-plugin-deprecated",
+  "severity": "HIGH",
+  "title": "The proxy plugin is deprecated (moved out of tree in 1.5.0)",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^proxy$",
+   "reason": "read from the directive names the agent extracts off every kube-system ConfigMap whose name contains coredns, each scanned as its own Corefile (an AKS coredns-custom fragment included) — names only, never values; import lines are not followed"
+  },
+  "quote": "been fully deprecated. As is the [*proxy*](/explugins/proxy/) plugin.",
+  "remediation": "Replace every `proxy` directive with `forward` (or `grpc` for gRPC upstreams). The plugin left the tree in v1.5.0 (coredns/coredns#2651), so a Corefile still naming it stops CoreDNS from starting — this is the migration Kubernetes shipped its own coredns-migration tooling for.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*proxy\\\\b\")) | $n + \": \" + .'  # a printed line = the Corefile still loads the removed proxy plugin",
+  "coversNotes": [
+   "The grpc plugin was added to implement forwarding gRPC. If you were relying on this in the"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-file-no-reload-removed",
+  "severity": "HIGH",
+  "title": "file: the no_reload option is removed — CoreDNS 1.5.0 refuses the block",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.file[]",
+   "value": "^no_reload$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the file block; the auto block is checked by the sibling rule"
+  },
+  "quote": "The use of **TIMEOUT** and **no_reload** in [*file*](/plugins/file) and [*auto*](/plugins/auto) have",
+  "remediation": "Delete `no_reload` from every file AND auto block (use `reload 0` to disable reloading). It is gone in 1.5.0 itself, not deprecated: the parser reports `unknown property 'no_reload'` and CoreDNS does not start.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*no_reload\\\\b\")) | $n + \": \" + .'  # a printed line is an option 1.5.0 rejects at startup; replace it with reload 0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-auto-no-reload-removed",
+  "severity": "HIGH",
+  "title": "auto: the no_reload option is removed — CoreDNS 1.5.0 refuses the block",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.auto[]",
+   "value": "^no_reload$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the auto block; the file block is checked by the sibling rule"
+  },
+  "quote": "The use of **TIMEOUT** and **no_reload** in [*file*](/plugins/file) and [*auto*](/plugins/auto) have",
+  "remediation": "Delete `no_reload` from every auto AND file block (use `reload 0` to disable reloading). It is gone in 1.5.0 itself: the parser reports `unknown property 'no_reload'` and CoreDNS does not start.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*no_reload\\\\b\")) | $n + \": \" + .'  # a printed line is an option 1.5.0 rejects at startup; replace it with reload 0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-auto-directory-timeout-argument-removed",
+  "severity": "HIGH",
+  "title": "auto: the TIMEOUT argument of the directory line is removed — CoreDNS 1.5.0 refuses it",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "TIMEOUT is the fourth argument of the auto block's `directory DIR [REGEXP ORIGIN_TEMPLATE [TIMEOUT]]` line; option lines are projected as their first token only"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^auto$"
+  },
+  "quote": "The use of **TIMEOUT** and **no_reload** in [*file*](/plugins/file) and [*auto*](/plugins/auto) have",
+  "remediation": "Drop the trailing TIMEOUT argument from `directory` lines inside auto blocks (use `reload DURATION` for the rescan interval). 1.5.0 accepts at most three arguments and exits with an argument error otherwise.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*directory(\\\\s+\\\\S+){4,}\")) | $n + \": \" + .'  # a printed directory line carries a fourth (TIMEOUT) argument that 1.5.0 refuses at startup"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-kubernetes-resyncperiod-removed",
+  "severity": "LOW",
+  "title": "kubernetes: resyncperiod is deprecated — no-op in 1.6, removed in 1.7",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.kubernetes[]",
+   "value": "^resyncperiod$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "is deprecated and will be made a no-op in 1.6.0 and removed in 1.7.0.",
+  "remediation": "Delete the `resyncperiod` line from the kubernetes block now. It already defaults to 0 (no resync) in 1.5, is ignored in 1.6, and CoreDNS 1.7 refuses to parse it.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*resyncperiod\\\\b\")) | $n + \": \" + .'  # a printed line = the option CoreDNS 1.7 rejects is still in the Corefile",
+  "coversNotes": [
+   "The `resyncperiod` option in kubernetes now defaults to zero seconds, which disables"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-cpu-flag-removed",
+  "severity": "LOW",
+  "title": "The -cpu flag is slated for removal (gone in 1.6.0)",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "coredns",
+   "target": "containers[].args[]",
+   "value": "^--?cpu(=.*)?$",
+   "reason": "container args of the Deployment/DaemonSet whose name contains coredns only — a CoreDNS image under another workload name is not scanned (the command lists those too), and a flag set through an entrypoint script or env is not scanned"
+  },
+  "quote": "we'll remove it in the next release.",
+  "remediation": "Drop `-cpu` from the CoreDNS container args and size the container with CPU limits / GOMAXPROCS instead. 1.6.0 removes the flag and exits on it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select((.metadata.name | test(\"coredns\")) or ([.spec.template.spec.containers[].image] | any(test(\"coredns\")))) | select([.spec.template.spec.containers[].args[]?] | any(test(\"^--?cpu\"))) | \"\\(.metadata.namespace)/\\(.metadata.name): \" + ([.spec.template.spec.containers[].image] | join(\" \"))'  # each workload printed still passes -cpu, which CoreDNS 1.6+ rejects at startup; the rule itself reads workloads NAMED *coredns*, the command also lists a CoreDNS image under another name"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-tls-minimum-version-and-cipher-suites-hardened",
+  "severity": "MEDIUM",
+  "title": "tls listeners require TLS 1.2+ and a fixed cipher-suite list (1.5.2)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which TLS versions and cipher suites the clients of a DoT/gRPC listener can negotiate is request-time behaviour, not a collected field"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^tls$"
+  },
+  "quote": "tls: hardening",
+  "remediation": "1.5.2 (coredns/coredns#2938, plugin/tls/tls.go setTLSDefaults) pins the server-side TLS config the `tls` directive builds — that server block's DoT/gRPC listeners — to TLS 1.2–1.3 and nine ECDHE AES-GCM/ChaCha20 suites. Clients that only speak TLS 1.0/1.1 or CBC/RSA-key-exchange suites stop connecting to those listeners. Upstream TLS clients (forward/grpc) are NOT touched by this release (that came in 1.9.1, #5184). Test the real DoT clients before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*tls\\\\b|^\\\\s*(tls|grpc)://\")) | $n + \": \" + .'  # each printed TLS listener negotiates TLS 1.2+ with the fixed suite list from 1.5.2"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-kubernetes-upstream-removed",
+  "severity": "LOW",
+  "title": "The upstream option is a no-op (and removed from the docs)",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.kubernetes[]",
+   "value": "^upstream$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — the kubernetes block, the only one that later rejects the option"
+  },
+  "quote": "it's still accepted but is a noop.",
+  "remediation": "Delete `upstream` from the kubernetes block: CoreDNS resolves external names through its own server chain now, the option does nothing, and the kubernetes plugin refuses it from 1.7.0. Other blocks (file, auto, etcd) still accept it as a no-op at 1.14.7, so leaving it there is harmless.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*upstream\\\\b\")) | $n + \": \" + .'  # a printed line inside a kubernetes block is rejected by 1.7.0; in any other block it is a harmless no-op"
+ },
+ {
+  "ruleId": "rtz-coredns-1.5-template-regex-without-template-rejected",
+  "severity": "MEDIUM",
+  "title": "template: a regex without a template line fails Corefile parsing",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "template block contents beyond option KEY names are not collected; a block with `match` but no `answer`/`rcode` cannot be told from a complete one by key presence alone"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^template$"
+  },
+  "quote": "plugin/template: Raise error if regexp and template are not specified together",
+  "remediation": "Every template block that sets `match` must also set a response (`answer`, `additional`, `authority` or `rcode`); from 1.5.1 a match-only block is a Corefile error at startup.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*template\\\\b\")) | $n + \": \" + .'  # each printed template block must pair its match with an answer/rcode"
+ }
+]

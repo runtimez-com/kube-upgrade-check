@@ -1,0 +1,67 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.8-rotation-policy-now-validated",
+  "severity": "MEDIUM",
+  "title": "Certificates that set rotationPolicy are validated from 1.8 — invalid values are rejected",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the projection carries WHETHER rotationPolicy is set and its value when the value is enum-shaped, but an invalid value (the vendor's own example is `Foo`) is dropped rather than forwarded, so a rule cannot tell an invalid value from an absent one. The vendor publishes the exact check"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "Certificate",
+   "target": "rotationPolicySet",
+   "value": "true"
+  },
+  "quote": "The field `spec.privateKey.rotationPolicy` on Certificate resources is now validated. Valid options are Never and Always.",
+  "remediation": "Run the vendor's command below against the cluster AND against the manifests in Git; set every rotationPolicy to exactly `Never` or `Always` before upgrading.",
+  "verifyCommand": "kubectl get cert -A -o json | jq -r '.items[] | select(.spec.privateKey) | select(.spec.privateKey.rotationPolicy | . != \"Always\" and . != \"Never\") | \"\\(.metadata.name) in namespace \\(.metadata.namespace) has rotationPolicy=\\(.spec.privateKey.rotationPolicy)\"'  # each row is a Certificate the 1.8 webhook will reject"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.8-server-side-apply-challenges-must-be-drained",
+  "severity": "HIGH",
+  "title": "Server-Side Apply is enabled — Challenge resources must be drained before 1.8",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "(?i)ServerSideApply=true",
+   "reason": "checked in the cert-manager workload's container args only — the feature gate set through a config file or an environment variable is not scanned"
+  },
+  "quote": "Then you need to take action before upgrading to cert-manager 1.8. You will have to make sure that there are no Challenge resources currently in the cluster. If there are some, you will need to manually delete them once they are in a 'valid' state.",
+  "remediation": "Before upgrading, make sure no Challenge resources exist (delete them once they reach a valid state): cert-manager after 1.8 cannot clean up Challenges created before it.",
+  "verifyCommand": "kubectl get challenges.acme.cert-manager.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.status.state)\"'  # every row is a Challenge that must be gone before the upgrade"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.8-gateway-api-v1alpha1-dropped",
+  "severity": "HIGH",
+  "title": "ACME solvers use gatewayHTTPRoute, and 1.8 drops Gateway API v1alpha1",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "solverTypes[]",
+   "value": "^gatewayHTTPRoute$",
+   "reason": "the solver TYPE keys are projected; the Gateway API version the cluster's own Gateway resources are on is a separate question the command below answers"
+  },
+  "quote": "cert-manager 1.8 drops support for the Gateway API v1alpha1, and now only supports v1alpha2.",
+  "remediation": "Remove the v1alpha1 Gateway API resources, upgrade the Gateway API CRDs to v1alpha2, re-create the resources, then replace each solver's `labels` field with `parentRefs`.",
+  "verifyCommand": "kubectl get crd gateways.gateway.networking.k8s.io -o json 2>/dev/null | jq -r '.spec.versions[] | select(.served) | select(.name == \"v1alpha1\") | \"Gateway API still serves \\(.name)\"'  # a row here means the Gateway API CRDs must be upgraded first; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.8-container-binary-paths-changed",
+  "severity": "LOW",
+  "title": "cert-manager containers drop the old Bazel binary path — custom entrypoints break",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "`command` is projected only when a manifest sets one, so its absence cannot clear the rule; init scripts baked into a custom image are not visible at all"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "This is simplified in our new build system; we only place a single binary at `/app/cmd/webhook/webhook` and the old path disappears. This applies to all cert-manager containers.",
+  "remediation": "If you override `command` or wrap the cert-manager binaries, call `/app/cmd/<component>/<component>` — the `*.runfiles` path is gone.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[] | select(.command) | \"\\(.name) command=\\(.command | join(\" \"))\"'  # each row overrides the entrypoint and must use the new path; NO rows = clean"
+ }
+]

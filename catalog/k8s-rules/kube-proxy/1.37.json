@@ -1,0 +1,37 @@
+[
+ {
+  "ruleId": "rtz-kube-proxy-1.37-proxy-mode-not-explicitly-set",
+  "severity": "MEDIUM",
+  "title": "kube-proxy warns when mode is not set explicitly",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the condition is the ABSENCE of the mode field, and the projection carries the mode only when it is present \u2014 an absent key cannot be told apart from a ConfigMap the agent has not re-synced"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "keys[]",
+   "value": ".*"
+  },
+  "quote": "In `v1.37`, `kube-proxy` will warn if the field is not explicitly set as part of the planned transition to nftables as the default mode in a future release.",
+  "remediation": "Set `mode` explicitly in the kube-proxy config rather than relying on the default. The default is planned to become `nftables` in a later release, so a cluster that never named its mode gets a data-plane change it did not ask for on some future upgrade.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # empty output means the mode field is not set explicitly, which is what 1.37 warns about"
+ },
+ {
+  "ruleId": "rtz-kube-proxy-1.37-ipvs-mode-deprecated",
+  "severity": "HIGH",
+  "title": "ipvs mode deprecated since 1.35",
+  "detection": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "ConfigMap",
+   "objectName": "^kube-proxy",
+   "target": "kubeProxyMode",
+   "value": "ipvs",
+   "reason": "read from the kube-proxy ConfigMap's own mode field; a mode passed only as a --proxy-mode container arg is not read here"
+  },
+  "quote": "Added a (delayed) warning that `kube-proxy`'s ipvs mode is deprecated since `v1.35` and users on newer Linux kernels should be using the nftables mode instead, which became GA in `v1.33`.",
+  "remediation": "Move to `nftables` on nodes with a recent kernel, or `iptables` on older ones. kubeadm now warns about this on every upgrade until the mode changes.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | startswith(\"kube-proxy\")) | (.data // {}) | to_entries[] | .value | scan(\"(?m)^ *mode: *\\\"?([a-z]+)\") | .[0]'  # prints the configured kube-proxy mode; ipvs is deprecated since 1.35"
+ }
+]

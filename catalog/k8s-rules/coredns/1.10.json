@@ -1,0 +1,21 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.10-kubernetes-txt-lookups-nxdomain",
+  "severity": "LOW",
+  "title": "kubernetes: TXT lookups for cluster names now return NXDOMAIN",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "answer-shape changes are request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: error NXDOMAIN for TXT lookups",
+  "remediation": "Clients that probe cluster names with TXT queries (some service-discovery libraries do) now get NXDOMAIN instead of NODATA; libraries that treat NXDOMAIN as \"name does not exist\" may stop resolving the A record afterwards.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*kubernetes\\\\b\")) | $n + \": \" + .'  # the printed kubernetes block answers TXT for cluster names with NXDOMAIN from 1.10.1"
+ }
+]

@@ -1,0 +1,35 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.17-rsa-3072-4096-hash-change",
+  "severity": "MEDIUM",
+  "title": "RSA 3072/4096 certificates start signing with SHA-384/SHA-512 as they rotate",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Certificate",
+   "target": "privateKeySize",
+   "value": "^(3072|4096)$",
+   "reason": "the key size is projected; whether the RELYING party accepts the new signature hash is not a cluster fact"
+  },
+  "quote": "RSA certificates with keys of length 3072 or 4096 will now use SHA-384 or SHA-512 respectively as hash algorithms. These hash algorithms are widely supported, and we don't expect this to be an issue, but it's worth bearing in mind if you start to see errors as your larger RSA keys rotate.",
+  "remediation": "Check anything that pins the signature algorithm for these certificates (hardware, older TLS libraries, pinned fingerprints) before their keys rotate.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.size == 3072 or .spec.privateKey.size == 4096) | \"\\(.metadata.namespace)/\\(.metadata.name) size=\\(.spec.privateKey.size)\"'  # each row changes signature hash the next time it is re-issued"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.17-validatecaa-feature-gate-deprecated",
+  "severity": "LOW",
+  "title": "The ValidateCAA feature gate is deprecated and removed in 1.18",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "(?i)ValidateCAA",
+   "reason": "checked in the cert-manager workload's container args only — a gate set through a config file or an environment variable is not scanned"
+  },
+  "quote": "The `ValidateCAA` feature gate has been deprecated and will be removed in cert-manager v1.18. If you're manually enabling this feature gate, it's advisable to stop.",
+  "remediation": "Stop setting the `ValidateCAA` feature gate: it is removed in 1.18 and an unknown gate stops the controller starting.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].args[]? | select(test(\"ValidateCAA\"))'  # any row here must be removed before upgrading to 1.18",
+  "coversNotes": [
+   "Feature Flag Promotions / Deprecations"
+  ]
+ }
+]

@@ -1,0 +1,77 @@
+[
+ {
+  "version": "1.1",
+  "note": "When upgrading from `v1.0` to `v1.1`, no special upgrade steps are required 🎉.",
+  "reason": "the vendor states there is no breaking change in this release. A rule here could only ever CLEAR, which is noise in the ledger."
+ },
+ {
+  "version": "1.2",
+  "note": "In an effort to introduce new features whilst keeping the project maintainable,…",
+  "reason": "a Kubernetes VERSION FLOOR (1.2 needs k8s 1.16+) plus the CRD replace steps that follow from it. The catalog's own support matrix already carries that window and the add-on tier evaluates it as a hop, so a rule here would report the same fact through a second engine."
+ },
+ {
+  "version": "1.4",
+  "note": "Removal of the cert-manager operator package on Red Hat Marketplace",
+  "reason": "an OLM PACKAGING change: the Red Hat Marketplace operator package is replaced by the Community Operators one. Nothing about it is a Kubernetes object this product collects, and the re-install is done through OLM, not through cert-manager."
+ },
+ {
+  "version": "1.9",
+  "note": "If running Kubernetes versions before `v1.22`, the `ServerSideApply` feature gate _must_…",
+  "reason": "conditional on Kubernetes older than 1.22, which is below the floor of every version in the catalog's support matrix (cert-manager 1.9 itself starts at k8s 1.20, and no supported cert-manager release runs on a cluster this rule could fire on)."
+ },
+ {
+  "version": "1.11",
+  "note": "There are no breaking changes between cert-manager `v1.10` and `v1.11` unless you're…",
+  "reason": "the guide's own lead-in to the Gateway API note that follows it; that note carries the rule (rtz-cert-manager-1.11-gateway-api-crds-move-to-v1beta1)."
+ },
+ {
+  "version": "1.12",
+  "note": "There are no breaking changes between cert-manager 1.11 and 1.12.",
+  "reason": "the vendor states there is no breaking change in this release."
+ },
+ {
+  "version": "1.13",
+  "note": "cert-manager v1.12 is a Long Term Support (LTS) release sponsored by Venafi, a CyberArk…",
+  "reason": "the LTS guide's own table of contents — it says what the three sections of the document are, not what changed."
+ },
+ {
+  "version": "1.13",
+  "note": "Upgrading from v1.12 to v1.17",
+  "reason": "the LTS SKIP-PATH summary. Every item in it restates a change already filed under the minor that introduced it — the startupapicheck image (1.14/1.15), Helm schema validation (1.16), the webhook featureGates split and CertificateRequest KeyUsages validation (1.13), the Gateway API flag (1.15), the Venafi issuer changes (1.16) and the RSA signature algorithms (1.17) — and each of those notes carries its own rule. A rule here would report the same findings a second time, on a version where they did not happen."
+ },
+ {
+  "version": "1.17",
+  "note": "Log messages across cert-manager have been augmented with better contextual structured…",
+  "reason": "a LOG FORMAT change. What it can break is log-based alerting that matches literal strings, which lives in a log pipeline outside the cluster — no Kubernetes object carries it."
+ },
+ {
+  "version": "1.2",
+  "note": "As Kubernetes `v1.16` is now the earliest supported version, The `legacy` manifests have…",
+  "reason": "the same Kubernetes VERSION FLOOR the guide's 1.2 note carries (excluded above): the catalog's support matrix already evaluates it as a hop."
+ },
+ {
+  "version": "1.2",
+  "note": "The `User-Agent` request header has been changed from `jetstack-cert-manager/<version>`…",
+  "reason": "an HTTP User-Agent string. What it can break is an allowlist in a corporate proxy, which is outside the cluster — no Kubernetes object carries it."
+ },
+ {
+  "version": "1.8",
+  "note": "`.exe` Extension on Windows",
+  "reason": "a change to the Windows build of the `cmctl` CLI binary on an operator's workstation; nothing in the cluster changes."
+ },
+ {
+  "version": "1.8",
+  "note": "Changed Import Path",
+  "reason": "a Go module import path for people who compile against cert-manager's source; nothing in the cluster changes."
+ },
+ {
+  "version": "1.11",
+  "note": "Potentially Breaking: Gateway API Upgrade",
+  "reason": "the release notes' POINTER at the 1.11 upgrade guide, whose Gateway API note carries the rule (rtz-cert-manager-1.11-gateway-api-crds-move-to-v1beta1)."
+ },
+ {
+  "version": "1.16",
+  "note": "OperatorHub Packages Discontinued",
+  "reason": "an OLM PACKAGING change, like the 1.4 Red Hat Marketplace one: the OperatorHub package stops at v1.16.5, and the move to Helm or static manifests is done through OLM, not through any object this product collects."
+ }
+]

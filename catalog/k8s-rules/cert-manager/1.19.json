@@ -1,0 +1,51 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.19-do-not-install-1-19-0",
+  "severity": "HIGH",
+  "title": "v1.19.0 re-issues certificates unnecessarily — go straight to a later 1.19 patch",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the add-on version is resolved to a MINOR from the controller image tag, so no rule can compare patch levels"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager-controller"
+  },
+  "quote": "When upgrading to cert-manager `1.19`, use the latest patch version of cert-manager `1.19`. Do not install `v1.19.0`, because it has a bug which may cause certificates to be re-issued unnecessarily. We fixed the bug in `v1.19.1`.",
+  "remediation": "Upgrade to the newest 1.19 patch. Never to v1.19.0: it re-issues certificates unnecessarily, which for an ACME issuer can mean hitting rate limits.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager-controller\")) | .image'  # the tag printed must not be v1.19.0"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.19-acme-metrics-path-label-removed",
+  "severity": "MEDIUM",
+  "title": "The ACME client metrics lose their path label — dashboards and alerts on it go blank",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "PrometheusRule and Grafana dashboards are not collected, and a recording rule or dashboard living outside the cluster cannot be seen at all"
+  },
+  "quote": "A high cardinality label, called `path`, was removed from the `certmanager_acme_client_request_count` and `certmanager_acme_client_request_duration_seconds` metrics. It is replaced with a new bounded cardinality label called `action`. If you are using these metrics, you may need to update your dashboards and alerts.",
+  "remediation": "Update any dashboard or alert selecting on the `path` label of `certmanager_acme_client_request_count` or `certmanager_acme_client_request_duration_seconds` to the bounded `action` label before upgrading.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"certmanager_acme_client_request\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row references these metrics; anything selecting on `path` matches nothing after 1.19"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.19-cert-manager-edit-loses-challenge-order-create",
+  "severity": "MEDIUM",
+  "title": "cert-manager-edit no longer lets namespace users create Challenges or Orders",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the agent projects only the pod-subresource rules of a ClusterRole, so which API groups cert-manager-edit grants cannot be read; and tooling that creates Challenge or Order objects directly may not live on this cluster at all"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "ClusterRole",
+   "objectName": "^cert-manager-edit$"
+  },
+  "quote": "Starting in v1.19.6, the `cert-manager-edit` aggregate ClusterRole no longer grants `create` for `challenges.acme.cert-manager.io` or `create`, `patch`, `update` for `orders.acme.cert-manager.io`. This fixes a security issue (`GHSA-8rvj-mm4h-c258`) where these permissions allowed namespace users to bypass Issuer solver selectors and abuse ClusterIssuer credentials.",
+  "remediation": "If any tooling creates Challenge or Order resources directly — outside the normal Certificate → CertificateRequest → Order → Challenge flow — grant it those permissions explicitly. This closed a security issue (GHSA-8rvj-mm4h-c258) and is not being reverted.",
+  "verifyCommand": "kubectl get clusterrole cert-manager-edit -o json 2>/dev/null | jq -r '.rules[] | select(.apiGroups[]? | test(\"acme.cert-manager.io\")) | \"\\(.resources | join(\",\")): \\(.verbs | join(\",\"))\"'  # create on challenges, and create/patch/update on orders, are what the upgrade removes",
+  "coversNotes": [
+   "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole"
+  ]
+ }
+]

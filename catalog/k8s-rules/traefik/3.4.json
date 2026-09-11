@@ -1,0 +1,73 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.4-load-balancing-strategy-values",
+    "severity": "MEDIUM",
+    "title": "New load-balancing strategies and RoundRobin deprecation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the load-balancing strategy is set per service under spec.routes[].services[], nested inside the routes array rather than at the top level of the projection"
+    },
+    "quote": "Starting with v3.4, HTTP service definitions now support additional load-balancing strategies for better traffic distribution.",
+    "remediation": "Apply the updated CRDs, then move any service using `RoundRobin` to `wrr` — the two are equivalent and `RoundRobin` is removed in the next major release. `p2c` (Power of Two Choices) is the new option worth considering for uneven backend load.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.strategy == \"RoundRobin\") | $o.metadata.namespace + \"/\" + $o.metadata.name' # names printed use the deprecated strategy value"
+  },
+  {
+    "ruleId": "rtz-traefik-3.4-multipath-tcp-removed",
+    "severity": "LOW",
+    "title": "MultiPath TCP support removed again",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik static or provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Since `v3.4.5`, the MultiPath TCP support introduced with `v3.4.2` has been removed.",
+    "remediation": "Only relevant if MPTCP was enabled during the 3.4.2–3.4.4 window; remove that configuration. It was withdrawn because enabling it on some platforms could stop Traefik outright.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |multipath|mptcp' # nothing printed means MPTCP was never enabled and the removal is a no-op; a static configuration file mounted from a ConfigMap is not listed, read it too"
+  },
+  {
+    "ruleId": "rtz-traefik-3.4-request-path-normalization",
+    "severity": "HIGH",
+    "title": "Request paths normalized per RFC 3986",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is request-time behaviour, not a property of any collected object"
+    },
+    "quote": "Starting with v3.4.1, request paths are now normalized according to RFC 3986 standards for better consistency and security.",
+    "remediation": "Read with the reserved-character change landing in the same release: unreserved characters are decoded and percent-encodings uppercased. Rules matching on a specific encoding of the path need re-testing against real request URLs.",
+    "coversNotes": [
+      "Request Path Matching Examples"
+    ],
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; re-test them against real request URLs, unreserved characters are decoded and encodings uppercased"
+  },
+  {
+    "ruleId": "rtz-traefik-3.4-reserved-characters-stay-encoded",
+    "severity": "HIGH",
+    "title": "Reserved characters stay encoded during router rule matching",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the router rule lives in spec.routes[].match, nested inside the routes array; the evaluator matches only TOP-LEVEL fields of the collected projection"
+    },
+    "quote": "Starting with v3.4.1, reserved characters (per RFC 3986) remain encoded during router rule matching to prevent routing ambiguity.",
+    "remediation": "The upstream note's own table is the thing to check: a path like `/foo%2Fbar` no longer matches a rule written as if the encoded slash were decoded. Any rule that depended on an encoded separator being decoded before matching must be rewritten.",
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; a rule that relied on an encoded separator being decoded before matching no longer matches"
+  },
+  {
+    "ruleId": "rtz-traefik-3.4-rule-syntax-options-deprecated",
+    "severity": "MEDIUM",
+    "title": "Rule syntax compatibility options are going away",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)core\\.defaultRuleSyntax",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "In v3.4, rule syntax configuration options will be removed in the next major version.",
+    "remediation": "`core.defaultRuleSyntax` and the per-router `ruleSyntax` option were transitional helpers for the v2-to-v3 migration and are removed in the next major version. Any router still relying on v2 rule syntax has to be migrated before then — this is the deadline for finishing the 3.0 router-rule work, not a new change in itself."
+  }
+]

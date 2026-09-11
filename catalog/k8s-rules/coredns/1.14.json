@@ -1,0 +1,310 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.14-regex-length-limit",
+  "severity": "LOW",
+  "title": "Regexes in the Corefile are length-limited",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "regexes are Corefile values, which are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(rewrite|template|errors)$"
+  },
+  "quote": "core: Add regex length limit",
+  "remediation": "From 1.14.0 regexes in rewrite rules (name/cname/rcode/ttl), template directives and the errors plugin's `consolidate DURATION REGEXP` are capped at 10000 characters (maxRegexpLen, b723bd94d) and a longer one is rejected at Corefile load. Real-world regexes are far below the cap; only generated ones need a look.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(rewrite|template|errors)\\\\b\")) | $n + \": \" + .'  # printed rewrite/template/errors regexes are length-checked"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-kubernetes-api-rate-limited",
+  "severity": "LOW",
+  "title": "kubernetes: API server calls are rate-limited",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the client-go rate is a default inside the plugin"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^kubernetes$"
+  },
+  "quote": "plugin/kubernetes: Rate limits to api server",
+  "remediation": "Very large clusters may see slower initial sync after 1.14.0 because the kubernetes plugin now throttles its own API calls; watch `coredns_kubernetes_dns_programming_duration_seconds` after the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*kubernetes\\\\b\")) | $n + \": \" + .'  # the printed kubernetes block syncs under a client-side rate limit"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-rewrite-runs-before-acl",
+  "severity": "MEDIUM",
+  "title": "rewrite now runs before acl",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "plugin order is fixed inside CoreDNS; the Corefile projection carries directive names only"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^acl$"
+  },
+  "quote": "core: Reorder rewrite before acl to prevent bypass",
+  "remediation": "ACL rules are evaluated against the REWRITTEN name from 1.14.2; acl blocks in a server block that also rewrites need their names re-checked.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(acl|rewrite)\\\\b\")) | $n + \": \" + .'  # a server block printing both acl and rewrite applies acl to the rewritten name"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-doh-oversized-get-rejected",
+  "severity": "LOW",
+  "title": "DoH: oversized GET dns parameters are rejected",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "server-block zone lines (https://…) are not collected"
+  },
+  "quote": "core: Reject oversized GET dns query parameter of DoH",
+  "remediation": "DoH clients sending very large GET queries get an error from 1.14.3; they should use POST.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*https://\")) | $n + \": \" + .'  # each printed DoH server block rejects oversized GET queries"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-unknown-block-options-rejected",
+  "severity": "HIGH",
+  "title": "any/local/chaos/health/log/ready/trace/dnstap: unknown block options are rejected",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "option keys inside a block are projected (agent 0.4.58+) but which of them are UNKNOWN to a given release is not knowable from the snapshot"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(any|local|chaos|health|log|ready|trace|dnstap)$"
+  },
+  "quote": "plugin/chaos: Reject unknown chaos block options",
+  "remediation": "From 1.14.4 a typo'd or removed option inside these plugin blocks fails Corefile parsing instead of being ignored; lint the Corefile against the 1.14 plugin READMEs before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(any|local|chaos|health|log|ready|trace|dnstap)\\\\b.*\\\\{\")) | $n + \": \" + .'  # each printed block is parsed strictly from 1.14.4",
+  "coversNotes": [
+   "plugin/any: Reject invalid any and local config",
+   "plugin/health: Use descriptive error for unknown block options in health and log plugins",
+   "plugin/ready: Reject unknown ready plugin properties",
+   "plugin/trace: Reject unknown trace and dnstap block options"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-go-tls-defaults",
+  "severity": "LOW",
+  "title": "TLS max version and cipher list are now Go's defaults (the TLS 1.2 minimum stays)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "what the peers negotiate is request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(tls|forward|grpc|etcd)$"
+  },
+  "quote": "core: Use Go TLS defaults",
+  "remediation": "1.14.5 (bc4343b08, plugin/pkg/tls) drops the fixed cipher-suite list and the TLS 1.3 maximum from every TLS config CoreDNS builds — the tls directive's listeners and the forward/grpc/etcd TLS clients — keeping TLS 1.2 as the minimum. This WIDENS what peers can negotiate; nothing that connected before stops. Only environments that audited the old fixed suite list need to re-check what is negotiated now.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(tls|forward|grpc|etcd)\\\\b|^\\\\s*(tls|https|grpc)://\")) | $n + \": \" + .'  # each printed TLS endpoint or TLS-capable upstream negotiates Go's defaults from 1.14.5"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-hosts-fallthrough-unsupported-types",
+  "severity": "MEDIUM",
+  "title": "hosts: unsupported-type fallthrough for names with an A/AAAA entry — automatic in 1.14.5/1.14.6, opt-in from 1.14.7",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.hosts[]",
+   "value": "^fallthrough$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed"
+  },
+  "quote": "queries for record types unsupported by the *hosts* plugin continue to the next plugin when `fallthrough` is configured, even if the queried name has an A or AAAA entry in the hosts data.",
+  "remediation": "1.14.5 made a hosts block with `fallthrough` pass TXT/HTTPS/SVCB/… queries for overridden names upstream (a split-horizon leak). 1.14.7 reverses it: such names answer NODATA again unless the block sets `fallthrough_unsupported` (which requires `fallthrough`; CoreDNS refuses to start otherwise). Landing on 1.14.7 or later nothing leaks unless you opt in — decide whether you want the opt-in. Landing on 1.14.5/1.14.6, expect the leak.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*hosts\\\\b\")) | $n + \": \" + .'  # each printed hosts block with fallthrough is affected: leaks on 1.14.5/1.14.6, opt-in via fallthrough_unsupported from 1.14.7",
+  "coversNotes": [
+   "plugin/hosts: Fall through unsupported query types",
+   "plugin/hosts: Make unsupported type fallthrough opt-in"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-hosts-wildcard-owner-names",
+  "severity": "LOW",
+  "title": "hosts: a `*` owner name is a wildcard from 1.14.5 — existing entries change meaning",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "hosts data (the mounted hosts file or inline entries) is not collected; only the directive's presence is"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^hosts$"
+  },
+  "quote": "plugin/hosts: Add wildcard support",
+  "remediation": "From 1.14.5 (6805f6f8a) a hosts entry whose owner name starts with `*` (`192.168.1.10 *.example.com`) matches one additional label below it, like the file plugin's wildcards, instead of being a literal name. Entries already written that way silently start answering for every one-label child. Check hosts files and inline entries for `*` owner names.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*hosts\\\\b\")) | $n + \": \" + .'  # each printed hosts block's data must be checked for * owner names, which become wildcards at 1.14.5"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-autopath-runs-before-acl",
+  "severity": "MEDIUM",
+  "title": "autopath now runs before acl (1.14.7)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "plugin order is fixed inside CoreDNS; the Corefile projection carries directive names only"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^acl$"
+  },
+  "quote": "plugin/acl: Fix autopath from bypassing acl checks",
+  "remediation": "1.14.7 (18a58b9e8, core/dnsserver/zdirectives.go) moves autopath ahead of acl — and ahead of cache, header, dnssec, minimal and template — so ACL rules now apply to the queries autopath generates. A server block loading both acl and autopath can start answering REFUSED to search-path queries it used to resolve; re-check the acl rules there.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(acl|autopath)\\\\b\")) | $n + \": \" + .'  # a server block printing both acl and autopath applies acl to autopath's queries from 1.14.7"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-local-answers-every-name-under-localhost",
+  "severity": "LOW",
+  "title": "local: every name under .localhost. is answered locally (1.14.5); the localhost.<domain> prefix form is deprecated",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which names clients resolve is request-time behaviour; only the local directive's presence is collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^local$"
+  },
+  "quote": "plugin/local: Handle names under .localhost.",
+  "remediation": "From 1.14.5 a server block loading `local` answers any query under `.localhost.` (RFC 6761) with loopback records instead of passing it to later plugins or upstreams. The legacy `localhost.<domain>` prefix handling stays on by default but is now deprecated — set `local { localhost_prefix off }` to keep only the RFC form, and check nothing relied on `*.localhost.` names resolving elsewhere.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*local\\\\b\")) | $n + \": \" + .'  # each printed local block answers *.localhost. itself from 1.14.5"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-nonroot-numeric-uid",
+  "severity": "LOW",
+  "title": "The image pins a numeric uid/gid for its nonroot user",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "pod securityContext is not in the collected projection"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)(mirrored-coredns-)?coredns([:@]|$)"
+  },
+  "quote": "core: Pin numeric uid/gid for the nonroot user",
+  "remediation": "`runAsNonRoot: true` now passes kubelet's check without an explicit runAsUser; manifests that set a different runAsUser to work around it can drop it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"coredns\"))) | \"\\(.metadata.namespace)/\\(.metadata.name): runAsUser=\\(.spec.template.spec.securityContext.runAsUser // .spec.template.spec.containers[0].securityContext.runAsUser // \"unset\") runAsNonRoot=\\(.spec.template.spec.securityContext.runAsNonRoot // .spec.template.spec.containers[0].securityContext.runAsNonRoot // \"unset\") hostPorts=\\([.spec.template.spec.containers[].ports[]? | select(.hostPort != null) | .hostPort | tostring] | join(\",\"))\"'  # runAsUser=0 pins the old root behaviour and a hostPort below 1024 needs NET_BIND_SERVICE once the image runs as nonroot"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-forward-default-connect-attempts-capped",
+  "severity": "LOW",
+  "title": "forward: default connect attempts are capped",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "retry counts are a default inside the plugin"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^forward$"
+  },
+  "quote": "plugin/forward: Cap default connect attempts",
+  "remediation": "Upstreams that needed many connect retries surface as errors sooner from 1.14.7; set `max_connect_attempts` (1.13.2+) explicitly if the old behaviour is needed.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*forward\\\\b\")) | $n + \": \" + .'  # each printed forward retries connections a bounded number of times"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-proxyproto-default-policy-applied-without-allow-list",
+  "severity": "LOW",
+  "title": "proxyproto: an explicit default policy applies even without an allow list",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the policy value is a Corefile value"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^proxyproto$"
+  },
+  "quote": "plugin/proxyproto: Apply an explicitly configured default policy evenwhen no allow list is present.",
+  "remediation": "A `proxyproto` block that sets a default policy but no allow list now enforces that policy from 1.14.7 (it was ignored); check that load balancers still get through.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*proxyproto\\\\b\")) | $n + \": \" + .'  # each printed proxyproto block enforces its default policy"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-tsig-verified-on-all-transports",
+  "severity": "MEDIUM",
+  "title": "TSIG is fully verified on DoH, DoH3, DoQ and gRPC transports",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which clients sign with TSIG over which transport is request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^tsig$"
+  },
+  "quote": "core: Add full TSIG verification in DoH transport",
+  "remediation": "Signed queries arriving over DoH/DoH3/DoQ/gRPC were previously not checked; from 1.14.3 a bad or unknown-key TSIG on those transports is rejected like it already was on UDP/TCP. Check clients that sign over encrypted transports use a configured key.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*tsig\\\\b\")) | $n + \": \" + .'  # each printed tsig block now applies to every transport",
+  "coversNotes": [
+   "core: Add full TSIG verification in DoH3 transport",
+   "core: Add full TSIG verification in QUIC transport",
+   "core: Add full TSIG verification in gRPC transport"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-azure-access-mode-applies-to-every-zone",
+  "severity": "LOW",
+  "title": "azure: the access mode applies to every zone in the block",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the access mode and the zone list are Corefile values"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^azure$"
+  },
+  "quote": "plugin/azure: Apply `access` mode to every zone in the same block",
+  "remediation": "An azure block listing several zones with one `access` setting now applies it to all of them (it used to bind only the first); a mixed public/private block needs splitting.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*azure\\\\b\")) | $n + \": \" + .'  # each printed azure block applies one access mode to all its zones after 1.14.4"
+ },
+ {
+  "ruleId": "rtz-coredns-1.14-forward-dnstap-forwarder-fields-changed",
+  "severity": "LOW",
+  "title": "dnstap: FORWARDER_* messages now describe the CoreDNS-to-upstream socket",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "dnstap consumers are outside the cluster inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^dnstap$"
+  },
+  "quote": "plugin/forward: Make dnstap FORWARDER_* describe the socket from CoreDNS to upstream",
+  "remediation": "Tools consuming FORWARDER_QUERY/FORWARDER_RESPONSE dnstap frames see the upstream socket addresses instead of the client's from 1.14.5; adjust parsers that keyed on those fields.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*dnstap\\\\b\")) | $n + \": \" + .'  # each printed dnstap setup emits differently-addressed FORWARDER_* frames after 1.14.5"
+ }
+]

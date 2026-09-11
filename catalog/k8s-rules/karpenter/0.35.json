@@ -1,0 +1,31 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.35-alpha-apis-are-dropped-upgrade-through-0.32-first",
+    "severity": "HIGH",
+    "title": "Alpha CRDs are still served — 0.35 will not read them",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "provisioners",
+      "target": "v1alpha5"
+    },
+    "quote": "`0.33.0`+ _only_ supports Karpenter v1beta1 APIs and will not work with existing Provisioner, AWSNodeTemplate or Machine alpha APIs. Do not upgrade to `0.35.0`+ without first upgrading to `0.32.x`. This version supports both the alpha and beta APIs, allowing you to migrate all of your existing APIs to beta APIs without experiencing downtime.",
+    "remediation": "Upgrade to 0.32.x first and migrate every alpha object to the v1beta1 APIs before coming here.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.35-webhook-ports-must-be-reachable-when-network-policies-apply",
+    "severity": "MEDIUM",
+    "title": "Re-enabled webhooks need ports 8000, 8001, 8081 and 8443 reachable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a NetworkPolicy actually blocks these ports for the Karpenter pods depends on the policy's selectors and rules, which are not part of the collected projection"
+    },
+    "quote": "Webhooks have been re-enabled by default starting in `0.35.8` to faciliate migration to `v1.0`. If your cluster has network policies that block Ingress then ports `8000`, `8001`, `8081`, `8443` will need to be allowlisted. You may still choose to disable webhooks through the helm chart.",
+    "remediation": "Karpenter re-enables its webhooks from 0.35.8. Allowlist ports 8000, 8001, 8081 and 8443 for the Karpenter namespace in any NetworkPolicy that restricts ingress.",
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NetworkPolicy"
+    },
+    "verifyCommand": "kubectl get networkpolicy -A -o json | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) types=\\((.spec.policyTypes // []) | join(\",\"))\"'  # check any policy in the Karpenter namespace against ports 8000, 8001, 8081 and 8443"
+  }
+]

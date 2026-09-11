@@ -1,0 +1,33 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.27-stale-defaulting-mutating-webhook-left-behind",
+    "severity": "MEDIUM",
+    "title": "The removed defaulting.webhook.karpenter.sh is still registered",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "MutatingWebhookConfiguration",
+      "objectName": "^defaulting\\.webhook\\.karpenter\\.sh$"
+    },
+    "quote": "The `defaulting.webhook.karpenter.sh` mutating webhook was removed in `0.27.3`. If you are coming from an older version of Karpenter where this webhook existed and the webhook was not managed by Helm, you may need to delete the stale webhook.",
+    "remediation": "Remove the stale MutatingWebhookConfiguration named defaulting.webhook.karpenter.sh. Karpenter 0.27.3 dropped the webhook but Helm does not clean up a configuration it never owned, so it keeps intercepting API calls with no backend to serve them.",
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations -o json | jq -r '.items[] | select(.metadata.name == \"defaulting.webhook.karpenter.sh\") | \"\\(.metadata.name) service=\\(.webhooks[0].clientConfig.service.namespace // \"?\")/\\(.webhooks[0].clientConfig.service.name // \"?\")\"'  # a row printed is the stale webhook; its backing service no longer exists after 0.27.3"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.27-controller-pods-gain-hostname-anti-affinity",
+    "severity": "MEDIUM",
+    "title": "Karpenter replicas now require one node each",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "settling this needs the controller's replica count compared against the number of schedulable nodes at upgrade time, and pod-level anti-affinity is not part of the collected workload projection"
+    },
+    "quote": "The Karpenter controller pods now deploy with `kubernetes.io/hostname` self anti-affinity by default. If you are running Karpenter in HA (high-availability) mode and you do not have enough nodes to match the number of pod replicas you are deploying with, you will need to scale-out your nodes for Karpenter.",
+    "remediation": "Check that the cluster has at least as many schedulable nodes as the Karpenter deployment has replicas. With `kubernetes.io/hostname` self anti-affinity the surplus replicas stay Pending after the upgrade — which on a cluster that depends on Karpenter for capacity is a deadlock.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"replicas=\\(.spec.replicas) \\(.metadata.namespace)/\\(.metadata.name)\"'; kubectl get nodes --no-headers | wc -l  # replicas must not exceed the node count, or the extra Karpenter pods stay Pending"
+  }
+]

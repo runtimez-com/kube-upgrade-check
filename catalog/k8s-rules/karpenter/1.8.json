@@ -1,0 +1,35 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.8-v1.8.4-cannot-schedule-some-topology-spread-configurations",
+    "severity": "HIGH",
+    "title": "Workloads use TopologySpreadConstraints, which v1.8.4 mis-schedules",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet|DaemonSet",
+      "target": "topologySpreadConstraintsPresent",
+      "value": "^true$",
+      "reason": "reads the flag the agent writes for every workload; which specific constraint configurations trigger the regression is not stated upstream, so every workload declaring one is a candidate"
+    },
+    "quote": "Karpenter `v1.8.4` release contains a regression which may prevent Karpenter from scheduling pods with specific TopologySpreadConstraint configurations. Please do not upgrade to this version. For more details, see the following issue: https://github.com/kubernetes-sigs/karpenter/issues/2785",
+    "remediation": "Do not land on v1.8.4 — go to a later 1.8 patch. The workloads named here declare TopologySpreadConstraints, and that release contains a regression which can leave their pods unscheduled.",
+    "verifyCommand": "kubectl get deploy,statefulset,daemonset -A -o json | jq -r '.items[] | select((.spec.template.spec.topologySpreadConstraints // []) != []) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # each workload printed is exposed to the v1.8.4 scheduling regression"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.8-static-capacity-needs-the-crds-updated",
+    "severity": "MEDIUM",
+    "title": "Static Capacity needs the Karpenter CRDs re-applied",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the CRD's schema fields are not collected — only each CRD's name, group and served version names are"
+    },
+    "quote": "This version adds support for Static Capacity. Make sure to upgrade your karpenter CRDs to use this feature.",
+    "remediation": "Re-apply the Karpenter CRDs if you intend to use Static Capacity. Helm never updates CRDs on an upgrade, so on an un-updated CRD the API server strips the new fields from anything you write.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^karpenter\\.(sh|k8s\\.aws)$"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves"
+  }
+]

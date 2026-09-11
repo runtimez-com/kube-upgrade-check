@@ -1,0 +1,114 @@
+[
+  {
+    "ruleId": "rtz-gen-istio-1.25-configure-envoy-internal-addresses",
+    "severity": "HIGH",
+    "title": "Configure Envoy internal address handling",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The relevant ENABLE_HCM_INTERNAL_NETWORKS setting, Envoy reloadable feature flag, and MeshNetworks configuration are not represented by a single supported cluster-inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap"
+    },
+    "quote": "**Envoy default internalAddressConfig value change** — As of Envoy 1.33, the default internalAddressConfig is set to an empty set. In previous versions the default was all private IPs. To preserve internal headers when useRemoteAddress is set or at the gateway, the internalAddressConfig must be set explicitly to all IPs in the mesh network by setting `ENABLE_HCM_INTERNAL_NETWORKS` to true and configuring MeshNetworks. Alternatively, Envoy's `envoy.reloadable_features.explicit_internal_address_config` flag could be set to false to revert to Envoy's previous behavior prior to 1.33. Setting `ENABLE_HCM_INTERNAL_NETWORKS` and configuring MeshNetworks to all private IPs or reverting to Envoy's previous behavior will leave users with an Istio Ingress Gateway potentially vulnerable to `x-envoy` header manipulation by external sources. More information about this vulnerability can be found here: https://github.com/envoyproxy/envoy/security/advisories/GHSA-ffhv-fvxq-r6mf Instructions for setting `explicit_internal_address_config` can be found here. Examples for explicitly configuring `MeshNetworks` can be found here.",
+    "remediation": "Set `ENABLE_HCM_INTERNAL_NETWORKS` to true and configure MeshNetworks to all IPs in the mesh network, or set Envoy's `envoy.reloadable_features.explicit_internal_address_config` flag to false; note the stated x-envoy header manipulation vulnerability when preserving the previous behavior.",
+    "verifyCommand": "kubectl get configmap -A -o yaml | grep -E 'ENABLE_HCM_INTERNAL_NETWORKS|explicit_internal_address_config|MeshNetworks' # matching output identifies configuration candidates that require manual verification"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-enable-ambient-iptables-reconciliation",
+    "severity": "MEDIUM",
+    "title": "Enable ambient pod iptables reconciliation when needed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory can identify the istio-cni DaemonSet but cannot determine whether previously enrolled ambient pods require iptables reconciliation or whether the startup option is enabled."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "DaemonSet"
+    },
+    "quote": "**Ambient pod upgrade reconcilation.** — When a new `istio-cni` Daemonset pod starts up, it will inspect pods that were previously enrolled in the ambient mesh, and upgrade their in-pod iptables rules to the current state if there is a diff or delta. This is off by default as of 1.25.0, but will eventually be enabled by default. Feature can be enabled by `helm install cni --set ambient.reconcileIptablesOnStartup=true` (helm) or `istioctl install --set values.cni.ambient.reconcileIptablesOnStartup=true` (istioctl)",
+    "remediation": "If previously enrolled ambient pods need their in-pod iptables rules upgraded, enable the feature with `helm install cni --set ambient.reconcileIptablesOnStartup=true` or `istioctl install --set values.cni.ambient.reconcileIptablesOnStartup=true`.",
+    "verifyCommand": "kubectl get daemonset -A -o wide | grep istio-cni # identifies istio-cni DaemonSets for manual verification of the reconciliation setting and ambient usage"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-migrate-opencensus-to-opentelemetry",
+    "severity": "HIGH",
+    "title": "Migrate OpenCensus tracing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Use of OpenCensus can exist in tracing configuration or external integrations and is not settled by a single supported Kubernetes inventory predicate."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ConfigMap"
+    },
+    "quote": "**OpenCensus support has been removed** — Because Envoy has removed OpenCensus tracing extension, we have removed OpenCensus support from Istio. If you are using OpenCensus, you should migrate to OpenTelemetry.",
+    "remediation": "If you are using OpenCensus, migrate to OpenTelemetry.",
+    "verifyCommand": "kubectl get configmap -A -o yaml | grep -i opencensus # matching configuration candidates require manual verification, including external tracing integrations"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-preserve-ztunnel-resource-name",
+    "severity": "HIGH",
+    "title": "Preserve ztunnel resource names for non-default releases",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected Helm release name and whether the ztunnel chart is being upgraded cannot be settled from the supported cluster-inventory predicates."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Secret"
+    },
+    "quote": "**Ztunnel Helm chart changes** — In previous releases, resources in the ztunnel Helm chart were always named `ztunnel`. In this release, they are now named `.Resource.Name`. If you are installing the chart with a release name other than `ztunnel`, the resource names will change, triggering downtime. In this scenario, it is recommended to set `--set resourceName=ztunnel` to override back to the previous default.",
+    "remediation": "If installing the chart with a release name other than `ztunnel`, set `--set resourceName=ztunnel` to override back to the previous default and avoid resource-name changes and downtime.",
+    "verifyCommand": "kubectl get secret -A -l owner=helm -o yaml | grep -E 'name: ztunnel|name:.*ztunnel' # identifies Helm metadata candidates for manual verification of the ztunnel release name"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-reconcile-existing-ambient-dns-capture",
+    "severity": "MEDIUM",
+    "title": "Reconcile DNS capture for existing ambient pods",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cluster inventory does not provide a supported single predicate for identifying existing ambient workloads whose DNS capture rules have not been reconciled."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "**Ambient DNS capture on by default** — DNS proxying is enabled by default for ambient workloads in this release. Note that only new pods will have DNS enabled, existing pods will not have their DNS traffic captured. To enable this feature for existing pods, existing pods must either be manually restarted, or alternatively the iptables reconcilation feature can be enabled when upgrading `istio-cni` via `--set cni.ambient.reconcileIptablesOnStartup=true` which will reconcile existing pods automatically on upgrade.",
+    "remediation": "Manually restart existing ambient pods, or enable the iptables reconciliation feature when upgrading `istio-cni` via `--set cni.ambient.reconcileIptablesOnStartup=true`.",
+    "verifyCommand": "kubectl get pods -A -o wide # lists existing pods for manual identification of ambient workloads requiring DNS capture reconciliation"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-review-dns-traffic-exclusion-annotations",
+    "severity": "MEDIUM",
+    "title": "Review DNS traffic exclusion annotations",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The note describes two alternative pod annotation keys, but the supported detection vocabulary cannot express the required OR across both keys in one rule."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Pod"
+    },
+    "quote": "**DNS traffic (TCP and UDP) now respects traffic exclusion annotations** — DNS traffic (UDP and TCP) now respects pod-level traffic annotations like `traffic.sidecar.istio.io/excludeOutboundIPRanges` and `traffic.sidecar.istio.io/excludeOutboundPorts`. Before, UDP/DNS traffic would uniquely ignore these traffic annotations, even if a DNS port was specified, because of the rule structure. The behavior change actually happened in the 1.23 release series, but was left out of the release notes for 1.23.",
+    "remediation": "Review workloads using `traffic.sidecar.istio.io/excludeOutboundIPRanges` or `traffic.sidecar.istio.io/excludeOutboundPorts`, because DNS traffic will now respect those exclusions for both UDP and TCP.",
+    "verifyCommand": "kubectl get pods -A -o yaml | grep -E 'traffic.sidecar.istio.io/excludeOutboundIPRanges|traffic.sidecar.istio.io/excludeOutboundPorts' # matching pods require review because their DNS exclusion behavior changes"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.25-upgrade-grafana",
+    "severity": "MEDIUM",
+    "title": "Use Grafana 7.2 or later",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Grafana may be external to the cluster, and the required Grafana version cannot be settled from Kubernetes inventory alone."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Deployment"
+    },
+    "quote": "**Grafana dashboard changes** — The changes require version 7.2 or later of Grafana.",
+    "remediation": "Upgrade Grafana to version 7.2 or later before using the changed dashboards.",
+    "verifyCommand": "kubectl get deployment -A -o yaml | grep -i -A2 -B2 grafana # identifies in-cluster Grafana candidates; verify the actual Grafana version manually, including external instances"
+  }
+]

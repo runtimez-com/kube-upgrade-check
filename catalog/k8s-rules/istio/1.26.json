@@ -1,0 +1,34 @@
+[
+  {
+    "ruleId": "rtz-gen-istio-1.26-replace-deprecated-telemetry-providers",
+    "severity": "INFO",
+    "title": "Replace deprecated Lightstep and Opencensus telemetry providers",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The note does not identify a single cluster-inventory field for telemetry provider configuration; provider settings may be in Telemetry resources, mesh configuration, or external configuration."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Telemetry"
+    },
+    "quote": "- **Upcoming deprecation of telemetry providers** — The telemetry providers Lightstep and Opencensus are deprecated and will be removed in next release(v1.27). Please consider using the OpenTelemetry provider instead.",
+    "remediation": "Replace the Lightstep and Opencensus telemetry providers with the OpenTelemetry provider before upgrading to the release that removes them.",
+    "verifyCommand": "kubectl get telemetry --all-namespaces -o yaml | grep -iE 'lightstep|opencensus' # matching Telemetry objects may use deprecated providers; no match does not rule out mesh or external configuration"
+  },
+  {
+    "ruleId": "rtz-gen-istio-1.26-verify-ztunnel-resource-names",
+    "severity": "MEDIUM",
+    "title": "Verify ztunnel resource names remain synchronized with Istiod",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "The affected Helm resourceName value and whether it is kept in sync with the Istiod Helm chart are not represented by a single cluster-inventory field."
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "DaemonSet"
+    },
+    "quote": "- **Ztunnel Helm chart changes** — In Istio 1.25, the resources in the ztunnel Helm chart were changed to be named `.Resource.Name`. This often caused issues, as the name needs to be kept in sync with the Istiod Helm chart. In this release, we have reverted to default to a static `ztunnel` name again. As previously, this can be overriden with `--set resourceName=my-custom-name`.",
+    "remediation": "Verify that the ztunnel resources use the static `ztunnel` name by default, or that the custom `--set resourceName=my-custom-name` value is kept in sync with the Istiod Helm chart.",
+    "verifyCommand": "kubectl get daemonsets,deployments,services -A -o yaml | grep -i ztunnel # matching resources are candidates for manual verification against the Istiod resource name and Helm resourceName setting"
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "ruleId": "rtz-argocd-2.8-argocd-cm-plugins-removed",
+    "severity": "HIGH",
+    "title": "Config management plugins declared in argocd-cm stop working",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "keys[]",
+      "value": "^configManagementPlugins$",
+      "reason": "ConfigMap KEY names are collected, never values — this rule fires on the presence of the key in the named ConfigMap"
+    },
+    "quote": "Config Management Plugins installed via the argocd-cm ConfigMap will not work starting with v2.8.",
+    "remediation": "Migrate every plugin in argocd-cm's `configManagementPlugins` to a sidecar plugin on the repo-server (ConfigManagementPlugin CR mounted into a sidecar) before upgrading; Applications using the old plugins fail to render afterwards.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.configManagementPlugins}' | head -c 400 # non-empty = plugins that stop working at 2.8"
+  },
+  {
+    "ruleId": "rtz-argocd-2.8-tini-entrypoint-old-manifests-fail-to-start",
+    "severity": "HIGH",
+    "title": "`entrypoint.sh` is gone from the 2.8 images — manifests still invoking it cannot start",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet",
+      "objectName": "^argocd-",
+      "target": "containers[].command[]",
+      "value": "entrypoint\\.sh",
+      "reason": "checked in the Argo CD workloads' container command only (Deployment or StatefulSet named argocd-*)"
+    },
+    "quote": "Simply updating the containers without updating the deployment manifests will result in pod startup failures, as the old manifests are relying on `entrypoint.sh` instead of `tini`. Please make sure the manifests are updated properly before moving to 2.8.",
+    "remediation": "Apply the current manifests (command without `entrypoint.sh`) before or together with the 2.8 images. Bumping only the image tag on a manifest that still runs `entrypoint.sh` leaves the pod in CrashLoopBackOff.",
+    "verifyCommand": "kubectl -n argocd get deploy,sts -o json | jq -r '.items[] | select([.spec.template.spec.containers[].command[]?] | any(test(\"entrypoint.sh\"))) | .kind + \" \" + .metadata.name' # objects printed will fail to start on 2.8 images"
+  },
+  {
+    "ruleId": "rtz-argocd-2.8-rbac-wildcards-grant-new-actions",
+    "severity": "LOW",
+    "title": "RBAC `action/*` (or `*`) on applications now includes creating Jobs and Workflows",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "RBAC policies are the VALUE of argocd-rbac-cm's `policy.csv` key; ConfigMap values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-rbac-cm$",
+      "target": "keys[]",
+      "value": "^policy\\.csv$"
+    },
+    "quote": "When you upgrade to 2.8, RBAC policies with `applications` in the *resource* field and `*` or `action/*` in the action field, it will automatically grant the ability to use these new actions.",
+    "remediation": "Decide whether subjects holding `applications, action/*` (or `applications, *`) should be able to create a Job from a CronJob or a Workflow from a CronWorkflow/WorkflowTemplate; list explicit actions where not.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-rbac-cm -o jsonpath='{.data.policy\\.csv}' | grep -E '^p, *[^,]+, *applications, *(\\*|action/\\*),' # rows printed also grant the three new actions from 2.8"
+  },
+  {
+    "ruleId": "rtz-argocd-2.8-cmp-file-open-mode-loses-executable-bits",
+    "severity": "LOW",
+    "title": "CMP sidecars: repository files are no longer opened with executable bits",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "what a config management plugin sidecar executes from the checked-out repository is not collected"
+    },
+    "quote": "In version 2.7, the CMP plugin was changed to open Git/Helm files with all executable bits set (unless `preserveFileMode` was specified). Version 2.8 removes the executable bits in cases where they are not necessary.",
+    "remediation": "If a plugin sidecar runs scripts straight from the repository, set `preserveFileMode: true` in its ConfigManagementPlugin spec or invoke the interpreter explicitly.",
+    "verifyCommand": "kubectl -n argocd get deploy argocd-repo-server -o json | jq -r '.spec.template.spec.containers[1:][].name' # names printed are CMP sidecars — check whether they execute repository files directly"
+  }
+]

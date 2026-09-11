@@ -1,0 +1,147 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.12-secondary-transfer-mandatory",
+  "severity": "HIGH",
+  "title": "secondary: the transfer (from) property is mandatory",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "what a secondary block LACKS cannot be told from the projection — its option keys are collected (agent 0.4.58+) but absence of one is not a match"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^secondary$"
+  },
+  "quote": "plugin/secondary: Make transfer property mandatory",
+  "remediation": "Every `secondary` block must name where to transfer the zone from; a block without it fails Corefile parsing from 1.12.2.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*secondary\\\\b\")) | $n + \": \" + .'  # each printed secondary block must carry a transfer from line"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-bind-link-local-ipv4-zone-removed",
+  "severity": "LOW",
+  "title": "bind: no reverse zone for link-local IPv4 any more",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which addresses a bind directive resolves to is host state"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^bind$"
+  },
+  "quote": "plugin/bind: Remove zone for link-local IPv4",
+  "remediation": "Reverse lookups for 169.254.0.0/16 addresses are no longer answered by the bound server; nothing to do unless something resolved link-local PTRs through CoreDNS.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*bind\\\\b\")) | $n + \": \" + .'  # each printed bind directive stops serving the link-local reverse zone"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-doq-concurrent-streams-limited",
+  "severity": "LOW",
+  "title": "DNS-over-QUIC: concurrent streams are capped",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "server-block zone lines (quic://…) are not collected"
+  },
+  "quote": "plugin/quic: Limit concurrent DoQ streams and goroutines",
+  "remediation": "Heavy DoQ clients that opened unbounded streams are throttled from 1.12.2; watch for client-side timeouts after the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*quic://\")) | $n + \": \" + .'  # each printed DoQ server block enforces a stream cap"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-file-auto-refused-without-next-plugin",
+  "severity": "LOW",
+  "title": "file/auto: REFUSED when no next plugin is available",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "plugin order is fixed by CoreDNS; whether a block has a plugin after file/auto is a Corefile fact reduced to directive names"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(file|auto)$"
+  },
+  "quote": "plugin/file: Return REFUSED when no next plugin is available",
+  "remediation": "Names outside a file/auto zone in a block with nothing after them get REFUSED instead of SERVFAIL from 1.12.3; add `fallthrough` plus a forward if the block was meant to recurse.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(file|auto)\\\\b\")) | $n + \": \" + .'  # each printed file/auto block answers REFUSED for names it does not own",
+  "coversNotes": [
+   "plugin/auto: Return REFUSED when no next plugin is available"
+  ]
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-route53-aws-sdk-v2",
+  "severity": "MEDIUM",
+  "title": "route53: ported to AWS SDK v2 — credential and endpoint resolution change",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "how the route53 plugin authenticates (env, shared config, IRSA) is pod environment, which is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^route53$"
+  },
+  "quote": "plugin/route53: Port to AWS Go SDK v2",
+  "remediation": "SDK v2 resolves credentials, regions and endpoints differently (no `AWS_SDK_LOAD_CONFIG` gate, IMDSv2 by default, endpoint options). Test the route53 plugin's auth path on 1.12.3 before rolling it out.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*route53\\\\b\")) | $n + \": \" + .'  # each printed route53 block authenticates through SDK v2 after 1.12.3"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-header-deprecated-syntax-removed",
+  "severity": "HIGH",
+  "title": "header: an action line without the query|response selector is rejected",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.header[]",
+   "value": "^(set|clear)$",
+   "reason": "read from the option KEY names the agent extracts inside each Corefile plugin block of every kube-system ConfigMap whose name contains coredns (agent 0.4.58+; older agents leave this NOT_DETECTABLE) — keys only, never values; import lines are not followed — a header option line whose first token is the action (set/clear) omits the selector; the compliant form starts with query or response"
+  },
+  "quote": "plugin/header: Remove deprecated syntax",
+  "remediation": "Prefix every action inside `header { … }` with `query` or `response` (`header { response set ra }`), the selector form introduced in 1.9.4. A line like `set ra` used to default to response; from 1.12.4 it fails Corefile parsing (`invalid selector`) and CoreDNS does not start.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(set|clear)\\\\b\")) | $n + \": \" + .'  # a printed set/clear line inside a header block has no selector and is rejected at 1.12.4"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-metrics-server-timeouts",
+  "severity": "LOW",
+  "title": "prometheus: the metrics HTTP server now has timeouts",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "scrape latency is observed at the scraper, not in cluster objects"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^prometheus$"
+  },
+  "quote": "plugin/metrics: Add timeouts to metrics HTTP server",
+  "remediation": "Very slow scrapers (or huge /metrics pages) can be cut off by the new server timeouts from 1.12.4; check for scrape errors after the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*prometheus\\\\b\")) | $n + \": \" + .'  # each printed metrics endpoint enforces request timeouts"
+ },
+ {
+  "ruleId": "rtz-coredns-1.12-trace-dd-trace-go-v2",
+  "severity": "LOW",
+  "title": "trace: Datadog exporter moved to dd-trace-go v2",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the tracing backend is outside the cluster inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^trace$"
+  },
+  "quote": "plugin/trace: Migrate dd-trace-go v1 to v2",
+  "remediation": "Datadog-backed trace setups should re-verify agent compatibility and tag names after 1.12.4.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*trace\\\\b\")) | $n + \": \" + .'  # each printed trace directive pointing at Datadog uses the v2 client"
+ }
+]

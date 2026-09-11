@@ -1,0 +1,47 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.6-crd-still-serves-v1alpha2",
+  "severity": "HIGH",
+  "title": "cert-manager CRDs still serve v1alpha2, which 1.6 stops serving",
+  "detection": {
+   "kind": "CRD_SERVED_VERSION",
+   "objectKind": "cert-manager.io",
+   "target": "v1alpha2",
+   "reason": "read from the CRDs' own served-version list"
+  },
+  "quote": "Following their deprecation in version 1.4, the cert-manager API versions `v1alpha2, v1alpha3, and v1beta1` are no longer served.",
+  "remediation": "Convert every cert-manager manifest to `cert-manager.io/v1` (`cmctl convert` does it) and re-apply the 1.6 CRDs so only v1 is served.",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.spec.versions[] | select(.served) | select(.name != \"v1\") | \"\\($c.metadata.name) still serves \\(.name)\"'  # each row is a CRD serving a version 1.6 stops serving; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.6-crd-still-serves-v1beta1",
+  "severity": "HIGH",
+  "title": "cert-manager CRDs still serve v1beta1, which 1.6 stops serving",
+  "detection": {
+   "kind": "CRD_SERVED_VERSION",
+   "objectKind": "cert-manager.io",
+   "target": "v1beta1",
+   "reason": "read from the CRDs' own served-version list"
+  },
+  "quote": "This means if your deployment manifests contain any of these API versions, you will not be able to deploy them after upgrading. Our new `cmctl` utility or old `kubectl cert-manager` plugin can convert old manifests to `v1` for you.",
+  "remediation": "Convert every cert-manager manifest to `cert-manager.io/v1` and re-apply the 1.6 CRDs so only v1 is served.",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.spec.versions[] | select(.served) | select(.name != \"v1\") | \"\\($c.metadata.name) still serves \\(.name)\"'  # each row is a CRD serving a version 1.6 stops serving; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.6-do-not-install-1-6-0",
+  "severity": "MEDIUM",
+  "title": "v1.6.0 fails JKS keystore renewals with short passwords — install 1.6.1 or later",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "keystore passwords live in Secrets, which are never collected; and the patch version you will install is not a fact of the current cluster"
+  },
+  "scope": {
+   "kind": "IMAGE_REPOSITORY_PRESENT",
+   "objectKind": "Deployment",
+   "target": "cert-manager"
+  },
+  "quote": "In cert-manager `v1.6.0` JKS Keystores had a minimum password length of 6 characters, as an unintended side effect of upgrading keystore-go from `v2` to `v4`. If you are using a shorter password, certificates would have failed to renew, and the only observable error was in the cert-manager logs. This was fixed in cert-manager `v1.6.1`.",
+  "remediation": "Skip v1.6.0 and install the latest 1.6 patch.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # a tag of v1.6.0 after the upgrade is the one release to avoid"
+ }
+]

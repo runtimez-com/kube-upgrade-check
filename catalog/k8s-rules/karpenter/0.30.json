@@ -1,0 +1,47 @@
+[
+  {
+    "ruleId": "rtz-karpenter-0.30-static-drift-needs-hash-annotations-so-nodes-recycle-once",
+    "severity": "MEDIUM",
+    "title": "Existing nodes each need one recycle to gain the drift-hash annotations",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the annotations sit on Machine and Provisioner objects (the v1alpha5 API), which this platform does not collect"
+    },
+    "quote": "Karpenter will now statically drift on both Provisioner and AWSNodeTemplate Fields. For Provisioner Static Drift, the `karpenter.sh/provisioner-hash` annotation must be present on both the Provisioner and Machine. For AWSNodeTemplate drift, the `karpenter.k8s.aws/nodetemplate-hash` annotation must be present on the AWSNodeTemplate and Machine. Karpenter will not add these annotations to pre-existing nodes, so each of these nodes will need to be recycled one time for the annotations to be added.",
+    "remediation": "Expect every pre-existing node to be replaced once after this upgrade. Karpenter does not backfill the `karpenter.sh/provisioner-hash` and `karpenter.k8s.aws/nodetemplate-hash` annotations, so each node has to cycle through once before static drift works for it.",
+    "verifyCommand": null
+  },
+  {
+    "ruleId": "rtz-karpenter-0.30-mixed-id-and-tag-selectors-now-fail-validation",
+    "severity": "HIGH",
+    "title": "A node template mixing id selectors with other selectors stops validating",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "AWSNodeTemplate and Provisioner spec.provider are the v1alpha5 alpha API, which this platform does not collect"
+    },
+    "quote": "Karpenter will now fail validation on AWSNodeTemplates and Provisioner `spec.provider` that have `amiSelectors`, `subnetSelectors`, or `securityGroupSelectors` set with a combination of id selectors (`aws-ids`, `aws::ids`) and other selectors.",
+    "remediation": "Split any `amiSelector`, `subnetSelector` or `securityGroupSelector` that combines an id selector (`aws-ids`, `aws::ids`) with another selector into separate selectors. Once validation starts rejecting the combination, edits to that object fail.",
+    "verifyCommand": "kubectl get awsnodetemplates,provisioners -o json 2>/dev/null | jq -r '.items[]? | \"\\(.kind)/\\(.metadata.name)\"'  # each object printed uses the alpha API and needs its selectors checked by hand"
+  },
+  {
+    "ruleId": "rtz-karpenter-0.30-controller-security-context-is-now-fixed-by-the-chart",
+    "severity": "LOW",
+    "title": "Karpenter's securityContext can no longer be overridden through Helm",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the rendered workload shows the securityContext in force, not whether your Helm values tried to set a different one"
+    },
+    "quote": "Karpenter now statically sets the `securityContext` at both the pod and container-levels and doesn't allow override values to be passed through the Helm chart. This change was made to adhere to Restricted Pod Security Standard, which follows pod hardening best practices.",
+    "remediation": "If you override Karpenter's pod or container `securityContext` through Helm values, those overrides stop taking effect. Sidecars that cannot run under the Restricted Pod Security Standard need their own securityContext set in the deployment instead.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image)\"'  # the Karpenter controller workload and the exact version tag it runs -- then read the pod and container securityContext",
+    "coversNotes": [
+      "If you have sidecar containers configured to run alongside Karpenter that cannot tolerate the pod-wide …"
+    ]
+  }
+]

@@ -1,0 +1,128 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.13-forward-no-failover-on-servfail-refused",
+  "severity": "LOW",
+  "title": "forward: new opt-in `failover RCODE…` option (1.13.0) — no behaviour change by itself",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "an additive option: nothing in the snapshot changes meaning at 1.13.0, so there is no object to name"
+  },
+  "quote": "plugin/forward: No failover to next upstream when receiving SERVFAIL or REFUSED response codes",
+  "remediation": "Nothing changes at 1.13.0 unless you set it: forward never retried the next upstream on a SERVFAIL/REFUSED answer (only on transport errors and timeouts), and the new `failover SERVFAIL REFUSED` option opts a forward block into doing so. Add it where a flaky primary should be masked by the next upstream. `next` is a different feature (it hands the query to the next forward plugin).",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*forward\\\\b\")) | $n + \": \" + .'  # each printed forward block may opt into rcode failover with failover SERVFAIL REFUSED from 1.13.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-grpc-message-size-limits",
+  "severity": "MEDIUM",
+  "title": "grpc: DNS message size limits are enforced",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "message sizes are request-time behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^grpc$"
+  },
+  "quote": "plugin/grpc: Enforce DNS message size limits",
+  "remediation": "Oversized messages through the grpc backend are rejected from 1.13.0; backends returning very large answers need truncation handling.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*grpc\\\\b\")) | $n + \": \" + .'  # each printed grpc upstream is subject to the size limits"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-geoip-missing-coordinates-deprecation",
+  "severity": "MEDIUM",
+  "title": "geoip: missing latitude/longitude will stop being reported as 0",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "what consumes the geoip metadata (templates, log formats) is a Corefile value"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^geoip$"
+  },
+  "quote": "Users relying on 0 as a sentinel value should update their logic before this change takes effect.",
+  "remediation": "Templates or log formats that treat `0` as \"unknown location\" must handle an empty string instead before the next release.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*geoip\\\\b\")) | $n + \": \" + .'  # each printed geoip block's missing coordinates change from 0 to empty"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-auto-regex-length-limited",
+  "severity": "LOW",
+  "title": "auto: zone-file regex length is limited",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the regex is a directive-line argument, which is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^auto$"
+  },
+  "quote": "plugin/auto: Limit regex length",
+  "remediation": "From 1.13.2 the auto block's directory regex is capped at 10000 characters (plugin/auto maxRegexpLen) and a longer one is rejected at Corefile load. Real-world regexes are far below the cap; only generated ones need a look.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*auto\\\\b\")) | $n + \": \" + .'  # each printed auto directive's regex is length-checked"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-multisocket-socket-count-capped",
+  "severity": "LOW",
+  "title": "multisocket: the number of sockets is capped",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the socket count is a directive-line argument, which is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^multisocket$"
+  },
+  "quote": "plugin/multisocket: Cap num sockets to prevent OOM",
+  "remediation": "A `multisocket` count above the new cap is clamped/rejected from 1.13.2; check the configured value.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*multisocket\\\\b\")) | $n + \": \" + .'  # each printed multisocket directive is subject to the cap"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-sign-rejects-invalid-utf8",
+  "severity": "LOW",
+  "title": "sign: invalid UTF-8 in the dbfile is rejected",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "zone data files are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^sign$"
+  },
+  "quote": "plugin/sign: Reject invalid UTF‑8 dbfile token",
+  "remediation": "Zone files with non-UTF-8 bytes fail to sign from 1.13.1; clean them up.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*sign\\\\b\")) | $n + \": \" + .'  # each printed sign block's dbfile must be valid UTF-8"
+ },
+ {
+  "ruleId": "rtz-coredns-1.13-forward-noerror-not-a-failover-trigger",
+  "severity": "HIGH",
+  "title": "forward: a failover option listing NOERROR is rejected — CoreDNS does not start",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the rcodes listed after `failover` are Corefile values; only the option key is projected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPluginOptions.forward[]",
+   "value": "^failover$"
+  },
+  "quote": "plugin/forward: Disallow NOERROR in failover",
+  "remediation": "Remove NOERROR from the `failover` option of forward blocks (only forward blocks that use failover are named). From 1.13.2 the parser reports `NoError cannot be used in failover` and CoreDNS exits at startup.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*failover\\\\b.*\\\\bNOERROR\\\\b\")) | $n + \": \" + .'  # a printed failover line lists NOERROR, which 1.13.2 rejects at startup"
+ }
+]

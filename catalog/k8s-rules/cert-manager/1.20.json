@@ -1,0 +1,22 @@
+[
+ {
+  "ruleId": "rtz-cert-manager-1.20-cert-manager-edit-loses-challenge-order-create",
+  "severity": "MEDIUM",
+  "title": "cert-manager-edit no longer lets namespace users create Challenges or Orders",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the agent projects only the pod-subresource rules of a ClusterRole, so which API groups cert-manager-edit grants cannot be read; and tooling that creates Challenge or Order objects directly may not live on this cluster at all"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "ClusterRole",
+   "objectName": "^cert-manager-edit$"
+  },
+  "quote": "Starting in v1.20.3, the `cert-manager-edit` aggregate ClusterRole no longer grants `create` for `challenges.acme.cert-manager.io` or `create`, `patch`, `update` for `orders.acme.cert-manager.io`. This fixes a security issue (`GHSA-8rvj-mm4h-c258`) where these permissions allowed namespace users to bypass Issuer solver selectors and abuse ClusterIssuer credentials.",
+  "remediation": "If any tooling creates Challenge or Order resources directly — outside the normal Certificate → CertificateRequest → Order → Challenge flow — grant it those permissions explicitly. This closed a security issue (GHSA-8rvj-mm4h-c258) and is not being reverted.",
+  "verifyCommand": "kubectl get clusterrole cert-manager-edit -o json 2>/dev/null | jq -r '.rules[] | select(.apiGroups[]? | test(\"acme.cert-manager.io\")) | \"\\(.resources | join(\",\")): \\(.verbs | join(\",\"))\"'  # create on challenges, and create/patch/update on orders, are what the upgrade removes",
+  "coversNotes": [
+   "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole"
+  ]
+ }
+]

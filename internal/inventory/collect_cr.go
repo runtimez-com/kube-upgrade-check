@@ -59,7 +59,8 @@ func CollectCustomResources(ctx context.Context, c *cluster.Client, inv *Invento
 func CollectRuleObjects(ctx context.Context, c *cluster.Client, inv *Inventory, wants map[string]Projection) {
 	wanted := map[string]*Projection{}
 	for kind, projection := range wants {
-		if kind == "" {
+		// Nodes and CRDs come from the typed collectors, which keep more than a raw list would.
+		if kind == "" || kind == "Node" || kind == "CustomResourceDefinition" {
 			continue
 		}
 		if inv.CRs != nil {
@@ -193,9 +194,10 @@ func listCustomResources(ctx context.Context, c *cluster.Client, kind string, gv
 			}
 			sort.Strings(cr.WrittenAt)
 			sort.Strings(cr.Managers)
-			if spec, ok := item.Object["spec"].(map[string]any); ok {
-				cr.Spec = project(spec, projection)
-			}
+			// Kinds the rules read through a derived view (a workload's pod template, a
+			// ConfigMap's key names, an issuer's configured blocks) are projected the way the
+			// hosted product's agent projects them; the rest keep the raw keys asked for.
+			cr.Spec = projectSpec(kind, item.Object, projection)
 			if status, ok := item.Object["status"].(map[string]any); ok {
 				cr.Status = project(status, projection)
 			}

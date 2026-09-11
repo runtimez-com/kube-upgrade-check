@@ -1,0 +1,687 @@
+[
+ {
+  "version": "1.5",
+  "note": "The route53 plugin now supports wildcards.",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.5",
+  "note": "tls now has a `client_auth` option that allows verification of client TLS certificates.",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using; the announced 1.6.0 default change to require_and_verify NEVER shipped — client_auth still defaults to nocert at v1.14.7 (plugin/tls/README.md, tls.go NoClientCert), so a rule would send operators to edit TLS config for a non-event"
+ },
+ {
+  "version": "1.5",
+  "note": "The prometheus plugin adds a `coredns_plugin_enabled` metric that shows which plugins are",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.5",
+  "note": "Failed reload fixes for: ready, health and prometheus - when CoreDNS reloads and the",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.5",
+  "note": "kubernetes can now publish metadata about the request and, if `pods verified` is enabled,",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using (metadata is opt-in)"
+ },
+ {
+  "version": "1.5",
+  "note": "plugin/cache: remove item.Autoritative",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.5",
+  "note": "plugin/kubernetes: never respond with NXDOMAIN for authority label",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.5",
+  "note": "plugin/metrics: fix failed reload",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.5",
+  "note": "Small bugfixes and a change to Caddy's import path (mholt/caddy -> caddyserver/caddy).",
+  "reason": "affects authors of external plugins (an import path), never a running cluster"
+ },
+ {
+  "version": "1.5",
+  "note": "build: Update Caddy to 1.0.1, and update import path",
+  "reason": "affects authors of external plugins (an import path), never a running cluster"
+ },
+ {
+  "version": "1.6",
+  "note": "This release sports changes in the file plugin. A speed up in the log plugin and fixes in",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/file: Rename do to walk and cleanup and document",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/metrics: Fix response_rcode_count_total metric",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.6",
+  "note": "The reload now detects changes in files imported from the main Corefile.",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (reload now also watches imported files)"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/kubernetes: fix NXDOMAIN/NODATA fallthough case",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.6",
+  "note": "hosts exports metrics on the number of entries and last reload time.",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/hosts: add host metrics",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.6",
+  "note": "kubernetes adds metrics to measure kubernetes control plane latency, see documentation for",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/clouddns: remove initialization from init",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/route53: Remove amazon initialization from init",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.6",
+  "note": "plugins: Add MustNormalize",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.6",
+  "note": "This is a fairly small release that resolves some nits and it adds mips64le to the set of",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/acl: Document metrics in README",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.6",
+  "note": "Again a small release with some nice improvements in the forward plugin, and overall",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/cache: explain drop metric",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.6",
+  "note": "plugin/metrics: Add query type to latency as well",
+  "reason": "an ADDED metric label: existing series keep their names, sum()/rate() queries are unaffected; only equality comparisons across the new label would change"
+ },
+ {
+  "version": "1.6",
+  "note": "(Yes there was a CoreDNS-1.6.8, but our automation broke after tagging it in Git - hence",
+  "reason": "release-process note: 1.6.9 is a re-tag of 1.6.8"
+ },
+ {
+  "version": "1.7",
+  "note": "This is a backwards-incompatible release. Major changes include",
+  "reason": "a lead-in sentence; the changes it introduces are the notes that follow it"
+ },
+ {
+  "version": "1.7",
+  "note": "As this was already backwards-incompatible release, we took the liberty of stuffing as",
+  "reason": "prose about release policy; the changes themselves are the notes around it"
+ },
+ {
+  "version": "1.7",
+  "note": "A new plugin, dns64, was promoted from external to a plugin that is included by default.",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.7",
+  "note": "pkg/upstream: set edns0 and Do when required",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.7",
+  "note": "plugin/forward: add hit/miss metrics for connection cache",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.7",
+  "note": "plugins: Using promauto package to ensure all created metrics are properly registered .",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/auto: allow fallthrough if no zones match",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/cache: Fix removing OPT",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "pkg/tls: remove InsecureSkipVerify=true flag",
+  "reason": "internal Go API / build change with no Corefile or manifest surface (NewHTTPSTransport in pkg/tls had no in-tree caller at v1.8.0 — forward's DoH client arrived with #8004 in 1.12 — so no operator-facing path lost certificate verification)"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/forward: Forward NODATA responses to Next handler",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using — opt-in via the new `next_on_nodata` option (eb49f402c, 1.14.4); without it nothing changes, and even with it the hand-off only reaches a following forward plugin"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/dnssec: Change hash key input",
+  "reason": "internal Go API / build change with no Corefile or manifest surface (signature cache key)"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/file: Use NXDOMAIN response if CNAME target is NXDOMAIN",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/file: document wrong behavior in lookup fox Apex",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/kubernetes: Fix dns programming duration metric",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/forward Add rcode and rtype to request_duration_seconds metric",
+  "reason": "an ADDED metric label: existing series keep their names, sum()/rate() queries are unaffected; only equality comparisons across the new label would change"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/kubernetes: Corrected detection of K8s minor version",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "It also include a fix when using the \"reverse zone cidr syntax\", e.g. 10.0.0.0/15, now",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugins: fix Normalize",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "reverse zone: make Normalize return proper reverse zones",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/sign: Revert \"plugin/sign: track zone file's mtime \"",
+  "reason": "reverts a change made inside the same minor (1.8.2); no state to migrate"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/file: fix wildcard CNAME answer",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/metrics: When no response is written, fallback to status of next plugin in",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/metrics: Support HTTPS qType in requests count metric label",
+  "reason": "a new VALUE of an existing label (type=\"HTTPS\"); nothing to change"
+ },
+ {
+  "version": "1.8",
+  "note": "plugin/metrics: Expand coredns_dns_responses_total with plugin label",
+  "reason": "an ADDED metric label: existing series keep their names, sum()/rate() queries are unaffected; only equality comparisons across the new label would change"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/prometheus: Write rcode properly to the metrics",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/cache: Add zones label to cache metrics",
+  "reason": "an ADDED metric label: existing series keep their names, sum()/rate() queries are unaffected; only equality comparisons across the new label would change"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/forward: Don't panic when from-zone cannot be normalized",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/grpc: Don't panic when from-zone cannot be normalized",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/metrics: Add metric counting DNS-over-HTTPS responses",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/reload: Change hash from md5 to sha512",
+  "reason": "internal Go API / build change with no Corefile or manifest surface (the reload plugin's change-detection hash)"
+ },
+ {
+  "version": "1.9",
+  "note": "This is a release with many new features. The most notable addition is a new plugin tsig",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.9",
+  "note": "core: warn when domain names are not in RFC1035 preferred syntax",
+  "reason": "a log warning only; nothing is rejected"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/cache: add metadata for wildcard record responses",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/cache: add option to adjust SERVFAIL response cache TTL",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/file: add metadata for wildcard record responses",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/forward: health_check needs to normalize a specified domain name",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/health: bypass proxy in self health check",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.9",
+  "note": "plugin/trace : make zipkin HTTP reporter more configurable using Corefile",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.10",
+  "note": "Corrected architecture labels in multi-arch image manifest",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (image manifest metadata)"
+ },
+ {
+  "version": "1.10",
+  "note": "plugin/edns: remove truncating of question section on bad EDNS version",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.10",
+  "note": "plugin/dnstap: Fix behavior when multiple dnstap plugins specified",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.11",
+  "note": "This release introduces the following backward incompatible changes",
+  "reason": "a lead-in sentence; the changes it introduces are the notes that follow it"
+ },
+ {
+  "version": "1.11",
+  "note": "plugin/clouddns: fix answers limited to one response",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.11",
+  "note": "plugin/k8s_external: add fallthrough option",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "plugin/kubernetes: expose client-go internal request metrics",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "Revert \"plugin/forward: Continue waiting after receiving malformed responses \"",
+  "reason": "reverts a 1.11.0 performance regression inside the same minor; upgrade straight to 1.11.1+"
+ },
+ {
+  "version": "1.11",
+  "note": "This release contains some new features, bug fixes, and package updates. Because of the",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.11",
+  "note": "Change the log flags to be a variable that can be set",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.11",
+  "note": "Enable Prometheus native histograms",
+  "reason": "native histograms are served only to scrapers that negotiate them; classic buckets stay"
+ },
+ {
+  "version": "1.11",
+  "note": "rewrite plugin: new option to revert EDNS0 option rewrites in responses",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "plugin/rewrite: Add \"revert\" parameter for EDNS0 options",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "container: Restored backwards compatibility of Current Workdir",
+  "reason": "restores the pre-1.11.3 image working directory; a fix, not a migration"
+ },
+ {
+  "version": "1.11",
+  "note": "plugin/hosts: add hostsfile as label for coredns_hosts_entries",
+  "reason": "an ADDED metric label: existing series keep their names, sum()/rate() queries are unaffected; only equality comparisons across the new label would change"
+ },
+ {
+  "version": "1.12",
+  "note": "kubernetes: Revert recent change to only create PTR records for endpoints with hostname",
+  "reason": "restores the pre-1.11.4 PTR behaviour; nothing to change"
+ },
+ {
+  "version": "1.12",
+  "note": "forward: added option to return SERVFAIL immediately if all upstreams are unhealthy.",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.12",
+  "note": "core: Increase CNAME lookup limit from 7 to 10",
+  "reason": "a relaxed limit; chains that resolved before still resolve"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/kubernetes: Revert \"only create PTR records for endpoints with hostname defined \"",
+  "reason": "restores the pre-1.11.4 PTR behaviour; nothing to change"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/forward: added option `failfast_all_unhealthy_upstreams` to return servfail if all",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.12",
+  "note": "This release introduces significant improvements to plugin stability and extensibility. It",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/metrics: Preserve request size from plugins",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/file: Add fallthrough support",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.12",
+  "note": "This release improves plugin reliability and standards compliance, adding startup timeout",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/grpc: Add support for fallthrough to the grpc plugin",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.12",
+  "note": "This release improves stability and security, fixing context propagation in DoH, label",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.12",
+  "note": "plugin/file: Fix label offset problem in ClosestEncloser",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "This release introduces a new Nomad plugin for integrating CoreDNS with HashiCorp Nomad.",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.13",
+  "note": "core: Fix Corefile infinite loop on unclosed braces",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a malformed Corefile now errors instead of hanging)"
+ },
+ {
+  "version": "1.13",
+  "note": "core: Fix Corefile related import cycle issue",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "core: Normalize panics on invalid origins",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "plugin/dnstap: Add bounds for plugin args",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (argument validation)"
+ },
+ {
+  "version": "1.13",
+  "note": "This release updates CoreDNS to Go 1.25.2 and golang.org/x/net v0.45.0 to address multiple",
+  "reason": "Go toolchain CVE fixes you get by running the release; no configuration surface"
+ },
+ {
+  "version": "1.13",
+  "note": "plugin/cache: Remove superfluous allocations in item.toMsg",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.14",
+  "note": "This release focuses on security hardening and operational reliability. Core updates",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/metrics: Implement plugin chain tracking",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "This release adds the new proxyproto plugin to support Proxy Protocol and preserve client",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.14",
+  "note": "This release introduces Windows service support, along with full TSIG verification across",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/forward: Add max_age option to enforce an absolute connection lifetime",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/kubernetes: Record cluster_ip services in dns_programming_duration metric",
+  "reason": "a metric now also counts ClusterIP services; values change, names do not"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/kubernetes: Sanitize non-UTF-8 host in metrics",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/metrics: Add optional TLS support to /metrics endpoint",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/metrics: Allow selectively exporting all Go runtime metrics",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "This release improves transport security and operational flexibility, with enhancements",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Bound HTTP/3 request header size for DoH3",
+  "reason": "a server-side hardening bound sized above any legitimate client's headers"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Remove duplicate cipher suites",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.14",
+  "note": "plgin/kubernetes: Remove debug fmt.Println from multicluster zone validation",
+  "reason": "internal Go API / build change with no Corefile or manifest surface"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/cache: Allow cache TTLs above default 3600s",
+  "reason": "a relaxed limit; nothing that worked stops working — but a `cache { success … TTL }` above 3600 that was silently clamped to 3600 now takes effect (3342b414e, 1.14.4), so operators who wrote such a value get the stale-answer window they asked for"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/cache: Prefer positive cache over SERVFAIL in ncache",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a stale positive answer is preferred over caching a SERVFAIL)"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/secondary: Add fallthrough support",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Bound DoQ stream read with the server read timeout",
+  "reason": "a server-side hardening bound reusing the configured read timeout"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Classify nxdomain without soa as denial",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (cache classification)"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Guard Join against an empty label slice",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/erratic: Apply default truncate amount of 2 for bare `truncate`",
+  "reason": "erratic is a test plugin"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/file: Run additional processing for wildcard answers",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/forward: Restore old behavior forward plugin continue on empty conf file",
+  "reason": "restores pre-1.14.x behaviour; a fix"
+ },
+ {
+  "version": "1.14",
+  "note": "This release strengthens DNS caching, forwarding, and transport reliability, with improved",
+  "reason": "a release summary paragraph; every change it names is dispositioned by its own Noteworthy entry"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Add connection-level concurrency limiting to DNS-over-QUIC",
+  "reason": "a server-side hardening bound sized above normal client concurrency"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Add max conn limit to https3",
+  "reason": "a server-side hardening bound sized above normal client concurrency"
+ },
+ {
+  "version": "1.14",
+  "note": "core: Normalize server block zones",
+  "reason": "zone names in server blocks are normalised (case/trailing dot); no Corefile change is required"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/cache: Do not cache SOA-less NODATA responses",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/file: Do not expand wildcard across a closer empty non-terminal",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/file: Handle empty non-terminal wildcard sources",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/forward: Fix issue in DoH health checks used a default TLS instead of the",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/kubernetes: Copy Labels in Pod.DeepCopyObject",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/rewrite: Normalize exact cname rewrite targets and preserve all records",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/rewrite: Test EDNS0 revert with a record present and on the replace path",
+  "reason": "a test-only change"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/secondary: Reset catalog members on ID change",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/secondary: Support catalog migration and member scoping",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/tsig: Don't echo client's TSIG.Error if verification is successful",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/cache: Fix cache stale verification metadata race",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "plugin/timeouts: Add maxtcpqueries option to bound queries per TCP/TLS connection",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ }
+]

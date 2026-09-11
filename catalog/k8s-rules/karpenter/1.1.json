@@ -1,0 +1,82 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.1-v1beta1-support-is-removed",
+    "severity": "HIGH",
+    "title": "Karpenter CRDs still serve v1beta1, which 1.1 removes",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "karpenter.sh",
+      "target": "v1beta1"
+    },
+    "quote": "Karpenter `1.1.0` drops the support for `v1beta1` APIs. **Do not** upgrade to `1.1.0`+ without following the Migration Guide.",
+    "remediation": "Complete the v1 migration on Karpenter 1.0 before upgrading past it. 1.0 serves v1beta1 through conversion webhooks; 1.1 drops that support, so any object still stored or served as v1beta1 stops being readable and the NodePools it describes provision nothing.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"karpenter\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # each Karpenter CRD and the API versions it still serves"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.1-v1beta1-compatibility-annotations-are-dropped",
+    "severity": "HIGH",
+    "title": "Objects may still carry the v1beta1 compatibility annotations",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the note does not name the annotation key, and inventing one would produce a rule that matches nothing while reading as clean — the compatibility annotations are written by the conversion webhook during the v1 migration"
+    },
+    "quote": "Support for the `v1beta1` compatiblity annotations have been dropped. Ensure you have completed migration before upgrading to `v1.1.0`. Refer to the migration guide for more details.",
+    "remediation": "Finish the v1 migration on 1.0 before upgrading. The compatibility annotations exist only to carry v1beta1 fields (notably the kubelet configuration) across the conversion, and 1.1 stops honouring them — anything still relying on one loses that configuration silently.",
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NodePool|NodeClaim"
+    },
+    "verifyCommand": "kubectl get nodepools,nodeclaims -o json 2>/dev/null | jq -r '.items[]? | .metadata.annotations // {} | to_entries[] | select(.key | test(\"karpenter\")) | .key' | sort -u  # any compatibility.karpenter.sh annotation listed here is still carrying v1beta1 state"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.1-nodeclassref-group-and-kind-are-strictly-required",
+    "severity": "HIGH",
+    "title": "A NodePool or NodeClaim nodeClassRef is missing group or kind",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "NodePool|NodeClaim",
+      "target": "nodeClassRefComplete",
+      "value": "^false$",
+      "reason": "reads the flag the agent writes whenever it could walk the object's nodeClassRef; an object whose spec could not be walked is reported as unchecked, never as clean"
+    },
+    "quote": "`nodeClassRef.group` and `nodeClassRef.kind` are strictly required. Ensure these values are set for all `NodePools` / `NodeClaims` before upgrading.",
+    "remediation": "Set `nodeClassRef.group` and `nodeClassRef.kind` on every NodePool and NodeClaim named here — for the AWS provider, group `karpenter.k8s.aws` and kind `EC2NodeClass`. Objects converted from v1beta1 carry only `nodeClassRef.name`, and from 1.1 those stop resolving their node class, so the NodePool provisions no capacity at all.",
+    "verifyCommand": "kubectl get nodepools -o json 2>/dev/null | jq -r '.items[]? | select((.spec.template.spec.nodeClassRef.group // \"\") == \"\" or (.spec.template.spec.nodeClassRef.kind // \"\") == \"\") | \"NodePool/\\(.metadata.name)\"'; kubectl get nodeclaims -o json 2>/dev/null | jq -r '.items[]? | select((.spec.nodeClassRef.group // \"\") == \"\" or (.spec.nodeClassRef.kind // \"\") == \"\") | \"NodeClaim/\\(.metadata.name)\"'  # each object printed has an incomplete nodeClassRef and stops resolving its node class on 1.1"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.1-bottlerocket-raid0-needs-a-recent-node-image",
+    "severity": "HIGH",
+    "title": "A Bottlerocket node class sets instanceStorePolicy RAID0",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "EC2NodeClass",
+      "target": "instanceStorePolicy",
+      "value": "RAID0"
+    },
+    "quote": "Bottlerocket AMIFamily now supports `instanceStorePolicy: RAID0`. This means that Karpenter will auto-generate userData to RAID0 your instance store volumes (similar to AL2 and AL2023) when specifying this value.",
+    "remediation": "Confirm the Bottlerocket image these node classes launch is v1.22.0 or later before upgrading. Karpenter starts auto-generating RAID0 userData for Bottlerocket, and on an older image the nodes fail to join the cluster — they come up and never register.",
+    "gate": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "EC2NodeClass",
+      "target": "amiFamily",
+      "value": "Bottlerocket",
+      "reason": "the RAID0 userData generation is specific to the Bottlerocket AMI family; on any other family the same instanceStorePolicy value is unaffected by this change"
+    },
+    "verifyCommand": "kubectl get ec2nodeclasses -o json 2>/dev/null | jq -r '.items[]? | select(.spec.amiFamily == \"Bottlerocket\" and .spec.instanceStorePolicy == \"RAID0\") | \"\\(.metadata.name) amiSelectorTerms=\\((.spec.amiSelectorTerms // []) | tostring)\"'  # each node class printed needs a Bottlerocket image of v1.22.0 or later"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.1-neuron-accelerator-label-values-are-corrected",
+    "severity": "MEDIUM",
+    "title": "Pods select on the accelerator name that Neuron devices are losing",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Pod",
+      "target": "nodeSelector",
+      "value": "^karpenter\\.k8s\\.aws/instance-accelerator-name=inferentia$",
+      "reason": "read from Pod rows as key=value pairs — nodeSelector is collected per pod, and node affinity is not scanned, so a clean result here does not clear an affinity term"
+    },
+    "quote": "The AWS Neuron accelerator well known name label (`karpenter.k8s.aws/instance-accelerator-name`) values now reflect their correct names of `trainium`, `inferentia`, and `inferentia2`. Previously, all Neuron accelerators were assigned the label name of `inferentia`.",
+    "remediation": "These pods pin `instance-accelerator-name=inferentia`. After the upgrade Trainium and Inferentia2 nodes report `trainium` and `inferentia2` instead of all reporting `inferentia`, so a selector written when they all shared one value now excludes them and the pods stop being scheduled onto that capacity.",
+    "verifyCommand": "kubectl get pods,deploy,statefulset,daemonset -A -o json | jq -r '.items[] | select(tostring | test(\"instance-accelerator-name\")) | \"\\(.kind)/\\(.metadata.namespace)/\\(.metadata.name)\"'  # each object printed pins an accelerator name whose value set changes on 1.1"
+  }
+]

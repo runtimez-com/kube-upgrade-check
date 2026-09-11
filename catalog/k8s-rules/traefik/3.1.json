@@ -1,0 +1,50 @@
+[
+  {
+    "ruleId": "rtz-traefik-3.1-endpointslices-rbac-and-k8s-121-floor",
+    "severity": "HIGH",
+    "title": "Kubernetes providers move to EndpointSlices and need new RBAC",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is a grant on Traefik's own ClusterRole; the agent collects IngressRoute, IngressRouteTCP and Middleware, not the RBAC objects backing Traefik's service account"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
+    },
+    "quote": "Starting with v3.1, Traefik's Kubernetes Providers use the EndpointSlices API (requires Kubernetes >=v1.21) for service endpoint discovery. This change also introduces NodePort load-balancing capabilities.",
+    "remediation": "Update Traefik's ClusterRole before upgrading to 3.1: drop the `endpoints` permission, add `endpointslices` (discovery.k8s.io), and add `nodes` for the new NodePort load-balancing. This applies to the KubernetesIngress, KubernetesCRD and KubernetesGateway providers alike. Without the endpointslices grant Traefik cannot discover service endpoints and silently routes to nothing. This also sets a hard floor of Kubernetes 1.21.",
+    "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select((.rules[]?.resources[]? == \"ingressroutes\") or (.rules[]?.apiGroups[]? == \"traefik.io\")) | .metadata.name as $n | .rules[] | select(.resources[]? == \"endpointslices\") | $n' # a name printed means the endpointslices grant is present; no output on a Traefik ClusterRole means 3.1 will not discover endpoints"
+  },
+  {
+    "ruleId": "rtz-traefik-3.1-disable-ingressclass-lookup-deprecated",
+    "severity": "LOW",
+    "title": "disableIngressClassLookup deprecated in favour of disableClusterScopeResources",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)disableIngressClassLookup",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "The `disableIngressClassLookup` option has been deprecated and will be removed in the next major version.",
+    "remediation": "Replace `disableIngressClassLookup` with `disableClusterScopeResources` in the Traefik install configuration (Helm values, CLI flags or static config file). The replacement is broader — it governs discovery of both IngressClass and Node resources — so confirm you intend Nodes to be covered too before switching it on.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"disableIngressClassLookup\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still pass the deprecated flag; also check the Helm values and any static config ConfigMap"
+  },
+  {
+    "ruleId": "rtz-traefik-3.1-kubernetesgateway-no-longer-experimental",
+    "severity": "MEDIUM",
+    "title": "KubernetesGateway provider is no longer experimental",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)experimental\\.kubernetesgateway",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "The KubernetesGateway Provider is no longer experimental in v3.1 and can be enabled without the `experimental.kubernetesgateway` option.",
+    "remediation": "Remove `kubernetesgateway` from the `experimental` section and configure the provider directly. Leaving the experimental option in place is the failure mode to look for after upgrading, since the provider is now configured through its own section instead.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"experimental.kubernetesgateway\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set the removed experimental option"
+  }
+]
