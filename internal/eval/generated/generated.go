@@ -986,7 +986,7 @@ func foldDuplicates(outcomes []ruleOutcome) {
 			"d|" + o.rule.Slug() + "|" + d.Kind + "|" + d.ObjectKind + "|" + d.Namespace + "|" + d.ObjectName + "|" + d.Target + "|" + d.Value + "|" + objects,
 			"q|" + o.rule.Quote + "|" + objects,
 		}
-		var dup int = -1
+		dup := -1
 		for _, k := range keys {
 			if j, ok := seen[k]; ok {
 				dup = j

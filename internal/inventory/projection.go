@@ -488,7 +488,7 @@ func projectApplicationSet(obj map[string]any, base map[string]any) map[string]a
 	}
 	nested := hasNestedSelectors(spec["generators"], 0)
 	out["nestedSelectorsPresent"] = nested
-	out["nestedSelectorsUnapplied"] = nested && !(applySet && apply)
+	out["nestedSelectorsUnapplied"] = nested && (!applySet || !apply)
 	return out
 }
 
