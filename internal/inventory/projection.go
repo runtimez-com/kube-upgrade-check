@@ -53,6 +53,9 @@ var projectors = map[string]projector{
 	"NodePool":     projectNodePool,
 	"NodeClaim":    projectNodeClaim,
 	"EC2NodeClass": projectEC2NodeClass,
+
+	"DestinationRule": projectDestinationRule,
+	"EnvoyFilter":     projectEnvoyFilter,
 }
 
 // HasProjector reports whether a kind's rows are derived rather than raw.
@@ -141,7 +144,28 @@ func projectContainers(list []any, sidecarsOnly bool) []any {
 				continue
 			}
 		}
-		out = append(out, pick(m, "name", "image", "command", "args"))
+		c := pick(m, "name", "image", "command", "args")
+		// env is NAMES only, the way the agent ships it: the Istio flag-removal rules read
+		// `containers[].env[].name` on the istiod Deployment. A value is never carried, and a
+		// valueFrom entry contributes its name and nothing about what it references.
+		if env := envNames(listAt(m, "env")); len(env) > 0 {
+			c["env"] = env
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+func envNames(list []any) []any {
+	out := []any{}
+	for _, e := range list {
+		m, ok := e.(map[string]any)
+		if !ok {
+			continue
+		}
+		if name, _ := m["name"].(string); name != "" {
+			out = append(out, map[string]any{"name": name})
+		}
 	}
 	return out
 }
@@ -164,6 +188,89 @@ func projectVolumes(list []any) []any {
 		out = append(out, vm)
 	}
 	return out
+}
+
+// ---------- Istio ----------
+
+// projectDestinationRule mirrors the agent's DestinationRule row: host, and a trafficPolicy that
+// is written on EVERY row (present-but-empty reads clean) as the NAMES of its top-level blocks
+// (tls, connectionPool, outlierDetection, ...), tls's mode enum and key names, outlierDetection's
+// key names, and connectionPool.tcp.connectTimeout. caCertificates (a file path), credentialName
+// (a Secret name), sni and subjectAltNames stay on the cluster.
+func projectDestinationRule(obj map[string]any, base map[string]any) map[string]any {
+	spec, _ := obj["spec"].(map[string]any)
+	out := map[string]any{}
+	if host, ok := spec["host"].(string); ok {
+		out["host"] = host
+	}
+	tp := map[string]any{"keys": toAny(sortedKeys(mapAt(spec, "trafficPolicy")))}
+	if tpMap := mapAt(spec, "trafficPolicy"); tpMap != nil {
+		if tls := mapAt(tpMap, "tls"); tls != nil {
+			t := map[string]any{"keys": toAny(sortedKeys(tls))}
+			if mode, ok := tls["mode"].(string); ok {
+				t["mode"] = mode
+			}
+			tp["tls"] = t
+		}
+		if od := mapAt(tpMap, "outlierDetection"); od != nil {
+			tp["outlierDetection"] = map[string]any{"keys": toAny(sortedKeys(od))}
+		}
+		if ct, ok := mapAt(tpMap, "connectionPool", "tcp")["connectTimeout"]; ok && ct != nil {
+			tp["connectionPool"] = map[string]any{"tcp": map[string]any{"connectTimeout": fmt.Sprint(ct)}}
+		}
+	}
+	out["trafficPolicy"] = tp
+	return out
+}
+
+// projectEnvoyFilter mirrors the agent's EnvoyFilter row: each configPatch as its applyTo and
+// operation enums plus the Envoy filter NAMES it matches (filter/subFilter names under match,
+// and patch.value.name); the patch value itself — inline Lua, typed configs — never leaves.
+// workloadSelectorKeys are the label KEYS the filter selects on.
+func projectEnvoyFilter(obj map[string]any, base map[string]any) map[string]any {
+	spec, _ := obj["spec"].(map[string]any)
+	patches := []any{}
+	for _, p := range listAt(spec, "configPatches") {
+		pm, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		patch := map[string]any{}
+		if applyTo, ok := pm["applyTo"].(string); ok {
+			patch["applyTo"] = applyTo
+		}
+		if op, ok := mapAt(pm, "patch")["operation"].(string); ok {
+			patch["operation"] = op
+		}
+		names := []any{}
+		collectEnvoyFilterNames(mapAt(pm, "match"), &names)
+		if name, ok := mapAt(pm, "patch", "value")["name"].(string); ok && name != "" {
+			names = append(names, name)
+		}
+		patch["filterNames"] = names
+		patches = append(patches, patch)
+	}
+	return map[string]any{
+		"configPatches":        patches,
+		"workloadSelectorKeys": toAny(sortedKeys(mapAt(spec, "workloadSelector", "labels"))),
+	}
+}
+
+// collectEnvoyFilterNames walks an EnvoyFilter match block (listener → filterChain → filter →
+// subFilter) and collects every filter.name / subFilter.name, names only.
+func collectEnvoyFilterNames(node map[string]any, out *[]any) {
+	for _, k := range sortedKeys(node) {
+		child, ok := node[k].(map[string]any)
+		if !ok {
+			continue
+		}
+		if k == "filter" || k == "subFilter" {
+			if name, ok := child["name"].(string); ok && name != "" {
+				*out = append(*out, name)
+			}
+		}
+		collectEnvoyFilterNames(child, out)
+	}
 }
 
 // ---------- ConfigMap / Secret ----------

@@ -1,0 +1,169 @@
+[
+  {
+    "ruleId": "rtz-istio-1.21-wildcard-host-precedence",
+    "severity": "MEDIUM",
+    "title": "Overlapping wildcard hosts across VirtualServices now resolve to the most specific match, not the oldest VirtualService",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether two VirtualServices' hosts overlap is a cross-object comparison the evaluator does not make; the projection carries each VirtualService's hosts"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "VirtualService",
+      "target": "hosts[]",
+      "value": "^\\*"
+    },
+    "quote": "Previously, the oldest VirtualService would take precedence regardless of whether or not it was the most specific host match. Now, the most specific host match will take precedence.",
+    "remediation": "Where two VirtualServices claim overlapping wildcard hosts (`*.example.com` and `api.example.com`), traffic that used to follow the older VirtualService now follows the more specific host. Check the listed wildcard-host VirtualServices for overlaps; to keep the old order set `PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING=true` on istiod (removed again in 1.24).",
+    "verifyCommand": "kubectl get virtualservices.networking.istio.io -A -o json | jq -r '.items[] | select(.spec.hosts[]? | startswith(\"*\")) | .metadata.namespace + \"/\" + .metadata.name + \" \" + (.spec.hosts | join(\",\"))'  # printed VirtualServices carry wildcard hosts; any host they overlap with now wins by specificity"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-auto-sni-default-on",
+    "severity": "LOW",
+    "title": "SNI is now set automatically from the HTTP host header when a DestinationRule does not set it",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection carries a DestinationRule's TLS mode and which TLS keys it sets, but the SNI a proxy will send is computed per request"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DestinationRule",
+      "target": "trafficPolicy.tls.mode",
+      "value": "^(SIMPLE|MUTUAL)$"
+    },
+    "quote": "auto_sni is enabled by default. This means SNI will be set automatically based on the downstream HTTP host/authority header if `DestinationRule` does not explicitly set the same.",
+    "remediation": "TLS-originating DestinationRules (`tls.mode: SIMPLE` or `MUTUAL`) without an explicit `sni` now send the request's host header as SNI. Upstreams that reject unexpected SNI need an explicit `tls.sni`; otherwise no action. To keep the old behaviour use `compatibilityVersion: 1.20` (that profile is removed at 1.24; the flag itself at 1.26).",
+    "verifyCommand": "kubectl get destinationrules.networking.istio.io -A -o json | jq -r '.items[] | select((.spec.trafficPolicy.tls.mode // \"\") | test(\"^(SIMPLE|MUTUAL)$\")) | select(.spec.trafficPolicy.tls.sni == null) | .metadata.namespace + \"/\" + .metadata.name + \" host=\" + .spec.host'  # a printed DestinationRule originates TLS without an explicit sni and now sends the host header as SNI"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-client-verifies-server-cert-by-default",
+    "severity": "HIGH",
+    "title": "Sidecars now verify upstream TLS certificates against the OS CA bundle when a DestinationRule sets no caCertificates",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection carries a DestinationRule's TLS mode and which TLS keys it sets; whether the upstream's certificate chains to the OS bundle is not on the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DestinationRule",
+      "target": "trafficPolicy.tls.mode",
+      "value": "^(SIMPLE|MUTUAL)$"
+    },
+    "quote": "This means server certificates will be automatically verified using the OS CA certificates when not using a DestinationRule caCertificates field.",
+    "remediation": "Every TLS-originating DestinationRule (`tls.mode: SIMPLE`/`MUTUAL`) that sets neither `caCertificates` nor `insecureSkipVerify` now fails the handshake against a self-signed or private-CA upstream. Add `caCertificates` (or `credentialName` with a CA), set `insecureSkipVerify: true` where verification is not wanted, or install with `compatibilityVersion: 1.20` — a stopgap: 1.24 removes that profile and the flag.",
+    "verifyCommand": "kubectl get destinationrules.networking.istio.io -A -o json | jq -r '.items[] | select((.spec.trafficPolicy.tls.mode // \"\") | test(\"^(SIMPLE|MUTUAL)$\")) | select(.spec.trafficPolicy.tls.caCertificates == null and .spec.trafficPolicy.tls.credentialName == null and .spec.trafficPolicy.tls.insecureSkipVerify != true) | .metadata.namespace + \"/\" + .metadata.name + \" host=\" + .spec.host'  # a printed DestinationRule originates TLS with no CA and no insecureSkipVerify — its upstream certificate is now verified against the OS bundle"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-externalname-services-become-aliases",
+    "severity": "HIGH",
+    "title": "ExternalName Services are now aliases — VirtualServices routing to them and DestinationRules on them stop applying",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Service",
+      "target": "type",
+      "value": "ExternalName",
+      "reason": "names every ExternalName Service; whether a VirtualService or DestinationRule references it is stated in the remediation, not tested here"
+    },
+    "quote": "`VirtualServices` that route to an `ExternalName` service will no longer work unless the referenced service exists (as a Service or ServiceEntry). * `DestinationRule` can no longer apply to `ExternalName` services. Instead, create rules where the `host` references service.",
+    "remediation": "For each ExternalName Service in the mesh: make sure the name it points to exists as a Service or ServiceEntry (a VirtualService routing to the ExternalName otherwise breaks), move any DestinationRule from the ExternalName host to the referenced host, and drop `ports` on the Service (now ignored). To opt out for one release set `ENABLE_EXTERNAL_NAME_ALIAS=false` on istiod (removed in 1.24).",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"ExternalName\") | .metadata.namespace + \"/\" + .metadata.name + \" -> \" + .spec.externalName'  # each printed Service is now an alias: its VirtualService/DestinationRule must target the referenced host"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-gateway-name-label-selectors",
+    "severity": "MEDIUM",
+    "title": "The `istio.io/gateway-name` label on Gateway-API gateway pods becomes `gateway.networking.k8s.io/gateway-name`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|Service|DaemonSet|StatefulSet",
+      "target": "selector",
+      "value": "^istio\\.io/gateway-name=",
+      "reason": "checked on workload and Service selectors; a NetworkPolicy podSelector or a policy `selector.matchLabels` that keys on the label is named by the verify command"
+    },
+    "quote": "the label key used to identify the gateway name is changing from `istio.io/gateway-name` to `gateway.networking.k8s.io/gateway-name`. The old label will continue to be appended to the relevant label sets for backwards compatibility, but it will be removed in a future release.",
+    "remediation": "Both labels are present from 1.21, so nothing breaks yet; istiod keeps the old key in the selectors of the Deployments and Services it manages. Change every selector, NetworkPolicy, AuthorizationPolicy and script of your own that keys on `istio.io/gateway-name` to `gateway.networking.k8s.io/gateway-name` before 1.24, which removes the old label.",
+    "verifyCommand": "kubectl get deploy,svc,netpol,authorizationpolicies.security.istio.io,peerauthentications.security.istio.io -A -o json | jq -r '.items[] | select(tojson | test(\"istio.io/gateway-name\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name'  # every printed object selects on the old label and must move to gateway.networking.k8s.io/gateway-name before 1.24"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-bootstrap-envoyfilter-patches-removed",
+    "severity": "MEDIUM",
+    "title": "EnvoyFilter `applyTo: BOOTSTRAP` patches are no longer applied (they only ever were on proxies opted in with `BOOTSTRAP_XDS_AGENT`)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "EnvoyFilter",
+      "target": "configPatches[].applyTo",
+      "value": "^BOOTSTRAP$",
+      "reason": "checked on the applyTo of every EnvoyFilter config patch the agent collects"
+    },
+    "quote": "**Removed** using BOOTSTRAP_XDS_AGENT experimental feature to apply BOOTSTRAP EnvoyFilter patches at the startup.",
+    "remediation": "Bootstrap patches were opt-in: only proxies started with `BOOTSTRAP_XDS_AGENT=true` (proxyMetadata) ever applied them, and those lose them at 1.21 when the flag is removed. For each listed EnvoyFilter, move the bootstrap customisation to a custom bootstrap ConfigMap (`sidecar.istio.io/bootstrapOverride`) or `proxy.istio.io/config` and drop the patch; a mesh that never set the flag has nothing to lose.",
+    "verifyCommand": "kubectl get envoyfilters.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.configPatches[]?.applyTo] | index(\"BOOTSTRAP\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed EnvoyFilter carries a BOOTSTRAP patch that 1.21 proxies ignore"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-installed-state-istiooperator-gone",
+    "severity": "LOW",
+    "title": "`istioctl install` no longer writes the `installed-state` IstioOperator, nor installs its CRD",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "what a script reads after install is not on the cluster; the CRD's presence only says a previous install created it"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^install\\.istio\\.io$"
+    },
+    "quote": "As there is no `IstioOperator` needed for these usages anymore, `istioctl install` and `helm install` no longer install the `IstioOperator` CRD. Note this only impacts `istioctl install`, not the in-cluster operator.",
+    "remediation": "Tooling that reads the `installed-state` IstioOperator (or expects the `istiooperators.install.istio.io` CRD after a plain `istioctl install`) must instead read `istioctl manifest generate` output or the live objects. In-cluster operator installs are unaffected.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | startswith(\"installed-state\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed installed-state object is a leftover snapshot that 1.21 stops maintaining"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-inbound-passthrough-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`PILOT_ENABLE_INBOUND_PASSTHROUGH` is removed — inbound passthrough can no longer be turned off",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(PILOT_ENABLE_INBOUND_PASSTHROUGH)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** the `PILOT_ENABLE_INBOUND_PASSTHROUGH` setting, which has been enabled-by-default for the past 8 releases.",
+    "remediation": "Remove the variable from istiod. If it was set to `false`, sidecars go back to inbound passthrough at 1.21: inbound listeners no longer rewrite to `127.0.0.1`, so applications that only bound to localhost need `Sidecar.ingress[].defaultEndpoint: 127.0.0.1:<port>` instead.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_INBOUND_PASSTHROUGH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means inbound listeners change to passthrough at 1.21"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-legacy-telemetry-envoyfilters-removed",
+    "severity": "LOW",
+    "title": "The legacy EnvoyFilter telemetry implementation and its `configOverride` values are gone",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the removed fields are Helm values; only the EnvoyFilters an old install rendered from them are visible on the cluster"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "EnvoyFilter",
+      "objectName": "^(tcp-)?stats-filter-"
+    },
+    "quote": "the following fields are no longer respected: `prometheus.configOverride`, `stackdriver.configOverride`, `stackdriver.disableOutbound`, `stackdriver.outboundAccessLogging`.",
+    "remediation": "Installs that still set `telemetry.v2.prometheus.configOverride` or the `stackdriver.*` values (rendered as the `stats-filter-*` / `tcp-stats-filter-*` EnvoyFilters in the root namespace) lose those customisations; express them through the Telemetry API (`metrics.overrides`) and remove the values.",
+    "verifyCommand": "kubectl get envoyfilters.networking.istio.io -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^(tcp-)?stats-filter-\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed EnvoyFilter is the legacy telemetry implementation; its configOverride customisations are not honoured at 1.21"
+  },
+  {
+    "ruleId": "rtz-istio-1.21-jwt-authn-metadata-key-renamed",
+    "severity": "MEDIUM",
+    "title": "JWT authentication moves to Envoy's upstream filter — custom filters reading the `istio_authn` metadata key stop seeing claims",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the agent ships an EnvoyFilter's patch enums and filter NAMES, never the patch value where `istio_authn` would appear"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "EnvoyFilter",
+      "target": "configPatches[].applyTo",
+      "value": "^HTTP_FILTER$"
+    },
+    "quote": "Note that a custom Envoy or Wasm filter that used `istio_authn` dynamic metadata key needs to be updated to use `envoy.filters.http.jwt_authn` dynamic metadata key.",
+    "remediation": "An EnvoyFilter (Lua, ext_authz, RBAC shadow rules) or WasmPlugin that reads JWT claims from dynamic metadata under `istio_authn` reads nothing once the proxy runs 1.21 — authorization decisions built on those claims fail closed or open depending on the filter. Change the metadata namespace to `envoy.filters.http.jwt_authn`. The switch is gated on proxy version, so a mixed fleet needs both keys until every sidecar is on 1.21.",
+    "verifyCommand": "kubectl get envoyfilters,wasmplugins -A -o json | jq -r '.items[] | select(tostring | test(\"istio_authn\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name'  # a printed filter reads the old metadata key and sees no claims from 1.21"
+  }
+]

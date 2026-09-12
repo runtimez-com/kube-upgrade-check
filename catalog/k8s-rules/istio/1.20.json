@@ -1,0 +1,85 @@
+[
+  {
+    "ruleId": "rtz-istio-1.20-envoy-filter-order-unified",
+    "severity": "LOW",
+    "title": "Envoy filter order is now the same on every listener — EnvoyFilter patches inserted by position may land elsewhere",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "filter order is decided inside Envoy; the projection carries only which operation an EnvoyFilter uses, not where the resulting chain puts it"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "EnvoyFilter",
+      "target": "configPatches[].operation",
+      "value": "^INSERT_(BEFORE|AFTER|FIRST)$"
+    },
+    "quote": "The ordering is now consistent across inbound, outbound and gateway proxy modes, as well as HTTP and TCP protocols",
+    "remediation": "Only EnvoyFilter resources that insert relative to another filter (INSERT_BEFORE / INSERT_AFTER / INSERT_FIRST) can be affected: inbound TCP now places Metadata Exchange before Authn, and gateway TCP places stats after Authz and CUSTOM authz before Authn. Re-check where each positional patch lands with `istioctl proxy-config listener` after upgrading a canary proxy.",
+    "verifyCommand": "kubectl get envoyfilters.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.configPatches[]?.patch.operation] | any(test(\"^INSERT_(BEFORE|AFTER|FIRST)$\"))) | .metadata.namespace + \"/\" + .metadata.name'  # a printed EnvoyFilter inserts by position and must be re-checked against the unified filter order"
+  },
+  {
+    "ruleId": "rtz-istio-1.20-sidecar-startup-probe-default",
+    "severity": "MEDIUM",
+    "title": "The sidecar now ships a startupProbe — pods whose sidecar does not start within 10 minutes are terminated, and hand-tuned readiness values need re-tuning",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the sidecar's probe timing is rendered at injection time from Helm values and per-pod annotations; the projection keeps the annotation KEY, not the timing it sets"
+    },
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "readiness.status.sidecar.istio.io/"
+    },
+    "quote": "If the startup probe does not pass after 10 minutes, the pod will be terminated. Previously, the pod would never be terminated even if it was unable to start indefinitely.",
+    "remediation": "Pods that override the sidecar readiness timing (`readiness.status.sidecar.istio.io/*` annotations or `global.proxy.readiness*` values) were tuned for the old polling; move them to the new defaults (initialDelay 0 / period 15 / failureThreshold 4 with the startup probe on) or set `global.proxy.startupProbe.enabled=false` together with the old readiness values, as the note lists.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations // {} | keys[] | startswith(\"readiness.status.sidecar.istio.io/\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed pod overrides sidecar readiness timing and was tuned for the pre-startupProbe defaults"
+  },
+  {
+    "ruleId": "rtz-istio-1.20-ambient-profile-needs-no-operator",
+    "severity": "MEDIUM",
+    "title": "The in-cluster operator can no longer install the ambient profile",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IstioOperator resources are not collected; only the operator's own Deployment and the CRD are visible"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/operator([:@]|$)"
+    },
+    "quote": "**Removed** support for installing `ambient` profile with in-cluster operator.",
+    "remediation": "An `IstioOperator` resource with `spec.profile: ambient` that is reconciled by the in-cluster operator stops installing at 1.20. Move the ambient install to `istioctl install` or the Helm charts (istio-cni, ztunnel, istiod with `profile=ambient`); the in-cluster operator itself is deprecated.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.profile == \"ambient\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator asks the in-cluster operator for the ambient profile, which 1.20 no longer installs"
+  },
+  {
+    "ruleId": "rtz-istio-1.20-destination-rule-inheritance-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`PILOT_ENABLE_DESTINATION_RULE_INHERITANCE` is removed — DestinationRule inheritance stops working if it was turned on",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(PILOT_ENABLE_DESTINATION_RULE_INHERITANCE)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** the `PILOT_ENABLE_DESTINATION_RULE_INHERITANCE` experimental feature, which has been disable-by-default since it was created.",
+    "remediation": "Remove the variable from istiod. If it was set to `true`, mesh-wide or namespace-wide DestinationRules no longer merge into host-specific ones — copy the inherited `trafficPolicy` settings into each host DestinationRule before upgrading.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_DESTINATION_RULE_INHERITANCE)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of true means inherited DestinationRule settings are lost at 1.20"
+  },
+  {
+    "ruleId": "rtz-istio-1.20-custom-network-filters-removed",
+    "severity": "HIGH",
+    "title": "The `forward_downstream_sni`, `tcp_cluster_rewrite` and `sni_verifier` network filters are no longer in the Envoy build",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "EnvoyFilter",
+      "target": "configPatches[].filterNames[]",
+      "value": "(forward_downstream_sni|tcp_cluster_rewrite|sni_verifier)",
+      "reason": "checked on the filter names an EnvoyFilter references in its match and in the top-level `name` of its patch value — a filter named deeper inside a typed_config is not scanned"
+    },
+    "quote": "**Removed** `forward_downstream_sni`, `tcp_cluster_rewrite`, and `sni_verifier` custom Istio network filters from Envoy build. This functionality can be achieved using the Wasm extensibility.",
+    "remediation": "An EnvoyFilter that adds or matches one of these three filters is rejected by the 1.20 proxy (the listener fails to load). Replace the behaviour with a Wasm extension (WasmPlugin) or drop the patch before upgrading the data plane.",
+    "verifyCommand": "kubectl get envoyfilters.networking.istio.io -A -o json | jq -r '.items[] | select(tojson | test(\"forward_downstream_sni|tcp_cluster_rewrite|sni_verifier\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed EnvoyFilter references a network filter the 1.20 Envoy build no longer has"
+  }
+]

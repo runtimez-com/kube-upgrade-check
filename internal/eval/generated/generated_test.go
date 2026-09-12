@@ -122,6 +122,14 @@ func TestKeyMatchingModes(t *testing.T) {
 	if matchKey([]string{"foo/bar"}, "other/bar") != "" {
 		t.Error("a qualified target is exact")
 	}
+	// A trailing star is a prefix on the name part: Istio's excludeOutbound* names two
+	// annotations. Neither the other direction nor another domain may match.
+	if matchKey([]string{"traffic.sidecar.istio.io/excludeOutboundPorts"}, "traffic.sidecar.istio.io/excludeOutbound*") != "traffic.sidecar.istio.io/excludeOutboundPorts" {
+		t.Error("a trailing-star target must match the name-part prefix")
+	}
+	if matchKey([]string{"traffic.sidecar.istio.io/excludeInboundPorts", "other.io/excludeOutboundPorts"}, "traffic.sidecar.istio.io/excludeOutbound*") != "" {
+		t.Error("a trailing-star target must not match another prefix or another domain")
+	}
 	if matchKey([]string{"container.apparmor.security.beta.kubernetes.io/app"}, "container.apparmor.security.beta.kubernetes.io/") == "" {
 		t.Error("a trailing slash is a prefix family")
 	}

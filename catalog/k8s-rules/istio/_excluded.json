@@ -1,0 +1,122 @@
+[
+  {
+    "version": "1.20",
+    "note": "Upcoming `ExternalName` support changes",
+    "reason": "opt-in only at 1.20 (`ENABLE_EXTERNAL_NAME_ALIAS` is off by default: \"In this release, there is no behavioral changes by default\"); the 1.21 rule `externalname-services-become-aliases` fires on the hop that flips the default"
+  },
+  {
+    "version": "1.20",
+    "note": "Removed (46257)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.20",
+    "note": "Removed (locality-service)",
+    "reason": "removes a restriction (locality load balancing now works for workloads without a Service); nothing that worked before stops working"
+  },
+  {
+    "version": "1.21",
+    "note": "Removed (48019)",
+    "reason": "Istio's own charts stop rendering policy/v1beta1 PodDisruptionBudgets, which only matters on Kubernetes below 1.21; policy/v1 exists on every Kubernetes from 1.21, the support matrix scores Istio 1.21 below Kubernetes 1.26 as unsupported, and istioctl itself warns below 1.26"
+  },
+  {
+    "version": "1.21",
+    "note": "Removed (bug-report-speedup)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.21",
+    "note": "Removed (cni-drop-psp)",
+    "reason": "`values.cni.psp_cluster_role` only rendered a RoleBinding to a user-supplied PodSecurityPolicy ClusterRole; Kubernetes 1.25 removed PSP, the kubernetes corpus carries that removal, and the istio-cni chart has nothing to bind on any Kubernetes this Istio supports"
+  },
+  {
+    "version": "1.21",
+    "note": "Removed (drop-iop)",
+    "reason": "first bullet is istioctl-only (`istioctl experimental revision` removed); the note's second bullet (the installed-state IstioOperator and its CRD) is carried by the rule installed-state-istiooperator-gone"
+  },
+  {
+    "version": "1.22",
+    "note": "Removed (50221)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.22",
+    "note": "Removed (50347)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.23",
+    "note": "Removed (support-features)",
+    "reason": "istiod stops writing the unstable `GatewayClass.status.supportedFeatures` field; a status field nothing consumes, no operator action"
+  },
+  {
+    "version": "1.24",
+    "note": "Change in cert expiry metrics",
+    "reason": "a documentation correction (\"This was never the actual behavior, but the docs are now updated\"); no metric changes value at 1.24"
+  },
+  {
+    "version": "1.24",
+    "note": "Removed (operator-drop-diff)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.24",
+    "note": "Removed (operator-drop-dump)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.25",
+    "note": "Ambient pod upgrade reconcilation.",
+    "reason": "opt-in at 1.25 (\"This is off by default as of 1.25.0\"); the 1.29 rule `ambient-iptables-reconcile-default-on` covers the default flip"
+  },
+  {
+    "version": "1.25",
+    "note": "Removed (53582)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.25",
+    "note": "Removed (istioctl-xds-piggyback)",
+    "reason": "an istioctl command-line change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.26",
+    "note": "Removed (make-revision-tag-work-when-istiod-remote-is-enabled)",
+    "reason": "removes a restriction (revision tags now also work with istiodRemote); nothing that worked before stops working"
+  },
+  {
+    "version": "1.27",
+    "note": "Multiple certificate types support in Gateway",
+    "reason": "additive: gateways may now serve several certificate types; a single-certificate Gateway is unchanged"
+  },
+  {
+    "version": "1.27",
+    "note": "Traffic Distribution Mode",
+    "reason": "additive (\"**Added** support to specify traffic distribution mode for services\"); a Service that does not set trafficDistribution is unchanged"
+  },
+  {
+    "version": "1.28",
+    "note": "Enabling seccompProfile for Sidecar Containers",
+    "reason": "opt-in: the note tells how to turn `global.proxy.seccompProfile` on; nothing changes for an install that does not set it"
+  },
+  {
+    "version": "1.28",
+    "note": "InferencePool",
+    "reason": "no-op for operators (\"No API changes exist between rc2 and v1.0.0\"); the `inferencepool-v1alpha2-removed` and `inferencepool-endpointpicker-port` rules carry the two InferencePool edits at 1.28"
+  },
+  {
+    "version": "1.28",
+    "note": "Removed (57600)",
+    "reason": "removes an install ordering constraint (CNI no longer waits on pilot); nothing that worked before stops working"
+  },
+  {
+    "version": "1.28",
+    "note": "Removed (dont-use-md5)",
+    "reason": "an internal implementation change (\"Istio does not and has not used MD5 for cryptographic purposes\"); no configuration or behaviour changes"
+  },
+  {
+    "version": "1.30",
+    "note": "Untaint controller",
+    "reason": "removes a requirement (`PILOT_ENABLE_NODE_UNTAINT_CONTROLLERS` is now set automatically when `taint.enabled` is on); an install that still sets it explicitly is unaffected"
+  }
+]

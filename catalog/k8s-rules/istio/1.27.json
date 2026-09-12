@@ -1,46 +1,92 @@
 [
   {
-    "ruleId": "rtz-gen-istio-1.27-regenerate-grafana-dashboards",
-    "severity": "MEDIUM",
-    "title": "Regenerate Grafana dashboards after upgrade",
+    "ruleId": "rtz-istio-1.27-pluginca-incomplete-cacerts-fails-istiod",
+    "severity": "HIGH",
+    "title": "An incomplete `cacerts` plug-in CA bundle now stops istiod from starting instead of silently using the self-signed CA",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Cluster inventory cannot reliably determine whether the dashboards are Istio's bundled Grafana dashboards or whether they are managed externally."
+      "reason": "the agent ships a Secret's key NAMES, but a rule cannot express 'a key is MISSING from the set'; the hint names the plug-in CA Secret so the four keys can be checked"
     },
-    "quote": "- **Regenerate Grafana dashboards after upgrade** — If you use Istio's bundled Grafana dashboards, you'll need to regenerate them after upgrading to get the fixed dashboard linking. Dashboard UIDs are now explicitly defined to enable stable links between dashboards.",
-    "remediation": "If you use Istio's bundled Grafana dashboards, regenerate them after upgrading.",
-    "verifyCommand": "kubectl get configmaps -A -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name' | grep -i grafana # matching ConfigMaps are candidates for manual dashboard review"
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Secret",
+      "target": "keys[]",
+      "value": "^ca-key\\.pem$",
+      "objectName": "^cacerts$"
+    },
+    "quote": "With this fix, `istiod` will now validate the entire CA bundle and return an explicit error if any required file is missing, rather than falling back silently.",
+    "remediation": "istiod 1.27 requires all four files in the `cacerts` Secret (`ca-cert.pem`, `ca-key.pem`, `root-cert.pem`, `cert-chain.pem`) and exits with `failed to create an istiod CA: incomplete signing CA bundle detected` when one is missing — previously only `ca-key.pem` was checked and the rest silently fell back to the self-signed CA. Before upgrading, confirm the Secret carries all four keys; if the mesh has in fact been running on the self-signed CA, either complete the bundle (workloads re-certify on rotation) or delete the partial Secret to keep the self-signed CA deliberately.",
+    "verifyCommand": "kubectl get secret cacerts -n istio-system -o json | jq -r '.data | keys | join(\" \")'  # istiod 1.27 needs all of: ca-cert.pem ca-key.pem root-cert.pem cert-chain.pem — a shorter list stops istiod from starting"
   },
   {
-    "ruleId": "rtz-gen-istio-1.27-replace-removed-telemetry-providers",
-    "severity": "HIGH",
-    "title": "Replace removed Lightstep and Opencensus telemetry providers",
+    "ruleId": "rtz-istio-1.27-grafana-dashboards-regenerate",
+    "severity": "LOW",
+    "title": "Istio's bundled Grafana dashboards must be re-imported after upgrading — dashboard UIDs are now fixed",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Whether Lightstep or Opencensus is configured is encoded in nested telemetry provider references rather than a supported single inventory field."
+      "reason": "dashboards are files inside Grafana; the Grafana Deployment is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)grafana/grafana([:@]|$)"
+    },
+    "quote": "If you use Istio's bundled Grafana dashboards, you'll need to regenerate them after upgrading to get the fixed dashboard linking. Dashboard UIDs are now explicitly defined to enable stable links between dashboards.",
+    "remediation": "Re-import the 1.27 dashboards (the `istio-grafana-dashboards` ConfigMaps or the upstream JSON) so cross-dashboard links resolve; dashboards imported from an older release keep random UIDs and their links break.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"istio.*dashboard\")) | .metadata.namespace + \"/\" + .metadata.name'  # printed ConfigMaps hold bundled dashboards to regenerate after the 1.27 upgrade"
+  },
+  {
+    "ruleId": "rtz-istio-1.27-lightstep-opencensus-providers-removed",
+    "severity": "HIGH",
+    "title": "The Lightstep and OpenCensus telemetry providers are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "extension providers live inside the istio ConfigMap's mesh YAML, whose keys the projection keeps and whose contents it does not"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^mesh$",
+      "objectName": "^istio(-[a-z0-9-]+)?$"
+    },
+    "quote": "The telemetry providers Lightstep and Opencensus are removed in v1.27. Please use the OpenTelemetry provider instead.",
+    "remediation": "At 1.27 a `lightstep` extension provider silently produces no tracer any more (the config is still accepted, istiod only logs a warning), so tracing through it stops; `opencensus` providers have been inert since 1.23. Replace them with an `opentelemetry` provider (Lightstep/ServiceNow accepts OTLP) and repoint Telemetry resources before upgrading istiod.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"lightstep|opencensus\")) | $n + \": \" + .'  # a printed line configures a provider 1.27 removes"
+  },
+  {
+    "ruleId": "rtz-istio-1.27-native-sidecar-default",
+    "severity": "HIGH",
+    "title": "Native sidecars are on by default — `istio-proxy` becomes an init container, which other mutating webhooks and controllers may not expect",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which webhooks assume istio-proxy is a regular container is not derivable from their configuration; the mutating webhooks are the population to review"
     },
     "scope": {
       "kind": "KIND_PRESENT",
-      "objectKind": "Telemetry"
+      "objectKind": "MutatingWebhookConfiguration"
     },
-    "quote": "- **Deprecation of telemetry providers** — The telemetry providers Lightstep and Opencensus are removed in v1.27. Please use the OpenTelemetry provider instead.",
-    "remediation": "Replace Lightstep and Opencensus telemetry provider configurations with the OpenTelemetry provider.",
-    "verifyCommand": "kubectl get telemetry -A -o yaml | grep -iE 'lightstep|opencensus' # matching telemetry objects require replacement with OpenTelemetry"
+    "quote": "Native sidecars are now enabled by default for eligible pods. This changes `istio-proxy`from a container to an init container. This can cause compatibility issues with other mutating webhooks or controllers in your cluster that expect to modify the `istio-proxy` as a regular container.",
+    "remediation": "Test every other mutating webhook and any controller that inspects `spec.containers` for `istio-proxy` (vault-injector, OPA/Kyverno mutations, log sidecar injectors, custom operators) against a canary namespace before upgrading; set `ENABLE_NATIVE_SIDECARS=false` on istiod to keep the classic container where a controller cannot be fixed.",
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations -o json | jq -r '.items[] | select(.metadata.name | test(\"istio\") | not) | .metadata.name'  # each printed webhook may mutate pods after Istio injection and must cope with istio-proxy as an init container"
   },
   {
-    "ruleId": "rtz-gen-istio-1.27-test-native-sidecar-compatibility",
-    "severity": "HIGH",
-    "title": "Test workloads and controllers for native sidecar compatibility",
+    "ruleId": "rtz-istio-1.27-unused-multicluster-values-removed",
+    "severity": "LOW",
+    "title": "Three unused multicluster Helm values are dropped from the istiod chart: `global.multiCluster.enabled`, `globalDomainSuffix`, `includeEnvoyFilter`",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Eligibility for native sidecars and compatibility of mutating webhooks or controllers depend on admission behavior and workload/controller implementation that cluster inventory cannot settle."
+      "reason": "values are install-time input; only an IstioOperator resource keeps them on the cluster"
     },
     "scope": {
-      "kind": "KIND_PRESENT",
-      "objectKind": "Pod"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^install\\.istio\\.io$"
     },
-    "quote": "- **Native sidecar enabled by default** — Native sidecars are now enabled by default for eligible pods. This changes `istio-proxy`from a container to an init container. This can cause compatibility issues with other mutating webhooks or controllers in your cluster that expect to modify the `istio-proxy` as a regular container. Please test your workloads and controllers to ensure they are compatible with this change.",
-    "remediation": "Test your workloads and controllers to ensure they are compatible with `istio-proxy` changing from a container to an init container.",
-    "verifyCommand": "kubectl get pods -A -o yaml | grep -n -C 3 'istio-proxy' # matching pods are candidates for manual native-sidecar compatibility testing"
+    "quote": "**Removed** unsed multicluster-related Helm values.",
+    "remediation": "No-op: `global.multiCluster.enabled`, `global.multiCluster.globalDomainSuffix` and `global.multiCluster.includeEnvoyFilter` are ignored by the 1.27 chart (istioctl still accepts them). `global.multiCluster.clusterName` and `global.meshID` are unchanged and still required for multicluster.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.values.global.multiCluster.enabled != null or .spec.values.global.multiCluster.globalDomainSuffix != null or .spec.values.global.multiCluster.includeEnvoyFilter != null) | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator sets one of the three values the 1.27 chart ignores"
   }
 ]

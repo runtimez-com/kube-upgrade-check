@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -123,8 +124,9 @@ func TestWorkloadProjectsThePodTemplate(t *testing.T) {
 		if len(containers) != 1 || c["image"] != "coredns/coredns:1.4.0" || len(c["args"].([]any)) != 4 {
 			t.Errorf("%s containers = %v", tc.kind, containers)
 		}
-		if _, leaked := c["env"]; leaked {
-			t.Errorf("%s: env is not projected", tc.kind)
+		// env is names only — the Istio flag-removal rules read the name, the value never leaves.
+		if env := c["env"].([]any); len(env) != 1 || env[0].(map[string]any)["name"] != "SECRET" || env[0].(map[string]any)["value"] != nil {
+			t.Errorf("%s: env = %v, want names only", tc.kind, c["env"])
 		}
 		if side := leaves(t, spec, "initContainers"); len(side) != 1 || side[0].(map[string]any)["name"] != "sidecar" {
 			t.Errorf("%s: only native sidecars are kept, got %v", tc.kind, side)
@@ -303,5 +305,84 @@ func TestProjectedListsAreJSONArrays(t *testing.T) {
 	sec := projectSpec("Secret", obj("Secret", "argocd", "s", map[string]any{"data": map[string]any{"project": "x"}}), nil)
 	if _, ok := sec["keys"].([]any); !ok {
 		t.Errorf("Secret keys must be []any, got %T", sec["keys"])
+	}
+}
+
+// A DestinationRule row is the agent's shape: trafficPolicy on every row as block NAMES, tls as
+// its mode plus key names, outlierDetection as key names; the CA path, Secret name and SNI never
+// leave.
+func TestDestinationRuleProjectsKeysNotValues(t *testing.T) {
+	spec := projectSpec("DestinationRule", obj("DestinationRule", "prod", "partner", map[string]any{"spec": map[string]any{
+		"host": "partner.example.com",
+		"trafficPolicy": map[string]any{
+			"tls":              map[string]any{"mode": "SIMPLE", "caCertificates": "/etc/certs/ca.pem", "credentialName": "upstream-secret", "sni": "canary.example.com"},
+			"outlierDetection": map[string]any{"consecutive5xxErrors": 5, "minHealthPercent": 30},
+			"connectionPool":   map[string]any{"tcp": map[string]any{"maxConnections": 7, "connectTimeout": "3s"}},
+		},
+	}}), &Projection{Keep: []string{"host"}})
+	if spec["host"] != "partner.example.com" {
+		t.Errorf("host = %v", spec["host"])
+	}
+	tp := spec["trafficPolicy"].(map[string]any)
+	if got := fmt.Sprint(tp["keys"]); got != "[connectionPool outlierDetection tls]" {
+		t.Errorf("trafficPolicy.keys = %s", got)
+	}
+	tls := tp["tls"].(map[string]any)
+	if tls["mode"] != "SIMPLE" || fmt.Sprint(tls["keys"]) != "[caCertificates credentialName mode sni]" {
+		t.Errorf("tls = %v", tls)
+	}
+	if fmt.Sprint(tp["outlierDetection"].(map[string]any)["keys"]) != "[consecutive5xxErrors minHealthPercent]" {
+		t.Errorf("outlierDetection = %v", tp["outlierDetection"])
+	}
+	if tp["connectionPool"].(map[string]any)["tcp"].(map[string]any)["connectTimeout"] != "3s" {
+		t.Errorf("connectionPool = %v", tp["connectionPool"])
+	}
+	for _, canary := range []string{"/etc/certs/ca.pem", "upstream-secret", "canary.example.com", "maxConnections"} {
+		if strings.Contains(fmt.Sprint(spec), canary) {
+			t.Errorf("%q leaked into %v", canary, spec)
+		}
+	}
+	// No trafficPolicy at all still writes the block, empty, so a rule path on it resolves.
+	bare := projectSpec("DestinationRule", obj("DestinationRule", "prod", "bare", map[string]any{"spec": map[string]any{"host": "h"}}), &Projection{})
+	if keys := bare["trafficPolicy"].(map[string]any)["keys"].([]any); len(keys) != 0 {
+		t.Errorf("bare trafficPolicy.keys = %v", keys)
+	}
+}
+
+// An EnvoyFilter row keeps each patch's applyTo/operation enums and the filter NAMES it matches
+// or inserts; the inline Lua in the patch value never leaves.
+func TestEnvoyFilterProjectsPatchEnumsAndFilterNames(t *testing.T) {
+	spec := projectSpec("EnvoyFilter", obj("EnvoyFilter", "istio-system", "lua", map[string]any{"spec": map[string]any{
+		"workloadSelector": map[string]any{"labels": map[string]any{"app": "gateway", "tier": "edge"}},
+		"configPatches": []any{
+			map[string]any{"applyTo": "HTTP_FILTER",
+				"match": map[string]any{"listener": map[string]any{"filterChain": map[string]any{"filter": map[string]any{
+					"name":      "envoy.filters.network.http_connection_manager",
+					"subFilter": map[string]any{"name": "envoy.filters.http.router"}}}}},
+				"patch": map[string]any{"operation": "INSERT_BEFORE", "value": map[string]any{"name": "envoy.lua",
+					"typed_config": map[string]any{"inlineCode": "function envoy_on_request(h) h:headers():add('x-canary','1') end"}}}},
+			map[string]any{"applyTo": "BOOTSTRAP", "patch": map[string]any{"operation": "MERGE", "value": map[string]any{"tracing": map[string]any{}}}},
+		},
+	}}), &Projection{})
+	patches := spec["configPatches"].([]any)
+	if len(patches) != 2 {
+		t.Fatalf("configPatches = %v", patches)
+	}
+	first := patches[0].(map[string]any)
+	if first["applyTo"] != "HTTP_FILTER" || first["operation"] != "INSERT_BEFORE" ||
+		fmt.Sprint(first["filterNames"]) != "[envoy.filters.network.http_connection_manager envoy.filters.http.router envoy.lua]" {
+		t.Errorf("first patch = %v", first)
+	}
+	second := patches[1].(map[string]any)
+	if second["applyTo"] != "BOOTSTRAP" || second["operation"] != "MERGE" || len(second["filterNames"].([]any)) != 0 {
+		t.Errorf("second patch = %v", second)
+	}
+	if fmt.Sprint(spec["workloadSelectorKeys"]) != "[app tier]" {
+		t.Errorf("workloadSelectorKeys = %v", spec["workloadSelectorKeys"])
+	}
+	for _, canary := range []string{"envoy_on_request", "x-canary", "inlineCode", "gateway", "edge"} {
+		if strings.Contains(fmt.Sprint(spec), canary) {
+			t.Errorf("%q leaked into %v", canary, spec)
+		}
 	}
 }
