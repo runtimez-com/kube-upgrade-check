@@ -1,0 +1,214 @@
+[
+  {
+    "ruleId": "rtz-istio-1.22-waypoint-attachment-by-use-waypoint-label",
+    "severity": "HIGH",
+    "title": "Waypoints no longer attach by service account or namespace — they attach through the `istio.io/use-waypoint` label",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Gateway API objects are not collected; ambient namespaces are the visible population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace",
+      "target": "istio.io/dataplane-mode"
+    },
+    "quote": "Waypoints in Istio's ambient mode no longer use the original service account or namespace attachment semantics.",
+    "remediation": "For every waypoint Gateway: drop the `istio.io/for-service-account` annotation and label the namespace, Service or workload that should use it with `istio.io/use-waypoint: <name>` — service-addressed traffic follows the Service/namespace label, workload-addressed traffic follows the workload label. Until relabelled, traffic bypasses the waypoint.",
+    "verifyCommand": "kubectl get gateways.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(.spec.gatewayClassName == \"istio-waypoint\") | .metadata.namespace + \"/\" + .metadata.name + \" for-service-account=\" + (.metadata.annotations[\"istio.io/for-service-account\"] // \"-\")'  # each printed waypoint needs consumers labelled istio.io/use-waypoint; a for-service-account value is the old attachment and is ignored"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-delta-xds-default",
+    "severity": "INFO",
+    "title": "Proxies now receive configuration over the Delta xDS protocol",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "an xDS transport detail with no configuration object behind it"
+    },
+    "quote": "In this release, the \"Delta\" xDS protocol is enabled by default.",
+    "remediation": "No action expected. If proxies misbehave after upgrade, set `ISTIO_DELTA_XDS=false` in the proxy environment (`proxyMetadata`) and report the issue upstream.",
+    "verifyCommand": null
+  },
+  {
+    "ruleId": "rtz-istio-1.22-implicit-zipkin-tracing-removed",
+    "severity": "HIGH",
+    "title": "Tracing no longer defaults to `zipkin.istio-system.svc` — meshes that never configured a tracer stop emitting traces",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether tracing was configured implicitly is decided by the absence of tracing settings in meshConfig; a zipkin Service in the root namespace is the visible candidate"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Service",
+      "objectName": "^zipkin$",
+      "namespace": "istio-system"
+    },
+    "quote": "In previous versions of Istio, tracing was automatically configured to send traces to `zipkin.istio-system.svc`. This default setting has been removed; users will need to explicitly configure where to send traces moving forward.",
+    "remediation": "If traces arrived at a `zipkin` Service in the root namespace without any `meshConfig.defaultConfig.tracing` or Telemetry resource naming it, configure tracing explicitly (a Telemetry resource with a `zipkin` extension provider) or install with `compatibilityVersion: 1.21` (a stopgap: the 1.21 profile is dropped at 1.25 without a release note). `istioctl x precheck --from-version=1.21` reports whether you are affected.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"zipkin|tracing|extensionProviders\")) | $n + \": \" + .'  # no printed line while a zipkin Service exists means tracing was implicit and stops at 1.22"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-enhanced-resource-scoping-default",
+    "severity": "MEDIUM",
+    "title": "istiod now only processes Istio resources inside `meshConfig.discoverySelectors`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "meshConfig is a YAML value inside the istio ConfigMap; the projection keeps the ConfigMap's keys, not the discoverySelectors inside"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^mesh$",
+      "objectName": "^istio(-[a-z0-9-]+)?$"
+    },
+    "quote": "This means that the pilot will processes only the Istio CustomResource configurations that are in scope of what is specified from meshConfig.discoverySelectors. Root-ca certificate distribution is also affected.",
+    "remediation": "Only meshes that set `meshConfig.discoverySelectors` change: VirtualServices, DestinationRules and other Istio resources in namespaces outside the selectors are now ignored, and the root CA is no longer distributed there. Either widen the selectors or use `compatibilityVersion: 1.21` — a stopgap: 1.25 drops that profile and the `ENABLE_ENHANCED_RESOURCE_SCOPING` flag without a release note.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"discoverySelectors\")) | $n + \": \" + .'  # a printed line means discoverySelectors is set and Istio resources outside it are ignored from 1.22"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-serviceentry-none-honours-targetport",
+    "severity": "MEDIUM",
+    "title": "A `resolution: NONE` ServiceEntry now honours `ports[].targetPort`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection carries a ServiceEntry's resolution and its ports' targetPort, but not both in one predicate; candidates are the entries with a targetPort"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "ports[].targetPort",
+      "value": "^\\d+$"
+    },
+    "quote": "`ServiceEntry` with `resolution: NONE` previously ignored any `targetPort` specifier. In this release, the `targetPort` is now respected.",
+    "remediation": "Check every `resolution: NONE` (or resolution-less) ServiceEntry that sets a `targetPort` different from its `number`: traffic now goes to `targetPort`. Remove the `targetPort` to keep the old routing, or install with `compatibilityVersion: 1.21` — a stopgap: 1.25 drops that profile and the `ENABLE_RESOLUTION_NONE_TARGET_PORT` flag without a release note.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select((.spec.resolution // \"NONE\") == \"NONE\") | select(.spec.ports[]? | .targetPort != null) | .metadata.namespace + \"/\" + .metadata.name'  # a printed ServiceEntry resolves NONE and sets a targetPort that 1.22 starts honouring"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-cni-privileged-value-removed",
+    "severity": "LOW",
+    "title": "`values.cni.privileged` is removed from the istio-cni chart",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Helm/IstioOperator value; the node agent's rendered securityContext does not say which value produced it"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "**Removed** `values.cni.privileged` flag from `istio-cni` node agent chart in favor of feature-specific permissions.",
+    "remediation": "Drop `cni.privileged` from your values or IstioOperator for tidiness; the 1.22 chart ignores it (the API field is only deprecated, so istioctl still accepts it) and the node agent declares the capabilities it needs itself.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.values.cni.privileged != null) | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator still sets cni.privileged, which 1.22 ignores"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-external-profile-removed",
+    "severity": "MEDIUM",
+    "title": "The `external` install profile is removed — use `remote`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the profile is an install-time input; only an IstioOperator resource records it on the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^install\\.istio\\.io$"
+    },
+    "quote": "**Removed** deprecated `external` profile, use `remote` profile instead for installation.",
+    "remediation": "Change `profile: external` to `profile: remote` in the IstioOperator, values file or `istioctl install --set profile=` invocation that installs the remote cluster; an install that still names `external` fails at 1.22.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.profile == \"external\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator uses the external profile that 1.22 removes"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-ambient-redirection-annotation-optout-removed",
+    "severity": "HIGH",
+    "title": "`ambient.istio.io/redirection: disabled` no longer opts a pod out of ambient capture — use the `istio.io/dataplane-mode=none` label",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the annotation is also the CNI's own status marker (`enabled`) on every enrolled pod; the projection keeps annotation keys, so the value `disabled` cannot be told apart"
+    },
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "ambient.istio.io/redirection"
+    },
+    "quote": "**Removed** the ability to opt-out pods from ambient capture using the `ambient.istio.io/redirection=disabled` annotation, as that is a status annotation reserved for the CNI.",
+    "remediation": "Pods in ambient namespaces that carry `ambient.istio.io/redirection: disabled` are enrolled at 1.22 (the annotation is now a CNI status field). Add the label `istio.io/dataplane-mode: none` to every such pod template before upgrading istio-cni.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations[\"ambient.istio.io/redirection\"] == \"disabled\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed pod relies on the removed opt-out and is captured by ambient at 1.22 unless labelled istio.io/dataplane-mode=none"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-istio-cni-value-moves-to-pilot-cni",
+    "severity": "MEDIUM",
+    "title": "`values.istio_cni` is deprecated in favour of `values.pilot.cni`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Helm value; the node agent DaemonSet shows the cluster uses CNI, not which value key the istiod chart was given"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "**Deprecated** usage of `values.istio_cni` in favor of `values.pilot.cni`",
+    "remediation": "Move `istio_cni.enabled` (and `provider`) to `pilot.cni.*` in the istiod Helm values. The old key still works at 1.22; 1.24 removes it, after which an istiod chart that only sees `istio_cni` injects the `istio-init` container instead of `istio-validation` on a CNI-enabled cluster.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.values.istio_cni != null) | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator still uses the deprecated istio_cni key"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-headless-service-pod-listeners-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS` is removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** the `PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS` feature flag.",
+    "remediation": "Remove the variable from istiod. If it was set to `false`, per-pod listeners for headless Services are generated again at 1.22 — watch proxy config size on meshes with large headless Services.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-first-party-jwt-removed",
+    "severity": "LOW",
+    "title": "`jwtPolicy: first-party-jwt` is removed — istiod and proxies use third-party (projected) service account tokens only",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the pre-1.22 istiod chart set the JWT_POLICY env var; the projection keeps env names, not the value that says which policy"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^JWT_POLICY$"
+    },
+    "quote": "**Removed** the `first-party-jwt` legacy option for `values.global.jwtPolicy`. Support for the more secure `third-party-jwt` has been default for many years and is supported in all Kubernetes platforms.",
+    "remediation": "Drop `global.jwtPolicy` from your values (istioctl only warns about it). At 1.22 nothing renders `JWT_POLICY` any more: an istiod or proxy still carrying `JWT_POLICY=first-party-jwt` is treated as third-party. The only real requirement is projected service-account tokens, which every supported Kubernetes serves.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(JWT_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed value of first-party-jwt is the option 1.22 removes"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-destinationrule-duplicate-subsets-rejected",
+    "severity": "MEDIUM",
+    "title": "DestinationRules with duplicate subset names are rejected by the validating webhook — existing objects keep working until re-applied",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a DestinationRule's subsets are not projected (host and trafficPolicy keys only); the command finds the duplicates exactly"
+    },
+    "quote": "**Added** rejecting DestinationRules with duplicate subset names.",
+    "remediation": "Objects already in the cluster are not touched, but the next `kubectl apply`, Helm upgrade or GitOps sync of a DestinationRule that repeats a subset name fails admission with `duplicate subset names`, and Argo CD / Flux report the application out of sync. Dedupe the subsets before upgrading istiod.",
+    "verifyCommand": "kubectl get destinationrules -A -o json | jq -r '.items[] | select((.spec.subsets // []) | map(.name) | length != (unique | length)) | .metadata.namespace + \"/\" + .metadata.name'  # each printed DestinationRule is rejected on its next apply from 1.22"
+  },
+  {
+    "ruleId": "rtz-istio-1.22-virtualservice-empty-prefix-match-rejected",
+    "severity": "LOW",
+    "title": "An empty `prefix` match in a VirtualService HTTP route is rejected by the validating webhook from 1.22",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "VirtualService match blocks are not projected; the command finds the empty prefixes exactly"
+    },
+    "quote": "**Fixed** empty prefix match in `HTTPMatchRequest` not rejected by the validating webhook.",
+    "remediation": "A VirtualService whose `http[].match[].uri.prefix` is the empty string was accepted before and is refused on its next apply or GitOps sync. Use `prefix: /` (which is what an empty prefix matched) before upgrading.",
+    "verifyCommand": "kubectl get virtualservices -A -o json | jq -r '.items[] | select([.spec.http[]?.match[]?.uri.prefix? // \"x\"] | any(. == \"\")) | .metadata.namespace + \"/\" + .metadata.name'  # each printed VirtualService is rejected on its next apply from 1.22"
+  }
+]

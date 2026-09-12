@@ -1,34 +1,72 @@
 [
   {
-    "ruleId": "rtz-gen-istio-1.26-replace-deprecated-telemetry-providers",
-    "severity": "INFO",
-    "title": "Replace deprecated Lightstep and Opencensus telemetry providers",
+    "ruleId": "rtz-istio-1.26-lightstep-opencensus-providers-deprecated",
+    "severity": "LOW",
+    "title": "The Lightstep and OpenCensus telemetry providers are deprecated and removed in 1.27",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "The note does not identify a single cluster-inventory field for telemetry provider configuration; provider settings may be in Telemetry resources, mesh configuration, or external configuration."
+      "reason": "extension providers live inside the istio ConfigMap's mesh YAML, whose keys the projection keeps and whose contents it does not"
     },
     "scope": {
-      "kind": "KIND_PRESENT",
-      "objectKind": "Telemetry"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^mesh$",
+      "objectName": "^istio(-[a-z0-9-]+)?$"
     },
-    "quote": "- **Upcoming deprecation of telemetry providers** — The telemetry providers Lightstep and Opencensus are deprecated and will be removed in next release(v1.27). Please consider using the OpenTelemetry provider instead.",
-    "remediation": "Replace the Lightstep and Opencensus telemetry providers with the OpenTelemetry provider before upgrading to the release that removes them.",
-    "verifyCommand": "kubectl get telemetry --all-namespaces -o yaml | grep -iE 'lightstep|opencensus' # matching Telemetry objects may use deprecated providers; no match does not rule out mesh or external configuration"
+    "quote": "The telemetry providers Lightstep and Opencensus are deprecated and will be removed in next release(v1.27). Please consider using the OpenTelemetry provider instead.",
+    "remediation": "Replace `lightstep` entries in `meshConfig.extensionProviders` with an `opentelemetry` provider pointed at the same collector and repoint Telemetry resources at it before moving to 1.27, where Lightstep stops producing a tracer; `opencensus` providers have produced no tracer since 1.23 and can go now.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"lightstep|opencensus\")) | $n + \": \" + .'  # a printed line configures a provider 1.27 removes"
   },
   {
-    "ruleId": "rtz-gen-istio-1.26-verify-ztunnel-resource-names",
+    "ruleId": "rtz-istio-1.26-ztunnel-chart-resource-name-reverted",
     "severity": "MEDIUM",
-    "title": "Verify ztunnel resource names remain synchronized with Istiod",
+    "title": "ztunnel chart resources default back to the static name `ztunnel` — a 1.25 install that adopted the release name renames again",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "The affected Helm resourceName value and whether it is kept in sync with the Istiod Helm chart are not represented by a single cluster-inventory field."
+      "reason": "the Helm release name and any resourceName override are release inputs; the ztunnel DaemonSet's name is what changes"
     },
     "scope": {
-      "kind": "KIND_PRESENT",
-      "objectKind": "DaemonSet"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/ztunnel([:@]|$)"
     },
-    "quote": "- **Ztunnel Helm chart changes** — In Istio 1.25, the resources in the ztunnel Helm chart were changed to be named `.Resource.Name`. This often caused issues, as the name needs to be kept in sync with the Istiod Helm chart. In this release, we have reverted to default to a static `ztunnel` name again. As previously, this can be overriden with `--set resourceName=my-custom-name`.",
-    "remediation": "Verify that the ztunnel resources use the static `ztunnel` name by default, or that the custom `--set resourceName=my-custom-name` value is kept in sync with the Istiod Helm chart.",
-    "verifyCommand": "kubectl get daemonsets,deployments,services -A -o yaml | grep -i ztunnel # matching resources are candidates for manual verification against the Istiod resource name and Helm resourceName setting"
+    "quote": "In this release, we have reverted to default to a static `ztunnel` name again. As previously, this can be overriden with `--set resourceName=my-custom-name`.",
+    "remediation": "If the 1.25 upgrade left the ztunnel DaemonSet named after a non-`ztunnel` release (without `resourceName`), the 1.26 upgrade renames it back to `ztunnel`, recreating the DaemonSet; pass `--set resourceName=<current name>` to keep it, or plan the brief ambient interruption.",
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/ztunnel\"))) | select(.metadata.name != \"ztunnel\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed DaemonSet is not named ztunnel and is renamed by the 1.26 chart unless resourceName is set"
+  },
+  {
+    "ruleId": "rtz-istio-1.26-enable-auto-sni-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`ENABLE_AUTO_SNI` is removed — automatic SNI can no longer be turned off",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(ENABLE_AUTO_SNI)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** deprecated `ENABLE_AUTO_SNI` flag and related codepaths.",
+    "remediation": "Remove the variable from istiod. If it was `false`, TLS-originating DestinationRules without an explicit `sni` start sending the request host as SNI at 1.26; set `tls.sni` explicitly on upstreams that must receive a fixed name.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_AUTO_SNI)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means auto-SNI turns on at 1.26"
+  },
+  {
+    "ruleId": "rtz-istio-1.26-cni-agent-no-host-network",
+    "severity": "LOW",
+    "title": "The istio-cni node agent no longer runs with `hostNetwork`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a chart default that changes the node agent's pod spec; the DaemonSet is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "**Improved** The CNI agent to no longer require `hostNetwork`, improving compatibility. Dynamic switching to the host network is now performed whenever necessary. The old behavior can temporarily be restored by setting the `ambient.shareHostNetworkNamespace` field in the `istio-cni` chart.",
+    "remediation": "No action on a stock install. NetworkPolicies or node firewall rules written for a host-network `istio-cni-node` pod must allow the pod-network pod instead; `ambient.shareHostNetworkNamespace=true` on the istio-cni chart restores the old placement temporarily.",
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" hostNetwork=\" + ((.spec.template.spec.hostNetwork // false) | tostring)'  # hostNetwork=true before the upgrade becomes false after it unless shareHostNetworkNamespace is set"
   }
 ]

@@ -1,58 +1,83 @@
 [
   {
-    "ruleId": "rtz-gen-istio-1.30-cni-agent-exclude-namespaces",
-    "severity": "MEDIUM",
-    "title": "CNI Agent respects excludeNamespaces configuration",
+    "ruleId": "rtz-istio-1.30-cni-config-file-mode-0600",
+    "severity": "LOW",
+    "title": "istio-cni writes its CNI config files with mode 0600",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "The configured excludeNamespaces list and the resulting enrollment state cannot be settled from the available top-level cluster inventory fields."
+      "reason": "a file mode on the node; the DaemonSet that writes the file is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "The default file permissions for CNI config files written by Istio have changed from 0644 to 0600.",
+    "remediation": "No action for the runtime, which reads the file as root. Node-level tooling that reads `/etc/cni/net.d/*istio*` as a non-root group member needs `values.cni.env.CNI_CONF_GROUP_READ=true` on the istio-cni DaemonSet (0640).",
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" CNI_CONF_GROUP_READ=\" + ([.spec.template.spec.containers[].env[]? | select(.name == \"CNI_CONF_GROUP_READ\") | .value] | join(\",\"))'  # an empty value means CNI config files become 0600 at 1.30"
+  },
+  {
+    "ruleId": "rtz-istio-1.30-cni-agent-honours-excludenamespaces",
+    "severity": "MEDIUM",
+    "title": "The CNI agent now honours `excludeNamespaces` — ambient-labelled pods in an excluded namespace are un-enrolled",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the exclusion list lives inside the istio-cni ConfigMap; the projection keeps ConfigMap keys, not the list"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace",
+      "target": "istio.io/dataplane-mode"
+    },
+    "quote": "Now, the CNI Agent respects excluded namespaces, which means existing, enrolled pods in an excluded namespace will be un-enrolled, and new, ambient-labeled pods in an excluded namespace will not be enrolled.",
+    "remediation": "Compare `cni.excludeNamespaces` (the `EXCLUDE_NAMESPACES` key of the istio-cni-config ConfigMap, comma-separated) against namespaces labelled `istio.io/dataplane-mode=ambient`: pods in the overlap leave the mesh at 1.30. Remove the namespace from the exclusion list if they should stay enrolled.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"istio-cni\")) | .metadata.namespace + \"/\" + .metadata.name + \": \" + (.data | to_entries | map(select(.key | test(\"exclude\"; \"i\"))) | map(.key + \"=\" + .value) | join(\" \"))'  # a namespace printed under EXCLUDE_NAMESPACES that is also labelled istio.io/dataplane-mode=ambient is un-enrolled at 1.30"
+  },
+  {
+    "ruleId": "rtz-istio-1.30-sidecar-service-namespace-selection",
+    "severity": "MEDIUM",
+    "title": "For a hostname defined in several namespaces, sidecars now prefer the Kubernetes Service, then the oldest other definition — not the alphabetically first namespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a duplicated hostname is a cross-object comparison; ServiceEntries are the visible population since a Kubernetes Service alone cannot duplicate itself"
     },
     "scope": {
       "kind": "KIND_PRESENT",
-      "objectKind": "Pod"
+      "objectKind": "ServiceEntry"
     },
-    "quote": "**CNI Agent respects excludeNamespaces configuration** — Previously, only the CNI Plugin respected the excludeNamespaces config by skipping the processing of excluded namespace's pods, while the CNI Agent would still reconcile and add ambient-labeled Pods in an excluded namespace to the mesh. Now, the CNI Agent respects excluded namespaces, which means existing, enrolled pods in an excluded namespace will be un-enrolled, and new, ambient-labeled pods in an excluded namespace will not be enrolled.",
-    "remediation": "Review excluded namespaces and expect existing enrolled pods there to be un-enrolled; new ambient-labeled pods in those namespaces will not be enrolled.",
-    "verifyCommand": "kubectl get pods -A --show-labels # what output means: lists pods and labels to identify ambient-labeled pods in namespaces that should be checked against the configured excludeNamespaces list"
+    "quote": "Istio now prefers Kubernetes services and falls back to the oldest non-Kubernetes service by creation time. Previously, the first visible namespace alphabetically was chosen.",
+    "remediation": "Find hostnames that exist both as a ServiceEntry and as a Service (or as ServiceEntries in several namespaces): traffic may switch to a different definition at 1.30. Deduplicate them, or set `PILOT_SIDECAR_PICK_BEST_SERVICE_NAMESPACE=false` on istiod / `compatibilityVersion` 1.28 to keep the old choice.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '[.items[] | .spec.hosts[]? as $h | {h: $h, ns: .metadata.namespace}] | group_by(.h) | map(select(.[1] != null)) | .[] | .[0].h + \": \" + ([.[] | .ns] | join(\",\"))'  # a printed host is defined by ServiceEntries in more than one namespace and may resolve differently at 1.30"
   },
   {
-    "ruleId": "rtz-gen-istio-1.30-cni-config-permissions",
+    "ruleId": "rtz-istio-1.30-xds-debug-endpoints-require-auth",
     "severity": "MEDIUM",
-    "title": "CNI config file permissions changed to 0600",
+    "title": "istiod's XDS debug endpoints on port 15010 now require authentication — `--plaintext` tooling stops working",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "CNI config file permissions are stored on node filesystems and cannot be determined from cluster inventory."
-    },
-    "quote": "**CNI config file permissions changed to 0600** — The default file permissions for CNI config files written by Istio have changed from 0644 to 0600. This aligns with the CIS Kubernetes benchmark v1.12 requirement. Since the CNI config is only read by the container runtime running as root, this should have no functional impact. If you have tooling that needs to read CNI config files as a non-root group member, you can set permissions to 0640 by setting `values.cni.env.CNI_CONF_GROUP_READ=true` environment variable on the istio-cni-node DaemonSet.",
-    "remediation": "If tooling needs to read CNI config files as a non-root group member, set `values.cni.env.CNI_CONF_GROUP_READ=true` on the istio-cni-node DaemonSet to use permissions 0640.",
-    "verifyCommand": "kubectl get ds -A -o yaml | grep -E 'istio-cni-node|CNI_CONF_GROUP_READ' # what output means: identifies the Istio CNI DaemonSet and whether the group-readable override is configured; inspect node CNI files manually to verify their permissions"
-  },
-  {
-    "ruleId": "rtz-gen-istio-1.30-sidecar-service-namespace-selection",
-    "severity": "HIGH",
-    "title": "Sidecar proxy service namespace selection changed",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Determining whether Kubernetes services and ServiceEntry resources represent the same hostname across namespaces, and whether the changed selection is undesired, requires correlating resource configuration with traffic expectations."
+      "reason": "which tools read the plaintext XDS port is not on the cluster; the istiod Deployment carrying the opt-out is the subject"
     },
     "scope": {
-      "kind": "KIND_PRESENT",
-      "objectKind": "Service"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
     },
-    "quote": "**Sidecar proxy service namespace selection changed** — When configuring sidecar proxies if a hostname exists in multiple namespaces, Istio now prefers Kubernetes services and falls back to the oldest non-Kubernetes service by creation time. Previously, the first visible namespace alphabetically was chosen. This may cause traffic to route to a different service instance if you have the same hostname across multiple namespaces with mixed service types (e.g. a Kubernetes service and a `ServiceEntry`). If this is not desired, set the `PILOT_SIDECAR_PICK_BEST_SERVICE_NAMESPACE` environment variable to `false` in Istiod, or use `compatibilityVersion` 1.28 or earlier to restore the previous behavior.",
-    "remediation": "If the changed routing is not desired, set `PILOT_SIDECAR_PICK_BEST_SERVICE_NAMESPACE` to `false` in Istiod, or use `compatibilityVersion` 1.28 or earlier.",
-    "verifyCommand": "kubectl get svc,serviceentry -A -o yaml | grep -E 'kind: (Service|ServiceEntry)|  host:' # what output means: identifies service and ServiceEntry objects whose hostnames should be checked for duplicates across namespaces"
+    "quote": "XDS debug endpoints (syncz, config_dump) on port 15010 now require authentication. This affects istioctl commands using --plaintext flag and custom tooling using plaintext XDS.",
+    "remediation": "Drop `--plaintext` from istioctl invocations and move custom XDS clients to the authenticated port (15012) with a service account token; `ENABLE_DEBUG_ENDPOINT_AUTH=false` on istiod restores the old behaviour.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_DEBUG_ENDPOINT_AUTH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means plaintext XDS debug access is refused after upgrade"
   },
   {
-    "ruleId": "rtz-gen-istio-1.30-xds-debug-endpoint-authentication",
-    "severity": "HIGH",
-    "title": "XDS debug endpoints now require authentication",
+    "ruleId": "rtz-istio-1.30-gateway-tls-listeners-no-alpha-gate",
+    "severity": "LOW",
+    "title": "Gateway API listeners with `protocol: TLS` are now honoured without `PILOT_ENABLE_ALPHA_GATEWAY_API`",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Use of istioctl --plaintext and custom tooling using plaintext XDS is client-side behavior not represented in cluster inventory."
+      "reason": "Gateway API objects are not collected"
     },
-    "quote": "**XDS debug endpoints now require authentication** — XDS debug endpoints (syncz, config_dump) on port 15010 now require authentication. This affects istioctl commands using --plaintext flag and custom tooling using plaintext XDS. To restore previous behavior, set ENABLE_DEBUG_ENDPOINT_AUTH=false.",
-    "remediation": "Update istioctl and custom tooling to use authenticated XDS, or set `ENABLE_DEBUG_ENDPOINT_AUTH=false` to restore the previous behavior.",
-    "verifyCommand": "kubectl get deploy -A -o yaml | grep -E 'name: istiod|ENABLE_DEBUG_ENDPOINT_AUTH' # what output means: shows Istiod deployments and any explicit endpoint-authentication override; separately verify whether operators or tooling use istioctl --plaintext or plaintext XDS"
+    "quote": "Gateway listeners with `protocol: TLS` (used for TLS passthrough via `TLSRoute`) are now accepted without requiring `PILOT_ENABLE_ALPHA_GATEWAY_API=true`, since TLSRoute graduated to GA in Gateway API v1.5.0.",
+    "remediation": "A Gateway that already declared a `protocol: TLS` listener while the alpha flag was off starts serving it (and any attached TLSRoute) at 1.30. Confirm those listeners are meant to be live; remove them if not.",
+    "verifyCommand": "kubectl get gateways.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(.spec.listeners[]? | .protocol == \"TLS\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed Gateway has a TLS listener that becomes active at 1.30 without the alpha flag"
   }
 ]

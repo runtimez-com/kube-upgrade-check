@@ -582,10 +582,12 @@ func (m matcher) describe(n int) string {
 	return fmt.Sprintf("%d %s object(s) match", n, d.ObjectKind)
 }
 
-// matchKey finds the key a rule's target names, in three deliberate modes: a target ending in
-// "/" is a prefix family; a target containing "/" is exact; a bare name matches exactly or as
-// the name part after the last "/", because release notes routinely give a label its short
-// form. The matched key is returned so the finding can say which one it was.
+// matchKey finds the key a rule's target names, in four deliberate modes: a target ending in
+// "/" is a prefix family; a target ending in "*" is a prefix on the name part (Istio's
+// traffic.sidecar.istio.io/excludeOutbound* covers ...Ports and ...IPRanges); a target
+// containing "/" is exact; a bare name matches exactly or as the name part after the last "/",
+// because release notes routinely give a label its short form. The matched key is returned so
+// the finding can say which one it was. Same modes as the hosted evaluator.
 func matchKey(keys []string, target string) string {
 	if target == "" {
 		return ""
@@ -594,6 +596,14 @@ func matchKey(keys []string, target string) string {
 	if strings.HasSuffix(target, "/") {
 		for _, k := range keys {
 			if strings.HasPrefix(k, target) {
+				return k
+			}
+		}
+		return ""
+	}
+	if prefix, ok := strings.CutSuffix(target, "*"); ok {
+		for _, k := range keys {
+			if strings.HasPrefix(k, prefix) {
 				return k
 			}
 		}

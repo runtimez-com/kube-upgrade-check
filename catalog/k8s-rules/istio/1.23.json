@@ -1,0 +1,82 @@
+[
+  {
+    "ruleId": "rtz-istio-1.23-json-access-log-key-order",
+    "severity": "LOW",
+    "title": "JSON access logs no longer emit keys in a stable order",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the encoding is a meshConfig value; how the logs are consumed is not on the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^mesh$",
+      "objectName": "^istio(-[a-z0-9-]+)?$"
+    },
+    "quote": "**Removed** JSON access logs no longer emit keys in a stable ordering awaiting fix https://github.com/envoyproxy/envoy/issues/34420.",
+    "remediation": "Log pipelines that parse `accessLogEncoding: JSON` lines by position (or diff them textually) must parse them as JSON objects; key order varies between lines from 1.23.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"accessLogEncoding\")) | $n + \": \" + .'  # a printed JSON encoding means the access-log key order changes at 1.23"
+  },
+  {
+    "ruleId": "rtz-istio-1.23-cluster-stat-names-delimited",
+    "severity": "MEDIUM",
+    "title": "Envoy cluster metric names change for hosts outside `.svc.cluster.local` — dashboards and alerts on the full `cluster_name` break",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the dependency lives in the monitoring system, not the cluster; the affected hosts are ServiceEntry hosts and custom stat-name patterns in meshConfig, whose values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "hosts[]",
+      "value": "."
+    },
+    "quote": "If you have any dependency on the full stat name for cluster metrics, you will need to update your monitoring system to account for this change. To revert to the old behavior, you can set the `ENABLE_DELIMITED_STATS_TAG_REGEX` env var via proxyConfig or specify the 1.22 compatibility version.",
+    "remediation": "Any Prometheus rule, dashboard or recording rule keyed on the full Envoy `cluster_name` (or `http_conn_manager_prefix`) for a ServiceEntry host, an external service or a custom `inbound_cluster_stat_name`/`outbound_cluster_stat_name` sees a `;`-delimited name from 1.23. Update the queries. Both escape hatches are short-lived: the revert flag `ENABLE_DELIMITED_STATS_TAG_REGEX=false` is REMOVED at 1.26 (the flag is locked on), and the 1.22 compatibility profile is dropped at 1.26 as well — from 1.26 the new names are the only names.",
+    "verifyCommand": "kubectl get serviceentries -A -o json | jq -r '.items[] | select(.spec.hosts[] | test(\"\\\\.svc\\\\.cluster\\\\.local$\") | not) | .metadata.namespace + \"/\" + .metadata.name + \" \" + (.spec.hosts | join(\",\"))'  # each printed host's Envoy cluster stats are named with a ';' delimiter from 1.23 — grep your dashboards for these hostnames"
+  },
+  {
+    "ruleId": "rtz-istio-1.23-stackdriver-and-opencensus-xds-removed",
+    "severity": "HIGH",
+    "title": "The Stackdriver metrics/logs and OpenCensus tracer are removed from istiod's xDS generation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "extension providers live inside the istio ConfigMap's mesh YAML, whose keys the projection keeps and whose contents it does not"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "target": "keys[]",
+      "value": "^mesh$",
+      "objectName": "^istio(-[a-z0-9-]+)?$"
+    },
+    "quote": "**Removed** Istio Stackdriver metrics from XDS.",
+    "remediation": "`stackdriver` extension providers (metrics and access logs) and the `opencensus` tracing provider are no longer rendered into proxy config at 1.23. Replace them in `meshConfig.extensionProviders` and in Telemetry resources with the `opentelemetry` / `prometheus` providers (Google Cloud Managed Prometheus and Cloud Trace both accept OTLP) before upgrading.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.data.mesh != null) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .data.mesh | split(\"\\n\")[] | select(test(\"stackdriver|opencensus\")) | $n + \": \" + .'  # a printed line configures a provider that 1.23 stops rendering",
+    "coversNotes": [
+      "Removed (51070)",
+      "Removed (51078)"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.23-experimental-istiod-flags-removed-1-23",
+    "severity": "LOW",
+    "title": "Four experimental istiod flags are removed: `ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH`, `ENABLE_OPTIMIZED_CONFIG_REBUILD`, `PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING`, `ENABLE_OTEL_BUILTIN_RESOURCE_LABELS`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH|ENABLE_OPTIMIZED_CONFIG_REBUILD|PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING|ENABLE_OTEL_BUILTIN_RESOURCE_LABELS)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** the `ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH` feature flag.",
+    "remediation": "Remove the listed variables from the istiod Deployment (`pilot.env`); each is a no-op at 1.23. `istioctl experimental wait` goes with the distribution-tracking flag — scripts using it must poll `istioctl proxy-status` instead.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH|ENABLE_OPTIMIZED_CONFIG_REBUILD|PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING|ENABLE_OTEL_BUILTIN_RESOURCE_LABELS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a flag 1.23 no longer reads",
+    "coversNotes": [
+      "Removed (51898)",
+      "Removed (drop-distribution)",
+      "Removed (otel-builtin-labels)"
+    ]
+  }
+]

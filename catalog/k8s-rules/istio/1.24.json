@@ -1,0 +1,274 @@
+[
+  {
+    "ruleId": "rtz-istio-1.24-istiod-remote-chart-merged",
+    "severity": "HIGH",
+    "title": "The `istiod-remote` Helm chart is gone — remote clusters install `istiod` with `profile=remote`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which chart a release came from is Helm release metadata, not a cluster object the agent projects"
+    },
+    "quote": "The `istiod-remote` Helm chart has been merged with the regular `istio-discovery` Helm chart.",
+    "remediation": "On each remote cluster installed from the `istiod-remote` chart, `helm upgrade` of that release stops working at 1.24: install `istio/istiod --set profile=remote` (and `istio/base`, now required on remote clusters too) in its place, migrating the same values. Follow the upstream multicluster guide for the release rename.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | startswith(\"istiod-remote\")) | .namespace + \"/\" + .name + \" \" + .chart'  # a printed release was installed from the chart 1.24 removes"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-crds-need-helm-ownership-labels",
+    "severity": "MEDIUM",
+    "title": "Istio CRDs are now Helm-templated — CRDs installed before 1.24 need a one-time relabel before `helm upgrade istio-base` will manage them",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection carries each CRD's labels but the check is for a MISSING Helm ownership label, which the vocabulary cannot express"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "\\.istio\\.io$"
+    },
+    "quote": "you can begin safely upgrading Istio CRDs with `helm upgrade istio-base` from this and all subsequent releases after running the below kubectl commands as a one-time migration",
+    "remediation": "Before the first `helm upgrade istio-base` at 1.24, run the note's three one-time commands so every Istio CRD carries `app.kubernetes.io/managed-by=Helm` and the `meta.helm.sh/release-name` / `release-namespace` annotations of your base release; without them Helm refuses to adopt the CRDs. Installs that keep applying `crd-all.gen.yaml` by hand can continue to do so.",
+    "verifyCommand": "kubectl get crds -o json | jq -r '.items[] | select(.spec.group | test(\"\\\\.istio\\\\.io$\")) | select(.metadata.labels[\"app.kubernetes.io/managed-by\"] != \"Helm\") | .metadata.name'  # every printed CRD needs the one-time relabel before Helm can manage the base release's CRDs"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-unified-sidecar-scope",
+    "severity": "MEDIUM",
+    "title": "Conflict resolution is now the same with and without a `Sidecar` resource — meshes using `Sidecar` may pick a different Service for a duplicated hostname",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a hostname is defined twice is a cross-object comparison; the visible population is the namespaces that carry a Sidecar resource"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Sidecar"
+    },
+    "quote": "New behavior: prefer the Service in the same namespace as the proxy, then the Kubernetes Service (not ServiceEntry), else pick an arbitrary one.",
+    "remediation": "Where a hostname is defined more than once (a Service and a ServiceEntry, or the same Gateway API route in several namespaces) and workloads have a `Sidecar` resource, the preferred definition may change at 1.24 as the note's table describes. Review duplicated hosts in namespaces with a Sidecar; `PILOT_UNIFIED_SIDECAR_SCOPE=false` on istiod restores the old behaviour temporarily.",
+    "verifyCommand": "kubectl get sidecars.networking.istio.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name'  # workloads selected by a printed Sidecar follow the unified conflict resolution from 1.24"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-telemetry-cel-peer-attributes",
+    "severity": "HIGH",
+    "title": "Telemetry CEL expressions must use the standard Envoy attributes — `filter_state[\"wasm.downstream_peer\"]` and bare `node` no longer resolve",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CEL expressions are values inside Telemetry overrides; the projection keeps which sections a Telemetry resource configures, not the expressions"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Telemetry"
+    },
+    "quote": "CEL expressions in the telemetry API must use the standard Envoy attributes instead of the custom Wasm extended attributes.",
+    "remediation": "Rewrite `tagOverrides` / access-log expressions in Telemetry resources: `filter_state[\"wasm.downstream_peer\"]` → `filter_state.downstream_peer`, `filter_state[\"wasm.upstream_peer\"]` → `filter_state.upstream_peer`, `node` → `xds.node`, and fully qualify Wasm attributes (`filter_state[\"wasm.istio_responseClass\"]`). Use `has(...) ? ... : ...` while old and new proxies coexist.",
+    "verifyCommand": "kubectl get telemetries.telemetry.istio.io -A -o json | jq -r '.items[] | select(tojson | test(\"wasm\\\\.(downstream|upstream)_peer|istio_responseClass|[^a-z_.]node\\\\.\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed Telemetry uses a pre-1.24 attribute name in a CEL expression"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-dead-helm-values-removed",
+    "severity": "LOW",
+    "title": "Long-dead Helm values are gone from the API (removed at 1.23, announced at 1.24) — an IstioOperator or values file still setting them fails `istioctl` validation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "values are install-time input; only an IstioOperator resource keeps them on the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^install\\.istio\\.io$"
+    },
+    "quote": "Removed fields are: pilot.configNamespace, pilot.configSource, pilot.enableProtocolSniffingForOutbound, pilot.enableProtocolSniffingForInbound, pilot.useMCP, global.autoscalingV2API, global.configRootNamespace, global.defaultConfigVisibilitySettings, global.useMCP, sidecarInjectorWebhook.objectSelector and sidecarInjectorWebhook.useLegacySelectors.",
+    "remediation": "Delete the listed keys from values files and IstioOperator resources; they had no effect already. Helm ignores them silently, but `istioctl install`/`upgrade` validates values against the API and has rejected these fields since 1.23 (the note was only written at 1.24).",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(tojson | test(\"configNamespace|configSource|enableProtocolSniffingFor|useMCP|autoscalingV2API|configRootNamespace|defaultConfigVisibilitySettings|objectSelector|useLegacySelectors\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator carries a value 1.24 removed"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-gateway-name-label-selectors",
+    "severity": "HIGH",
+    "title": "The `istio.io/gateway-name` label is no longer applied — selectors and policies keyed on it stop matching gateway pods",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|Service|DaemonSet|StatefulSet",
+      "target": "selector",
+      "value": "^istio\\.io/gateway-name=",
+      "reason": "checked on workload and Service selectors; a NetworkPolicy podSelector or a policy `selector.matchLabels` that keys on the label is named by the verify command"
+    },
+    "quote": "**Removed** `istio.io/gateway-name`, please use `gateway.networking.k8s.io/gateway-name` label instead.",
+    "remediation": "Two edits. (1) Every selector, NetworkPolicy, AuthorizationPolicy, PeerAuthentication or monitoring rule of your own that matches `istio.io/gateway-name` selects nothing once 1.24 istiod reconciles the gateway pods — change them to `gateway.networking.k8s.io/gateway-name`. (2) Gateway-API gateway Deployments created on Istio ≤1.20 still carry `istio.io/gateway-name` in their immutable `spec.selector`; 1.24 istiod always renders the new key and can no longer apply them in place (`field is immutable` in istiod logs) — delete each such Deployment before or right after upgrading so istiod recreates it (brief gateway downtime).",
+    "verifyCommand": "kubectl get deploy,svc,netpol,authorizationpolicies.security.istio.io,peerauthentications.security.istio.io -A -o json | jq -r '.items[] | select(tojson | test(\"istio.io/gateway-name\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name'  # every printed object selects on a label 1.24 no longer applies"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-cni-kubeconfig-and-net-dir-removed",
+    "severity": "LOW",
+    "title": "istio-cni no longer writes a kubeconfig into the CNI net directory and `CNI_NET_DIR` is dropped from its ConfigMap",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "what reads the CNI net directory on the node is not on the cluster; the node agent DaemonSet is the visible subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "**Removed** writing kubeconfig to CNI net directory.",
+    "remediation": "Nothing to change on a stock install. Tooling or a custom CNI chain that read `/etc/cni/net.d/ZZZ-istio-cni-kubeconfig` or the `CNI_NET_DIR` key of the `istio-cni-config` ConfigMap must stop expecting them.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"istio-cni\")) | .metadata.namespace + \"/\" + .metadata.name + \" keys=\" + (.data | keys | join(\",\"))'  # a CNI_NET_DIR key in the printed ConfigMap is ignored from 1.24",
+    "coversNotes": [
+      "Removed (52323 #2)"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.24-istio-cni-value-removed-from-istiod",
+    "severity": "HIGH",
+    "title": "The deprecated `istio_cni` values are removed from the istiod chart — a CNI cluster still using them injects `istio-init` with NET_ADMIN",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a Helm value; the node agent DaemonSet shows the cluster uses CNI, not which value key the istiod chart was given"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+    },
+    "quote": "**Removed** unused `istio_cni` values from the `istiod` chart that were marked as deprecated (#49290) 2 releases ago.",
+    "remediation": "Helm users of the istiod chart: set `pilot.cni.enabled=true` (and `pilot.cni.provider` if used) before upgrading; with only `istio_cni.enabled` the 1.24 injector no longer knows the cluster runs istio-cni and injects the privileged `istio-init` container, which PodSecurity-restricted namespaces reject. istioctl/IstioOperator installs that enable `components.cni` derive `pilot.cni.enabled` automatically and are safe.",
+    "verifyCommand": "kubectl get istiooperators.install.istio.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.values.istio_cni != null) | .metadata.namespace + \"/\" + .metadata.name'  # a printed IstioOperator still uses istio_cni, which the 1.24 istiod chart ignores"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-openshift-profile-variants-removed",
+    "severity": "MEDIUM",
+    "title": "The Helm charts' `openshift` / `openshift-ambient` profile files are removed — use `global.platform=openshift`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Helm profile is an install-time input; an OpenShift cluster is recognisable by its openshift-* namespaces"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Namespace",
+      "objectName": "^openshift-"
+    },
+    "quote": "**Removed** Openshift profile variants, replaced with `global.platform` overrides.",
+    "remediation": "Helm only: `--set profile=openshift` or `--set profile=openshift-ambient` on the istio-cni, istiod or base charts no longer resolves at 1.24 (the chart's profile lookup fails on an unknown profile). Use the base profile plus `--set global.platform=openshift` (`helm install istio-cni --set profile=ambient --set global.platform=openshift`). `istioctl install --set profile=openshift` keeps working — the istioctl profiles survive and now only set `global.platform`.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^(istio-cni|istiod|base)-\")) | .namespace + \"/\" + .name + \" \" + .chart'  # for each printed Istio Helm release, helm get values must not show profile: openshift or openshift-ambient at 1.24"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-compatibility-profile-1-20-removed",
+    "severity": "HIGH",
+    "title": "The 1.20 compatibility profile and its flags are removed — the 1.21 defaults (ExternalName aliases, specific-host precedence, client certificate verification) can no longer be turned off",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].env[].name",
+      "value": "^(ENABLE_EXTERNAL_NAME_ALIAS|PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING|VERIFY_CERTIFICATE_AT_CLIENT)$",
+      "reason": "checked on the istiod Deployment's container env NAMES only — a flag set through `pilot.env` in a values file lands there; one set via `meshConfig` or an IstioOperator that has not been applied yet is not scanned"
+    },
+    "quote": "**Removed** support for the `1.20` `compatibilityProfile`. This configured the following settings: `ENABLE_EXTERNAL_NAME_ALIAS`, `PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING`, `VERIFY_CERTIFICATE_AT_CLIENT`, and `ENABLE_AUTO_SNI`. All of these flags, with the exception of `ENABLE_AUTO_SNI`, have also been removed from Istio entirely.",
+    "remediation": "Remove `compatibilityVersion: 1.20` and the listed istiod variables. Before doing so, complete the 1.21 migrations they were holding back: ExternalName Services as aliases, overlapping wildcard hosts by specificity, and `caCertificates`/`insecureSkipVerify` on TLS-originating DestinationRules.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_EXTERNAL_NAME_ALIAS|PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING|VERIFY_CERTIFICATE_AT_CLIENT)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a 1.20-compatibility setting that 1.24 stops honouring"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-enablecoredump-annotation-removed",
+    "severity": "MEDIUM",
+    "title": "The `sidecar.istio.io/enableCoreDump` annotation is removed",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "sidecar.istio.io/enableCoreDump"
+    },
+    "quote": "**Removed** the `sidecar.istio.io/enableCoreDump` annotation. See the sample provided in `samples/proxy-coredump` for more preferred approaches to enable core dumps.",
+    "remediation": "Pods annotated `sidecar.istio.io/enableCoreDump` no longer get the core-dump init container at 1.24. Where proxy core dumps are still wanted, deploy the `samples/proxy-coredump` DaemonSet approach and drop the annotation from the pod templates.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations // {} | keys[] | startswith(\"sidecar.istio.io/enableCoreDump\")) | .metadata.namespace + \"/\" + .metadata.name'  # a printed pod carries the annotation 1.24 stops honouring"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-log-rotate-flags-removed",
+    "severity": "MEDIUM",
+    "title": "The `--log_rotate*` flags are removed from istiod and pilot-agent",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet|Pod",
+      "target": "containers[].args[]",
+      "value": "^--log_rotate",
+      "reason": "checked on container args of Deployments, DaemonSets and Pods — a flag passed through an environment variable or an injection template is not scanned"
+    },
+    "quote": "**Removed** the legacy `--log_rotate_*` flag options. Users wishing to use log rotation should use external log rotation tools.",
+    "remediation": "A container started with `--log_rotate`, `--log_rotate_max_age`, `--log_rotate_max_backups` or `--log_rotate_max_size` fails to start at 1.24 (unknown flag). Remove the flags from istiod's args and from any custom proxy `args`, and rotate logs outside the process.",
+    "verifyCommand": "kubectl get deploy,ds,pods -A -o json | jq -r '.items[] | select(tojson | test(\"--log_rotate\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name'  # a printed object passes a --log_rotate flag that 1.24 rejects"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-default-retries-exclude-503",
+    "severity": "MEDIUM",
+    "title": "The default retry policy no longer retries HTTP 503",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the change applies to routes WITHOUT a retries block, an absence the projection cannot list; the istiod Deployment carrying the opt-out is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+    },
+    "quote": "**Fixed** default retry policy to exclude retries on 503 which is potentially unsafe for idempotent requets. It can be reverted by setting \"EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY\" to false.",
+    "remediation": "Routes without an explicit `retries` block stop retrying 503 responses at 1.24. Where that retry was relied on, add `retries.retryOn: \"503,…\"` to the VirtualService route (the durable fix) or set `EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY=false` on istiod — a stopgap only: the flag is removed at 1.27 with the 1.23 compatibility profile, without a release note.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means the new default (no 503 retry) is in force after upgrade"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-inbound-retry-policy-default",
+    "severity": "LOW",
+    "title": "Sidecars now retry inbound requests the application has not started processing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a proxy default with an istiod opt-out; nothing per-workload is on the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+    },
+    "quote": "**Added** retry policy for inbound requests that automatically resets the requests that the service has not seen/processed. It can be reverted by setting \"ENABLE_INBOUND_RETRY_POLICY\" to false.",
+    "remediation": "No action expected; requests reset before the application read them are retried on the inbound side. Set `ENABLE_INBOUND_RETRY_POLICY=false` on istiod if inbound retries must not happen (the flag is removed at 1.27 with the 1.23 compatibility profile, unannounced).",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_INBOUND_RETRY_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means inbound retries are on after upgrade"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-destinationrule-tls-preferred-for-external",
+    "severity": "MEDIUM",
+    "title": "DestinationRule TLS settings now take precedence over proxy metadata certificates for MESH_EXTERNAL services",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which certificate source wins is decided per service from the DestinationRule and the proxy's metadata; the external ServiceEntries are the visible population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "location",
+      "value": "^MESH_EXTERNAL$"
+    },
+    "quote": "**Added** support for honouring Destination Rule Certificates for MESH_EXTERNAL services instead of Metadata certificates. This can be reverted by setting PREFER_DESTINATIONRULE_TLS_FOR_EXTERNAL_SERVICES to `false`.",
+    "remediation": "For `location: MESH_EXTERNAL` ServiceEntries that have a DestinationRule with `tls` settings, the DestinationRule certificates are used from 1.24 where the proxy's metadata certificates (`ISTIO_META_TLS_CLIENT_*`) were used before. Confirm the DestinationRule's certificates are the intended ones, or set `PREFER_DESTINATIONRULE_TLS_FOR_EXTERNAL_SERVICES=false` on istiod.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select(.spec.location == \"MESH_EXTERNAL\") | .metadata.namespace + \"/\" + .metadata.name + \" \" + (.spec.hosts | join(\",\"))'  # DestinationRule TLS certificates now win over proxy metadata certificates for each printed external service"
+  },
+  {
+    "ruleId": "rtz-istio-1.24-static-listeners-bypass-overload-manager",
+    "severity": "LOW",
+    "title": "Static listeners (health, metrics, admin) now bypass Envoy's overload manager",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a proxy-side default with an environment opt-out; nothing on the cluster records it"
+    },
+    "quote": "**Added** support for by passing overload manager for static listeners. This can be reverted by setting BYPASS_OVERLOAD_MANAGER_FOR_STATIC_LISTENERS to false in agent Deployment.",
+    "remediation": "No action expected: readiness, metrics and admin listeners keep answering while the proxy sheds load. Set `BYPASS_OVERLOAD_MANAGER_FOR_STATIC_LISTENERS=false` in the proxy environment to revert (removed at 1.27 with the 1.23 compatibility profile, unannounced).",
+    "verifyCommand": null
+  },
+  {
+    "ruleId": "rtz-istio-1.24-destinationrule-exportto-merge-stops",
+    "severity": "MEDIUM",
+    "title": "DestinationRules for the same host with different `exportTo` are no longer merged — a rule that relied on inheriting another's settings loses them",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a DestinationRule's exportTo is not projected; the command groups rules by host and prints hosts whose rules declare different exportTo sets"
+    },
+    "quote": "**Fixed** DestinationRules on same host but with different ExportTo can behave inconsistently, so stop merging the destinationRules when the exportTo attributes are totally different. If you want to toggle this behavior, you can set the `ENABLE_ENHANCED_DESTINATIONRULE_MERGE` environment variable to `false` in the pilot deployment.",
+    "remediation": "Two DestinationRules on one host whose `exportTo` sets do not overlap are now independent: a private (`exportTo: [\".\"]`) rule no longer picks up the TLS mode, load balancer or subsets of the mesh-wide one. Put the settings each rule needs on that rule. `ENABLE_ENHANCED_DESTINATIONRULE_MERGE=false` on istiod restores the merge; the flag is registered at 1.24 and still present at 1.31, but is an escape hatch, not a setting to keep.",
+    "verifyCommand": "kubectl get destinationrules -A -o json | jq -r '[.items[] | {h: .spec.host, e: ((.spec.exportTo // [\"*\"]) | sort | join(\",\")), n: (.metadata.namespace + \"/\" + .metadata.name)}] | group_by(.h) | map(select((map(.e) | unique | length) != 1)) | .[] | .[0].h + \": \" + (map(.n) | join(\" \"))'  # each printed host has rules with different exportTo that stop merging at 1.24"
+  }
+]
