@@ -1,5 +1,565 @@
 [
   {
+    "version": "1.30",
+    "note": "NONE",
+    "reason": "changelog placeholder: the bullet's whole text is \"NONE\""
+  },
+  {
+    "version": "1.30",
+    "note": "Fixes a regression in openapi descriptions of PodIP.IP and HostIP.IP fields to mark the",
+    "reason": "bug fix: OpenAPI list-key metadata for PodIP/HostIP (a 1.30.0 regression fixed in a 1.30 patch). It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.30",
+    "note": "Fixed a bug in the API server where empty collections of ValidatingAdmissionPolicies did",
+    "reason": "bug fix: an empty list response missing its `items` field. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.30",
+    "note": "Use omitempty for optional Job Pod Failure Policy fields",
+    "reason": "developer-facing: JSON tags on the Job API Go types; the wire objects are unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Added the feature gates `StrictCostEnforcementForVAP` and",
+    "reason": "additive: two alpha gates, off by default (staging apiserver kube_features.go at v1.30.0 has neither; both are Beta/off at v1.31.0); nothing changes until an operator turns them on. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Fixes a 1.30.0 regression in openapi descriptions of imagePullSecrets and hostAliases",
+    "reason": "bug fix: OpenAPI list-key metadata for imagePullSecrets/hostAliases (a 1.30.0 regression fixed in a 1.30 patch). It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.30",
+    "note": "Added (alpha) support for the `managedBy` field on Jobs. Jobs with a custom value of this",
+    "reason": "additive: the JobManagedBy alpha gate is off (Default: false at v1.30.0); the field is dropped at admission until it is enabled. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added alpha-level support for the SuccessPolicy in Jobs.",
+    "reason": "additive: the JobSuccessPolicy alpha gate is off (Default: false at v1.30.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added the `CEL` library for IP Addresses and CIDRs. This was made available for use",
+    "reason": "additive: new CEL functions; existing expressions are untouched. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Allowed container runtimes to fix an image garbage collection bug by adding an `image_id`",
+    "reason": "developer-facing: a new field in the CRI Container message; runtimes may fill it, the kubelet tolerates its absence. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Dynamic Resource Allocation: DRA drivers can now use \"structured parameters\" to let the",
+    "reason": "additive: a new alpha allocation mode for DRA drivers (DynamicResourceAllocation Default: false at v1.30.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Fixed accidental enablement of the new alpha `optionalOldSelf` API field in",
+    "reason": "bug fix: an alpha CRD field that was accepted without its gate; a CRD that set it while CRDValidationRatcheting is on (Beta/on at v1.30.0) keeps it. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.30",
+    "note": "Implemented the `prescore` extension point for the `volumeBinding` plugin. It now returns",
+    "reason": "developer-facing: an internal scheduler plugin extension point; scheduling results are unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Promoted `AdmissionWebhookMatchConditions` to GA. The feature is now stable, and the",
+    "reason": "graduation only: matchConditions on webhooks, on by default since 1.28. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.30",
+    "note": "Structured Authentication Configuration now supports `DiscoveryURL`. If specified,",
+    "reason": "additive: an optional new field in the authentication configuration file. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "The `StorageVersionMigration` API, previously available as a Custom Resource Definition",
+    "reason": "additive: the built-in group is `storagemigration.k8s.io/v1alpha1` behind the StorageVersionMigrator alpha gate (Default: false at v1.30.0); the out-of-tree CRD lives in `migration.k8s.io` and the two do not collide. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "`readOnly` volumes now support recursive read-only mounts for kernel versions >= 5.12.\"",
+    "reason": "additive: the RecursiveReadOnlyMounts alpha gate and the opt-in `recursiveReadOnly` mount field; a plain `readOnly` mount is unchanged. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "cri-api: Implemented KEP-3857: Recursive Read-only (RRO) mounts.",
+    "reason": "developer-facing: new CRI protocol fields for runtimes to implement. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "kube-apiserver: the AuthenticationConfiguration type accepted in `--authentication-config`",
+    "reason": "additive: `apiserver.config.k8s.io/v1beta1` is added; the v1alpha1 file a 1.29 cluster wrote is still decoded (staging apiserver `apis/apiserver/load/load.go` at v1.30.0 registers both). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "kubelet allowed specifying a custom root directory for pod logs (instead of the default",
+    "reason": "additive: a new optional kubelet config key `podLogsDir`; the default stays /var/log/pods. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "resource.k8s.io/ResourceClaim (alpha API): The strategic merge patch strategy for the",
+    "reason": "developer-facing: the patch strategy of an alpha DRA status field, seen only by DRA driver code (DynamicResourceAllocation Default: false at v1.30.0). It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Added a CBOR implementation of `runtime.Serializer`. Until CBOR graduates to Alpha, API",
+    "reason": "additive: a serializer nothing can enable yet; the note itself says an API server configured with it refuses to start. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added a alpha feature, behind the `RelaxedEnvironmentVariableValidation` feature gate.",
+    "reason": "additive: an alpha gate, off by default; validation is relaxed, never tightened. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added a new (alpha) field, `trafficDistribution`, to the Service `spec` to express",
+    "reason": "additive: the ServiceTrafficDistribution alpha gate is off (Default: false at v1.30.0); the field is dropped at admission until it is enabled. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added audienceMatchPolicy field to AuthenticationConfiguration and support for configuring",
+    "reason": "additive: a 1.29 authentication configuration accepted exactly one audience, so no existing file has the multiple-audience case the new `audienceMatchPolicy` validation applies to. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added consistent vanity import to files and provided tooling for verifying and updating",
+    "reason": "developer-facing: Go source formatting. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Added the `disable-force-detach` CLI option for `kube-controller-manager`. By default,",
+    "reason": "additive: a new kube-controller-manager flag whose default keeps the old behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Added to `MutableFeatureGate` the ability to override the default setting of feature",
+    "reason": "developer-facing: the component-base feature-gate library. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Aggregated discovery supports both `v2beta1` and v2 types and feature is promoted to GA.",
+    "reason": "graduation only: aggregated discovery, on by default since 1.27; v2beta1 is still served alongside v2 (removed later, and that removal is a removed-apis finding). The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.30",
+    "note": "Alpha support for field selectors on custom resources has been added. With the",
+    "reason": "additive: the CustomResourceFieldSelectors alpha gate is off (Default: false at v1.30.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Contextual logging is now in beta and enabled by default. Check out the",
+    "reason": "additive: log lines gain context key/values; no format an operator configures changes. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Enabled concurrent log rotation in kubelet. You can now configure the maximum number of",
+    "reason": "additive: two new optional kubelet config keys with defaults that keep the old single-worker behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Graduated pod scheduling gates to general availability.",
+    "reason": "graduation only: `schedulingGates`, on by default since 1.27. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.30",
+    "note": "Graduated support for `minDomains` in pod topology spread constraints, to general",
+    "reason": "graduation only: `minDomains`, on by default since 1.27. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.30",
+    "note": "Kube-apiserver: the AuthorizationConfiguration type accepted in `--authorization-config`",
+    "reason": "additive: `apiserver.config.k8s.io/v1beta1` is added; the v1alpha1 file a 1.29 cluster wrote is still decoded. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Removed note that `hostAliases` are not supported on hostNetwork Pods from the PodSpec",
+    "reason": "developer-facing: an API doc comment; the behaviour it described has been supported since 1.8. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Structured Authentication Configuration now supports configuring multiple JWT",
+    "reason": "additive: a 1.29 file could hold exactly one authenticator; more are now allowed. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "Text logging in Kubernetes components now uses",
+    "reason": "additive: the text log format is unchanged; split streams stay off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "The JWT authenticator configuration set via the `--authentication-config` flag is now",
+    "reason": "additive: the file is re-read on change instead of at startup only. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "The `StructuredAuthenticationConfiguration` feature is now beta and enabled.",
+    "reason": "additive: `--authentication-config` becomes usable without a gate flag; a cluster not passing the flag is unaffected, and one that already passed it with the alpha gate keeps working (the two validations that tighten are the 1.30 issuer-conflict rule). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "The `kube_codegen` tool now ignores the vendor folder during code generation.",
+    "reason": "developer-facing: a code generator. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "The kubernetes repo now uses Go workspaces. This should not impact end users at all, but",
+    "reason": "developer-facing: the kubernetes build; the note itself says end users are not impacted. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "Users are now allowed to mutate `FSGroupPolicy` and `PodInfoOnMount` in `CSIDriver.Spec`.",
+    "reason": "additive: two CSIDriver fields become updatable instead of immutable. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "ValidatingAdmissionPolicy was promoted to GA and will be `enabled` by default.",
+    "reason": "graduation only: `admissionregistration.k8s.io/v1` ValidatingAdmissionPolicy joins v1beta1, which stays served through 1.30 (its later removal is a removed-apis finding); policies written against v1beta1 keep being enforced. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.30",
+    "note": "When scheduling a mix of pods using `ResourceClaims` and others that don't, scheduling a",
+    "reason": "additive: scheduler latency. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.30",
+    "note": "When working with client-go events, it's now recommended to use",
+    "reason": "developer-facing: a client-go constructor recommendation. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "DRA: ResourceClaim and PodSchedulingContext status updates no longer allow changing object",
+    "reason": "developer-facing: validation of alpha DRA status subresources, exercised only by DRA driver and scheduler code. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.30",
+    "note": "OpenAPI V2 will no longer publish aggregated API server OpenAPI for group versions that do",
+    "reason": "bug fix: the /openapi/v2 document stops carrying group-versions an APIService never declared; clients that discovered those through v2 were reading a leak the aggregator never intended to serve. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.30",
+    "note": "The PersistentVolume controller no longer automatically assigns a default `StorageClass`",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-default-storageclass-not-autoassigned-empty-scn-1.30`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.30",
+    "note": "Renamed Label cluster to `storage_cluster_id` for `apiserver_storage_size_bytes metric`",
+    "reason": "metrics/observability only: a label rename on one apiserver metric. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.31",
+    "note": "NONE",
+    "reason": "changelog placeholder: the bullet's whole text is \"NONE\""
+  },
+  {
+    "version": "1.31",
+    "note": "Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.31-node-kube-proxy-version-field` — the kube-proxy corpus already records both halves: on at 1.31.0 (Beta/true), reverted to off from 1.31.1 (Deprecated/false at v1.31.2 in pkg/features/kube_features.go); a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Graduated the `DisableNodeKubeProxyVersion` feature gate to beta. By default, the kubelet",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.31-node-kube-proxy-version-field` — the kube-proxy corpus already records both halves: on at 1.31.0, reverted to off from 1.31.1; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Added support to the scheduler to start using QueueingHint registered for Pod/Updated",
+    "reason": "additive: an internal requeue optimisation behind the SchedulerQueueingHints gate (Beta/off at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Kubelet flag `--keep-terminated-pod-volumes` was removed. This flag was deprecated in",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kubelet-keep-terminated-pod-volumes-removed`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "'kubeadm: marked the sub-phase of ''init kubelet-finilize'' called",
+    "reason": "developer-facing: a kubeadm CLI sub-phase name on the operator's workstation; the old name still works with a warning. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "CephFS volume plugin ( `kubernetes.io/cephfs`) was removed in this release and the",
+    "reason": "carried by the removed-volume-plugins rule `cephfs`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "CephRBD volume plugin ( `kubernetes.io/rbd`) was removed in this release. And its csi",
+    "reason": "carried by the removed-volume-plugins rule `rbd`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Kube-scheduler deprecated all non-csi volumelimit plugins and removed those from defaults",
+    "reason": "reported by `rtz-k8s-1.32-scheduler-volume-limit-plugins-removed` — at 1.31 the four plugins are only dropped from the DEFAULT plugin set and still load when a KubeSchedulerConfiguration names them; the break is the 1.32 removal, which that rule reports with the same verify command; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "AzureDiskLimits",
+    "reason": "reported by `rtz-k8s-1.32-scheduler-volume-limit-plugins-removed` — at 1.31 the four plugins are only dropped from the DEFAULT plugin set and still load when a KubeSchedulerConfiguration names them; the break is the 1.32 removal, which that rule reports with the same verify command; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "CinderLimits",
+    "reason": "reported by `rtz-k8s-1.32-scheduler-volume-limit-plugins-removed` — at 1.31 the four plugins are only dropped from the DEFAULT plugin set and still load when a KubeSchedulerConfiguration names them; the break is the 1.32 removal, which that rule reports with the same verify command; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "EBSLimits",
+    "reason": "reported by `rtz-k8s-1.32-scheduler-volume-limit-plugins-removed` — at 1.31 the four plugins are only dropped from the DEFAULT plugin set and still load when a KubeSchedulerConfiguration names them; the break is the 1.32 removal, which that rule reports with the same verify command; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "GCEPDLimits",
+    "reason": "reported by `rtz-k8s-1.32-scheduler-volume-limit-plugins-removed` — at 1.31 the four plugins are only dropped from the DEFAULT plugin set and still load when a KubeSchedulerConfiguration names them; the break is the 1.32 removal, which that rule reports with the same verify command; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Kubeadm: deprecated the kubeadm `RootlessControlPlane` feature gate (previously alpha),",
+    "reason": "developer-facing: a kubeadm-only gate that keeps working with a deprecation warning; not a cluster object. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "Removed k8s.io/legacy-cloud-providers from staging.",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-intree-cloud-provider-gcp-removed-1.31` — GCE was the last in-tree provider in that package; a cluster still passing `--cloud-provider=gce` is what the advisory names; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Removed legacy cloud provider integration code (undoing a previous reverted commit).",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-intree-cloud-provider-gcp-removed-1.31` — the same removal as the legacy-cloud-providers note; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Add UserNamespaces field to NodeRuntimeHandlerFeatures",
+    "reason": "additive: a new Node status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Added Coordinated Leader Election as Alpha under the `CoordinatedLeaderElection` feature",
+    "reason": "additive: an alpha gate, off by default (Default: false at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Added a `.status.features.supplementalGroupsPolicy` field to Nodes. The field is true when",
+    "reason": "additive: a new Node status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Added an `allocatedResourcesStatus` to each container status to indicate the health status",
+    "reason": "additive: a new container status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Added support to the kube-proxy nodePortAddresses / --nodeport-addresses option to",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.31-nodeport-addresses-primary`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Added the feature gates `StrictCostEnforcementForVAP` and",
+    "reason": "additive: both gates are Beta and OFF at v1.31.0 (staging apiserver kube_features.go); nothing changes until an operator turns them on. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Changed how the API server handles updates to `.spec.defaultBackend` of Ingress objects.",
+    "reason": "server-side-apply field ownership only: `defaultBackend` becomes an atomic struct, so one manager owns it whole. The note says it has no impact for almost all users; the one case it changes (a controller flipping the port between number and name) becomes easier, not harder"
+  },
+  {
+    "version": "1.31",
+    "note": "Component-base/logs: when compiled with Go >= 1.21, component-base will automatically",
+    "reason": "developer-facing: the component-base logging library. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "Dynamic Resource Allocation (DRA): Added a feature so the number of ResourceClaim objects",
+    "reason": "additive: a new ResourceQuota dimension for DRA claims, enforced only where a quota names it. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Dynamic Resource Allocation (DRA): client-side validation of a ResourceHandle would have",
+    "reason": "bug fix: client-side validation now matches what the server already rejected. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed a 1.30.0 regression in OpenAPI descriptions of the `imagePullSecrets` and",
+    "reason": "bug fix: OpenAPI list-key metadata for imagePullSecrets/hostAliases. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed a 1.30.0 regression in openapi descriptions of `PodIP.IP` and `HostIP.IP` fields to",
+    "reason": "bug fix: OpenAPI list-key metadata for PodIP/HostIP. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed a bug in the API server where empty collections of ValidatingAdmissionPolicies did",
+    "reason": "bug fix: an empty list response missing its `items` field. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed a deep copy issue when retrieving the controller reference.",
+    "reason": "bug fix: an apimachinery helper returning a shared pointer. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed code-generator client-gen to work with `api/v1`-like package structure.",
+    "reason": "developer-facing: a code generator. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed incorrect \"v1 Binding is deprecated in v1.6+\" warning in kube-scheduler log.",
+    "reason": "bug fix: a spurious log line. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed the comment for the Job's managedBy field.",
+    "reason": "developer-facing: an API doc comment. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed the documentation for the default value of the `procMount` entry in",
+    "reason": "developer-facing: an API doc comment. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "Graduate PodDisruptionConditions to GA and lock",
+    "reason": "graduation only: PodDisruptionConditions, on by default since 1.26. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.31",
+    "note": "Graduated MatchLabelKeys/MismatchLabelKeys feature in PodAffinity/PodAntiAffinity to Beta.",
+    "reason": "additive: MatchLabelKeysInPodAffinity turns on by default (Alpha/false at v1.30.0, Beta/true at v1.31.0); the two fields were dropped at admission before and are honoured now, which only changes pods whose manifests set them — and those manifests asked for exactly this. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Graduated `JobPodFailurePolicy` to GA and locked it to it's default.",
+    "reason": "graduation only: `podFailurePolicy`, on by default since 1.26. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.31",
+    "note": "Graduated the Job `successPolicy` field to beta.",
+    "reason": "additive: JobSuccessPolicy turns on by default (Alpha/false at v1.30.0, Beta/true at v1.31.0); the field was dropped at admission before and is honoured now, which only changes Jobs whose manifests set it. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Improved scheduling performance when many nodes, and prefilter returned 1-2 nodes (e.g.",
+    "reason": "reported by `rtz-k8s-1.30-scheduler-postfilter-nodetostatusmap-semantics` — the same NodeToStatusMap semantics change (#125197) was cherry-picked into the 1.30 patch line as #125306, which is where that rule reports it; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Introduced a new boolean kubelet flag `--fail-cgroupv1`.",
+    "reason": "additive: a new kubelet flag, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "K8s.io/apimachinery/pkg/util/runtime: Added support for new calls to handle panics and",
+    "reason": "developer-facing: apimachinery Go helpers. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "KEP-1880: Users of the new feature to add multiple service CIDR will use by default a",
+    "reason": "additive: an allocator strategy behind MultiCIDRServiceAllocator (Beta/off at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Kube-apiserver: Added Alpha features to allow API server authz to check the context of",
+    "reason": "additive: two alpha gates, off by default (AuthorizeWithSelectors and AuthorizeNodeWithSelectors both Default: false at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "The `AuthorizeWithSelectors` feature gate enables including field and label selector",
+    "reason": "additive: an alpha gate, off by default (Default: false at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "The `AuthorizeNodeWithSelectors` feature gate changes node authorizer behavior to limit",
+    "reason": "additive: an alpha gate, off by default at 1.31 (Default: false at v1.31.0); the tightening lands when it turns on in 1.32, which the config-breakers corpus carries. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Kube-apiserver: ControllerRevision objects are now verified to contain valid JSON data in",
+    "reason": "validation on write of a field only the StatefulSet and DaemonSet controllers author, and they always write JSON; existing objects are not re-validated, and a hand-crafted non-JSON ControllerRevision was never something a controller could roll back to"
+  },
+  {
+    "version": "1.31",
+    "note": "Kube-controller-manager: the `horizontal-pod-autoscaler-upscale-delay` and",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kcm-hpa-delay-flags-removed`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Made kube-proxy Windows service control manager integration (`--windows-service`)",
+    "reason": "additive: a new optional field mirroring an existing flag. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "PersistentVolumeLastPhaseTransitionTime feature is stable and enabled by default.",
+    "reason": "graduation only: `lastPhaseTransitionTime`, on by default since 1.29. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.31",
+    "note": "Promoted `LocalStorageCapacityIsolation` to beta; the behaviour is enabled by default.",
+    "reason": "additive: the note is about capacity isolation inside user-namespaced pods, which needs UserNamespacesSupport (Beta/off at v1.31.0) and `hostUsers: false`; ordinary pods are unchanged. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Promoted `StatefulSetStartOrdinal` to stable. This means",
+    "reason": "graduation only: `ordinals.start`, on by default since 1.27. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.31",
+    "note": "Promoted feature-gate `VolumeAttributesClass` to beta (disabled by default). Users need to",
+    "reason": "additive: Beta but OFF (Default: false at v1.31.0) and the API group must be enabled explicitly. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Removed deprecated command flags --volume-host-cidr-denylist",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kcm-volume-host-flags-removed`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "Reverted a [change](https://github.com/kubernetes/kubernetes/pull/123513) where",
+    "reason": "an in-cycle revert that did not survive to the release: at v1.31.0 ConsistentListFromCache is Beta/on again (staging apiserver kube_features.go), and the feature probes etcd for watch-progress support and turns itself off where etcd is too old, so no operator action follows from either state"
+  },
+  {
+    "version": "1.31",
+    "note": "Revised the Pod API with Alpha support for volumes derived from OCI artifacts. This",
+    "reason": "additive: the ImageVolume alpha gate is off (Default: false at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Supported fine-grained supplemental groups policy (KEP-3619), which enabled",
+    "reason": "additive: the SupplementalGroupsPolicy alpha gate is off (Default: false at v1.31.0); the 1.33 beta and its node-support check are a 1.33 rule. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "The (alpha) nftables mode of kube-proxy now requires version 1.0.1 or later",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.31-nftables-mode-requires-newer-nft-and-kernel`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.31",
+    "note": "To enhance usability and developer experience, CRD validation rules now support direct use",
+    "reason": "additive: CEL reserved words become usable as field names; existing expressions are untouched. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Updated the feature MultiCIDRServiceAllocator to beta (disabled by default). Users need to",
+    "reason": "additive: Beta but OFF (Default: false at v1.31.0) and the networking v1beta1 group must be enabled explicitly. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "Use omitempty for optional Job Pod Failure Policy fields.",
+    "reason": "developer-facing: JSON tags on the Job API Go types; the wire objects are unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.31",
+    "note": "User can choose a different static policy option `SpreadPhysicalCPUsPreferredOption` to",
+    "reason": "additive: a new opt-in CPU Manager policy option. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.31",
+    "note": "When the featuregate AnonymousAuthConfigurableEndpoints is enabled users can update the",
+    "reason": "additive: an alpha gate, off by default (Default: false at v1.31.0). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
     "version": "1.32",
     "note": "DRA: CEL expressions using attribute strings exceeded the cost limit because their cost",
     "reason": "bug fix: cost estimation of DRA CEL was incomplete; covered by the cost-bound rule above as well. It restores the documented behaviour; an operator has nothing to change before upgrading"
@@ -1915,6 +2475,36 @@
     "reason": "additive: behind a gate, opt-in per probe. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
   },
   {
+    "version": "1.31",
+    "note": "Fixed a regression where `kubelet --hostname-override` no longer worked",
+    "reason": "bug fix: a kubelet flag regression. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Fixed kubelet so it would no longer crash when a DRA(Dynamic Resource Allocation) driver",
+    "reason": "bug fix: a kubelet crash on a nil gRPC response from a DRA driver. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.31",
+    "note": "Kubelet is no longer able to recover from device manager state file older than 1.20. If",
+    "reason": "a kubelet upgraded straight from a release older than 1.20 to 1.31 — eleven minors, far outside the supported skew; the note itself says the recommended upgrade flow is unaffected"
+  },
+  {
+    "version": "1.31",
+    "note": "Kubelet no longer crashes when a DRA driver returns a nil as part of the",
+    "reason": "duplicate: the same change as \"Fixed kubelet so it would no longer crash when a DRA(Dynamic Resource Allocation) driver\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.31",
+    "note": "ACTION-REQUIRED: DRA drivers using the v1alpha2 kubelet gRPC API are no longer supported",
+    "reason": "duplicate: the same change as \"ACTION-REQUIRED: Dynamic Resource Allocation (DRA) drivers using the v1alpha2 kubelet gRPC\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.31",
+    "note": "The kubelet is no longer able to recover from device manager state file older than 1.20.",
+    "reason": "duplicate: the same change as \"Kubelet is no longer able to recover from device manager state file older than 1.20\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
     "version": "1.32",
     "note": "Added a new option `strict-cpu-reservation` for CPU Manager static policy. When this",
     "reason": "additive: a new opt-in CPU Manager policy option. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
@@ -2257,151 +2847,141 @@
   {
     "version": "1.10",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.11",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.12",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.13",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.14",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.15",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.16",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.17",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.18",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.19",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.2",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.20",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.21",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.22",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.23",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.24",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.25",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.26",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.27",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.28",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.29",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.3",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
-  },
-  {
-    "version": "1.30",
-    "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
-  },
-  {
-    "version": "1.31",
-    "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.4",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.5",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.6",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.7",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.8",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   },
   {
     "version": "1.9",
     "note": "*",
-    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+    "reason": "not authored: this corpus covers 1.30–1.37 (the minors a cluster in the current support window can be upgraded across, plus the two it may still be standing on). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
   }
 ]
