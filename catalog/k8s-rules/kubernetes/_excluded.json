@@ -1,0 +1,2407 @@
+[
+  {
+    "version": "1.32",
+    "note": "DRA: CEL expressions using attribute strings exceeded the cost limit because their cost",
+    "reason": "bug fix: cost estimation of DRA CEL was incomplete; covered by the cost-bound rule above as well. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "DRA API: the maximum number of pods which can use the same ResourceClaim is now 256",
+    "reason": "downgrade-only: the limit is relaxed on upgrade; only a rollback to 1.32.0 refuses claims with more than 32 reservedFor entries. Upgrade readiness assesses the upgrade; the constraint applies to rolling BACK, which the note itself says is unsupported"
+  },
+  {
+    "version": "1.32",
+    "note": "NONE",
+    "reason": "placeholder: the changelog entry reads literally `NONE` — the PR (#129598) carried no user-facing change"
+  },
+  {
+    "version": "1.32",
+    "note": "Reverted the `DisableNodeKubeProxyVersion` feature gate to default-off to give a full year",
+    "reason": "no change at this hop: the gate returns to default-off, so `status.nodeInfo.kubeProxyVersion` keeps being populated exactly as in 1.31; the eventual clearing is handled where it happens"
+  },
+  {
+    "version": "1.32",
+    "note": "ServiceAccount metadata.annotations[kubernetes.io/enforce-mountable-secrets]: deprecated",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-sa-enforce-mountable-secrets-1.32`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "A new feature that allows unsafe deletion of corrupt resources has been added, it is",
+    "reason": "additive: opt-in alpha gate AllowUnsafeMalformedObjectDeletion plus a new delete option, both off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added `singleProcessOOMKill` flag to the kubelet configuration. Setting that to true",
+    "reason": "additive: a new kubelet config field; the default keeps the cgroup-wide OOM kill behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added a `/flagz` endpoint for kube-apiserver endpoint.",
+    "reason": "additive: a new read-only endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added a `Stream` field to `PodLogOptions`, which allows clients to request certain log",
+    "reason": "additive: a new optional field on a request option. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added alpha support for asynchronous Pod preemption.",
+    "reason": "additive: alpha gate SchedulerAsyncPreemption, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added driver-owned fields in `ResourceClaim.Status` to report device status data for each",
+    "reason": "additive: new status fields on ResourceClaim written by drivers. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added the ability to change the maximum backoff delay accrued between container restarts",
+    "reason": "additive: alpha gate KubeletCrashLoopBackoffMax plus a new kubelet config field, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Allow for Pod search domains to be a single dot `.` or contain an underscore `_`",
+    "reason": "additive: validation is relaxed, not tightened; previously-valid pods stay valid. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Annotation `batch.kubernetes.io/cronjob-scheduled-timestamp` added to Job objects",
+    "reason": "graduation only: the annotation has been written since 1.28. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.32",
+    "note": "Changed the Pod API to support `resources` at `spec` level for pod-level resources.",
+    "reason": "additive: a new alpha field (PodLevelResources), off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "ContainerStatus.AllocatedResources is now guarded by a separate feature gate,",
+    "reason": "additive: the alpha status field moves behind its own alpha gate; InPlacePodVerticalScaling itself stays alpha and off. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Coordination.v1alpha1 API is dropped and replaced with coordination.v1alpha2. Old",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-coordination-leasecandidate-v1alpha1`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "DRA: scheduling pods is up to 16x faster, depending on the scenario. Scheduling throughput",
+    "reason": "performance note: no behaviour or object changes"
+  },
+  {
+    "version": "1.32",
+    "note": "Fixed a bug in the `NestedNumberAsFloat64` Unstructured field accessor that could have",
+    "reason": "bug fix: a client library accessor returned rounded values instead of an error. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "Graduated Job's `ManagedBy` field to beta.",
+    "reason": "graduation only: Job.spec.managedBy moves alpha→beta; it is still gate-controlled (JobManagedBy) and unset on every Job that did not opt in. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.32",
+    "note": "Implemented a new, alpha `seLinuxChangePolicy` field within a Pod-level `securityContext`,",
+    "reason": "additive: alpha field behind SELinuxChangePolicy, off by default; the note itself says no action is required. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Introduced `v1alpha1` API for mutating admission policies, enabling extensible # admission",
+    "reason": "additive: a new alpha API that has to be enabled through --runtime-config. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Introduced compressible resource setting on system reserved and kube reserved slices.",
+    "reason": "additive: a new kubelet reservation option. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "kube-apiserver: Promoted the `StructuredAuthorizationConfiguration` feature gate to GA.",
+    "reason": "graduation only: the v1beta1 config version keeps working and v1 is byte-identical; the locked gate is carried by config-breakers rule `rtz-k8s-gate-locked-structured-authorization-configuration`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.32",
+    "note": "kube-proxy now reconciles Service/Endpoint changes with conntrack table and cleans up only",
+    "reason": "bug fix: kube-proxy stops flushing UDP conntrack entries that are still valid. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "kubelet: the `--image-credential-provider-config` file was loaded with strict",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-credential-provider-strict-config-1.32`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "Promoted `CustomResourceFieldSelectors` to stable; the feature was enabled by default. The",
+    "reason": "graduation only: already on by default since 1.31. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.32",
+    "note": "Promoted feature gate `StatefulSetAutoDeletePVC` from beta to stable.",
+    "reason": "graduation only: already on by default since 1.27. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.32",
+    "note": "Removed all support for _classic_ dynamic resource allocation (DRA). The",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-dra-control-plane-controller` — the PodSchedulingContext objects the note asks to delete are carried by removed-apis `rtz-k8s-dep-resource-podschedulingcontext-v1alpha3`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "Removed generally available feature gate `HPAContainerMetrics`",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-hpa-container-metrics`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "Removed restrictions on subresource flag in kubectl commands",
+    "reason": "developer-facing: a kubectl usability change. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "Revised the kubelet API Authorization with new subresources, that allow finer-grained",
+    "reason": "additive: beta gate KubeletFineGrainedAuthz; the note says existing nodes/proxy grants keep working. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "The core functionality of Dynamic Resource Allocation (DRA) got promoted to beta. No",
+    "reason": "downgrade-only: the note says no action is required when upgrading; only a rollback to 1.31 with DRA objects is unsupported. Upgrade readiness assesses the upgrade; the constraint applies to rolling BACK, which the note itself says is unsupported"
+  },
+  {
+    "version": "1.32",
+    "note": "The default value for node-monitor-grace-period has been increased to 50s (earlier 40s)",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-node-monitor-grace-period-1.32`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "The resource/v1alpha3.ResourceSliceList filed which should have been named \"metadata\" but",
+    "reason": "developer-facing: a Go type field rename in a list type; the wire format is unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "The synthetic \"Bookmark\" event for the watch stream requests will now include a new",
+    "reason": "additive: a new annotation on synthetic watch bookmarks. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "To enhance usability and developer experience, CRD validation rules now support direct use",
+    "reason": "additive: CEL accepts more expressions, not fewer. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Updated incorrect description of persistentVolumeClaimRetentionPolicy",
+    "reason": "developer-facing: an OpenAPI description string. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "X.509 client certificate authentication to the kube-apiserver now produces credential IDs",
+    "reason": "additive: an extra field in audit events. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Fixed the behavior of the `KUBE_PROXY_NFTABLES_SKIP_KERNEL_VERSION_CHECK` environment",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.33-nftables-skip-kernel-version-check-env`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Fixes a 1.33 regression that can cause a nil panic in kube-scheduler when aggregating",
+    "reason": "bug fix: a 1.33 patch fixes a panic introduced in 1.33.0. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.33",
+    "note": "Added the ability to reduce both the initial delay and the maximum delay accrued between",
+    "reason": "additive: alpha gate ReduceDefaultCrashLoopBackOffDecay, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "[Action Required] CSI drivers that call IsLikelyNotMountPoint should not assume false",
+    "reason": "developer-facing: a return-value contract in the mount-utils Go library for CSI driver authors; deployed drivers are unchanged binaries. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "The `StorageCapacityScoring` feature gate was added to score nodes by available storage",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-volume-capacity-priority` — the replaced VolumeCapacityPriority gate is what an existing scheduler config would still name; the new gate is alpha and off; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "The `WatchFromStorageWithoutResourceVersion` feature was deprecated and can no longer be",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-watch-from-storage-without-resource-version`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "A new alpha feature gate, `MutableCSINodeAllocatableCount`, has been introduced.",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added feature gate `DRAPartitionableDevices`, when enabled, Dynamic Resource Allocation",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added DRA support for a \"one-of\" prioritized list of selection criteria to satisfy a",
+    "reason": "additive: alpha DRAPrioritizedList, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added a `/flagz` endpoint for kubelet endpoint",
+    "reason": "additive: a new read-only endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added a new `tolerance` field to HorizontalPodAutoscaler, overriding the cluster-wide",
+    "reason": "additive: alpha gate HPAConfigurableTolerance, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added support for configuring custom stop signals with a new StopSignal container",
+    "reason": "additive: alpha ContainerStopSignals, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added support for in-place vertical scaling of Pods with sidecars (containers defined",
+    "reason": "additive: extends an opt-in feature to more containers. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "CPUManager Policy Options support is GA",
+    "reason": "graduation only: the options were already on by default; the locked gate is carried by config-breakers rule `rtz-k8s-gate-locked-cpu-manager-policy-options`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Changed the Pod API to support `hugepage resources` at `spec` level for pod-level",
+    "reason": "additive: alpha PodLevelResources, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "DRA API: The maximum number of pods that can use the same ResourceClaim is now 256 instead",
+    "reason": "downgrade-only: the limit is relaxed on upgrade; only a rollback to 1.32.0 refuses large reservedFor lists. Upgrade readiness assesses the upgrade; the constraint applies to rolling BACK, which the note itself says is unsupported"
+  },
+  {
+    "version": "1.33",
+    "note": "DRA: CEL expressions using attribute strings exceeded the cost limit because their cost",
+    "reason": "bug fix: the same 1.32 cost-estimation fix backported to 1.33. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.33",
+    "note": "DRA: Device taints enable DRA drivers or admins to mark device as unusable, which prevents",
+    "reason": "additive: alpha DRADeviceTaints, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Expanded the on-disk kubelet credential provider configuration to allow an optional",
+    "reason": "additive: a new optional field in the credential provider config. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Fixed the example validation rule in godoc:",
+    "reason": "developer-facing: a godoc example. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "Graduate the `MatchLabelKeys` (MismatchLabelKeys) feature in PodAffinity (PodAntiAffinity)",
+    "reason": "graduation only: on by default since 1.31; the locked gate is carried by config-breakers rule `rtz-k8s-gate-locked-match-label-keys-in-pod-affinity`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Graduated image volume sources to beta:",
+    "reason": "additive: ImageVolume is beta but still disabled by default in 1.33. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Allowed `subPath`/`subPathExpr` for image volumes",
+    "reason": "additive: relaxes what an image volume may do. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Added kubelet metrics `kubelet_image_volume_requested_total`,",
+    "reason": "metrics/observability only: three new kubelet counters. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.33",
+    "note": "Implemented a new status field, `.status.terminatingReplicas`, for Deployments and",
+    "reason": "additive: alpha DeploymentPodReplacementPolicy, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Improved how the API server responds to **list** requests where the response format",
+    "reason": "additive: a memory optimisation with the same wire result; the opt-out gate is beta and on. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Introduced API type `coordination.k8s.io/v1beta1/LeaseCandidate`",
+    "reason": "additive: a new API version alongside v1alpha2; CoordinatedLeaderElection is beta and off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "It introduces a new scope name `VolumeAttributesClass`.",
+    "reason": "additive: a new ResourceQuota scope. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "KEP-3857: Recursive Read-only (RRO) mounts: promote to GA",
+    "reason": "graduation only: on by default since 1.31; the locked gate is carried by config-breakers rule `rtz-k8s-gate-locked-recursive-read-only-mounts`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "kubectl: Added alpha support for customizing kubectl behavior using preferences from a",
+    "reason": "developer-facing: a kubectl preference file. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "kubelet: added `KubeletConfiguration.subidsPerPod`.",
+    "reason": "additive: a new kubelet config field for user namespaces. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Kubernetes components that accepted X.509 client certificate authentication now read the",
+    "reason": "additive: only certificates that carry the private OID 1.3.6.1.4.1.57683.2 in their subject are affected, and none are issued by kubeadm or the CSR signers. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "`MergeDefaultEvictionSettings` indicates that defaults for the evictionHard, evictionSoft,",
+    "reason": "additive: a new kubelet config field, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "New configuration is introduced to the kubelet that allows it to track container images",
+    "reason": "additive: alpha KubeletEnsureSecretPulledImages, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Promoted JobSuccessPolicy E2E to Conformance",
+    "reason": "developer-facing: a conformance-suite change. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "Promoted `NodeInclusionPolicyInPodTopologySpread` to Stable in v1.33",
+    "reason": "graduation only: on by default since 1.26; carried by config-breakers rule `rtz-k8s-gate-locked-node-inclusion-policy-in-pod-topology-spread`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Promoted the `JobSuccessPolicy` to Stable.",
+    "reason": "graduation only: on by default since 1.31; carried by config-breakers rule `rtz-k8s-gate-locked-job-success-policy`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Promoted the Job's `JobBackoffLimitPerIndex` feature-gate to stable.",
+    "reason": "graduation only: on by default since 1.29; carried by config-breakers rule `rtz-k8s-gate-locked-job-backoff-limit-per-index`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Promoted the feature gate `AnyVolumeDataSource` to GA.",
+    "reason": "graduation only: on by default since 1.24; carried by config-breakers rule `rtz-k8s-gate-locked-any-volume-data-source`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "Removed general available feature gate `CPUManager`.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-cpu-manager`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Removed general available feature-gate `PDBUnhealthyPodEvictionPolicy`.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-pdb-unhealthy-pod-eviction-policy`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Start reporting swap capacity as part of `node.status.nodeSystemInfo`.",
+    "reason": "additive: a new status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "The Service trafficDistribution field, including the PreferClose option, has graduated",
+    "reason": "graduation only: the note says unconfigured Services keep their behaviour; carried by config-breakers rule `rtz-k8s-gate-locked-service-traffic-distribution`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.33",
+    "note": "The feature gate `InPlacePodVerticalScalingAllocatedStatus` is deprecated and no longer",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-in-place-pod-vertical-scaling-allocated-status` — the gate is a no-op from 1.33 and its removal fires at the 1.36 hop; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "The kube-controller-manager will set the `observedGeneration` field on pod conditions when",
+    "reason": "additive: alpha PodObservedGenerationTracking, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "The kube-scheduler will set the `observedGeneration` field on pod conditions when the",
+    "reason": "additive: alpha PodObservedGenerationTracking, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "The kubelet will set the `observedGeneration` field on pod conditions when the",
+    "reason": "additive: alpha PodObservedGenerationTracking, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "When the `PodObservedGenerationTracking` feature gate was set, the kubelet populated",
+    "reason": "additive: alpha PodObservedGenerationTracking, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "The minimum value validation of ReplicationController's `replicas` and `minReadySeconds`",
+    "reason": "additive: DeclarativeValidation only reports mismatches via metrics; takeover is a separate off-by-default gate. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Validation now requires new StatefulSets with a `.spec.serviceName` field value to pass",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-statefulset-servicename-dns1123-1.33`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Published OpenAPI for the StatefulSet schema is corrected to indicate the",
+    "reason": "developer-facing: an OpenAPI schema correction. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "When the `PreferSameTrafficDistribution` feature gate is enabled, a new",
+    "reason": "additive: alpha gate, off by default; adds values, changes none. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "When the `StrictIPCIDRValidation` feature gate is enabled, Kubernetes will be",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-strict-ip-cidr-validation-1.36` — the gate is alpha and off in 1.33; the advisory fires at the hop where it turns on by default; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "`kubectl apply` now coerces `null` values for labels and annotations in manifests to empty",
+    "reason": "developer-facing: a kubectl client-side change. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "For metrics `apiserver_cache_list_fetched_objects_total`,",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-apiserver-etcd-metric-label-rename-1.34`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.34",
+    "note": "Kubelet: removed the deprecated flag `--cloud-config` from the command line.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kubelet-cloud-config-removed`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.34",
+    "note": "Apimachinery: Deprecated `MessageCountMap` and `CreateAggregateFromMessageCountMap`.",
+    "reason": "developer-facing: apimachinery Go helpers. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Deprecated the `preferences` field in kubeconfig in favor of `kuberc`.",
+    "reason": "developer-facing: a kubectl client preference; the field is ignored, not rejected. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Kubeadm: Consistently prefixed errors with error: when printing them.",
+    "reason": "developer-facing: kubeadm output formatting. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Kubeadm: Exposed only the non-deprecated klog flags (-v and -vmodule), in line with KEP",
+    "reason": "developer-facing: kubeadm CLI flags on the operator's workstation; not a cluster object. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Added `omitempty` and `opt` tag to the API `v1beta2` AdminAccess type in the",
+    "reason": "developer-facing: a Go struct tag. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Added a `runtime.ApplyConfiguration` interface implemented by all generated apply",
+    "reason": "developer-facing: client-go generated code. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Added a detailed event for in-place pod vertical scaling completed, improving cluster",
+    "reason": "additive: a new Event. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added a mechanism for configurable container restarts: _container-level restart rules_.",
+    "reason": "additive: alpha ContainerRestartRules, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added a new `FileKeyRef` field to containers, allowing them to load variables from files",
+    "reason": "additive: alpha EnvFiles, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added driver-owned fields in `ResourceSlice` to mark whether the device was shareable",
+    "reason": "additive: new DRA fields (alpha DRAConsumableCapacity). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added user-owned fields in `ResourceClaim` to specify resource requirements against each",
+    "reason": "additive: new DRA fields (alpha DRAConsumableCapacity). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added scheduler-owned field in `ResourceClaim.Status` to specify how much device capacity",
+    "reason": "additive: new DRA status fields. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added an additional identifier to `ResourceClaim.Status` for the device supports multiple",
+    "reason": "additive: new DRA status fields. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added a new constraint type to enforce uniqueness of specified attributes across all",
+    "reason": "additive: a new DRA constraint type. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added new optional APIs in `ResouceSlice.Basic` and",
+    "reason": "additive: new optional DRA fields. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added support for specifying `controlplane` or `cluster` egress selectors in JWT",
+    "reason": "additive: a new optional field; the note says unset keeps the previous behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added support in the Kubelet for monitoring the health of devices allocated via Dynamic",
+    "reason": "additive: alpha ResourceHealthStatus, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added support in the kubelet's image pull credential tracking for service account-based",
+    "reason": "additive: extends an opt-in kubelet feature. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Added validation to reject Pods using the `PodLevelResources` feature on Windows OS due to",
+    "reason": "a Windows pod with pod-level resources never worked (the kubelet had no support); the validation only makes the failure explicit at admission, so no running pod is affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Added warnings when creating headless service with set `loadBalancerIP`,`externalIPs`",
+    "reason": "warning only: the fields are still accepted and ignored on a headless Service exactly as before"
+  },
+  {
+    "version": "1.34",
+    "note": "Allowed `pvc.spec.VolumeAttributesClassName` to change from non-nil to nil.",
+    "reason": "additive: a validation relaxation. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Allowed setting the `hostnameOverride` field in `PodSpec` to specify any RFC 1123 DNS",
+    "reason": "additive: alpha HostnameOverride, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Changed underlying logic for `Eviction Manager` helper functions.",
+    "reason": "developer-facing: an internal kubelet refactor with no stated behaviour change. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Changed underlying logic to propagate pod-level hugepage cgroup to containers when they",
+    "reason": "applies only to pods that set pod-level hugepage resources (beta PodLevelResources) and omit container hugepages; containers then inherit the pod cgroup, which is the documented intent of the opt-in field"
+  },
+  {
+    "version": "1.34",
+    "note": "Added validation to enforce the hugepage aggregated container limits to be smaller than or",
+    "reason": "the note says this was already enforced through defaulted requests; only the error message becomes explicit"
+  },
+  {
+    "version": "1.34",
+    "note": "Corrected the documentation to clarify that `podSelector` is optional and described its",
+    "reason": "developer-facing: an OpenAPI description. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "DRA API: resource.k8s.io/v1alpha3 now only contains DeviceTaintRule. All other types got",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-resource-resourceclaim-v1alpha3` — with its siblings rtz-k8s-dep-resource-{resourceslice,deviceclass,resourceclaimtemplate}-v1alpha3; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.34",
+    "note": "DRA: When the prioritized list feature was used in a request and the resulting number of",
+    "reason": "performance note on an alpha feature: the allocation attempt is aborted earlier with the same result"
+  },
+  {
+    "version": "1.34",
+    "note": "Deprecated `StreamingConnectionIdleTimeout` field of the kubelet config.",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-kubelet-streaming-idle-timeout-deprecated-1.34`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.34",
+    "note": "Dynamic Resource Allocation: Graduated core functionality to general availability (GA).",
+    "reason": "graduation only: DRA was beta and on by default since 1.32; the v1 API is added alongside v1beta1/v1beta2 and existing drivers keep working (the gate lock is carried by config-breakers rule `rtz-k8s-gate-locked-dynamic-resource-allocation` at 1.35). The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Enabled kube-apiserver support for `PodCertificateRequest` and `PodCertificate` projected",
+    "reason": "additive: alpha PodCertificateRequest, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Extended resources backed by DRA feature allowed cluster operator to specify",
+    "reason": "additive: alpha DRAExtendedResource, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Extended the NodePorts scheduling plugin to consider hostPorts used by restartable init",
+    "reason": "bug fix: a sidecar hostPort conflict that used to fail at container start is now caught at scheduling. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "Fixed a 1.33 regression that causes a nil panic in kube-scheduler when aggregating",
+    "reason": "bug fix: a scheduler panic. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "Fixed prerelease lifecycle for `PodCertificateRequest`.",
+    "reason": "developer-facing: generated lifecycle metadata of an alpha type. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Introduced OpenAPI format support for `k8s-short-name` and `k8s-long-name` in",
+    "reason": "additive: new CRD schema formats. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Introduced the `admissionregistration.k8s.io/v1beta1/MutatingAdmissionPolicy` API type. To",
+    "reason": "additive: opt-in beta API that has to be enabled through the gate and --runtime-config. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Kube-apiserver: Added support for disabling caching of authorization webhook decisions in",
+    "reason": "additive: new optional fields defaulting to the previous behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Kube-apiserver: Promoted the `StructuredAuthenticationConfiguration` feature gate to GA.",
+    "reason": "graduation only: on by default since 1.30; carried by config-breakers rule `rtz-k8s-gate-locked-structured-authentication-configuration`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Kube-apiserver: the AuthenticationConfiguration type accepted in `--authentication-config`",
+    "reason": "additive: v1 is accepted in addition to v1beta1; existing files keep loading. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Kube-log-runner: Added the `-log-file-size` parameter to rotate log output into a new file",
+    "reason": "additive: new optional flags on a helper binary. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Kubectl: Graduated kuberc support to beta. A `kuberc` configuration file provided a",
+    "reason": "developer-facing: a kubectl client feature. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted Job Pod Replacement Policy to general availability. The `JobPodReplacementPolicy`",
+    "reason": "graduation only: on by default since 1.29; carried by config-breakers rule `rtz-k8s-gate-locked-job-pod-replacement-policy`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted `MutableCSINodeAllocatableCount` to beta.",
+    "reason": "additive: beta but still off by default in 1.34. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted feature-gate `VolumeAttributesClass` to GA",
+    "reason": "graduation only: beta since 1.31 but only on by default from this release (1.34, with GA); the field `volumeAttributesClassName` was dropped on write while the gate was off, so PVCs that carry it start being honoured — an opt-in field, nothing existing changes; the v1alpha1/v1beta1 API removals are carried by removed-apis at 1.35 and 1.37. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted API `VolumeAttributesClass` and `VolumeAttributesClassList` to",
+    "reason": "additive: storage.k8s.io/v1 is served alongside v1beta1; nothing existing changes. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted the `APIServerTracing` feature gate to GA. The `--tracing-config-file` flag",
+    "reason": "graduation only: v1beta1 config keeps loading and v1 is byte-identical; carried by config-breakers rule `rtz-k8s-gate-locked-api-server-tracing`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted the `AuthorizeWithSelectors` and `AuthorizeNodeWithSelectors` feature gates to",
+    "reason": "graduation only: on by default since 1.32; carried by config-breakers rules `rtz-k8s-gate-locked-authorize-with-selectors` and `rtz-k8s-gate-locked-authorize-node-with-selectors`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted the `KubeletTracing` feature gate to GA.",
+    "reason": "graduation only: on by default since 1.27; carried by config-breakers rule `rtz-k8s-gate-locked-kubelet-tracing`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Promoted the `RelaxedEnvironmentVariableValidation` feature gate to GA and locked it in",
+    "reason": "graduation only: on by default since 1.32 and a relaxation; carried by config-breakers rule `rtz-k8s-gate-locked-relaxed-environment-variable-validation`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.34",
+    "note": "Removed an inaccurate statement about requiring ports when the Pod spec `hostNetwork`",
+    "reason": "developer-facing: an OpenAPI description. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Removed deprecated `gogo` protocol definitions from",
+    "reason": "developer-facing: Go protobuf definitions in a library. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Removed deprecated gogo protocol definitions from `k8s.io/cri-api` in favor of",
+    "reason": "developer-facing: Go protobuf definitions in a library; the wire protocol is unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Replaced Boolean-pointer-helper functions with the `k8s.io/utils/ptr` implementations.",
+    "reason": "developer-facing: internal Go helpers. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Replaced `boolPtrFn` helper functions with the \"k8s.io/utils/ptr\" implementation.",
+    "reason": "developer-facing: internal Go helpers. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Replaced deprecated package `k8s.io/utils/pointer` with `k8s.io/utils/ptr` for the",
+    "reason": "developer-facing: internal Go helpers (four identical entries). It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Simplied validation error message for invalid fields by removing redundant field name.",
+    "reason": "developer-facing: validation message wording. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Simplied validation error message for required fields by removing redundant messages.",
+    "reason": "developer-facing: validation message wording. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "The `KubeletServiceAccountTokenForCredentialProviders` feature was beta and enabled by",
+    "reason": "additive: only credential provider configs that set tokenAttributes use it. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "The `conditionType` is \"oneof\" approved/denied check of CertificateSigningRequest's",
+    "reason": "additive: DeclarativeValidation only reports mismatches via metrics; takeover is a separate off-by-default gate. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "The validation of `replicas` field in the ReplicationController `/scale` subresource has",
+    "reason": "additive: DeclarativeValidation only reports mismatches via metrics; takeover is a separate off-by-default gate. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.34",
+    "note": "The validation-gen code generator generated validation code that supported validation",
+    "reason": "developer-facing: a code generator. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Updated `IsDNS1123SubdomainWithUnderscore` so that, when it returned an error, it also",
+    "reason": "developer-facing: an error-message detail in a validation helper. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "Updated the `v1` credential provider configuration to include the",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-credential-provider-cachetype-1.34`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.34",
+    "note": "Zero-value `metadata.creationTimestamp` values are now omitted and no longer serialize an",
+    "reason": "developer-facing: `null` and an absent field decode to the same zero value in every client library; only byte-for-byte diffing of serialized output notices. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "`MultiCIDRServiceAllocator` was locked and enabled by default, `DisableAllocatorDualWrite`",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-multi-cidr-service-allocator`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "ACTION REQUIRED:",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kubelet-pod-infra-container-image-removed` — the second bullet under this heading (system-validators cgroup v1 preflight error) is carried by advisory `rtz-k8s-advisory-cgroup-v1-deprecated-1.35` and config-breakers `rtz-k8s-kubelet-fail-cgroup-v1-disabled`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Ignore the error from the SystemVerification preflight check by `kubeadm`.",
+    "reason": "continuation bullet of the cgroup v1 note above (kubeadm preflight step); carried with it by advisory `rtz-k8s-advisory-cgroup-v1-deprecated-1.35`"
+  },
+  {
+    "version": "1.35",
+    "note": "Edit the `kube-system/kubelet-config` ConfigMap and add the `failCgroupV1: false` field",
+    "reason": "continuation bullet of the cgroup v1 note above (the opt-out step); carried with it by config-breakers `rtz-k8s-kubelet-fail-cgroup-v1-disabled`"
+  },
+  {
+    "version": "1.35",
+    "note": "ACTION REQUIRED: `failCgroupV1` will be set to true from 1.35.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kubelet-fail-cgroup-v1-disabled`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Marked `ipvs` mode in kube-proxy as deprecated, which will be removed in a future version",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.35-ipvs-mode-deprecated`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Added `ObservedGeneration` to CustomResourceDefinition conditions.",
+    "reason": "additive: a new status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Added `WithOrigin` within `apis/core/validation` with adjusted tests.",
+    "reason": "developer-facing: internal validation helpers. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "Added scoring for the prioritized list feature so nodes that best satisfy the",
+    "reason": "additive: better scoring inside an opt-in alpha feature. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Added the `--min-compatibility-version` flag to `kube-apiserver`,",
+    "reason": "additive: a new optional flag. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Added the `StorageVersionMigration` `v1beta1` API and removed the `v1alpha1` API.",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-storagemigration-storageversionmigration-v1alpha1`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Added validation to ensure `log-flush-frequency` is a positive value, returning an error",
+    "reason": "bug fix: a panic becomes a validation error for a value that never worked. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "All containers are restarted when a source container in a restart policy rule exits. This",
+    "reason": "additive: alpha RestartAllContainersOnContainerExit, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "CSI drivers can now opt in to receive service account tokens via the secrets field instead",
+    "reason": "additive: opt-in per CSIDriver via a new field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Changed kuberc configuration schema. Two new optional fields added to kuberc",
+    "reason": "developer-facing: a kubectl client preference file. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "DRA device taints: `DeviceTaintRule` status provides information about the rule, including",
+    "reason": "additive: new status fields and a `None` effect on an alpha feature. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "DRA: The `DynamicResourceAllocation` feature gate for the core functionality (GA in",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-dynamic-resource-allocation`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Enabled `kubectl get -o kyaml` by default. To disable it, set `KUBECTL_KYAML=false`.",
+    "reason": "developer-facing: a kubectl output format. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "Enabled in-place resizing of pod-level resources.",
+    "reason": "additive: extends in-place resize to the opt-in pod-level resources field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Added `Resources` in `PodStatus` to capture resources set in the pod-level cgroup.",
+    "reason": "additive: a new status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Added `AllocatedResources` in `PodStatus` to capture resources requested in the `PodSpec`.",
+    "reason": "additive: a new status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Enhanced discovery responses to merge API groups and resources from all peer apiservers",
+    "reason": "additive: only with the alpha UnknownVersionInteroperabilityProxy gate enabled. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Extended `core/v1` `Toleration` to support numeric comparison operators (`Gt`,`Lt`).",
+    "reason": "additive: new operators; existing tolerations are unchanged. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Generated OpenAPI model packages for API types into `zz_generated.model_name.go` files,",
+    "reason": "developer-facing: generated Go code. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "Implemented constrained impersonation as described in [KEP-5284](https://kep.k8s.io/5284).",
+    "reason": "additive: alpha ConstrainedImpersonation, off by default; the existing impersonation verbs keep working. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced a new declarative validation tag `+k8s:customUnique` to control listmap",
+    "reason": "developer-facing: a code-generator tag. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced a structured and versioned `v1alpha1` response for the `statusz` endpoint.",
+    "reason": "additive: a new response format on an alpha endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced a structured and versioned `v1alpha1` response format for the `flagz` endpoint.",
+    "reason": "additive: a new response format on an alpha endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced the GangScheduling kube-scheduler plugin to support \"all-or-nothing\" scheduling",
+    "reason": "additive: alpha GangScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced the Node Declared Features capability (alpha), which includes:",
+    "reason": "additive: alpha NodeDeclaredFeatures, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "A new `Node.Status.DeclaredFeatures` field for publishing node-specific features.",
+    "reason": "additive: part of the alpha NodeDeclaredFeatures capability. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "A `component-helpers` library for feature registration and inference.",
+    "reason": "additive: part of the alpha NodeDeclaredFeatures capability. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "A `NodeDeclaredFeatures` scheduler plugin to match pods with nodes that provide required",
+    "reason": "additive: part of the alpha NodeDeclaredFeatures capability. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "A `NodeDeclaredFeatureValidator` admission plugin to validate pod updates against a node's",
+    "reason": "additive: part of the alpha NodeDeclaredFeatures capability. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced the `scheduling.k8s.io/v1alpha1` Workload API to express workload-level",
+    "reason": "additive: a new alpha API that has to be enabled through --runtime-config; its later removal is carried by removed-apis `rtz-k8s-dep-scheduling-workload-v1alpha1`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Introduced the alpha `MutableSchedulingDirectivesForSuspendedJobs` feature gate (disabled",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Kube-apiserver: Fixed a `v1.34` regression in `CustomResourceDefinition` handling that",
+    "reason": "bug fix: a spurious warning. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "Kube-apiserver: Fixed a possible panic validating a custom resource whose",
+    "reason": "bug fix: an API server panic. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "Kubernetes API Go types removed runtime use of the `github.com/gogo/protobuf` library, and",
+    "reason": "developer-facing: Go type marker methods for programs that link the API packages. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "Made node affinity in Persistent Volume mutable.",
+    "reason": "additive: a validation relaxation. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Moved the `ImagePullIntent` and `ImagePulledRecord` objects used by the kubelet to track",
+    "reason": "kubelet-internal on-disk records under the image-pull tracking directory; the kubelet reads both versions and no cluster object is involved"
+  },
+  {
+    "version": "1.35",
+    "note": "Prevented Pods from being scheduled onto nodes that lack the required CSI driver.",
+    "reason": "additive: behind the alpha VolumeLimitScaling gate (off in 1.35; `pkg/scheduler/framework/plugins/nodevolumelimits/csi.go` checks `enableVolumeLimitScaling`); at 1.37 the gate turns on but the check is per-driver opt-in via CSIDriver `preventPodSchedulingIfMissing`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Promoted HPA configurable tolerance to beta. The `HPAConfigurableTolerance` feature gate",
+    "reason": "additive: the `tolerance` field is opt-in per HPA; unset keeps the cluster-wide default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Promoted ReplicaSet and Deployment `.status.terminatingReplicas` tracking to beta. The",
+    "reason": "additive: a new status field, now populated by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Promoted `PodObservedGenerationTracking` to GA.",
+    "reason": "graduation only: beta and on by default since 1.34; carried by config-breakers rule `rtz-k8s-gate-locked-pod-observed-generation-tracking`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.35",
+    "note": "Promoted the `JobManagedBy` feature to general availability. The `JobManagedBy` feature",
+    "reason": "graduation only: beta and on by default since 1.32; carried by config-breakers rule `rtz-k8s-gate-locked-job-managed-by`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.35",
+    "note": "Promoted the `MaxUnavailableStatefulSet` feature to beta and enabling it by default.",
+    "reason": "additive: the `maxUnavailable` field is opt-in per StatefulSet; unset keeps one-at-a-time rolling updates. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Removed the `StrictCostEnforcementForVAP` and `StrictCostEnforcementForWebhooks` feature",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-strict-cost-enforcement-vap` — with its sibling `rtz-k8s-gate-removed-strict-cost-enforcement-webhooks`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "Scheduler: Added the `bindingTimeout` argument to the DynamicResources plugin",
+    "reason": "additive: a new plugin argument on an alpha feature. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "The DRA device taints and toleration feature received a separate feature gate,",
+    "reason": "additive: a new gate that defaults to the previous behaviour. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "The Pod Certificates feature moved to beta. The `PodCertificateRequest` feature gate is",
+    "reason": "additive: beta but still disabled by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Updated `ResourceQuota` to count device class requests within a `ResourceClaim` as two",
+    "reason": "additive: only with the alpha DRAExtendedResource gate enabled. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "`requests.deviceclass.resource.k8s.io/<deviceclass>` is charged based on the worst-case",
+    "reason": "additive: part of the alpha DRAExtendedResource quota note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Device classes mapping to an extended resource now consume `requests.<extended resource",
+    "reason": "additive: part of the alpha DRAExtendedResource quota note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.35",
+    "note": "Updated storage version for `MutatingAdmissionPolicy` to `v1beta1`.",
+    "reason": "affects only clusters that enabled the off-by-default MutatingAdmissionPolicy gate; objects are readable at both versions and the note asks nothing of an upgrade (a later downgrade would need a storage migration, which readiness does not assess)"
+  },
+  {
+    "version": "1.35",
+    "note": "Upgraded the `PodObservedGenerationTracking` feature to beta in `v1.34` and removed the",
+    "reason": "developer-facing: an OpenAPI description. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "ACTION REQUIRED:",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-volume-operation-errors-metric-rename-1.36`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Direct access to the `Raw` field of `metav1.FieldsV1` is deprecated. Code that constructs",
+    "reason": "developer-facing: a Go accessor deprecation. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Disabled `git-repo` volume plugin by default, with no option to turn it back on.",
+    "reason": "carried by the removed-volume-plugins rule `gitRepo` — PluginRemovalAnalyzer names every workload still mounting a gitRepo volume; the locked gate is config-breakers `rtz-k8s-gate-locked-git-repo-volume-driver`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Renamed `AllowlistEntry.Name` to `AllowlistEntry.Command` in the credential plugin",
+    "reason": "developer-facing: a kuberc (kubectl client preference) schema field. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "ACTION REQUIRED: Removed the integrated support for flex-volumes in kubeadm. Users were",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-kubeadm-flexvolume-removed-1.36`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "ACTION REQUIRED: Renamed metric `etcd_bookmark_counts` to `etcd_bookmark_total`. If you",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-etcd-bookmark-metric-rename-1.36`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Added SchedulingConstraints to express topology-aware scheduling (TAS) constraints for",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added `DisruptionMode`, `PriorityClassName`, and `Priority` fields to the Workload and",
+    "reason": "additive: alpha WorkloadAwarePreemption, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added `ImageVolumeWithDigest` which includes the digest of image volumes in the container",
+    "reason": "additive: a new status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added `MemoryReservationPolicy` cgroup v2 MemoryQoS support to KubeletConfiguration for",
+    "reason": "additive: a new kubelet config field under the MemoryQoS gate; the 1.37 default flip is carried by advisory `rtz-k8s-advisory-memoryqos-beta-1.37`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added `spec.stubPKCS10Request` to the Pod Certificates beta API to improve compatibility",
+    "reason": "additive: a new field on a beta API that is disabled by default; the deprecated fields keep working. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added a deletion protection mechanism for PodGroup objects.",
+    "reason": "additive: alpha gang-scheduling API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added alpha support (behind the `PersistentVolumeClaimUnusedSinceTime` feature gate) for",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added alpha support for manifest-based admission control configuration (KEP-5793). When",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added an admission plugin that validates PodGroup resources reference an existing Workload",
+    "reason": "additive: alpha gang-scheduling API; the plugin's later removal is carried by config-breakers `rtz-k8s-apiserver-admission-plugin-podgroupworkloadexists-removed`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added list-type support for attributes in DRA (KEP-5491). The `DRAListTypeAttributes`",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA drivers can use list-type fields (`bools`/`ints`/`strings`/`versions`) for device",
+    "reason": "additive: part of the alpha DRAListTypeAttributes note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "The `matchAttribute`/`distinctAttribute` constraints in ResourceClaim now work on both",
+    "reason": "additive: part of the alpha DRAListTypeAttributes note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added a new CEL function `.includes` that works on both scalar and list attributes to test",
+    "reason": "additive: part of the alpha DRAListTypeAttributes note; a new CEL function. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added new `concurrent-node-status-updates` flag that is split from the",
+    "reason": "additive: a new cloud-controller-manager flag defaulting to the old shared value. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added opt-in alpha support in the kubeletplugin framework for DRA drivers to publish DRA",
+    "reason": "additive: opt-in alpha in a driver library. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added opt-in scheduling behavior for CSI volumes.",
+    "reason": "additive: opt-in. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added placement-based PodGroup scheduling algorithm to the scheduler. Its use is guarded",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added stability-based lifecycle for declarative validation (Alpha/Beta/Stable). Scheduling",
+    "reason": "additive: declarative validation lifecycle on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the PlacementGenerate extension point to the scheduler. It is used to generate",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the PlacementScore extension point to the scheduler for scoring placements in",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling; the MinNodeScore/MaxNodeScore deprecation is a Go constant rename for plugin authors. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the ResourcePoolStatusRequest API (`v1alpha1`) for querying DRA resource pool",
+    "reason": "additive: alpha DRAResourcePoolStatus, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the `--concurrent-resourceclaim-syncs` flag to `kube-controller-manager` to",
+    "reason": "additive: a new optional flag. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the `--tls-curve-preferences` flag for configuring TLS key exchange mechanism.",
+    "reason": "additive: a new optional flag. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the `PodGroupPodsCount` scheduler plugin to support workload-aware scheduling by",
+    "reason": "additive: alpha gang-scheduling plugin. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the `tlsServerName` field to `EgressSelectorConfiguration` `TLSConfig` to allow",
+    "reason": "additive: a new optional field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added the alpha `DRANodeAllocatableResources` feature, which introduces a new",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Added topology-aware scheduling (TAS) logic to the PodGroup scheduling cycle behind the",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Changed deprecated `sets.String` with `sets.Set[string]` in apiserver admission subsystem.",
+    "reason": "developer-facing: a Go API change for programs embedding the apiserver admission library. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Clarified documentation and comments to indicate that the `cpuCFSQuotaPeriod` kubelet",
+    "reason": "developer-facing: documentation; the note says no functional change. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Corrected OpenAPI schema union validation for the `PodGroupPolicy` struct in",
+    "reason": "developer-facing: an OpenAPI schema fix on an alpha API. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA `DeviceTaintRules`: the `TimeAdded` field of the taint is now automatically updated",
+    "reason": "additive: a field maintained by the controller on a beta feature. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA: Added a `spec.resourceClaims` field to PodGroup resources for referencing",
+    "reason": "additive: a new field on the alpha PodGroup API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA: Graduated Device Binding Conditions (KEP #5007) to beta, enabled by default in",
+    "reason": "additive: only slices that publish binding conditions are affected, and none do until a driver opts in. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA: Graduated device taints and tolerations (KEP #5055) to beta. Support for DeviceTaints",
+    "reason": "additive: only slices that carry taints are affected; DeviceTaintRules still need an explicit gate and API version. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Extended `NodeResourcesFit` to implement the PlacementScore extension point. The usage of",
+    "reason": "additive: alpha TopologyAwareWorkloadScheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Fixed `fake.NewClientset()` to work properly with correct schema.",
+    "reason": "developer-facing: a client-go test fake. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Fixed a few log calls that did not properly format their parameters.",
+    "reason": "bug fix: log formatting. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Fixed a potential nil pointer dereference in the scheduler's `NodeResourcesFitArgs`",
+    "reason": "bug fix: a scheduler panic on config validation. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Fixed an issue in `kube-apiserver`, allowing it to recover from an established connection",
+    "reason": "bug fix: APIService availability checking. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Generated `fake.NewClientset` which replaces the deprecated `NewSimpleClientset` for",
+    "reason": "developer-facing: generated client-go test fakes. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated metric `apiserver_storage_events_received_total` to beta.",
+    "reason": "metrics/observability only: a metric stability promotion; the name and labels are unchanged. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated the `ImageVolume` feature to stable.",
+    "reason": "graduation only: beta and on by default since 1.35; carried by config-breakers rule `rtz-k8s-gate-locked-image-volume`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated the `InPlacePodLevelResourcesVerticalScaling` feature gate to beta, enabled by",
+    "reason": "additive: in-place resize of the opt-in pod-level resources field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated the `UserNamespacesSupport` feature gate to GA.",
+    "reason": "graduation only: beta since 1.30 and on by default since 1.33; `hostUsers: false` stays opt-in per pod; carried by config-breakers rule `rtz-k8s-gate-locked-user-namespaces-support`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated the `config.k8s.io/flagz` API to `v1beta1`.",
+    "reason": "additive: a new response version on a diagnostic endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Graduated the `config.k8s.io/statusz` API to `v1beta1`.",
+    "reason": "additive: a new response version on a diagnostic endpoint. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "HPA: Improved scaling to and from zero when the `HPAScaleToZero` feature gate is enabled.",
+    "reason": "additive: alpha HPAScaleToZero, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Integrated Workload and PodGroup APIs with the Job controllers to support gang-scheduling.",
+    "reason": "additive: alpha gang-scheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Introduced `scheduling.k8s.io/v1alpha2` Workload and PodGroup API to express",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-scheduling-workload-v1alpha1`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Kube-apiserver: The `--audit-policy-file` config file now supports specifying `group: \"*\"`",
+    "reason": "additive: a new accepted value in audit policy. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Kube-controller-manager: Added ALPHA gauge metric `informer_queued_items` for informer",
+    "reason": "metrics/observability only: a new metric. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Kubelet: Added tiered cgroup v2 memory protection for MemoryQoS: `memory.min` for",
+    "reason": "additive: behind the MemoryQoS gate; the 1.37 default flip is carried by advisory `rtz-k8s-advisory-memoryqos-beta-1.37`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Locked the `VolumeAttributesClass` feature gate to `true` and updated the preferred",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-volume-attributes-class`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Marked the `endpoints` field as optional in the OpenAPI spec for `discovery.k8s.io/v1`",
+    "reason": "developer-facing: an OpenAPI schema correction that matches existing server behaviour. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted `DRAPrioritizedList` to GA.",
+    "reason": "graduation only: beta and on by default since 1.34; the lock is carried by config-breakers rule `rtz-k8s-gate-locked-dra-prioritized-list` at 1.37. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted `NodeDeclaredFeatures` to beta.",
+    "reason": "additive: nodes publish features; only pods that declare a required feature are matched or validated against them. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted `SnapshotMetadataService` to `v1beta1`. Removed support for the `v1alpha1`",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-cbtstorage-snapshotmetadataservice-v1alpha1`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted mutable CSI node allocatable count to GA. The `MutableCSINodeAllocatableCount`",
+    "reason": "graduation only: the field is only used by drivers that set NodeAllocatableUpdatePeriodSeconds; carried by config-breakers rule `rtz-k8s-gate-locked-mutable-csi-node-allocatable-count`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted several EndpointSlice metrics from alpha to beta stability.",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted several component-base metrics (`kubernetes_build_info`,",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted several scheduler metrics (`scheduler_goroutines`,",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the DRA extended resource feature to beta in `v1.36`.",
+    "reason": "additive: only DeviceClasses that set extendedResourceName take part. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `ConstrainedImpersonation` feature to beta, enabled by default.",
+    "reason": "additive: new `impersonate:*` verbs alongside the unchanged legacy `impersonate` verb; existing RBAC keeps working. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `DRAAdminAccess` feature gate to GA.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-dra-admin-access`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `MutatingAdmissionPolicy` to GA (v1) in Kubernetes `v1.36`. The feature is",
+    "reason": "additive: no policy exists until one is created; clusters that ran the alpha/beta API are on the same objects. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `NodeLogQuery` feature gate to GA.",
+    "reason": "graduation only: beta since 1.30 and only on by default from this release; the endpoint still needs `enableSystemLogQuery: true` in the kubelet config, so nothing is exposed by the flip alone; carried by config-breakers rule `rtz-k8s-gate-locked-node-log-query`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `ProcMountType` feature to GA.",
+    "reason": "graduation only: beta since 1.31 and on by default since 1.33; `procMount: Unmasked` stays opt-in per container; carried by config-breakers rule `rtz-k8s-gate-locked-proc-mount-type`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted the `watch_list_duration_seconds` metric from ALPHA to BETA.",
+    "reason": "metrics/observability only: a metric stability promotion. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted two Job controller metrics from alpha to beta stability, providing stronger API",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Promoted workqueue metrics from ALPHA to BETA.",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.36",
+    "note": "Removed CustomResourceDefinition stored versions from status upon StorageVersionMigrator",
+    "reason": "bug fix: the StorageVersionMigrator now finishes the job it was already asked to do. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Removed the in-tree Portworx volume plugin, completing the migration to CSI.",
+    "reason": "carried by the removed-volume-plugins rule `portworxVolume` — PluginRemovalAnalyzer names every PV/PVC/pod still on the in-tree plugin; the gate removals are config-breakers `rtz-k8s-gate-removed-csi-migration-portworx` and `rtz-k8s-gate-removed-in-tree-plugin-portworx-unregister`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "Removed the temporary build-tagged `ProtoMessage()` marker method implementations from",
+    "reason": "developer-facing: Go type marker methods. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Slow requests that use impersonation can be tracked via the",
+    "reason": "additive: a new audit annotation. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "The `DRAConsumableCapacity` feature gate is enabled by default.",
+    "reason": "additive: only slices that publish shareable capacity take part. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "The `StrictIPCIDRValidation` feature gate in `kube-apiserver` is enabled by default,",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-strict-ip-cidr-validation-1.36`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "The `kube-scheduler` now updates PodGroup status with a `PodGroupScheduled` condition",
+    "reason": "additive: a new status condition on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.36",
+    "note": "Updated API comments to reflect the stable state of Dynamic Resource Allocation (DRA).",
+    "reason": "developer-facing: API comments. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Updated API server internal API group to improve openapi schema correctness for fields",
+    "reason": "developer-facing: OpenAPI schema metadata. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Updated the `/configz` endpoint of `kubelet`, `kube-scheduler`, cloud controller manager,",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.36-configz-serialization-changed` — the kubelet and kube-scheduler endpoints change the same way; a reader that decodes the config into a typed struct keeps working, one that pattern-matches the JSON must expect apiVersion/kind; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "ACTION REQUIRED: Converted the `DisruptionMode` enum field to a struct to support future",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-scheduling-workload-v1alpha2` — with its sibling `rtz-k8s-dep-scheduling-podgroup-v1alpha2`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "ACTION REQUIRED: Fixed `eventRecordQPS` handling in `kubelet` configuration to treat 0 as",
+    "reason": "carried by the config-breakers rule `rtz-k8s-kubelet-event-record-qps-unlimited`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Changed `kubeadm` to explicitly set `KubeProxyConfiguration.mode` to iptables when",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.37-proxy-mode-not-explicitly-set`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Deprecated the ignored `--filename`/`-f` flag on `kubectl run`.",
+    "reason": "developer-facing: a kubectl flag that was already ignored. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Locked the deprecated `DeclarativeValidationTakeover` feature gate to its default value;",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-declarative-validation-takeover`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "`kubeadm`: Added a (delayed) warning that `kube-proxy`'s ipvs mode is deprecated since",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.37-ipvs-mode-deprecated` — the advisory `rtz-k8s-advisory-kube-proxy-ipvs-winddown-1.37` carries the cluster-level wind-down; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Added Alpha support for DRA device compatibility groups, guarded by the",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added Alpha support for binding service account tokens to webhook configurations with",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added Alpha support for defining the file owner of atomically written volume files, behind",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added CompositePodGroup support to the building block APIs and the `workloadbuilder`",
+    "reason": "additive: alpha gang-scheduling library. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added Workload-aware scheduling (WAS) support to the Job controller by integrating it with",
+    "reason": "additive: alpha gang-scheduling, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added `CheckpointPod` and `RestorePod` RPCs to the CRI `v1` RuntimeService API for",
+    "reason": "additive: new optional CRI RPCs. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added a `PreemptionPolicy` field to PodGroup, allowing users to control how",
+    "reason": "additive: a new field on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added a `protocol` field to `httpGet` probes so that liveness, readiness, and startup",
+    "reason": "additive: a new optional probe field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added a defense-in-depth check to the `NodeRestriction` admission plugin for",
+    "reason": "additive: a node may still request every signer a pod actually mounts; only forged requests are refused. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added a second Alpha of DRA resource availability visibility (KEP-5677), behind the",
+    "reason": "additive: alpha gate, off by default; the note's changed numbers are within that alpha. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added an opt-in userspace TCP proxy to the nftables `kube-proxy` backend to serve",
+    "reason": "additive: opt-in. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added dry-run support to unsafe corrupt object deletion, letting administrators test",
+    "reason": "additive: a new dry-run option on an alpha operation. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added generated declarative validation functions for Go consumers of the DRA device",
+    "reason": "developer-facing: generated Go code. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Added scheduler support for preempting lower-priority Pods to make room for `Deferred`",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added support for derived attributes in DRA, allowing claims to define virtual attributes",
+    "reason": "additive: a new claim capability. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added support for dynamically resizing memory-backed volumes behind the Alpha",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added support for selecting ResourceSlices by pool name with the field selector",
+    "reason": "additive: a new field selector. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added support for setting Unix permission bits (0000-01777) through the `mode` field on",
+    "reason": "additive: a new optional emptyDir field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added support for specifying bind mount options (`noexec`, `nodev`, `nosuid`) per",
+    "reason": "additive: new optional volumeMount fields. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the API changes required for reporting volume health.",
+    "reason": "additive: new status fields. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the CompositePodGroup API to `scheduling.k8s.io/v1alpha3`.",
+    "reason": "additive: a new alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the Recreate update strategy for StatefulSet, mirroring the Deployment Recreate",
+    "reason": "additive: a new opt-in strategy value. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `--concurrent-disruption-syncs` flag to `kube-controller-manager` to configure",
+    "reason": "additive: a new optional flag. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `.spec.evictionResponders` Pod field, along with the EvictionRequest and",
+    "reason": "additive: a new alpha field and alpha resources. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `DefaultPodSysctls` `kubelet` configuration field for default Pod sysctls on",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `DisruptionMode` and `PreemptionPolicy` fields to the Workload and",
+    "reason": "additive: new fields on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `GracefulNodeShutdownInProgress`, `DrainInProgress`, `Drained`,",
+    "reason": "additive: new Node conditions. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `PodGroupPostFilter` extension point to the scheduling framework, replacing the",
+    "reason": "additive: alpha gang-scheduling extension point. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `PreemptionPolicy` field to PodGroupTemplate to define the policy for",
+    "reason": "additive: a new field on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the `SchedulerPreQueueingHints` feature gate (Alpha, disabled by default). When",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Added the core machinery for Conditional Authorization, which enables authorizers to allow",
+    "reason": "additive: new authorizer machinery no built-in authorizer uses yet. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Allowed HorizontalPodAutoscaler conditions to optionally include the `observedGeneration`",
+    "reason": "additive: a new optional status field. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Changed the `kube-apiserver` CBOR encoder to encode collections item by item instead of",
+    "reason": "developer-facing: an encoder memory optimisation with the same wire result, on an alpha serialization. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "DRA: Added Alpha support for `DRAOptionalNodeOperations` (the `SkipNodeOperations` field",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed CEL cost estimation for `metadata.name` and `metadata.generateName` in CRDs to",
+    "reason": "bug fix: cost estimates only go DOWN — expressions that passed keep passing. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed DRA `CapacityRequestPolicyRange` to support fractional quantities in milli-scale.",
+    "reason": "bug fix: a validation relaxation on an alpha field. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed Pod status validation for reported Linux container user UIDs to accept values above",
+    "reason": "bug fix: a validation relaxation. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed a `v1.34`+ regression handling containers with environment values set from Secret",
+    "reason": "bug fix: a 1.34 regression. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed a bug in DRA consumable capacity where the `DistinctAttribute` constraint was not",
+    "reason": "bug fix: a constraint that was under-enforced. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed the overestimation of a Pod's resource footprint during resize operations for",
+    "reason": "bug fix: a scheduler accounting fix. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Graduated Pod hostname overrides to GA. The `HostnameOverride` feature gate is locked to",
+    "reason": "graduation only: the field stays opt-in per pod; carried by config-breakers rule `rtz-k8s-gate-locked-hostname-override`. The behaviour was already the default before this release; the note records a stability level, not a change an operator has to absorb"
+  },
+  {
+    "version": "1.37",
+    "note": "Graduated the `ClusterTrustBundle` and `ClusterTrustBundleProjection` feature gates to GA",
+    "reason": "additive: no ClusterTrustBundle exists until one is created; clusters that enabled the beta API keep their objects. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Improved CEL error messages in Dynamic Resource Allocation to provide guidance when",
+    "reason": "developer-facing: error message wording. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted DRA Workload resource claims to Beta. The `DRAWorkloadResourceClaims` feature",
+    "reason": "additive: the note says the gate stays disabled by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted `kubelet` volume metrics (`storage_operation_duration_seconds`,",
+    "reason": "metrics/observability only: metric stability promotions. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the DRA Device Taints and Tolerations feature to GA, making it available via the",
+    "reason": "additive: the v1 API gains the fields; slices without taints behave as before. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the DRA extended resource feature to GA in `v1.37`.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-dra-extended-resource`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the DRA metadata API to Beta. DRA driver authors that enable the feature must",
+    "reason": "developer-facing: a driver-library option for driver authors. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the DRAResourceHealth `kubelet` gRPC API to `v1`; the schema is unchanged from",
+    "reason": "developer-facing: a one-time Go interface break for driver authors; the note says the helper serves both versions and the kubelet keeps v1alpha1 for three releases, so deployed drivers keep working. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `HPAConfigurableTolerance` feature gate to GA.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-hpa-configurable-tolerance`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `KubeletInUserNamespace` feature gate to Beta.",
+    "reason": "additive: only a kubelet deliberately run inside a user namespace is affected. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `MemoryQoS` feature gate to Beta. `memoryThrottlingFactor` defaults to nil,",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-memoryqos-beta-1.37`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `NodeDeclaredFeatures` feature gate to GA.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-node-declared-features`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `PersistentVolumeClaimUnusedSinceTime` feature gate to Beta in `v1.37` and",
+    "reason": "additive: a new status condition on PVCs. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `StorageVersionMigration` feature gate to GA. The",
+    "reason": "additive: the v1 API is added; v1beta1 objects keep being served. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the `VolumeLimitScaling` feature gate, which adds the",
+    "reason": "additive: the CSIDriver field is opt-in per driver. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Promoted the core Workload-Aware Scheduling (WAS) API types Workload and PodGroup to",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-scheduling-podgroup-v1alpha2` — with its sibling `rtz-k8s-dep-scheduling-workload-v1alpha2`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Relaxed container security context validation so that updates to Pods may set",
+    "reason": "additive: a validation relaxation on updates only. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Removed the `GangScheduling` and `WorkloadAwarePreemption` feature gates. Use the",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-gang-scheduling` — with its sibling `rtz-k8s-gate-removed-workload-aware-preemption`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Removed the generally available feature gate `AnyVolumeDataSource`, which was locked and",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-any-volume-data-source`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Removed the unused `PodStatusResult` type from the Kubernetes API. This type had no REST",
+    "reason": "developer-facing: a Go type with no REST endpoint. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Renamed signal enum keys in `cri-api`, which are prefixed with `SIGNAL_` in the",
+    "reason": "developer-facing: Go/proto enum names; the note says the wire format is unchanged. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Renamed the PodGroup condition `PodGroupScheduled` to `PodGroupInitiallyScheduled` to",
+    "reason": "additive: a condition name on the alpha PodGroup API that was itself introduced in 1.36 and is off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Switched the json tag for inlined `TypeMeta` fields in the API Go types from `\",inline\"`",
+    "reason": "developer-facing: a Go struct tag the note says changed nothing. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "Updated CDI spec version selection to be dynamic, preventing the generation of",
+    "reason": "bug fix: incompatible CDI specs are no longer generated. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Updated PodGroup and PodGroupTemplate to allow modifying `minCount` after creation.",
+    "reason": "additive: a validation relaxation on an alpha API. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Updated the Alpha `DRANodeAllocatableResources` feature:",
+    "reason": "additive: alpha gate, off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "ResourceSlice mappings and PodStatus support direct allocations, for DRA drivers modeling",
+    "reason": "additive: part of the alpha DRANodeAllocatableResources note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "The `kubelet` accounts for DRA allocated resources when configuring Pod and container",
+    "reason": "additive: part of the alpha DRANodeAllocatableResources note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Standard resource requests and limits can be resized in place for Pods that use DRA",
+    "reason": "additive: part of the alpha DRANodeAllocatableResources note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "The scheduler supports unreferenced Pod-level claims, enforces resource limits with DRA,",
+    "reason": "additive: part of the alpha DRANodeAllocatableResources note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Validation enforces constraints for the updated API and uses node declared features to",
+    "reason": "additive: part of the alpha DRANodeAllocatableResources note. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Updated the PodGroup API to replace `PodGroupTemplateRef` with `WorkloadRef`, a simpler",
+    "reason": "additive: a field rename inside the new v1alpha3 API; the removal of v1alpha2 is carried by removed-apis `rtz-k8s-dep-scheduling-podgroup-v1alpha2`. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "`client-go`: Removed nearly all `context.TODO` calls by introducing APIs where the caller",
+    "reason": "developer-facing: client-go Go API. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "`kubelet`: Added TLS support for gRPC container probes (behind a feature gate).",
+    "reason": "additive: behind a gate, opt-in per probe. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Added a new option `strict-cpu-reservation` for CPU Manager static policy. When this",
+    "reason": "additive: a new opt-in CPU Manager policy option. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.32",
+    "note": "Applyconfiguration-gen no longer generates duplicate methods and ambiguous member accesses",
+    "reason": "developer-facing: a code generator. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "Fixed a regression in 1.29+ default configurations, where regular init containers may fail",
+    "reason": "bug fix: init containers failing on a transient runtime error. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "Fixed a regression in default 1.29 configurations with the `SidecarContainers` feature",
+    "reason": "bug fix: init containers failing on a transient runtime error. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "Fixed the reporting of elapsed times during evaluation of `ValidatingAdmissionPolicy`",
+    "reason": "metrics/observability only: a metric that was always zero now carries a value. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.32",
+    "note": "For Dynamic Resource Allocation, the new \"v1beta1\" kubelet gPRC was renamed so that the",
+    "reason": "developer-facing: a protobuf package name inside a gRPC API that shipped new in 1.32; no released driver spoke the old package name. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "HostNetwork pods no longer depend on the PodIPs to be assigned to configure the defined",
+    "reason": "bug fix: hostAliases on hostNetwork pods no longer wait for a PodIP. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "Feature `AllowServiceLBStatusOnNonLB` remains deprecated and is now locked to false to",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-allow-service-lb-status-on-non-lb`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "kube-proxy will no longer depend on conntrack binary for stale UDP connections cleanup",
+    "reason": "bug fix: kube-proxy uses netlink instead of exec-ing the conntrack binary; the cleanup itself is unchanged. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.32",
+    "note": "The `flowcontrol.apiserver.k8s.io/v1beta3` API version of `FlowSchema` and",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-flowcontrol-flowschema-v1beta3` — with its sibling `rtz-k8s-dep-flowcontrol-plc-v1beta3`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.32",
+    "note": "The getters for the field name and typeDescription of the Reflector struct were renamed.",
+    "reason": "developer-facing: client-go Reflector getters. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.32",
+    "note": "DRA: renamed the new \"v1beta1\" kubelet gPRC so that the protobuf package name is unique.",
+    "reason": "duplicate: the same change as \"For Dynamic Resource Allocation, the new \"v1beta1\" kubelet gPRC was renamed\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.32",
+    "note": "Fixed a bug where init containers may fail to start due to a temporary container runtime",
+    "reason": "duplicate: the same change as \"Fixed a regression in 1.29+ default configurations\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.33",
+    "note": "Added a new option `strict-cpu-reservation` for CPU Manager static policy. When this",
+    "reason": "additive: a new opt-in CPU Manager policy option (the 1.32 bullet repeated in 1.33). Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Graduated the `DisableNodeKubeProxyVersion` feature gate to enable by default, the kubelet",
+    "reason": "carried by the kube-proxy rule `rtz-kube-proxy-1.31-node-kube-proxy-version-field` — that rule already says the field stops being published; the 1.33 flip is when it happens by default; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "kube-apiserver: Promoted the `ServiceAccountTokenNodeBinding` feature gate general",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-service-account-token-node-binding`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "NodeRestriction admission now validates that the audience value, the kubelet requested a",
+    "reason": "carried by this corpus's own 1.32 rule `rtz-k8s-1.32-sa-node-audience-restriction`, whose remediation records the real timeline (ON in 1.32.0/1.32.1, OFF from 1.32.2, ON again from 1.33): a hop that crosses 1.32 always evaluates that rule, and its CSIDriver hint is what a 1.33 upgrade needs"
+  },
+  {
+    "version": "1.33",
+    "note": "The `SidecarContainers` feature has graduated to GA. 'SidecarContainers' feature gate was",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-sidecar-containers`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Fixed a bug in HorizontalPodAutoscaler. HPAs with `ContainerResource` metrics no longer",
+    "reason": "bug fix: an HPA that errored on a missing container metric now scales like Resource metrics do. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.33",
+    "note": "kube-apiserver: shortening the grace period during a pod deletion no longer moves the",
+    "reason": "bug fix: a timestamp that could move into the past. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.33",
+    "note": "Removed the limitation on exposing port 10250 externally using a Service.",
+    "reason": "additive: a validation relaxation. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "kubelet no longer logs multiple errors when running on a system with no iptables binaries",
+    "reason": "developer-facing: log noise. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.33",
+    "note": "Renamed some metrics related to CoreDNS, see the",
+    "reason": "carried by the coredns rule `rtz-coredns-1.11-forward-metrics-changed` — the CoreDNS corpus fires on the add-on hop where the forward plugin's metrics were renamed; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "Renamed coredns metrics, see https://github.com/coredns/coredns/blob/v1.11.0/plugin/forwar",
+    "reason": "duplicate: the same change as \"Renamed some metrics related to CoreDNS\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.33",
+    "note": "kube-apiserver disables the beta WatchList feature by default in 1.33 in favor of the",
+    "reason": "additive: a beta API-server feature turned off in favour of streaming list encoding; clients that asked for watch-list fall back to a plain list transparently. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.33",
+    "note": "Pod resource checkpointing is now tracked by the `allocated_pods_state` and",
+    "reason": "carried by the advisory rule `rtz-k8s-advisory-pod-status-manager-state-1.32`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.33",
+    "note": "NodeRestriction admission now validates the audience value that kubelet is requesting a",
+    "reason": "duplicate: the same change as \"NodeRestriction admission now validates that the audience value, the kubelet requested a\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.33",
+    "note": "HPA's with ContainerResource metrics will no longer error when container metrics are",
+    "reason": "duplicate: the same change as \"Fixed a bug in HorizontalPodAutoscaler\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.34",
+    "note": "DRA: Ensured that ResourceClaims requesting a fixed number of devices with `adminAccess`",
+    "reason": "bug fix: a double allocation. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "Removed the deprecated flag `--wait-interval` for the `ip6tables-legacy-restore` binary.",
+    "reason": "developer-facing: a flag of a binary inside the kube-proxy image that kube-proxy itself stopped passing. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.34",
+    "note": "The garbage collection controller no longer raced with changes to `ownerReferences` when",
+    "reason": "bug fix: a GC race. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "Updated the HPA controller so that it no longer emitted a `FailedRescale` event if a scale",
+    "reason": "bug fix: an event that misreported a successful retry. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "DRA kubelet: Simplified recovery from mistakes like scheduling a Pod onto a node where the",
+    "reason": "bug fix: pod deletion no longer blocks on a missing driver. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.34",
+    "note": "The garbage collection controller no longer races with changes to ownerReferences when",
+    "reason": "duplicate: the same change as \"The garbage collection controller no longer raced with changes to `ownerReferences` when\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.34",
+    "note": "DRA: ResourceClaims requesting a fixed number of devices with `adminAccess` will no longer",
+    "reason": "duplicate: the same change as \"DRA: Ensured that ResourceClaims requesting a fixed number of devices with `adminAccess` were\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.34",
+    "note": "HPA controller will no longer emit a 'FailedRescale' event if a scale operation initially",
+    "reason": "duplicate: the same change as \"Updated the HPA controller so that it no longer emitted a `FailedRescale` event\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.35",
+    "note": "Fixed the replacement tag in APIs so it no longer acted as a selector for storage version.",
+    "reason": "bug fix: an API-machinery tag mis-used as a selector. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "Slow container runtime initialization no longer causes the System WatchDog to kill the",
+    "reason": "bug fix: a kubelet restart loop under a slow runtime start. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "`kube-scheduler`: Pod statuses no longer include specific taint keys or values when",
+    "reason": "bug fix: an information leak in a status message. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.35",
+    "note": "Removed the `UserNamespacesPodSecurityStandards` feature gate. The minimum supported",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-user-namespaces-pod-security-standards`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "The `AggregatedDiscoveryRemoveBetaType` feature gate was deprecated and locked to `true`.",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-aggregated-discovery-remove-beta-type`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "The `SystemdWatchdog` feature gate has been locked to default and will be removed in",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-systemd-watchdog`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.35",
+    "note": "AggregatedDiscoveryRemoveBetaType feature gate is deprecated and locked to True",
+    "reason": "duplicate: the same change as \"The `AggregatedDiscoveryRemoveBetaType` feature gate was deprecated and locked to `true`.\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.35",
+    "note": "The FeatureGate SystemdWatchdog is locked to default and will be removed. The Systemd",
+    "reason": "duplicate: the same change as \"The `SystemdWatchdog` feature gate has been locked to default\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.35",
+    "note": "Rsync is no longer required to build kubernetes.",
+    "reason": "developer-facing: a build prerequisite. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.35",
+    "note": "The storage.k8s.io/v1alpha1 VolumeAttributesClass API is no longer served in 1.35",
+    "reason": "carried by the removed-apis rule `rtz-k8s-dep-storage-volumeattributesclass-v1alpha1`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA ResourceSlice controller: Added optional `ReconcilePoolWithName` to allow per-pool",
+    "reason": "developer-facing: an option of the driver-side ResourceSlice controller library; a driver picks it up when it upgrades the library. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Reduced the needs of the setcap build image for `kube-apiserver` by no longer requiring",
+    "reason": "developer-facing: a build image. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.36",
+    "note": "Fixed a race condition in Dynamic Resource Allocation (DRA) where the same device could be",
+    "reason": "bug fix: a double allocation under rapid scheduling. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Writes to the ServiceCIDR main resource ignore status field changes in the request,",
+    "reason": "bug fix: status is written through the status subresource, as on every other API; the opt-out gate exists for a client that relied on the leak. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.36",
+    "note": "Deprecated the `SeparateCacheWatchRPC` feature gate. It is now locked to its default value",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-separate-cache-watch-rpc`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.36",
+    "note": "DRA ResourceSlice controller: new optional `ReconcilePoolWithName` allows per-pool",
+    "reason": "duplicate: the same change as \"DRA ResourceSlice controller: Added optional `ReconcilePoolWithName`\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.36",
+    "note": "Reduces the needs of the setcap build image for kube-apiserver by no longer requiring that",
+    "reason": "duplicate: the same change as \"Reduced the needs of the setcap build image for `kube-apiserver`\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.36",
+    "note": "The deprecated SeparateCacheWatchRPC feature gate is now locked to its default value",
+    "reason": "duplicate: the same change as \"Deprecated the `SeparateCacheWatchRPC` feature gate\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.37",
+    "note": "Fixed `kube-proxy` to remove stale conntrack entries when a UDP Service no longer has any",
+    "reason": "bug fix: stale UDP conntrack entries after scale-to-zero. It restores the documented behaviour; an operator has nothing to change before upgrading"
+  },
+  {
+    "version": "1.37",
+    "note": "Updated the `kubelet` to no longer emit `V(4)` \"Label not found\" logs for missing optional",
+    "reason": "developer-facing: log noise. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "DRA: Locked the `DRAPrioritizedList` feature gate to enabled by default. The Prioritized",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-locked-dra-prioritized-list`; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "Removed the `PreventStaticPodAPIReferences` feature gate. Static Pods can no longer",
+    "reason": "carried by the config-breakers rule `rtz-k8s-gate-removed-prevent-static-pod-api-references` — the workload side is this corpus's 1.34 rule `rtz-k8s-1.34-static-pods-api-references-denied`; 1.37 removes the opt-out; a second finding here would say the same thing twice"
+  },
+  {
+    "version": "1.37",
+    "note": "The `kube-apiserver` `--enable-logs-handler` flag, deprecated in `v1.15`, is no longer",
+    "reason": "additive: an un-deprecation; the flag stays off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "The deprecated Alpha metrics `apiserver_cache_list_total`,",
+    "reason": "metrics/observability only: three alpha metrics hidden by default; the unified apiserver_storage_list_* series carry the same data. No cluster object changes; dashboards and alerts are outside the inventory this ledger reads"
+  },
+  {
+    "version": "1.37",
+    "note": "Setting a certificate authority path that is outside of the `.kube/config` folder on",
+    "reason": "developer-facing: a kubeconfig path resolution on Windows clients. It changes Go packages, generated code or a client library, not a running cluster; nothing in inventory can be affected"
+  },
+  {
+    "version": "1.37",
+    "note": "DRA: the DRAPrioritizedList feature gate for the Prioritized List feature (GA in 1.36) is",
+    "reason": "duplicate: the same change as \"DRA: Locked the `DRAPrioritizedList` feature gate to enabled by default\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.37",
+    "note": "PostFilter plugins are no longer run during PodGroup cycle for pods from PodGroup. Instead",
+    "reason": "additive: inside the alpha gang-scheduling cycle. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "DRA: when a Pod is a member of a PodGroup, the ResourceClaim controller will no longer",
+    "reason": "additive: inside the alpha PodGroup feature, itself off by default. Nothing that exists on a cluster behaves differently after the upgrade; there is no object to name and no action to take"
+  },
+  {
+    "version": "1.37",
+    "note": "Kubelet no longer emits V(4) \"Label not found\" logs for missing optional container",
+    "reason": "duplicate: the same change as \"Updated the `kubelet` to no longer emit `V(4)` \"Label not found\" logs\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.37",
+    "note": "The `pods/binding` endpoint now validates the specified node name consistently.",
+    "reason": "validation tightening on the binding subresource: a Binding naming a node that fails the name rules never produced a running pod; a custom scheduler that sends one now gets the error synchronously"
+  },
+  {
+    "version": "1.37",
+    "note": "Kube-proxy now removes stale conntrack entries when a UDP service no longer has any",
+    "reason": "duplicate: the same change as \"Fixed `kube-proxy` to remove stale conntrack entries when a UDP Service no longer has any\" in different wording (the changelog repeats .0 bullets between the release block and its rc/beta blocks)"
+  },
+  {
+    "version": "1.37",
+    "note": "Image volume validation now rejects empty `image.reference` fields in Pod templates",
+    "reason": "validation tightening: a template with an empty image.reference never mounted the volume (the kubelet had nothing to pull); the rejection moves that failure to admission of the workload"
+  },
+  {
+    "version": "1.10",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.11",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.12",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.13",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.14",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.15",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.16",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.17",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.18",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.19",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.2",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.20",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.21",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.22",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.23",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.24",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.25",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.26",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.27",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.28",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.29",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.3",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.30",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.31",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.4",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.5",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.6",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.7",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.8",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  },
+  {
+    "version": "1.9",
+    "note": "*",
+    "reason": "not authored: this corpus covers 1.32–1.37 (the minors a cluster in the current support window can be upgraded across). Older minors are carried only by the mechanical catalogs — removed APIs (k8s-deprecations), feature-gate locks/removals and flag removals (k8s-config-breakers), advisories (k8s-advisory), removed volume plugins (k8s-plugins) — which reach back to 1.16. Authoring an older minor means adding it to VERSIONS in build-kubernetes-rules.py and dispositioning its notes one by one"
+  }
+]

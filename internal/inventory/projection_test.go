@@ -143,12 +143,73 @@ func TestWorkloadProjectsThePodTemplate(t *testing.T) {
 		if spec["hasResourceClaims"] != true || spec["topologySpreadConstraintsPresent"] != false {
 			t.Errorf("%s booleans = %v / %v", tc.kind, spec["hasResourceClaims"], spec["topologySpreadConstraintsPresent"])
 		}
+		// The 1.32–1.37 kubernetes corpus booleans are written on every row, false here: no
+		// matchLabelKeys, no seLinuxOptions, and a literal env value is not an API reference.
+		for _, key := range []string{"hasTopologySpreadMatchLabelKeys", "hasSeLinuxOptions", "hasEnvApiRefs"} {
+			if spec[key] != false {
+				t.Errorf("%s %s = %v, want false", tc.kind, key, spec[key])
+			}
+		}
 		if _, raw := spec["template"]; raw {
 			t.Errorf("%s: the raw template must not be carried", tc.kind)
 		}
 		if tc.kind == "Deployment" && spec["replicas"] != 2 {
 			t.Errorf("a kept raw key survives: %v", spec["replicas"])
 		}
+	}
+}
+
+func TestWorkloadBooleansForTheKubernetesCorpus(t *testing.T) {
+	// One pod per boolean, so a wrong derivation is attributed to its field, not to "some pod".
+	spread := map[string]any{"topologySpreadConstraints": []any{map[string]any{"topologyKey": "zone", "matchLabelKeys": []any{"pod-template-hash"}}},
+		"containers": []any{map[string]any{"name": "a", "image": "x", "imagePullPolicy": "Never"}}}
+	selinux := map[string]any{"containers": []any{map[string]any{"name": "a", "image": "x",
+		"securityContext": map[string]any{"seLinuxOptions": map[string]any{"level": "s0:c1,c2"}}}}}
+	envRef := map[string]any{"containers": []any{map[string]any{"name": "a", "image": "x",
+		"env": []any{map[string]any{"name": "PW", "valueFrom": map[string]any{"secretKeyRef": map[string]any{"name": "db", "key": "pw"}}}}}}}
+	envFrom := map[string]any{"initContainers": []any{map[string]any{"name": "i", "image": "x", "envFrom": []any{map[string]any{"configMapRef": map[string]any{"name": "cfg"}}}}},
+		"containers": []any{map[string]any{"name": "a", "image": "x"}}}
+	for _, tc := range []struct {
+		name string
+		spec map[string]any
+		key  string
+	}{
+		{"matchLabelKeys", spread, "hasTopologySpreadMatchLabelKeys"},
+		{"seLinuxOptions on a container", selinux, "hasSeLinuxOptions"},
+		{"env secretKeyRef", envRef, "hasEnvApiRefs"},
+		{"envFrom on a plain init container", envFrom, "hasEnvApiRefs"},
+	} {
+		spec := projectSpec("Pod", obj("Pod", "ns", tc.name, map[string]any{"spec": tc.spec}), &Projection{Keep: []string{"containers"}})
+		if spec[tc.key] != true {
+			t.Errorf("%s: %s = %v, want true (spec %v)", tc.name, tc.key, spec[tc.key], spec)
+		}
+		for _, other := range []string{"hasTopologySpreadMatchLabelKeys", "hasSeLinuxOptions", "hasEnvApiRefs"} {
+			if other != tc.key && spec[other] != false {
+				t.Errorf("%s: %s = %v, want false", tc.name, other, spec[other])
+			}
+		}
+	}
+	// imagePullPolicy rides on the container the way image does (the 1.35 credential hint reads it).
+	c := leaves(t, projectSpec("Pod", obj("Pod", "ns", "p", map[string]any{"spec": spread}), &Projection{Keep: []string{"containers"}}), "containers")[0].(map[string]any)
+	if c["imagePullPolicy"] != "Never" {
+		t.Errorf("imagePullPolicy = %v", c["imagePullPolicy"])
+	}
+}
+
+func TestServiceProjectsHasExternalIPsNeverTheAddresses(t *testing.T) {
+	spec := projectSpec("Service", obj("Service", "edge", "lb", map[string]any{"spec": map[string]any{
+		"type": "ClusterIP", "trafficDistribution": "PreferClose", "externalIPs": []any{"203.0.113.10"}}}),
+		&Projection{Keep: []string{"type", "trafficDistribution", "hasExternalIPs"}})
+	if spec["hasExternalIPs"] != true || spec["trafficDistribution"] != "PreferClose" {
+		t.Errorf("service spec = %v", spec)
+	}
+	if _, raw := spec["externalIPs"]; raw {
+		t.Errorf("the addresses must not be carried: %v", spec)
+	}
+	plain := projectSpec("Service", obj("Service", "edge", "svc", map[string]any{"spec": map[string]any{"type": "ClusterIP"}}),
+		&Projection{Keep: []string{"hasExternalIPs"}})
+	if plain["hasExternalIPs"] != false {
+		t.Errorf("a Service without externalIPs must say false, got %v", plain["hasExternalIPs"])
 	}
 }
 

@@ -56,6 +56,8 @@ var projectors = map[string]projector{
 
 	"DestinationRule": projectDestinationRule,
 	"EnvoyFilter":     projectEnvoyFilter,
+
+	"Service": projectService,
 }
 
 // HasProjector reports whether a kind's rows are derived rather than raw.
@@ -126,6 +128,62 @@ func projectWorkload(obj map[string]any, base map[string]any) map[string]any {
 	}
 	out["topologySpreadConstraintsPresent"] = len(listAt(pod, "topologySpreadConstraints")) > 0
 	out["hasResourceClaims"] = len(listAt(pod, "resourceClaims")) > 0
+	// The three booleans the hand-authored kubernetes corpus (1.32–1.37) reads, derived the way
+	// the agent derives them: matchLabelKeys on any spread constraint (1.34 selector merge),
+	// seLinuxOptions on the pod or any container (1.37 SELinuxMount), and env/envFrom that
+	// reference a ConfigMap or Secret (1.34 static-pod API references).
+	out["hasTopologySpreadMatchLabelKeys"] = anyListItem(listAt(pod, "topologySpreadConstraints"), func(m map[string]any) bool {
+		return len(listAt(m, "matchLabelKeys")) > 0
+	})
+	hasSELinux := mapAt(pod, "securityContext", "seLinuxOptions") != nil
+	hasEnvAPIRefs := false
+	for _, key := range []string{"containers", "initContainers", "ephemeralContainers"} {
+		for _, c := range listAt(pod, key) {
+			m, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			if mapAt(m, "securityContext", "seLinuxOptions") != nil {
+				hasSELinux = true
+			}
+			if len(listAt(m, "envFrom")) > 0 {
+				hasEnvAPIRefs = true
+			}
+			for _, e := range listAt(m, "env") {
+				em, ok := e.(map[string]any)
+				if !ok {
+					continue
+				}
+				if mapAt(em, "valueFrom", "configMapKeyRef") != nil || mapAt(em, "valueFrom", "secretKeyRef") != nil {
+					hasEnvAPIRefs = true
+				}
+			}
+		}
+	}
+	out["hasSeLinuxOptions"] = hasSELinux
+	out["hasEnvApiRefs"] = hasEnvAPIRefs
+	return out
+}
+
+// anyListItem reports whether any map item of the list satisfies pred.
+func anyListItem(list []any, pred func(map[string]any) bool) bool {
+	for _, item := range list {
+		if m, ok := item.(map[string]any); ok && pred(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// ---------- Service ----------
+
+// projectService keeps the raw keys the rules ask for (type, trafficDistribution, ...) and adds
+// hasExternalIPs the way the agent does — the addresses themselves are never carried.
+func projectService(obj map[string]any, base map[string]any) map[string]any {
+	out := base
+	spec, _ := obj["spec"].(map[string]any)
+	delete(out, "externalIPs")
+	out["hasExternalIPs"] = len(listAt(spec, "externalIPs")) > 0
 	return out
 }
 
@@ -144,7 +202,7 @@ func projectContainers(list []any, sidecarsOnly bool) []any {
 				continue
 			}
 		}
-		c := pick(m, "name", "image", "command", "args")
+		c := pick(m, "name", "image", "command", "args", "imagePullPolicy")
 		// env is NAMES only, the way the agent ships it: the Istio flag-removal rules read
 		// `containers[].env[].name` on the istiod Deployment. A value is never carried, and a
 		// valueFrom entry contributes its name and nothing about what it references.
