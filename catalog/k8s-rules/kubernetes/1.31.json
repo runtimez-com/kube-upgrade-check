@@ -1,0 +1,99 @@
+[
+  {
+    "ruleId": "rtz-k8s-1.31-dra-v1alpha3-incompatible",
+    "severity": "HIGH",
+    "title": "DRA moves to resource.k8s.io/v1alpha3 — v1alpha2 objects and v1alpha2-gRPC drivers stop working",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "DRA objects and driver DaemonSets are not identified in the inventory; pods that reference claims are, so the hint names them"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Pod",
+      "target": "hasResourceClaims",
+      "value": "true"
+    },
+    "quote": "The primary user-facing type remains the ResourceClaim, however significant changes have been made, resulting in the new version, v1alpha3, which is not compatible with the previous version.",
+    "remediation": "Only clusters that enabled the DynamicResourceAllocation alpha gate (Default: false at v1.30.0 and v1.31.0) carry any of this. On them: v1alpha2 ResourceClaim / ResourceClaimTemplate / ResourceClass objects are not served on 1.31 and must be recreated as v1alpha3 (`resourceClaims[].source.` indirection is gone; DeviceClass replaces ResourceClass); a driver DaemonSet speaking the v1alpha2 kubelet gRPC is no longer supported and its service account now needs write on ResourceSlice and read on ResourceClaim. Drain claim-using pods, upgrade the driver to a 1.31-compatible release, then upgrade the control plane.",
+    "verifyCommand": "kubectl get resourceclaims,resourceclaimtemplates -A -o json | jq -r '.items[] | .kind + \"/\" + .metadata.namespace + \"/\" + .metadata.name + \" \" + .apiVersion'  # any v1alpha2 row is not served on 1.31; then check the DRA driver's release notes for v1alpha3 + kubelet gRPC v1alpha3 support",
+    "coversNotes": [
+      "ACTION-REQUIRED: Dynamic Resource Allocation (DRA) drivers using the v1alpha2 kubelet gRPC",
+      "'ACTION REQUIRED: The Dynamic Resource Allocation (DRA) driver's DaemonSet",
+      "Dynamic Resource Allocation (DRA): in the `pod.spec.recourceClaims` array, the `source`",
+      "The resource/v1alpha3.ResourceSliceList filed which should have been named \"metadata\" but"
+    ]
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-pvc-resize-failed-status-must-be-cleared",
+    "severity": "MEDIUM",
+    "title": "PVCs left in ControllerResizeFailed / NodeResizeFailed must have allocatedResourceStatus cleared after the upgrade",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "PVC status is not part of the projected object; the projection carries accessModes and the storage class only"
+    },
+    "quote": "For any existing PersistentVolumeClaimss with `status.allocatedResourceStatus` set to either \"ControllerResizeFailed\" or \"NodeResizeFailed\", clear the `status.allocatedResourceStatus`.",
+    "remediation": "Only clusters that enabled the RecoverVolumeExpansionFailure alpha gate (Default: false at v1.31.0) carry these statuses. After upgrading, patch each affected PVC's `status.allocatedResourceStatus` to empty so the 1.31 controller re-attempts or settles the expansion; left in place, the PVC stays wedged in the failed state.",
+    "verifyCommand": "kubectl get pvc -A -o json | jq -r '.items[] | . as $p | (.status.allocatedResourceStatus // {}) | to_entries[] | select(.value == \"ControllerResizeFailed\" or .value == \"NodeResizeFailed\") | $p.metadata.namespace + \"/\" + $p.metadata.name + \" \" + .value'  # each of these needs status.allocatedResourceStatus cleared once the control plane is on 1.31"
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-pv-mount-options-annotation-deprecated",
+    "severity": "LOW",
+    "title": "PersistentVolumes still using the volume.beta.kubernetes.io/mount-options annotation now warn on every write",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "PersistentVolume",
+      "target": "volume.beta.kubernetes.io/mount-options"
+    },
+    "quote": "Added a warning when creating or updating a PersistentVolume (PV) with the deprecated annotation `volume.beta.kubernetes.io/mount-options`.",
+    "remediation": "Move the options into `spec.mountOptions` on each listed PersistentVolume (the annotation has been superseded since 1.8). Provisioners or GitOps templates that still stamp the annotation trigger the warning on every apply until they are changed.",
+    "verifyCommand": "kubectl get pv -o json | jq -r '.items[] | select(.metadata.annotations[\"volume.beta.kubernetes.io/mount-options\"] != null) | .metadata.name'  # each of these warns on write from 1.31; set spec.mountOptions instead"
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-crd-invalid-cabundle-not-served",
+    "severity": "MEDIUM",
+    "title": "A CRD whose conversion webhook caBundle is not a valid certificate bundle disappears from discovery on 1.31",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the CRD projection carries group, names, scope and versions, not the conversion webhook config"
+    },
+    "quote": "CustomResourceDefinition objects created with non-empty `caBundle` fields which are invalid or do not contain any certificates will not appear in discovery or serve endpoints until a valid `caBundle` is provided.",
+    "remediation": "Every CRD with `spec.conversion.webhook.clientConfig.caBundle` set must hold a parseable PEM bundle with at least one certificate; on 1.31 an invalid one takes the whole resource out of discovery and serving until fixed, and updates can no longer move a valid bundle to an invalid one. Validate the bundles before upgrading the API server.",
+    "verifyCommand": "for c in $(kubectl get crd -o json | jq -r '.items[] | select(.spec.conversion.webhook.clientConfig.caBundle != null) | .metadata.name'); do echo \"== $c\"; kubectl get crd \"$c\" -o jsonpath='{.spec.conversion.webhook.clientConfig.caBundle}' | base64 -d | openssl x509 -noout -subject -enddate || echo INVALID; done  # INVALID (or no output) means the CRD stops being served at 1.31"
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-encryption-provider-config-strict",
+    "severity": "HIGH",
+    "title": "kube-apiserver rejects an --encryption-provider-config file with unknown or duplicate fields",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the encryption provider configuration file lives in a component config file or flag on the control plane host, which is not a Kubernetes object the agent collects; the command reads it from the static pod's command line"
+    },
+    "quote": "Kube-apiserver: the `--encryption-provider-config` file is now loaded with strict deserialization, which fails if the config file contains duplicate or unknown fields.",
+    "remediation": "A typo, a mis-indented key or a duplicated field that 1.30 silently ignored is a startup failure on 1.31 (and, with `--encryption-provider-config-automatic-reload`, a rejected reload that keeps the last valid config). Check the file key by key against the EncryptionConfiguration reference (unknown keys, typos, repeated `resources`/`providers` entries) before rolling the first 1.31 API server.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[].spec.containers[].command[]?, .items[].spec.containers[].args[]?' | grep -- --encryption-provider-config  # then check that file on the control plane host for unknown or repeated keys; either stops kube-apiserver at 1.31"
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-gate-removed-custom-resource-validation-expressions",
+    "severity": "HIGH",
+    "title": "The CustomResourceValidationExpressions feature gate no longer exists — a component that still sets it will not start",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the feature-gate flag lives in a component config file or flag on the control plane host, which is not a Kubernetes object the agent collects; the command reads it from the static pod's command line"
+    },
+    "quote": "Removed feature gate `CustomResourceValidationExpressions`.",
+    "remediation": "Drop `CustomResourceValidationExpressions=…` from `--feature-gates` on kube-apiserver (GA and locked on since 1.29; the behaviour is unconditional). An unknown gate name is a fatal startup error.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[].spec.containers[].command[]?, .items[].spec.containers[].args[]?' | grep -- --feature-gates | grep CustomResourceValidationExpressions  # any hit stops kube-apiserver at 1.31"
+  },
+  {
+    "ruleId": "rtz-k8s-1.31-node-csr-cn-must-match-node-name",
+    "severity": "LOW",
+    "title": "Kubelet-identity CSRs whose CN is another node's name are rejected by NodeRestriction",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "who submits CSRs is runtime behaviour; CSRs are not collected"
+    },
+    "quote": "The Node Admission plugin now rejects CSR requests created by a node identity for the signers `kubernetes.io/kubelet-serving` or `kubernetes.io/kube-apiserver-client-kubelet` with a CN starting with `system:node:`, but where the CN is not `system:node:${node-name}`.",
+    "remediation": "Stock kubelets request certificates for their own node name and are unaffected. A certificate manager or bootstrap tool that runs with one node's credentials and requests kubelet certificates for other nodes is denied on 1.31 (plugin/pkg/admission/noderestriction at v1.31.0: \"can only create a node CSR with CN=system:node:<name>\"). `AllowInsecureKubeletCertificateSigningRequests=true` restores the old behaviour until 1.33, when the gate is removed.",
+    "verifyCommand": "for c in $(kubectl get csr -o json | jq -r '.items[] | select(.spec.username | startswith(\"system:node:\")) | select(.spec.signerName | test(\"kubelet-serving|kube-apiserver-client-kubelet\")) | .metadata.name'); do echo \"== $c $(kubectl get csr \"$c\" -o jsonpath='{.spec.username}')\"; kubectl get csr \"$c\" -o jsonpath='{.spec.request}' | base64 -d | openssl req -noout -subject; done  # a CN that is not the requesting node's own system:node:NAME is denied from 1.31"
+  }
+]

@@ -1,0 +1,143 @@
+[
+  {
+    "ruleId": "rtz-k8s-1.30-securitycontextdeny-admission-plugin-removed",
+    "severity": "HIGH",
+    "title": "The SecurityContextDeny admission plugin no longer exists — an API server that enables it will not start",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the admission plugin list lives in a component config file or flag on the control plane host, which is not a Kubernetes object the agent collects; the command reads it from the static pod's command line"
+    },
+    "quote": "The deprecated `SecurityContextDeny` admission plugin, which has been deprecated since `v1.27`, has been removed.",
+    "remediation": "Remove `SecurityContextDeny` from `--enable-admission-plugins` on every kube-apiserver before rolling to 1.30; an unknown plugin name is a startup error. Pod Security Admission (built in since 1.25, `pod-security.kubernetes.io/enforce` on the namespace) is the replacement.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[].spec.containers[].command[]?, .items[].spec.containers[].args[]?' | grep -- --enable-admission-plugins  # a value naming SecurityContextDeny stops kube-apiserver at 1.30"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-kubectl-prune-whitelist-removed",
+    "severity": "LOW",
+    "title": "kubectl apply --prune-whitelist is gone — pipelines that pass it fail on a 1.30 kubectl",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "kubectl invocations live in CI and operator scripts, not in a cluster object"
+    },
+    "quote": "kubectl: Removed the deprecated flag `prune-whitelist` for apply. Please use the flag `prune-allowlist` instead.",
+    "remediation": "Replace `--prune-whitelist` with `--prune-allowlist` in CI jobs and scripts that run `kubectl apply --prune`; a 1.30 kubectl rejects the old flag as unknown. This is a client change: the cluster is unaffected, and an older kubectl keeps working within the supported skew.",
+    "verifyCommand": "grep -rn -- '--prune-whitelist' . 2>/dev/null | head  # run in the repo that holds your deploy scripts; every hit breaks on a 1.30 kubectl"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-scheduler-postfilter-nodetostatusmap-semantics",
+    "severity": "LOW",
+    "title": "Out-of-tree PostFilter plugins must treat a node absent from NodeToStatusMap as UnschedulableAndUnresolvable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a custom scheduler binary is in use is not visible in the inventory; the stock kube-scheduler image name is the only hint and a custom build can reuse it"
+    },
+    "quote": "For developers of out-of-tree PostFilter plugins, note that the semantics of NodeToStatusMap are changing: A node with an absent value in the NodeToStatusMap should be interpreted as having an UnschedulableAndUnresolvable status",
+    "remediation": "Only clusters running a custom-built kube-scheduler with an out-of-tree PostFilter plugin are affected. A plugin that treats a missing entry as \"schedulable\" now considers nodes the filters never reached; rebuild it against the 1.30 framework semantics before rolling the control plane.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-scheduler -o jsonpath='{range .items[*]}{.spec.containers[*].image}{\"\\n\"}{end}'  # an image other than registry.k8s.io/kube-scheduler is a custom build whose PostFilter plugins must follow the new semantics"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-kubelet-limitedswap-requires-cgroupv2",
+    "severity": "HIGH",
+    "title": "A kubelet configured with swapBehavior LimitedSwap refuses to start on a cgroup v1 node",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the node's cgroup version is not in Node status and the kubelet config is not a collected object; every node is a candidate"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "Kubelet would fail if NodeSwap was used with LimitedSwap and cgroupv1 node.",
+    "remediation": "From 1.30 the kubelet exits at startup with \"swap feature is enabled and LimitedSwap but it is only supported with cgroupv2\" (cmd/kubelet/app/server.go) when `memorySwap.swapBehavior: LimitedSwap` is set on a node whose cgroup hierarchy is v1; on 1.29 the setting was silently ignored there. Either move those nodes to cgroup v2 (systemd.unified_cgroup_hierarchy=1) or drop `swapBehavior` (the 1.30 default is `NoSwap`) before upgrading their kubelet.",
+    "verifyCommand": "for n in $(kubectl get nodes -o name | cut -d/ -f2); do echo \"== $n\"; kubectl get --raw \"/api/v1/nodes/$n/proxy/configz\" | jq -c '.kubeletconfig | {memorySwap, featureGates}'; done  # a node showing swapBehavior LimitedSwap must be on cgroup v2 (stat -fc %T /sys/fs/cgroup is cgroup2fs) or its 1.30 kubelet will not start"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-apparmor-annotations-deprecated",
+    "severity": "LOW",
+    "title": "The AppArmor beta annotations are deprecated in favour of securityContext.appArmorProfile",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "container.apparmor.security.beta.kubernetes.io/"
+    },
+    "quote": "The beta AppArmor annotations are deprecated, and AppArmor status is no longer included in the node ready condition.",
+    "remediation": "Pods still annotated `container.apparmor.security.beta.kubernetes.io/<container>` keep working on 1.30 (the annotation is copied into the field), but the annotation path is on its way out — 1.34 stops mirroring fields back to it. Move manifests and admission policies to `securityContext.appArmorProfile` on the pod or container. Anything that gated on AppArmor in the Node Ready condition message no longer sees it there.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations | keys[]? | startswith(\"container.apparmor.security.beta.kubernetes.io/\")) | .metadata.namespace + \"/\" + .metadata.name' | sort -u  # pods still on the deprecated annotation path"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-kubelet-swap-default-noswap",
+    "severity": "MEDIUM",
+    "title": "Containers lose swap access on 1.30 unless the kubelet sets swapBehavior explicitly",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the host has swap enabled and what the kubelet config says are not in the Node object; every node is a candidate"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Node"
+    },
+    "quote": "In kubelet configuration, the `.memorySwap.swapBehavior` field now accepts a new value `NoSwap`, which becomes the default if unspecified.",
+    "remediation": "On a 1.29 kubelet with the NodeSwap gate at its default (on since 1.28) and no `memorySwap.swapBehavior`, containers got unlimited swap (pkg/kubelet/kuberuntime falls through to ConfigureUnlimitedSwap); on 1.30 the same configuration means `NoSwap` and the cgroup swap limit becomes 0. Nodes that run with host swap enabled will see workloads that were quietly paging start to OOM. Set `swapBehavior: LimitedSwap` (cgroup v2 only) where swap is intended; the removed `UnlimitedSwap` value is a separate config-breaker finding.",
+    "verifyCommand": "for n in $(kubectl get nodes -o name | cut -d/ -f2); do echo \"== $n\"; kubectl get --raw \"/api/v1/nodes/$n/proxy/configz\" | jq -c '.kubeletconfig | {memorySwap, failSwapOn}'; done  # a node with failSwapOn false and no swapBehavior moves from unlimited swap to NoSwap at 1.30; check swap with free -m on the host"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-authn-config-issuer-conflict-fatal",
+    "severity": "HIGH",
+    "title": "kube-apiserver refuses to start when a JWT authenticator's issuer collides with the service-account issuer",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the authentication configuration file lives in a component config file or flag on the control plane host, which is not a Kubernetes object the agent collects; the command reads it from the static pod's command line"
+    },
+    "quote": "The API server now detects and fails on startup if there are conflicting issuers between JWT authenticators and service account configurations.",
+    "remediation": "With `--authentication-config` (StructuredAuthenticationConfiguration is beta and on from 1.30), any `jwt[].issuer.url` equal to a `--service-account-issuer` value is now a startup error instead of an ambiguous runtime match. Two more validations land with it: an OIDC username expression that evaluates to the empty string now fails authentication instead of admitting an anonymous-named user, and `username.expression` using `claims.email` must also reference `claims.email_verified` somewhere in the authenticator. Fix the file before rolling the first 1.30 control-plane node.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[].spec.containers[].command[]?, .items[].spec.containers[].args[]?' | grep -E -- '--authentication-config|--service-account-issuer|--oidc-issuer-url'  # compare the issuer URLs in that file against the service-account issuer(s); equal means kube-apiserver will not start",
+    "coversNotes": [
+      "When configuring a JWT authenticator:",
+      "OIDC authentication will now fail if the username asserted based on a CEL expression"
+    ]
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-sa-token-audit-annotation-renamed",
+    "severity": "LOW",
+    "title": "TokenRequest audit events carry the credential id under a new annotation key",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "audit consumers are outside the cluster; nothing in inventory names them"
+    },
+    "quote": "The annotation used to persist the issued credential identifier is now `authentication.kubernetes.io/issued-credential-id`.",
+    "remediation": "Audit pipelines, SIEM rules or dashboards that read `authentication.kubernetes.io/credential-id` from `serviceaccounts/<name>/token` audit events must read `authentication.kubernetes.io/issued-credential-id` instead (staging/src/k8s.io/apiserver/pkg/authentication/serviceaccount/util.go at v1.30.0). The old key is still what an authenticated request's own credential is recorded under; only the TokenRequest response annotation moved.",
+    "verifyCommand": "kubectl -n kube-system get pods -l component=kube-apiserver -o json | jq -r '.items[].spec.containers[].command[]?, .items[].spec.containers[].args[]?' | grep -E -- '--audit-(policy-file|log-path|webhook-config-file)'  # an audit pipeline is configured; check its consumers for the old credential-id key"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-hostusers-false-requires-runtime-userns",
+    "severity": "MEDIUM",
+    "title": "Pods with hostUsers: false are rejected on nodes whose runtime cannot provide user namespaces",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Pod|Deployment|StatefulSet|DaemonSet",
+      "target": "hostUsers",
+      "value": "false"
+    },
+    "quote": "The kubelet now rejects creating the pod if `hostUserns=false` and the CRI runtime does not support user namespaces.",
+    "remediation": "On 1.29 a pod asking for a user namespace (`spec.hostUsers: false`, UserNamespacesSupport beta, off by default) was started without one when the runtime lacked support; from 1.30 the kubelet fails the pod (\"RuntimeClass handler does not support user namespaces\"). Confirm every node's runtime advertises userns support (containerd 2.0+ / CRI-O 1.25+ on kernel 6.3+; from 1.31 visible as Node `.status.runtimeHandlers[].features.userNamespaces`) before upgrading the kubelets that host these workloads, or drop the field.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.spec.hostUsers == false) | .metadata.namespace + \"/\" + .metadata.name + \" on \" + .spec.nodeName'  # each of these needs a userns-capable runtime on its node after 1.30"
+  },
+  {
+    "ruleId": "rtz-k8s-1.30-procmount-unmasked-requires-hostusers-false",
+    "severity": "LOW",
+    "title": "procMount: Unmasked is only accepted together with spec.hostUsers: false",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the rule is a pair condition (Unmasked AND hostUsers != false); the projection carries both fields but the evaluator reads one at a time, so the hint names the Unmasked side"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Pod|Deployment|StatefulSet|DaemonSet",
+      "target": "containers[].securityContext.procMount",
+      "value": "^Unmasked$"
+    },
+    "quote": "In the Pod API, setting the alpha `procMount` field to `Unmasked` in a container now requires setting `spec.hostUsers=false` as well.",
+    "remediation": "A pod template with `securityContext.procMount: Unmasked` on any container and `hostUsers` unset or true fails validation on 1.30 (ProcMountType is alpha and off by default, so only clusters that enabled it carry the field). Add `hostUsers: false` — which itself needs UserNamespacesSupport and a userns-capable runtime — or drop `procMount`.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(any(.spec.containers[]; .securityContext.procMount == \"Unmasked\")) | select(.spec.hostUsers != false) | .metadata.namespace + \"/\" + .metadata.name'  # each of these is rejected by a 1.30 apiserver on its next write"
+  }
+]

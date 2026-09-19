@@ -194,6 +194,21 @@ func TestWorkloadBooleansForTheKubernetesCorpus(t *testing.T) {
 	if c["imagePullPolicy"] != "Never" {
 		t.Errorf("imagePullPolicy = %v", c["imagePullPolicy"])
 	}
+	// The two 1.30 reads: hostUsers is carried only when the template set it (false must not be
+	// invented for a pod that never asked), and procMount is the one securityContext key kept.
+	userns := map[string]any{"hostUsers": false, "containers": []any{map[string]any{"name": "a", "image": "x",
+		"securityContext": map[string]any{"procMount": "Unmasked", "privileged": true}}}}
+	spec := projectSpec("Deployment", obj("Deployment", "ns", "d", map[string]any{"spec": map[string]any{"template": map[string]any{"spec": userns}}}), &Projection{Keep: []string{"hostUsers", "containers"}})
+	if spec["hostUsers"] != false {
+		t.Errorf("hostUsers = %v, want false", spec["hostUsers"])
+	}
+	sc := leaves(t, spec, "containers")[0].(map[string]any)["securityContext"].(map[string]any)
+	if sc["procMount"] != "Unmasked" || sc["privileged"] != nil {
+		t.Errorf("securityContext = %v, want procMount only", sc)
+	}
+	if _, set := projectSpec("Pod", obj("Pod", "ns", "p", map[string]any{"spec": spread}), &Projection{Keep: []string{"hostUsers"}})["hostUsers"]; set {
+		t.Errorf("hostUsers must be absent when the template never set it")
+	}
 }
 
 func TestServiceProjectsHasExternalIPsNeverTheAddresses(t *testing.T) {

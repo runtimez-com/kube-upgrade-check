@@ -162,6 +162,12 @@ func projectWorkload(obj map[string]any, base map[string]any) map[string]any {
 	}
 	out["hasSeLinuxOptions"] = hasSELinux
 	out["hasEnvApiRefs"] = hasEnvAPIRefs
+	// hostUsers is carried as the pod template sets it (the agent puts the raw Boolean on Pod and
+	// on each workload template): the 1.30 rule matches `false`, so a row that never set it must
+	// not carry a value that reads as either answer.
+	if hu, ok := pod["hostUsers"].(bool); ok {
+		out["hostUsers"] = hu
+	}
 	return out
 }
 
@@ -203,6 +209,11 @@ func projectContainers(list []any, sidecarsOnly bool) []any {
 			}
 		}
 		c := pick(m, "name", "image", "command", "args", "imagePullPolicy")
+		// securityContext is procMount only — the 1.30 hint reads containers[].securityContext.procMount;
+		// the rest of the container security context is not something a rule asks for by value.
+		if pm, ok := mapAt(m, "securityContext")["procMount"].(string); ok && pm != "" {
+			c["securityContext"] = map[string]any{"procMount": pm}
+		}
 		// env is NAMES only, the way the agent ships it: the Istio flag-removal rules read
 		// `containers[].env[].name` on the istiod Deployment. A value is never carried, and a
 		// valueFrom entry contributes its name and nothing about what it references.
