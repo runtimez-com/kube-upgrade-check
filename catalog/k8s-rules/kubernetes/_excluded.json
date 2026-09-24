@@ -517,7 +517,12 @@
   {
     "version": "1.31",
     "note": "Reverted a [change](https://github.com/kubernetes/kubernetes/pull/123513) where",
-    "reason": "an in-cycle revert that did not survive to the release: at v1.31.0 ConsistentListFromCache is Beta/on again (staging apiserver kube_features.go), and the feature probes etcd for watch-progress support and turns itself off where etcd is too old, so no operator action follows from either state"
+    "reason": "an in-cycle revert that did not survive to the release: at v1.31.0 ConsistentListFromCache is Beta/on again (#126469, only in the v1.31.0-rc.1 block — the next note), and the feature probes etcd for watch-progress support and turns itself off where etcd is too old, so no operator action follows from either state"
+  },
+  {
+    "version": "1.31",
+    "note": "Move ConsistentListFromCache feature flag to Beta and enable it by default",
+    "reason": "graduation with a built-in fallback: Beta/on at v1.31.0 (staging apiserver kube_features.go), and `storage/feature/feature_support_checker.go` serves lists from etcd, not the cache, unless every etcd member is 3.4.31+ / 3.5.13+ (RequestWatchProgress); the response is the same either way, so there is no object to name and no action to take. This bullet lives only under the v1.31.0-rc.1 block — the .0 notes kept the earlier \"reverted\" bullet instead"
   },
   {
     "version": "1.31",
