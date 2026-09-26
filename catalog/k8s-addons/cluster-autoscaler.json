@@ -1,0 +1,19 @@
+{
+  "addonId": "cluster-autoscaler",
+  "displayName": "Cluster Autoscaler",
+  "detect": {
+    "imageSuffixes": ["autoscaling/cluster-autoscaler", "autoscaler/cluster-autoscaler"]
+  },
+  "source": {
+    "url": "https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler",
+    "ref": "kubernetes/autoscaler @ 714dd7841 (charts/cluster-autoscaler 9.59.0, appVersion 1.35.0); core sigs.k8s.io/cluster-autoscaler @ k8s.v1.37.0 (pkg/clusterstate/api/types.go, pkg/config/flags/flags.go, pkg/metrics/metrics.go)",
+    "lastVerified": "2026-09-26",
+    "note": "Catalog entry so the add-on is ASSESSABLE (org Integrations toggle, agent wire, Autoscaling workspace); the fingerprint row makes it DETECTABLE. supportWindows is deliberately OMITTED for now: Cluster Autoscaler's own rule is 'run the minor that matches the control plane' (its README compatibility table pairs CA 1.N with Kubernetes 1.N), which is a pairing, not a window — transcribing it as one would say every CA on a different minor is unsupported, and the pairing itself has never been an upgrade blocker in the field. No currency hop either: nothing here says a hop is required by the Kubernetes upgrade. The rules for this add-on are LIVE only (src/main/java/io/runtimez/eac/risk/addon/clusterautoscaler/), read from CA's own status ConfigMap projection (agent status.caStatus) and the controller's flags; they reach the Risk tab, RCA and MCP through AddonRuleRegistry."
+  },
+  "supportWindows": null,
+  "latestKnownVersion": "1.35.0",
+  "currencyHop": false,
+  "rules": [],
+  "upgradeNotes": [],
+  "inventoryKinds": []
+}
