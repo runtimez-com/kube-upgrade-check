@@ -76,3 +76,7 @@ jobs:
         uses: rajatjindal/krew-release-bot@v0.0.51
         with:
           krew_plugin_release_tag: ${{ github.event.inputs.tag || github.ref_name }}
+        env:
+          # The bot asks the GitHub API whether the release is a pre-release before submitting;
+          # unauthenticated, that call shares the runner IP's rate limit and can fail the step.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
