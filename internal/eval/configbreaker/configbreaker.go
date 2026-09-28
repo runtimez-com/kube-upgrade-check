@@ -61,17 +61,25 @@ func Analyze(inv *inventory.Inventory, currentVersion, targetVersion string, rul
 			reachable = append(reachable, kc)
 		}
 	}
-	haveControlPlane := len(inv.ControlPlanePods) > 0
+	// kube-proxy pods are read for the kube-proxy flag rules only. They run on managed clusters
+	// as well, so their presence must not stand in for the control plane's.
+	haveControlPlane := inv.HasControlPlane()
 	haveKubelet := len(reachable) > 0
 
 	var findings []report.Finding
 	var coverage []report.Coverage
 
+	findings = append(findings, evaluateFlags(inv.ControlPlanePods, flagRules, targetKey, targetVersion)...)
 	if haveControlPlane {
-		findings = append(findings, evaluateFlags(inv.ControlPlanePods, flagRules, targetKey, targetVersion)...)
+		staticPods := 0
+		for _, p := range inv.ControlPlanePods {
+			if p.IsControlPlane() {
+				staticPods++
+			}
+		}
 		coverage = append(coverage, report.Coverage{
 			Source: "control-plane flags", State: report.CoverageComplete,
-			Scope: fmt.Sprintf("%d static pods", len(inv.ControlPlanePods)),
+			Scope: fmt.Sprintf("%d static pods", staticPods),
 		})
 	}
 	if haveKubelet {
@@ -88,12 +96,33 @@ func Analyze(inv *inventory.Inventory, currentVersion, targetVersion string, rul
 		})
 	}
 
-	notAssessed, notAssessedCoverage := gaps(inv, haveControlPlane, haveKubelet, len(flagRules), len(kubeletRules))
+	notAssessed, notAssessedCoverage := gaps(inv, haveControlPlane, haveKubelet,
+		unsettledFlagRules(inv.ControlPlanePods, flagRules), len(kubeletRules))
 	findings = append(findings, notAssessed...)
 	coverage = append(coverage, notAssessedCoverage...)
 
 	sort.SliceStable(findings, func(i, j int) bool { return findings[i].RuleID < findings[j].RuleID })
 	return findings, coverage
+}
+
+// unsettledFlagRules counts the flag rules that no collected pod could answer: a rule is
+// settled once any of its components was read, whether or not it fired.
+func unsettledFlagRules(pods []inventory.ControlPlanePod, rules []catalog.ConfigBreakerRule) int {
+	read := map[string]bool{}
+	for _, p := range pods {
+		read[p.Component] = true
+	}
+	n := 0
+	for _, r := range rules {
+		settled := false
+		for _, c := range r.Components() {
+			settled = settled || read[c]
+		}
+		if !settled {
+			n++
+		}
+	}
+	return n
 }
 
 // evaluateFlags checks rules against control-plane static-pod arguments.

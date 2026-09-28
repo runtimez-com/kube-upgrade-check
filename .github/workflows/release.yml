@@ -67,3 +67,16 @@ jobs:
           # Publishing the Homebrew tap and Scoop bucket needs a token that can write to
           # those repos; the default GITHUB_TOKEN is scoped to this one only.
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      # Opens the version-bump PR against kubernetes-sigs/krew-index from .krew.yaml. It runs
+      # after the archives are published because it downloads each one to take its sha256.
+      # Pre-releases are skipped by the bot itself. The tag is passed explicitly so a manual
+      # re-run (workflow_dispatch, where GITHUB_REF is a branch) still names the right version.
+      - name: Update krew-index
+        uses: rajatjindal/krew-release-bot@v0.0.51
+        with:
+          krew_plugin_release_tag: ${{ github.event.inputs.tag || github.ref_name }}
+        env:
+          # The bot asks the GitHub API whether the release is a pre-release before submitting;
+          # unauthenticated, that call shares the runner IP's rate limit and can fail the step.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

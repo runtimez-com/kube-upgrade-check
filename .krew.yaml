@@ -1,0 +1,111 @@
+{{/*
+Template krew-release-bot renders into plugins/upgrade-check.yaml in kubernetes-sigs/krew-index
+on every published release (see .github/workflows/release.yml).
+
+Release archives are named without the leading "v" (kube-upgrade-check_0.1.5_...), and the
+bot offers no trimPrefix, so each URL is rendered with the tag minus its first character
+and the "v" written back into the download path by hand. The bot fetches each archive to
+compute its sha256, so a URL that does not exist fails the run rather than shipping.
+*/ -}}
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: upgrade-check
+spec:
+  version: {{ .TagName }}
+  homepage: https://github.com/runtimez-com/kube-upgrade-check
+  shortDescription: Find what breaks before you upgrade
+  description: |
+    Reports what an upgrade to a target Kubernetes version would break in the
+    cluster you are pointed at: objects still written at an API version the
+    target removes, control-plane and kubelet settings it refuses to start
+    with, in-tree volume plugins that stop mounting, node runtime and version
+    skew, and whether add-ons such as Karpenter, ingress-nginx, cert-manager,
+    Argo CD, CoreDNS and Istio support the version you are moving to.
+
+    It reads the cluster and writes nothing. No account and no agent, and no
+    data leaves the machine.
+
+    Removed APIs are found through managed fields, so an object is caught
+    whatever applied it, including server-side apply, operators and GitOps
+    controllers that leave no last-applied annotation behind.
+
+    Every check that could not run is printed with the reason and a command to
+    run yourself, so a clean report cannot be one where half the checks were
+    silently skipped.
+  caveats: |
+    Some checks need permissions the built-in view role does not grant:
+
+      * nodes/proxy, to read each node's live kubelet configuration
+      * the /metrics endpoint, for one of the removed-API evidence sources
+
+    Without them the affected checks are reported as unavailable rather than
+    skipped silently. A read-only ClusterRole covering everything is in the
+    repository under rbac/.
+  platforms:
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_darwin_amd64.tar.gz" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check
+      files:
+        - from: "kube-upgrade-check"
+          to: "."
+        - from: LICENSE
+          to: "."
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_darwin_arm64.tar.gz" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check
+      files:
+        - from: "kube-upgrade-check"
+          to: "."
+        - from: LICENSE
+          to: "."
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_linux_amd64.tar.gz" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check
+      files:
+        - from: "kube-upgrade-check"
+          to: "."
+        - from: LICENSE
+          to: "."
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_linux_arm64.tar.gz" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check
+      files:
+        - from: "kube-upgrade-check"
+          to: "."
+        - from: LICENSE
+          to: "."
+    - selector:
+        matchLabels:
+          os: windows
+          arch: amd64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_windows_amd64.zip" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check.exe
+      files:
+        - from: "kube-upgrade-check.exe"
+          to: "."
+        - from: LICENSE
+          to: "."
+    - selector:
+        matchLabels:
+          os: windows
+          arch: arm64
+      {{ addURIAndSha "https://github.com/runtimez-com/kube-upgrade-check/releases/download/v{{ .TagName }}/kube-upgrade-check_{{ .TagName }}_windows_arm64.zip" (slice .TagName 1) | indent 6 }}
+      bin: kube-upgrade-check.exe
+      files:
+        - from: "kube-upgrade-check.exe"
+          to: "."
+        - from: LICENSE
+          to: "."
