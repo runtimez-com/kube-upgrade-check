@@ -28,7 +28,10 @@ func TestShippedAddonCatalogsCarryNoEmbeddedRules(t *testing.T) {
 		if len(a.Rules) != 0 || len(a.UpgradeNotes) != 0 {
 			t.Errorf("%s: %d embedded rules and %d notes; they belong under k8s-rules/%s/", a.AddonID, len(a.Rules), len(a.UpgradeNotes), a.AddonID)
 		}
-		if a.AddonID != "kube-proxy" && !sources[a.AddonID] {
+		// kube-proxy's notes ride the Kubernetes hop. cluster-autoscaler pairs CA 1.N with
+		// Kubernetes 1.N instead of publishing support windows, so it never resolves a hop and
+		// no rule set could be selected for it.
+		if a.AddonID != "kube-proxy" && a.AddonID != "cluster-autoscaler" && !sources[a.AddonID] {
 			t.Errorf("%s: no k8s-rules/%s/ rule set is vendored", a.AddonID, a.AddonID)
 		}
 	}
