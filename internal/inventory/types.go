@@ -129,6 +129,23 @@ type ControlPlanePod struct {
 	Args      []string
 }
 
+// IsControlPlane reports whether the pod is an API server, scheduler or controller manager.
+//
+// kube-proxy is collected alongside them for its own flag rules, but it runs on the nodes of a
+// managed cluster too. Counting it would make an EKS, GKE or AKS cluster read as though its
+// control-plane flags had been checked when none were.
+func (p ControlPlanePod) IsControlPlane() bool { return p.Component != "kube-proxy" }
+
+// HasControlPlane reports whether any control-plane component's flags were read.
+func (inv *Inventory) HasControlPlane() bool {
+	for _, p := range inv.ControlPlanePods {
+		if p.IsControlPlane() {
+			return true
+		}
+	}
+	return false
+}
+
 // Container is one container in a pod spec.
 type Container struct {
 	Name  string

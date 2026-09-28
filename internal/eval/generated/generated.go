@@ -738,7 +738,7 @@ func apiVersionInUse(inv *inventory.Inventory, served map[string]bool, d catalog
 		// Which kinds live under a group-version is a discovery question this evaluator cannot
 		// ask, and guessing would fabricate. Say so, unless the scan already knows it is not
 		// served, in which case there is nothing to enumerate.
-		if v, known := served[d.Target]; known && !v {
+		if knownNotServed(served, d.Target, byGroup) {
 			return clear()
 		}
 		return declinedFor(d.Target, "objects written at "+d.Target+" were not enumerated: the rule names no kind",
@@ -770,6 +770,22 @@ func apiVersionInUse(inv *inventory.Inventory, served map[string]bool, d catalog
 	out := fired(fmt.Sprintf("%d %s object(s) still written at %s", len(hits), d.ObjectKind, d.Target), refs(hits), len(hits))
 	out.evidence = append(out.evidence, evidence...)
 	return out
+}
+
+// knownNotServed reports whether discovery settled that nothing at target is served. served
+// lists every group-version discovery returned, so a target absent from it is not served; an
+// empty map is a discovery that did not run and settles nothing. A group target (no version)
+// is served when any of its versions is.
+func knownNotServed(served map[string]bool, target string, byGroup bool) bool {
+	if len(served) == 0 {
+		return false
+	}
+	for gv, ok := range served {
+		if ok && (gv == target || (byGroup && strings.HasPrefix(gv, target+"/"))) {
+			return false
+		}
+	}
+	return true
 }
 
 func by(managers []string) string {

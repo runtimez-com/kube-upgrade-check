@@ -331,3 +331,40 @@ func TestRealCatalogDetectsRemovedAdmissionPlugin(t *testing.T) {
 		t.Error("PLEGOnDemandRelist=false in the kubelet map must fire the 1.37 locked-gate rule")
 	}
 }
+
+// On EKS, GKE and AKS the only kube-system pods whose flags are read are kube-proxy's. They
+// must still answer the kube-proxy rules, but they are not a control plane: reading them as one
+// hides the not-assessed gap and reports hundreds of unread apiserver rules as checked.
+func TestKubeProxyAloneIsNotAControlPlane(t *testing.T) {
+	proxyRule := catalog.ConfigBreakerRule{
+		RuleID: "proxy-flag", Source: sourceComponentFlag, Component: "kube-proxy",
+		Selectors: []string{"--some-removed-flag"}, Condition: "present",
+		AppliesFromVersion: "1.32", Severity: catalog.SeverityHigh, Title: "t", Remediation: "r",
+	}
+	apiRule := gateRule("gate-api", "SomeGate", "1.32")
+	pods := []inventory.ControlPlanePod{{
+		Name: "kube-proxy-abcde", Namespace: "kube-system", Container: "kube-proxy",
+		Component: "kube-proxy", Args: []string{"kube-proxy", "--some-removed-flag=1"},
+	}}
+	i := inv(pods, []inventory.KubeletConfig{kubelet("n1", map[string]any{})})
+
+	findings, coverage := Analyze(i, "1.31", "1.32", []catalog.ConfigBreakerRule{proxyRule, apiRule})
+
+	if byRule(findings, "proxy-flag") == nil {
+		t.Error("the kube-proxy rule must still be evaluated against kube-proxy pods")
+	}
+	if byRule(findings, controlPlaneNotAssessedRuleID) == nil {
+		t.Error("kube-proxy pods alone must not suppress the control-plane not-assessed finding")
+	}
+	for _, c := range coverage {
+		if c.Source != "control-plane flags" {
+			continue
+		}
+		if c.State == report.CoverageComplete {
+			t.Error("control-plane coverage must not read complete when only kube-proxy was read")
+		}
+		if c.RulesSkipped != 1 {
+			t.Errorf("only the apiserver rule went unchecked, got RulesSkipped=%d", c.RulesSkipped)
+		}
+	}
+}

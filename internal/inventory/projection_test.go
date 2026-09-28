@@ -462,3 +462,29 @@ func TestEnvoyFilterProjectsPatchEnumsAndFilterNames(t *testing.T) {
 		}
 	}
 }
+
+// A controller's selector is carried as its matchLabels map, the way the agent writes it, so a
+// rule on `selector` reads `key=value` leaves. Kept raw, it would read only "matchLabels".
+func TestWorkloadSelectorIsFlattenedToMatchLabels(t *testing.T) {
+	selector := map[string]any{
+		"matchLabels":      map[string]any{"istio.io/gateway-name": "gw"},
+		"matchExpressions": []any{map[string]any{"key": "tier", "operator": "Exists"}},
+	}
+	for _, kind := range []string{"Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"} {
+		spec := projectSpec(kind, obj(kind, "istio-system", "gw", map[string]any{"spec": map[string]any{
+			"selector": selector, "template": map[string]any{"spec": map[string]any{}},
+		}}), &Projection{Keep: []string{"selector"}})
+		got, ok := spec["selector"].(map[string]any)
+		if !ok || len(got) != 1 || got["istio.io/gateway-name"] != "gw" {
+			t.Errorf("%s selector = %v, want the matchLabels map", kind, spec["selector"])
+		}
+	}
+
+	// A selector with expressions only has no labels to carry.
+	spec := projectSpec("Deployment", obj("Deployment", "a", "b", map[string]any{"spec": map[string]any{
+		"selector": map[string]any{"matchExpressions": []any{}},
+	}}), &Projection{Keep: []string{"selector"}})
+	if _, ok := spec["selector"]; ok {
+		t.Errorf("an expressions-only selector must not be carried, got %v", spec["selector"])
+	}
+}

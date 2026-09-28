@@ -104,6 +104,19 @@ func projectWorkload(obj map[string]any, base map[string]any) map[string]any {
 	// The raw template is never carried; a rule on `template` reads nothing.
 	delete(out, "template")
 	delete(out, "jobTemplate")
+	// The agent carries a controller's selector as its matchLabels map, so a rule on `selector`
+	// reads `key=value` leaves. The raw {matchLabels: {...}} would only ever yield "matchLabels"
+	// and clear the Istio gateway-name rules on every workload.
+	switch kind {
+	case "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet":
+		if sel, ok := out["selector"].(map[string]any); ok {
+			if labels, ok := sel["matchLabels"].(map[string]any); ok {
+				out["selector"] = labels
+			} else {
+				delete(out, "selector")
+			}
+		}
+	}
 	if pod == nil {
 		return out
 	}

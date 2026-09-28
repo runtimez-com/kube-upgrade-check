@@ -230,6 +230,24 @@ func TestGroupLevelRuleWithoutKindDeclines(t *testing.T) {
 	}
 }
 
+// Discovery lists only what IS served. A group missing from that list is not served, so the
+// Traefik containo.us rules clear on a cluster without the old CRDs instead of printing a gap
+// on every scan; a cluster that still serves the group keeps the gap.
+func TestGroupRuleClearsWhenDiscoveryOmitsTheGroup(t *testing.T) {
+	r := rule("grp", "1.36", "", catalog.Detection{Kind: catalog.DetectAPIVersionInUse, Target: "traefik.containo.us"})
+	served := map[string]bool{"v1": true, "apps/v1": true, "traefik.io/v1alpha1": true}
+	_, coverage := Analyze(inv(), served, "1.35", "1.36", cat(r), nil)
+	if len(coverage) != 0 {
+		t.Errorf("an unserved group has nothing to enumerate, got %+v", coverage)
+	}
+
+	served["traefik.containo.us/v1alpha1"] = true
+	_, coverage = Analyze(inv(), served, "1.35", "1.36", cat(r), nil)
+	if len(coverage) != 1 {
+		t.Errorf("a served group whose objects were not enumerated is a gap, got %+v", coverage)
+	}
+}
+
 // Wants keeps only the fields the rules read, so a Pod list is not a copy of every pod.
 func TestWantsProjectsToTheFieldsRulesRead(t *testing.T) {
 	c := cat(
@@ -261,6 +279,40 @@ func TestSpecPathMatchesWalksArrays(t *testing.T) {
 	f := byRule(findings, "path")
 	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "kube-system/kp" {
 		t.Fatalf("want kube-system/kp only, got %+v", f)
+	}
+}
+
+// The Istio gateway-name rules read a workload's selector as `key=value` leaves. The rule has to
+// name the Deployment as well as the Service, or the half the remediation is about reads clean.
+func TestSelectorRuleNamesWorkloadsAndServices(t *testing.T) {
+	c, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "rtz-istio-1.21-gateway-name-label-selectors"
+	var only *catalog.Catalog
+	for _, r := range c.GeneratedRules {
+		if r.RuleID == id {
+			only = cat(r)
+		}
+	}
+	if only == nil {
+		t.Fatalf("%s is not in the catalog", id)
+	}
+	sel := map[string]any{"selector": map[string]any{"istio.io/gateway-name": "gw"}}
+	in := inv()
+	in.CRs["Deployment"] = []inventory.CustomResource{{Kind: "Deployment", Namespace: "istio-system", Name: "gw", Spec: sel}}
+	in.CRs["Service"] = []inventory.CustomResource{{Kind: "Service", Namespace: "istio-system", Name: "gw", Spec: sel}}
+	in.CRs["DaemonSet"] = []inventory.CustomResource{}
+	in.CRs["StatefulSet"] = []inventory.CustomResource{}
+	hops := Hops{"istio": {InstalledVersion: "1.20.0", RequiredVersion: "1.21.0"}}
+	findings, _ := Analyze(in, nil, "1.30", "1.31", only, hops)
+	f := byRule(findings, id)
+	if f == nil {
+		t.Fatal("the rule must fire on a selector keyed on istio.io/gateway-name")
+	}
+	if len(f.AffectedResources) != 2 {
+		t.Errorf("want the Deployment and the Service, got %v", f.AffectedResources)
 	}
 }
 

@@ -183,7 +183,7 @@ func Collect(ctx context.Context, c *cluster.Client, info cluster.ServerInfo) *I
 	// A managed control plane runs the API server out of the cluster, so there are no static
 	// pods to read flags from. That is not a failure of this tool, but it does mean a large
 	// family of rules cannot be checked, and the report has to say so.
-	if inv.Read(CollectorPods) && len(inv.ControlPlanePods) == 0 {
+	if inv.Read(CollectorPods) && !inv.HasControlPlane() {
 		state := inv.Collected[CollectorControlPlanePods]
 		state.OK = false
 		state.Reason = "no static control-plane pods were found. This is normal on a managed control " +

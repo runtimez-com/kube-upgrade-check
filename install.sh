@@ -1,15 +1,22 @@
 #!/bin/sh
 # Install kube-upgrade-check.
 #
+#   curl -fsSL https://runtimez.io/install.sh | sh
 #   curl -fsSL https://raw.githubusercontent.com/runtimez-com/kube-upgrade-check/main/install.sh | sh
 #
 # Verifies the checksum before installing. Set KUC_VERSION to pin a release, and INSTALL_DIR
 # to choose where the binary lands.
+#
+# After a successful install the script sends ONE anonymous ping (release version, OS, CPU
+# architecture — nothing about you or your clusters) so we can count installs. Set
+# KUC_NO_PING=1 to skip it. The ping is a plain GET; the endpoint is a static empty object,
+# counted from the CDN's access log.
 set -eu
 
 REPO="runtimez-com/kube-upgrade-check"
 BINARY="kube-upgrade-check"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+PING_URL="${KUC_PING_URL:-https://runtimez.io/i}"
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m)
@@ -66,5 +73,13 @@ chmod +x "$INSTALL_DIR/$BINARY" 2>/dev/null || sudo chmod +x "$INSTALL_DIR/$BINA
 
 echo
 "$INSTALL_DIR/$BINARY" version
+
+# Install counter. Only reached after the binary is verified and in place, so the access log
+# counts completed installs rather than curls of this script. Never fails the install.
+if [ -z "${KUC_NO_PING:-}" ]; then
+  echo "Counting this install (v=$plain os=$os arch=$arch only). KUC_NO_PING=1 skips it."
+  curl -fsS -m 3 -o /dev/null "$PING_URL?v=$plain&os=$os&arch=$arch" 2>/dev/null || true
+fi
+
 echo
 echo "Next: $BINARY --target 1.34     (reads your current kubeconfig context, read-only)"
