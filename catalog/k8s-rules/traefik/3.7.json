@@ -212,6 +212,7 @@
     "remediation": "Generated service and middleware names change on upgrade. Update anything that pins them — dashboards, metrics queries and alert rules built on service-name labels stop matching silently.",
     "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io,tlsroutes.gateway.networking.k8s.io -A 2>/dev/null # every route listed gets new generated service and middleware names on upgrade; nothing listed (or no such CRDs) means the Gateway provider has nothing to rename",
     "introducedIn": [
+      "3.6.25",
       "3.7.6"
     ]
   },
