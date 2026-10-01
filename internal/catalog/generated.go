@@ -241,11 +241,18 @@ func validateIntroducedIn(r GeneratedRule, fileVersion string) error {
 		return fmt.Errorf("%s: introducedIn must be a non-empty list of patch versions", r.RuleID)
 	}
 	onOwnLine := false
+	lines := map[string]bool{}
 	for _, v := range r.IntroducedIn {
 		c := Components(v)
 		if len(c) < 3 {
 			return fmt.Errorf("%s: introducedIn entry %q is not a patch version", r.RuleID, v)
 		}
+		// inAddonHop drops the rule at the FIRST entry at or below the installed patch, so a second
+		// entry on the same line would never be reached: two changes on one line are two rules.
+		if lines[AddonMinor(v)] {
+			return fmt.Errorf("%s: introducedIn names two patches on the %s line", r.RuleID, AddonMinor(v))
+		}
+		lines[AddonMinor(v)] = true
 		switch line := CompareVersions(AddonMinor(v), fileVersion); {
 		case line > 0:
 			return fmt.Errorf("%s: introducedIn entry %q is on a release line newer than the file's %s", r.RuleID, v, fileVersion)
