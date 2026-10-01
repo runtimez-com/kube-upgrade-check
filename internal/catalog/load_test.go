@@ -124,3 +124,18 @@ func TestStaleAddonsCountsUnknownAgeAsStale(t *testing.T) {
 		t.Errorf("missing lastVerified must count as stale, got %v", got)
 	}
 }
+
+func TestIntroducedInIsValidatedAgainstTheFilesLine(t *testing.T) {
+	ok := GeneratedRule{RuleID: "r", IntroducedIn: []string{"3.6.24", "3.7.9"}}
+	if err := validateIntroducedIn(ok, "3.7"); err != nil {
+		t.Fatalf("valid list rejected: %v", err)
+	}
+	if err := validateIntroducedIn(GeneratedRule{RuleID: "r"}, "3.7"); err != nil {
+		t.Fatalf("absent list rejected: %v", err)
+	}
+	for _, bad := range [][]string{{}, {"3.7"}, {"3.6.24"}, {"3.7.9", "3.8.1"}} {
+		if err := validateIntroducedIn(GeneratedRule{RuleID: "r", IntroducedIn: bad}, "3.7"); err == nil {
+			t.Errorf("%v must be rejected for a 3.7 file", bad)
+		}
+	}
+}
