@@ -1,0 +1,23 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required",
+  "severity": "HIGH",
+  "title": "VPC CNI v1.23 requires the Network Policy Agent at v1.4.1+ — older agents cannot reach ipamd",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^aws-node$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-network-policy-agent:v?1\\.([0-3]\\.\\d+|4\\.0)([^0-9.]|$)",
+   "reason": "read from the image TAG of the aws-node DaemonSet's aws-eks-nodeagent container — a digest-pinned image (@sha256:…) or a mirrored tag without the version is not resolved and reads clean"
+  },
+  "quote": "This release must be run with Network Policy Agent `v1.4.1`. #3739 moves the IPAMD gRPC server from a TCP port to a Unix domain socket, so the Network Policy Agent must be on `v1.4.1` to connect over the socket.",
+  "remediation": "Upgrade the aws-eks-nodeagent container to Network Policy Agent v1.4.1 or newer IN THE SAME CHANGE as the CNI (the v1.23 manifest / chart / EKS add-on version pairs them; an image-only bump of aws-node does not). v1.23 moves ipamd's gRPC server from TCP 127.0.0.1:50051 to the unix socket /var/run/aws-node/ipamd.sock and serves the node IP, instance ID and region to the agent over it; an older agent cannot connect, and with NETWORK_POLICY_ENFORCING_MODE set every pod sandbox then fails with `add cmd: failed to setup network policy`. The same release scrubs pod data from the ipamd introspection endpoint.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | \"\\(.name): \\(.image)\"'  # aws-eks-nodeagent below v1.4.1 next to amazon-k8s-cni v1.23+ cannot reach ipamd over the new socket",
+  "coversNotes": [
+   "Move gRPC server to Unix socket and scrub introspection data",
+   "Serve node IP and instance ID to the Network Policy Agent via gRPC — the agent now sources",
+   "Add Region to NetworkPolicyAgentConfigReply so the agent can resolve its region without"
+  ]
+ }
+]

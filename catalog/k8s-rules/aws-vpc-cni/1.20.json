@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.20-multi-nic-downgrade-needs-cleanup",
+  "severity": "LOW",
+  "title": "Multi-NIC (v1.20+): a later rollback needs multi-homed pods removed and nodes recycled first",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ENABLE_MULTI_NIC's VALUE is not collected; multi-homed pods carry the k8s.amazonaws.com/nicConfig annotation"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "If the feature is enabled and you plan to downgrade the plugin from v1.20.0+, ensure that all multi-homed pods are removed first to prevent IP leaks and then set the `ENABLE_MULTI_NIC` to `false`.",
+  "remediation": "If you enable ENABLE_MULTI_NIC after this upgrade, a rollback below v1.20 must first delete every pod annotated k8s.amazonaws.com/nicConfig: multi-nic-attachment, then set ENABLE_MULTI_NIC=false, then drain and replace the nodes to release the ENIs on network cards above index 0 — otherwise IPs and ENIs leak.",
+  "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations[\"k8s.amazonaws.com/nicConfig\"] != null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each pod printed is multi-homed and must be removed before a rollback below v1.20"
+ }
+]

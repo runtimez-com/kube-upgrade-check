@@ -1,0 +1,47 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.18-subnet-discovery-on-by-default",
+  "severity": "MEDIUM",
+  "title": "Subnet discovery is on by default from v1.18 — secondary ENIs can land in other subnets tagged kubernetes.io/role/cni",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ENABLE_SUBNET_DISCOVERY's VALUE is not collected; subnet tags and the node role's IAM policy are AWS-side"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Enhance subnet selection",
+  "remediation": "From v1.18 ipamd picks, per new secondary ENI, the subnet with the most free IPs among the node's own subnet and subnets in its VPC/AZ tagged kubernetes.io/role/cni (ENABLE_SUBNET_DISCOVERY defaults to true). Pods can therefore get IPs from those subnets — check their route tables, NACLs and security-group expectations — and the CNI role needs ec2:DescribeSubnets (without it discovery falls back to the node's subnet). Set ENABLE_SUBNET_DISCOVERY=false to keep the old behaviour.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | .name as $c | .env[]? | select(.name | test(\"^(ENABLE_SUBNET_DISCOVERY)$\")) | \"\\($c): \\(.name)=\\(.value // \"(from \\(.valueFrom | keys | join(\",\")))\")\"'  # absent or true = discovery on: subnets tagged kubernetes.io/role/cni in the node's VPC/AZ can host pod IPs",
+  "coversNotes": [
+   "Bugfix - updating iam doc with subnet policy"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.18-no-available-ip-metric-becomes-counter",
+  "severity": "LOW",
+  "title": "awscni_no_available_ip_addresses becomes a counter (v1.18.1) — gauge-style alerts misfire",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "alert rules and dashboards that query the metric are outside the cluster objects collected"
+  },
+  "quote": "Switch to counter type metic for awscni_no_available_ip_addresses",
+  "remediation": "awscni_no_available_ip_addresses is a monotonically increasing counter from v1.18.1: an alert written as `awscni_no_available_ip_addresses > 0` fires forever after the first failed IP assignment. Rewrite it as `increase(awscni_no_available_ip_addresses[10m]) > 0`.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"awscni_no_available_ip_addresses\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each PrometheusRule printed queries the metric; check it uses rate()/increase(), not a raw threshold"
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.18-eniconfig-crd-gains-a-structural-schema",
+  "severity": "LOW",
+  "title": "The ENIConfig CRD gains a schema (v1.18.3): spec.subnet becomes required, unknown spec fields are pruned",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ENIConfig objects are not collected yet"
+  },
+  "quote": "Update the APISpec Schema definition for ENIConfig.",
+  "remediation": "After the CRD from the v1.18.3+ chart/manifest is applied, the API server validates ENIConfigs: an ENIConfig without spec.subnet is rejected on its next write, and spec fields other than subnet/securityGroups are pruned. Fix such objects before applying the new CRD.",
+  "verifyCommand": "kubectl get eniconfigs -o json 2>/dev/null | jq -r '.items[] | select((.spec.subnet // \"\") == \"\" or ((.spec | keys) - [\"subnet\",\"securityGroups\"] | length) != 0) | .metadata.name'  # each ENIConfig printed lacks spec.subnet or carries spec fields the v1.18.3 schema prunes"
+ }
+]

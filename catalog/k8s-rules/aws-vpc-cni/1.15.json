@@ -1,0 +1,74 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.15-warm-pool-metrics-renamed",
+  "severity": "LOW",
+  "title": "Two ipamd metrics are renamed (awscni_err_no_avail_addrs, awscni_eni_util)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "alert rules and dashboards that query the metrics are outside the cluster objects collected"
+  },
+  "quote": "rename warm pool metrics",
+  "remediation": "Update alerts and dashboards: awscni_err_no_avail_addrs → awscni_no_available_ip_addresses and awscni_eni_util → awscni_assigned_ip_per_eni (73ccf51f). Queries on the old names silently return no data after the upgrade — an IP-exhaustion alert keyed on the old name stops firing.",
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"awscni_err_no_avail_addrs|awscni_eni_util\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each PrometheusRule printed still queries a metric name that no longer exists after v1.15.1",
+  "coversNotes": [
+   "Metrics - Only metrics"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.15-cni-spec-1-0-0-in-1-15-4-to-1-16-1",
+  "severity": "LOW",
+  "title": "v1.15.4–v1.16.1 write cniVersion 1.0.0 into 10-aws.conflist (reverted in v1.16.2)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which plugins are chained after aws-cni lives in the node's /etc/cni/net.d conflist"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(?i)(^|/)(cilium|multus[\\w-]*|calico[\\w-]*|istio-cni|install-cni|linkerd[\\w-]*cni)([:@]|$)"
+  },
+  "quote": "Upgrade CNI spec from 0.4.0 to 1.0.0",
+  "remediation": "Only a cluster that lands on v1.15.4–v1.16.1 runs with cniVersion 1.0.0 (v1.16.2 reverts to 0.4.0). A chained or meta plugin (Cilium chaining, Multus, Calico policy-only, istio-cni) must support CNI spec 1.0.0 there — skip those patches rather than stopping on them.",
+  "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"cilium|multus|calico|istio-cni|install-cni|linkerd\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each DaemonSet printed chains onto the VPC CNI and must accept cniVersion 1.0.0 if the cluster stops on v1.15.4-v1.16.1"
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.15-bandwidth-plugin-unsupported-with-network-policy",
+  "severity": "MEDIUM",
+  "title": "The bandwidth plugin is not supported together with VPC CNI network policy",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ENABLE_BANDWIDTH_PLUGIN's VALUE is not collected; --enable-network-policy is an arg of the aws-eks-nodeagent container"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Bandwidth plugin with NP is currently unsupported",
+  "remediation": "Do not run ENABLE_BANDWIDTH_PLUGIN=true together with the network policy agent enforcing (--enable-network-policy=true): both program the pod's tc (traffic control) hooks and policy enforcement fails (aws/aws-network-policy-agent#68). Turn one of them off before enabling the other.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '[.spec.template.spec.containers[] | (.env[]? | select(.name == \"ENABLE_BANDWIDTH_PLUGIN\") | \"\\(.name)=\\(.value)\"), (.args[]? | select(test(\"^--enable-network-policy\")))] | join(\" \")'  # ENABLE_BANDWIDTH_PLUGIN=true together with --enable-network-policy=true is the unsupported combination"
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.15-cninode-rbac-required",
+  "severity": "MEDIUM",
+  "title": "aws-node needs get/list/watch on cninodes.vpcresources.k8s.aws from v1.15 — apply the release ClusterRole",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ClusterRoles are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Add watch permission for CNINode resource",
+  "remediation": "From v1.15 ipamd reads CNINode objects (the VPC Resource Controller's per-node feature record) and its informer needs list/watch on cninodes.vpcresources.k8s.aws. Upgrade with the release manifest / chart / EKS add-on so the aws-node ClusterRole gains the rule — an image-only bump leaves the old ClusterRole and the watch is forbidden.",
+  "verifyCommand": "kubectl get clusterrole aws-node -o json | jq -r '[.rules[] | select((.apiGroups // []) | index(\"vpcresources.k8s.aws\")) | .verbs[]] | unique | join(\",\")'  # empty, or no list/watch printed = the aws-node ClusterRole predates v1.15 and cannot watch CNINode",
+  "coversNotes": [
+   "Feature - Add support for VPC Resource Controller's CNINode (reintroduce #2442)"
+  ]
+ }
+]

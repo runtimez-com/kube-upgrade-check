@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.21-cluster-policy-endpoint-crd-required",
+  "severity": "MEDIUM",
+  "title": "Network Policy Agent v1.3.5+ assumes the ClusterPolicyEndpoint CRD is installed",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the rule asks whether a CRD is ABSENT; the hint names the networking.k8s.aws CRDs that are present"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "CustomResourceDefinition",
+   "target": "group",
+   "value": "^networking\\.k8s\\.aws$"
+  },
+  "quote": "Removing CPE CRD checks as the CRD should be installed by default",
+  "remediation": "From Network Policy Agent v1.3.5 (bundled with CNI v1.21.2) the agent no longer checks whether the clusterpolicyendpoints.networking.k8s.aws CRD exists before watching it. On EKS the control plane installs it; on a self-managed install apply the CRD from the release before enabling network policy enforcement.",
+  "verifyCommand": "kubectl get crd clusterpolicyendpoints.networking.k8s.aws -o name 2>/dev/null || echo 'MISSING clusterpolicyendpoints.networking.k8s.aws'  # MISSING = install the CRD before running Network Policy Agent v1.3.5+ with enforcement on"
+ }
+]

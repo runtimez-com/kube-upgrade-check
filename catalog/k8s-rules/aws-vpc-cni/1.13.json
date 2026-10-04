@@ -1,0 +1,39 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.13-enable-nftables-deprecated",
+  "severity": "MEDIUM",
+  "title": "ENABLE_NFTABLES is deprecated (v1.13.2) — the iptables mode now follows kubelet's",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^aws-node$",
+   "target": "containers[].env[].name",
+   "value": "^ENABLE_NFTABLES$",
+   "reason": "read from the env NAMES of the aws-node DaemonSet's containers (the agent ships names, never values) — a variable injected through envFrom / the chart's extraEnv from a ConfigMap is not seen"
+  },
+  "quote": "Set iptables mode automatically and deprecate ENABLE_NFTABLES",
+  "remediation": "Remove ENABLE_NFTABLES from the aws-node DaemonSet. From v1.13.2 the CNI chooses iptables-legacy or iptables-nft by detecting the mode kubelet uses, so the variable no longer forces a backend; make sure the node OS, kube-proxy and kubelet agree on one mode, because switching modes with rules installed is not reconciled (drain nodes before changing it).",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | .env[]? | select(.name == \"ENABLE_NFTABLES\") | \"\\(.name)=\\(.value)\"'  # a printed line is a setting v1.13.2+ no longer honours",
+  "coversNotes": [
+   "ENABLE_NFTABLES (introduced in v1.12.1, deprecated in v1.13.2+) Type: Boolean as a String"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.13-boolean-env-values-parsed-case-insensitively",
+  "severity": "MEDIUM",
+  "title": "Boolean env values are parsed case-insensitively from v1.13 — \"True\"/\"TRUE\"/\"1\" flip from off to on",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "env VALUES are not collected (names only)"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Make all the aws vpc cni environmental variables case insensitive",
+  "remediation": "Before v1.13 the aws-node entrypoint and the aws-vpc-cni-init container compared these booleans to the exact string `true` (d944328c): ENABLE_IPv6, ENABLE_POD_ENI, ENABLE_PREFIX_DELEGATION, ENABLE_BANDWIDTH_PLUGIN, ENABLE_NFTABLES and DISABLE_TCP_EARLY_DEMUX. v1.13 parses them with strconv.ParseBool, so `True`, `TRUE`, `t` and `1` now turn the setting ON where they used to leave it off, and an unparseable value falls back to the documented default. Normalise them to lowercase true/false before upgrading.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '(.spec.template.spec.containers[], .spec.template.spec.initContainers[]?) | .name as $c | .env[]? | select(.name | test(\"^(ENABLE_IPv6|ENABLE_POD_ENI|ENABLE_PREFIX_DELEGATION|ENABLE_BANDWIDTH_PLUGIN|ENABLE_NFTABLES|DISABLE_TCP_EARLY_DEMUX)$\")) | select(.value != null) | select(.value | test(\"^(true|false)$\") | not) | select(.value | test(\"^(?i:true|false|t|f|1|0)$\")) | \"\\($c): \\(.name)=\\(.value)\"'  # each printed variable was read as false before v1.13 (unless it is exactly \"true\") and is parsed as a real boolean after"
+ }
+]

@@ -1,0 +1,847 @@
+[
+ {
+  "version": "1.10",
+  "note": "Feature - IPv6 Support",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (IPv6 mode is opt-in via ENABLE_IPv6)"
+ },
+ {
+  "version": "1.10",
+  "note": "Enhancement - Support for Bandwidth Plugin",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.10",
+  "note": "Enhancement - Knob to enable bandwidth plugin",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (ENABLE_BANDWIDTH_PLUGIN, default false)"
+ },
+ {
+  "version": "1.10",
+  "note": "Bug - Use IMDSv2 token when fetching node ip in entrypoint",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (IMDSv2-only nodes now work)"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - Fetch Region and CLUSTER_ID information from cni-metrics-helper env",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - Update Insufficient IP address logic in ipamd",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (internal retry/backoff on InsufficientFreeAddressesInSubnet)"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - use public ecr for AL2",
+  "reason": "build-time base image source for the CNI's own Dockerfile; the published aws-node image location is unchanged"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - remove set -x from bash, add -Ss to curl",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface (entrypoint logging)"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - Upgrade AWS SDK GO",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.10",
+  "note": "Improvement - Enable Prefix Delegation on Bare metal instances",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "Feature - Support new SGPP standard mode",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (POD_SECURITY_GROUP_ENFORCING_MODE=standard is opt-in; strict stays the default)"
+ },
+ {
+  "version": "1.11",
+  "note": "Feature - IPv4 Randomize SNAT support for IPv6 pods",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.11",
+  "note": "Feature - Respect existing ENIConfig label if set on node",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a node's own ENIConfig label now wins over the default)"
+ },
+ {
+  "version": "1.11",
+  "note": "Bug - Fixes node label error handling & revert to use update for node label update",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.11",
+  "note": "Bug - IPAMD throw an error on configuration validation failure",
+  "reason": "error-message change only: 2b91029c replaces `return nil, err` with a fixed message; an invalid configuration was already fatal before"
+ },
+ {
+  "version": "1.11",
+  "note": "Improvement - Increase cpu requests limit",
+  "reason": "manifest default resources.requests.cpu raised; a cluster that sets its own keeps it"
+ },
+ {
+  "version": "1.11",
+  "note": "Improvement - Add event recorder utils to raise aws-node pod events",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (Warning events on the aws-node pod, e.g. MissingIAMPermissions; the ClusterRole already grants events create)"
+ },
+ {
+  "version": "1.11",
+  "note": "Improvement - chart: Add extraVolumes and extraVolumeMounts",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.11",
+  "note": "Bugfix - Fix cni panic due to pod.Annotations is a nil map",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.11",
+  "note": "Improvement - update aws-node clusterrole permissions",
+  "reason": "narrows the ClusterRole (69fa24f1 drops `get` from the events rule: create/patch/list remain); nothing to grant"
+ },
+ {
+  "version": "1.11",
+  "note": "Improvement - IPAMD optimizations and makefile changes",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.11",
+  "note": "Documentation - Fixing prefixes per ENI value in example",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.11",
+  "note": "New release - multus manifest for release v3.9.0-eksbuild.2",
+  "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.11",
+  "note": "Bug - Setting AWS_VPC_K8S_CNI_RANDOMIZESNAT to the default value",
+  "reason": "manifest now writes the documented default (prng); behaviour is unchanged for a DaemonSet that omits the variable"
+ },
+ {
+  "version": "1.12",
+  "note": "Bug - Remove extra decrement of totalIP count",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Documentation - Fix ENIConfig keys in values.yaml",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - switch to use state file for IP allocation pool management",
+  "reason": "ipamd persists its allocations to /var/run/aws-node/ipam.json; the file has been written since v1.7 (migration phase 1), so every install at or above this corpus's 1.10 floor upgrades in place"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - explicitly request NET_RAW capabilities in CNI manifests",
+  "reason": "manifest securityContext now names NET_RAW explicitly; the container was already privileged-capable — only a hand-trimmed securityContext needs a look"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Reduce startup latency by removing some unneeded sleeps",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.12",
+  "note": "Bug - Cleanup pod networking resources when IPAMD is unreachable to prevent rule leaking.",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Bug - Add missing rules when NodePort support is disabled",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Feature - Reporting EC2 API calls metrics through CNI metrics helper",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.12",
+  "note": "Feature - Added resources block to cni-metrics-helper helm chart",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Move VPC CNI and VPC CNI init images to use EKS minimal base image.",
+  "reason": "the images drop their shell and package tools; only ad-hoc `kubectl exec` debugging inside aws-node is affected"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Updating helm chart as per helm v3 standard",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install (chart apiVersion v2; Helm 2 is long EOL)"
+ },
+ {
+  "version": "1.12",
+  "note": "Bug - Cherry-pick prometheus/client_golang module update to address CVE",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Minimal base image for cni-metrics-helper minimal base image",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.12",
+  "note": "Documentation - doc: document AWS_VPC_K8S_CNI_LOGLEVEL for cni-metric-helper helm chart",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.12",
+  "note": "Documentation - Added cni-metrics-helper docs",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Refactor cni-metrics-helper chart for eks charts release",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - fix: Upgrade to golang.org/x/net@v0.7.0",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.12",
+  "note": "Bug - Fix MTU parameter in egress-v4-cni plugin",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Support routing to external IPs behind service",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (AWS_EXTERNAL_SERVICE_CIDRS)"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Use Go 1.19; fix egress-v4-cni MTU parsing, update containerd",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Use GET for IAM Permissions event; update controller-runtime from 0.13.1 to",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.12",
+  "note": "Improvement - Remove old checkpoint migration logic; update containerd version",
+  "reason": "7326cafb removes the CRI read path used only by installs still in migration phase 1 (CNI 1.7); every install at or above this corpus's 1.10 floor already reads the state file"
+ },
+ {
+  "version": "1.12",
+  "note": "Upgrading (or downgrading) the VPC CNI version should result in no downtime. Existing pods",
+  "reason": "general upgrade behaviour (no downtime; new pods wait until ipamd is ready) that holds for every hop — the workspace shows aws-node readiness during a roll"
+ },
+ {
+  "version": "1.12",
+  "note": "For VPC CNI >=v1.12.0, IPAMD have switched to use an on-disk file",
+  "reason": "removes ipamd's dependency on the CRI socket; nothing to change for an upgrade (see the state-file exclusion)"
+ },
+ {
+  "version": "1.13",
+  "note": "Bug - Return success from CNI DEL when IPAMD is unreachable",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "Bug - Fix for aws-vpc-cni chart with tolerations to produce syntax valid yaml",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.13",
+  "note": "Feature - Add IPv6 egress support to eks IPv4 cluster",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (ENABLE_V6_EGRESS)"
+ },
+ {
+  "version": "1.13",
+  "note": "Feature - feat(chart): Refactored image template logic for endpoint flexibility",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install (image.override / account / domain values; the default render is unchanged)"
+ },
+ {
+  "version": "1.13",
+  "note": "Improvement - refactoring eniconfig func to only take node as parameter",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.13",
+  "note": "Improvement - Remove go mod download from Dockerfiles",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.13",
+  "note": "Improvement - install all core CNI plugins via init container",
+  "reason": "the init container now copies the core CNI plugin binaries to the host; nothing to configure"
+ },
+ {
+  "version": "1.13",
+  "note": "Improvement - resource limit on init container in eks addon",
+  "reason": "EKS add-on manifest default"
+ },
+ {
+  "version": "1.13",
+  "note": "Bug - Sync node security groups to cache before node initialization",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "Improvement - Upgrade client-go and controller-runtime modules",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.13",
+  "note": "Bug - RefreshSecurityGroups must be called after unmanaged ENIs are set",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.13",
+  "note": "Bug - Fix event recorder initialization and add check to log",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.14",
+  "note": "Improvement - Update aws-eks-nodeagent image version to v1.0.2",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.15",
+  "note": "Feature - Add DISABLE_CONTAINER_V6 to disable IPv6 networking in container network",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.15",
+  "note": "Feature - IP_COOLDOWN_PERIOD environment variable for ip cooldown period configuration",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (the 30 s cooldown already existed; it is now configurable)"
+ },
+ {
+  "version": "1.15",
+  "note": "Improvement - Fix test kubeconfig, upgrade helm",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.15",
+  "note": "Improvement - Upgrade controller-runtime to v0.15.0",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.15",
+  "note": "Bug - Do not patch CNINode for custom networking unless SGPP is enabled",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.15",
+  "note": "Bug - fix(chart): Switch base64 encoded cniConfig.fileContents to the binaryData",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install (cniConfig.enabled, off by default)"
+ },
+ {
+  "version": "1.15",
+  "note": "Cleanup - chore: remove refs to deprecated io/ioutil",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.15",
+  "note": "Documentation - Update example table 'Pod per Prefixes' value",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.15",
+  "note": "Documentation - Update the use of privileged flag in aws-vpc-cni manifest",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.15",
+  "note": "Improvement - Add ENABLE_V4_EGRESS env var to control IPv4 egress in IPv6 clusters",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (default true keeps the earlier behaviour)"
+ },
+ {
+  "version": "1.15",
+  "note": "Improvement - Mimic VPC-RC limit struture",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.15",
+  "note": "Improvement - feat(chart): Made node agent optional",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.15",
+  "note": "Documentation - Update prefix-and-ip-target.md",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.16",
+  "note": "Bug - check if ipv4Addr or ipv6Addr is empty before calling AnnotatePod()",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Bug - Fix enabling of Metrics and Introspection Endpoint",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Cleanup - swicth grpc deprecated method to new method",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Cleanup - swicth k8s deprecated method to new method",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Documentation - Remove hard-coded comment for primary intf",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.16",
+  "note": "Feature - Manifest for Multus 4.0.2 thick plugin support",
+  "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.16",
+  "note": "Feature - IPv6 Security Groups for Pods Support",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.16",
+  "note": "Feature - Prometheus metrics scraping from CNI metrics helper",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - Update CHANGELOG, charts, and manifests for v1.15.5 release; update",
+  "reason": "release bookkeeping; the amazon-vpc-cni ConfigMap gains default keys the controller reads"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - adding feature flags to configmap charts",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - Simplify IPv6 Gateway Calculation",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Bug - log for DelNetworkReply now differentiates between IPv4 and IPv6 addr…",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Dependency - revert CNI spec to 0.4.0",
+  "reason": "reverts the v1.15.4 spec bump; see rtz-aws-vpc-cni-1.15-cni-spec-1-0-0-in-1-15-4-to-1-16-1"
+ },
+ {
+  "version": "1.16",
+  "note": "Dependency - Upgrade Golang version to 1.21.6",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - Enable ENABLE_V6_EGRESS on Clusters with Mixed IPv6/IPv4 Subnets",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - cni-metrics-helper add podAnnotation value",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.16",
+  "note": "Improvement - Track max pods, simplify warm IP pool management",
+  "reason": "ipamd stops warming IPs beyond the node's max-pods; fewer idle IPs per node, no configuration change"
+ },
+ {
+  "version": "1.16",
+  "note": "Bug - Revert #2744 to prevent livelock when attempting to increase datastore pool",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Bug - Do not allocate IPs or prefixes to trunk ENIs; enable Custom Networking before",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.16",
+  "note": "Documentation - Added description to list of metrics reported by cni-metrics-helper",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.16",
+  "note": "Enhancement - Update Golang version to 1.21.7; update aws-vpc-cni chart README",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Enhancement - Bump helm.sh/helm/v3 from 3.14.0 to 3.14.1",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.16",
+  "note": "Feature - Pod MTU",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (POD_MTU defaults to AWS_VPC_ENI_MTU)"
+ },
+ {
+  "version": "1.17",
+  "note": "Feature - Send pod name/ns to nodeagent for strict mode",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.17",
+  "note": "Feature - gRPC call for networkpolicy agent",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.17",
+  "note": "Improvement - Make vpc cni as master CNI in multus-daemonset-thick.yml",
+  "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.18",
+  "note": "Dependency - upgrade golang to 1.21.8",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "Bug - Mount /run/xtables.lock as FileOrCreate in Helm chart",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.18",
+  "note": "Cleanup - remove unused Dockerfile",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "Enhancement - Improve \"cni-metrics-helper\" setup experience",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.18",
+  "note": "Enhancement - Expose network policy log file location to be configured using helm",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.18",
+  "note": "Bugfix - Add correct labels to CNI metrics chart.",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.18",
+  "note": "Cleanup - CHANGELOG, chart, and manifest changes following VPC CNI v1.18.0 release",
+  "reason": "release bookkeeping"
+ },
+ {
+  "version": "1.18",
+  "note": "Cleanup - Remove unused code in vpc cni init and vpc cni binary",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "Feature - [cni-metrics-helper] Expose container port when enabling prometheus metrics",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.18",
+  "note": "Feature - Add extraEnv for add additional env from configmap or secrets to aws-node",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.18",
+  "note": "Feature - use __MTU__ variable for IPv4 egress-cni too",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.18",
+  "note": "Bugfix - Subnet Discovery - Unfilled ENI fix",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.18",
+  "note": "Bugfix - bugfix: templating broken on helm when cniconfig is enabled",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.18",
+  "note": "Cleanup - Helpful Make target to login to public ECR.",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "Cleanup - Update test options default value and help.",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "Bugfix - fix: init.image.pullPolicy and nodeAgent.image.pullPolicy not being respect",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.18",
+  "note": "Bugfix - Bug fix: Ensure exact IP match between IMDS and local datastore.",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.18",
+  "note": "Improvement - Move KUBE_CONFIG_PATH variable to KUBECONFIG variable #3015",
+  "reason": "test-harness scripts only (751aedff touches scripts/ and test/integration/README.md); aws-node reads no such variable"
+ },
+ {
+  "version": "1.18",
+  "note": "Docs - Document the limitation of SGP with kube-proxy IPVS mode. #3064",
+  "reason": "documents a pre-existing limitation (strict-mode security groups for pods with kube-proxy IPVS), not a change made by an upgrade"
+ },
+ {
+  "version": "1.19",
+  "note": "Manifest update for unsupported compute type",
+  "reason": "manifest node affinity now excludes Fargate/hybrid compute the CNI cannot run on"
+ },
+ {
+  "version": "1.19",
+  "note": "Bug-Fix: Revert \"utils prometheusmetrics: convert gauges to counters \"",
+  "reason": "reverts a gauges-to-counters conversion before it shipped in a minor release"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Changes to attach probes at pod start by @pavanipt and @haouc in",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Add grpc call to fetch networkpolicymode from NP",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.19",
+  "note": "Update NP agent to v1.2.0 in",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Update AWS VPC CNI to SDK V2 Update - master branch by @orsenthil in #3070",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.19",
+  "note": "Manifest - Adding multus v4.1.4 manifest by @jaydeokar in #3154",
+  "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - cni-metrics-helper metrics: do type assertion before type casting by @dshehbaj in",
+  "reason": "cni-metrics-helper (a separate optional Deployment), not the aws-node DaemonSet"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - remove null creationTimestamp from CRD metadata by @omerap12 in #3163",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - issue with primary ENI ip lookup when an ENI has both IPv4 and IPv6 Address Assigned",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Use awshttp client instead of smithy httpclient by @orsenthil in #3193",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Add grpc call to fetch networkpolicymode from NP by @Pavani-Panakanti in",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Changes to attach probes at pod start by @haouc in #3206",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - adding eni owner tag if cluster name is present by @yash97 #3228",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (an extra ENI tag via the existing ec2:CreateTags permission)"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - only cache CNINode when SGP is in use by @oliviassss #3242",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Improvement - Remove dependency on apiserver for IPAMD startup by @oliviassss #3243",
+  "reason": "ipamd can start before the API server is reachable; nothing to configure"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - Skip configuring NP related if network_policy_enforcing_mode is not set by",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Doc and charts update",
+  "reason": "release bookkeeping"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - fixed node init failure when using custom networking and SGPP @oliviassss in #3277",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Fix - Adding CVE fixes and remove pinned dependencies by @jaydeokar in #3283",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.19",
+  "note": "Feature - adding ENABLE_IMDS_ONLY_MODE configuration so ipamd will not interact with EC2",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.20",
+  "note": "Feature - Adding support in CNI for managing multiple network interface card on the",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (ENABLE_MULTI_NIC, default false)"
+ },
+ {
+  "version": "1.20",
+  "note": "Fix - Fix error when Network policy agent GRPC call fails in #3320",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Fix - Fix race condition when force deleting pod using a security group for pod feature in",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Improvement - Add latency metrics for ipamd init in #3301",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.20",
+  "note": "bypassing udev interference by assigning mac address to host side veth",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (the systemd-udev MACAddressPolicy known issue)"
+ },
+ {
+  "version": "1.20",
+  "note": "Adding release notes and chart update",
+  "reason": "release bookkeeping"
+ },
+ {
+  "version": "1.20",
+  "note": "Removing pinning of golang version",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.20",
+  "note": "Move npagent server port to unix socket",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit (from v1.20.2 the CNI plugin dials the agent at /var/run/aws-node/npa.sock)"
+ },
+ {
+  "version": "1.20",
+  "note": "Optionally setting up Route table for non zero Network Cards if AMI is already configuring",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Updating SNAT variable documentation",
+  "reason": "documentation only"
+ },
+ {
+  "version": "1.20",
+  "note": "Include all plugins for Multus",
+  "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.20",
+  "note": "enabling pod egress traffic test for under mac address policy variation",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface (a test)"
+ },
+ {
+  "version": "1.20",
+  "note": "Updating network policy agent version",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.20",
+  "note": "Gracefully handle v4 (unmanaged) ENIs on IPv6 node",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Update NP agent version for release",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.21",
+  "note": "Merge into release branch",
+  "reason": "release bookkeeping"
+ },
+ {
+  "version": "1.21",
+  "note": "Bug fix for Network Policy Agent",
+  "reason": "Network Policy Agent pairing: every hop for this source ends at the 1.23 CURRENCY target, where rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required requires the agent at v1.4.1 or newer — which also satisfies this earlier pairing, so a second card would repeat the same edit"
+ },
+ {
+  "version": "1.22",
+  "note": "feat: Enhanced subnet discovery - allow customers to exclude specific subnets from pod",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (opt-in via subnet tags kubernetes.io/role/cni=0|1)"
+ },
+ {
+  "version": "1.22",
+  "note": "feat: Custom security groups for pods on secondary ENIs - tag security groups with",
+  "reason": "reverted before v1.23 (see 'Reverting Security Group Discovery feature'); no install ends a hop with it"
+ },
+ {
+  "version": "1.22",
+  "note": "feat: Primary ENI subnet exclusion - when primary subnet is tagged with cni=0, new ENIs",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (opt-in via the cni=0 subnet tag)"
+ },
+ {
+  "version": "1.22",
+  "note": "Reverting Security Group Discovery feature in",
+  "reason": "reverts the 1.22 security-group discovery feature"
+ },
+ {
+  "version": "1.23",
+  "note": "Add ec2:DescribeSecurityGroups to IAM policy",
+  "reason": "docs/iam-policy.md only (969b6f3e): the permission backed the 1.22 security-group discovery that was reverted — at v1.23.2 no code path calls DescribeSecurityGroups (git grep pkg/ cmd/)"
+ },
+ {
+  "version": "1.23",
+  "note": "Add prerouting connmark rules through nftable instead of iptables.",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (0eb9f067: SNAT for secondary-ENI pods under kube-proxy nftables mode)"
+ },
+ {
+  "version": "1.23",
+  "note": "chore: cleanup dead code from esgd revert",
+  "reason": "internal code, build or dependency change with no manifest, env or API surface"
+ },
+ {
+  "version": "1.23",
+  "note": "Don't fail on IPv6-only unmanaged ENIs in an IPv4 cluster (handled via getENIMetadata)",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.23",
+  "note": "Helm: render podMonitor.scrapeTimeout in the PodMonitor template",
+  "reason": "aws-vpc-cni Helm chart template/values change with no effect on the rendered default install"
+ },
+ {
+  "version": "1.23",
+  "note": "Self-heal the IPv6 datastore and harden EC2 client retry behavior",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.23",
+  "note": "Reject invalid VLAN IDs in routed-eni, validating before veth creation",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (VLAN IDs come from the VPC Resource Controller's branch ENIs, not operator config)"
+ },
+ {
+  "version": "1.23",
+  "note": "Fail open when the DescribeSubnets call for ENI subnet discovery fails",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ }
+]
