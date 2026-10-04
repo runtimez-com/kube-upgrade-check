@@ -21,7 +21,7 @@
  {
   "ruleId": "rtz-aws-vpc-cni-1.13-boolean-env-values-parsed-case-insensitively",
   "severity": "MEDIUM",
-  "title": "Boolean env values are parsed case-insensitively from v1.13 — \"True\"/\"TRUE\"/\"1\" flip from off to on",
+  "title": "Boolean env values are parsed case-insensitively by the aws-node entrypoint from v1.13 — \"True\"/\"1\" now count as on",
   "detection": {
    "kind": "NOT_DETECTABLE",
    "reason": "env VALUES are not collected (names only)"
@@ -33,7 +33,7 @@
    "value": "(^|/)amazon-k8s-cni([:@]|$)"
   },
   "quote": "Make all the aws vpc cni environmental variables case insensitive",
-  "remediation": "Before v1.13 the aws-node entrypoint and the aws-vpc-cni-init container compared these booleans to the exact string `true` (d944328c): ENABLE_IPv6, ENABLE_POD_ENI, ENABLE_PREFIX_DELEGATION, ENABLE_BANDWIDTH_PLUGIN, ENABLE_NFTABLES and DISABLE_TCP_EARLY_DEMUX. v1.13 parses them with strconv.ParseBool, so `True`, `TRUE`, `t` and `1` now turn the setting ON where they used to leave it off, and an unparseable value falls back to the documented default. Normalise them to lowercase true/false before upgrading.",
-  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '(.spec.template.spec.containers[], .spec.template.spec.initContainers[]?) | .name as $c | .env[]? | select(.name | test(\"^(ENABLE_IPv6|ENABLE_POD_ENI|ENABLE_PREFIX_DELEGATION|ENABLE_BANDWIDTH_PLUGIN|ENABLE_NFTABLES|DISABLE_TCP_EARLY_DEMUX)$\")) | select(.value != null) | select(.value | test(\"^(true|false)$\") | not) | select(.value | test(\"^(?i:true|false|t|f|1|0)$\")) | \"\\($c): \\(.name)=\\(.value)\"'  # each printed variable was read as false before v1.13 (unless it is exactly \"true\") and is parsed as a real boolean after"
+  "remediation": "Before v1.13 the aws-node entrypoint and the aws-vpc-cni-init container compared booleans to the exact string `true` (d944328c); v1.13 parses them with strconv.ParseBool, so `True`, `TRUE`, `t` and `1` now count as on. What that changes per variable: ENABLE_BANDWIDTH_PLUGIN and DISABLE_TCP_EARLY_DEMUX now really turn on, and so does the init container's ENABLE_IPv6 handling (ipamd itself already parsed ENABLE_IPv6, ENABLE_POD_ENI and ENABLE_PREFIX_DELEGATION with ParseBool, so those features were already on); for ENABLE_POD_ENI and ENABLE_PREFIX_DELEGATION the entrypoint's own checks now run, and aws-node exits 1 on an invalid POD_SECURITY_GROUP_ENFORCING_MODE or when every warm target is 0 or below. Normalise these to lowercase true/false and check those companions before upgrading.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '(.spec.template.spec.containers[], .spec.template.spec.initContainers[]?) | .name as $c | .env[]? | select(.name | test(\"^(ENABLE_IPv6|ENABLE_POD_ENI|ENABLE_PREFIX_DELEGATION|ENABLE_BANDWIDTH_PLUGIN|DISABLE_TCP_EARLY_DEMUX)$\")) | select(.value != null) | select(.value | test(\"^(true|false)$\") | not) | select(.value | test(\"^(?i:true|false|t|f|1|0)$\")) | \"\\($c): \\(.name)=\\(.value)\"'  # each printed variable was read as false by the pre-1.13 entrypoint (only the exact string \"true\" counted) and is parsed as a real boolean after"
  }
 ]

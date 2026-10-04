@@ -30,7 +30,7 @@
    "value": "(?i)(red hat|rhel|rocky|alma|ubuntu 2[1-9]|ubuntu 3)"
   },
   "quote": "Prior to v1.12.1, the VPC CNI image only contained `iptables-legacy`. Newer distributions of RHEL (RHEL 8.x+), Ubuntu (Ubuntu 21.x+), etc. have moved to using `nftables`.",
-  "remediation": "On nodes whose OS defaults to nftables, a VPC CNI below v1.12.1 programs iptables-legacy rules the kernel's nft tables do not see. v1.12.1 ships both binaries (ENABLE_NFTABLES=true selects iptables-nft on 1.12.x) and v1.13.1+ picks the mode from kubelet's automatically — land on 1.13.1+ and drop any custom-built nft image.",
+  "remediation": "On nodes whose OS defaults to nftables, a VPC CNI below v1.12.1 programs iptables-legacy rules the kernel's nft tables do not see. v1.12.1 ships both binaries (ENABLE_NFTABLES=true selects iptables-nft on 1.12.x) and v1.13.2+ picks the mode from kubelet's automatically — land on 1.13.2+ and drop any custom-built nft image.",
   "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | \"\\(.metadata.name): \\(.status.nodeInfo.osImage)\"'  # RHEL 8+, Rocky/Alma, Ubuntu 21+ nodes default to nftables and need VPC CNI v1.12.1+"
  },
  {

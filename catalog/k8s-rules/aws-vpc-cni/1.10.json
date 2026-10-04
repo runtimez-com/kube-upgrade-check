@@ -1,11 +1,11 @@
 [
  {
-  "ruleId": "rtz-aws-vpc-cni-1.10-enable-ipv4-ipv6-env-required",
+  "ruleId": "rtz-aws-vpc-cni-1.10-enable-ipv4-env-required",
   "severity": "HIGH",
-  "title": "aws-node must carry ENABLE_IPv4 and ENABLE_IPv6 (v1.10+) — an image-only bump crash-loops ipamd",
+  "title": "aws-node must carry ENABLE_IPv4 (v1.10+) — an image-only bump crash-loops ipamd",
   "detection": {
    "kind": "NOT_DETECTABLE",
-   "reason": "the rule asks whether two env vars are ABSENT from the aws-node container; the detection vocabulary can only test presence, so the hint names the DaemonSet and the command checks both names"
+   "reason": "the rule asks whether an env var is ABSENT from the aws-node container; the detection vocabulary can only test presence, so the hint names the DaemonSet and the command checks the name"
   },
   "scope": {
    "kind": "SPEC_PATH_MATCHES",
@@ -14,8 +14,8 @@
    "value": "(^|/)amazon-k8s-cni([:@]|$)"
   },
   "quote": "cni v1.10.x introduced 2 new env variables - ENABLE_IPv4 and ENABLE_IPv6. The above error can be caused if you miss adding these env variables to your cni daemonset.",
-  "remediation": "Upgrade by applying the full release manifest (or the EKS add-on / chart), not by editing the image tag on the existing DaemonSet: v1.10+ expects ENABLE_IPv4 (default true) and ENABLE_IPv6 (default false) on the aws-node container, and without them ipamd panics with a nil-pointer in StartNodeIPPoolManager and every new pod waits for an IP.",
-  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '[.spec.template.spec.containers[] | select(.name == \"aws-node\") | .env[]?.name] as $e | if (($e | index(\"ENABLE_IPv4\")) and ($e | index(\"ENABLE_IPv6\"))) then \"ok: both set\" else \"MISSING: ENABLE_IPv4 and/or ENABLE_IPv6\" end'  # MISSING = ipamd crash-loops on v1.10+; apply the release manifest instead of only bumping the image",
+  "remediation": "Upgrade by applying the full release manifest (or the EKS add-on / chart), not by editing the image tag on the existing DaemonSet. From v1.10 ipamd's code default for ENABLE_IPv4 is false (ENABLE_IPv6 absent simply means false), so an aws-node container without ENABLE_IPv4=true runs with both families off: v1.10 panicked in StartNodeIPPoolManager, and through v1.23 ipamd exits on validation (\"IPv4 and IPv6 are both disabled\"). Either way the DaemonSet crash-loops and every new pod waits for an IP.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '[.spec.template.spec.containers[] | select(.name == \"aws-node\") | .env[]?.name] as $e | if ($e | index(\"ENABLE_IPv4\")) then \"ok: ENABLE_IPv4 set\" else \"MISSING: ENABLE_IPv4\" end'  # MISSING = ipamd starts with both address families disabled and exits; apply the release manifest instead of only bumping the image",
   "coversNotes": [
    "ENABLE_IPv4 (v1.10.0+) Type: Boolean as a String Default: true VPC CNI can operate in",
    "ENABLE_IPv6 (v1.10.0+) Type: Boolean as a String Default: false VPC CNI can operate in"

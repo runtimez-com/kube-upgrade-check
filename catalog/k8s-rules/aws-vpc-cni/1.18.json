@@ -5,7 +5,7 @@
   "title": "Subnet discovery is on by default from v1.18 — secondary ENIs can land in other subnets tagged kubernetes.io/role/cni",
   "detection": {
    "kind": "NOT_DETECTABLE",
-   "reason": "ENABLE_SUBNET_DISCOVERY's VALUE is not collected; subnet tags and the node role's IAM policy are AWS-side"
+   "reason": "ENABLE_SUBNET_DISCOVERY's VALUE is not collected; subnet tags and the CNI role's IAM policy are AWS-side"
   },
   "scope": {
    "kind": "SPEC_PATH_MATCHES",
@@ -14,23 +14,11 @@
    "value": "(^|/)amazon-k8s-cni([:@]|$)"
   },
   "quote": "Enhance subnet selection",
-  "remediation": "From v1.18 ipamd picks, per new secondary ENI, the subnet with the most free IPs among the node's own subnet and subnets in its VPC/AZ tagged kubernetes.io/role/cni (ENABLE_SUBNET_DISCOVERY defaults to true). Pods can therefore get IPs from those subnets — check their route tables, NACLs and security-group expectations — and the CNI role needs ec2:DescribeSubnets (without it discovery falls back to the node's subnet). Set ENABLE_SUBNET_DISCOVERY=false to keep the old behaviour.",
+  "remediation": "From v1.18 ipamd picks, per new secondary ENI, the subnet with the most free IPs among the node's own subnet and subnets in its VPC/AZ tagged kubernetes.io/role/cni (ENABLE_SUBNET_DISCOVERY defaults to true), so pods can get IPs from those subnets — check their route tables, NACLs and security-group expectations. Discovery calls ec2:DescribeSubnets: on v1.18–v1.21 a denied call falls back to the node's subnet, but from v1.22 a failed call stops ENI creation (see the 1.22 rule). Grant ec2:DescribeSubnets to the CNI role, or set ENABLE_SUBNET_DISCOVERY=false to keep the old behaviour.",
   "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | .name as $c | .env[]? | select(.name | test(\"^(ENABLE_SUBNET_DISCOVERY)$\")) | \"\\($c): \\(.name)=\\(.value // \"(from \\(.valueFrom | keys | join(\",\")))\")\"'  # absent or true = discovery on: subnets tagged kubernetes.io/role/cni in the node's VPC/AZ can host pod IPs",
   "coversNotes": [
    "Bugfix - updating iam doc with subnet policy"
   ]
- },
- {
-  "ruleId": "rtz-aws-vpc-cni-1.18-no-available-ip-metric-becomes-counter",
-  "severity": "LOW",
-  "title": "awscni_no_available_ip_addresses becomes a counter (v1.18.1) — gauge-style alerts misfire",
-  "detection": {
-   "kind": "NOT_DETECTABLE",
-   "reason": "alert rules and dashboards that query the metric are outside the cluster objects collected"
-  },
-  "quote": "Switch to counter type metic for awscni_no_available_ip_addresses",
-  "remediation": "awscni_no_available_ip_addresses is a monotonically increasing counter from v1.18.1: an alert written as `awscni_no_available_ip_addresses > 0` fires forever after the first failed IP assignment. Rewrite it as `increase(awscni_no_available_ip_addresses[10m]) > 0`.",
-  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"awscni_no_available_ip_addresses\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each PrometheusRule printed queries the metric; check it uses rate()/increase(), not a raw threshold"
  },
  {
   "ruleId": "rtz-aws-vpc-cni-1.18-eniconfig-crd-gains-a-structural-schema",

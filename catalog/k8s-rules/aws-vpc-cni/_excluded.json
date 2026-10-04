@@ -306,6 +306,26 @@
  },
  {
   "version": "1.15",
+  "note": "Metrics - rename warm pool metrics",
+  "reason": "awscni_err_no_avail_addrs / awscni_eni_util never shipped in a release: added by #2557 (2965ddf0) and renamed a day later by #2569 (73ccf51f); both first in v1.15.1 under the new names"
+ },
+ {
+  "version": "1.15",
+  "note": "Metrics - Only metrics",
+  "reason": "the same pre-release rename (#2557 then #2569, both first shipped in v1.15.1); no released metric changed name"
+ },
+ {
+  "version": "1.15",
+  "note": "Feature - Upgrade CNI spec from 0.4.0 to 1.0.0",
+  "reason": "only v1.16.0 writes cniVersion 1.0.0 (the CHANGELOG files it under v1.15.4, but misc/10-aws.conflist is 0.4.0 at v1.15.4/v1.15.5; d31fd1b1 is first in v1.16.0) and v1.16.2 reverts it (6227a14c); every hop ends at 1.23.2, which writes 0.4.0"
+ },
+ {
+  "version": "1.15",
+  "note": "Documentation - Bandwidth plugin with NP is currently unsupported",
+  "reason": "documents a limitation that exists since network policy support (v1.14), not a change an upgrade makes (docs-only #2572) — same ground as the 1.18 SGP + IPVS documentation exclusion"
+ },
+ {
+  "version": "1.15",
   "note": "Feature - Add DISABLE_CONTAINER_V6 to disable IPv6 networking in container network",
   "reason": "additive: a new option/feature/metric that nothing breaks by not using"
  },
@@ -432,7 +452,7 @@
  {
   "version": "1.16",
   "note": "Dependency - revert CNI spec to 0.4.0",
-  "reason": "reverts the v1.15.4 spec bump; see rtz-aws-vpc-cni-1.15-cni-spec-1-0-0-in-1-15-4-to-1-16-1"
+  "reason": "reverts v1.16.0's cniVersion 1.0.0 in v1.16.2 (6227a14c); nothing ends a hop on v1.16.0"
  },
  {
   "version": "1.16",
@@ -498,6 +518,11 @@
   "version": "1.17",
   "note": "Improvement - Make vpc cni as master CNI in multus-daemonset-thick.yml",
   "reason": "a Multus manifest shipped alongside; not the VPC CNI's own install"
+ },
+ {
+  "version": "1.18",
+  "note": "Enhancement - Switch to counter type metic for awscni_no_available_ip_addresses",
+  "reason": "declared-type change only (d0590be1, first in v1.18.2): the series was only ever incremented, so its values were already monotonic and queries behave the same"
  },
  {
   "version": "1.18",
@@ -602,7 +627,7 @@
  {
   "version": "1.19",
   "note": "Bug-Fix: Revert \"utils prometheusmetrics: convert gauges to counters \"",
-  "reason": "reverts a gauges-to-counters conversion before it shipped in a minor release"
+  "reason": "d57c4436 converted several gauges to counters in v1.19.0 and v1.19.2 reverts it; from below 1.19 to 1.23 the net change is nil"
  },
  {
   "version": "1.19",
@@ -673,11 +698,6 @@
   "version": "1.19",
   "note": "Improvement - Remove dependency on apiserver for IPAMD startup by @oliviassss #3243",
   "reason": "ipamd can start before the API server is reachable; nothing to configure"
- },
- {
-  "version": "1.19",
-  "note": "Fix - Skip configuring NP related if network_policy_enforcing_mode is not set by",
-  "reason": "a bug fix upstream shipped, not a change an operator must make"
  },
  {
   "version": "1.19",
@@ -786,8 +806,8 @@
  },
  {
   "version": "1.22",
-  "note": "feat: Enhanced subnet discovery - allow customers to exclude specific subnets from pod",
-  "reason": "additive: a new option/feature/metric that nothing breaks by not using (opt-in via subnet tags kubernetes.io/role/cni=0|1)"
+  "note": "feat: Cluster-specific subnet filtering using",
+  "reason": "additive: a new option/feature/metric that nothing breaks by not using (opt-in cni.networking.k8s.aws/cluster/<cluster-name> subnet tag)"
  },
  {
   "version": "1.22",
