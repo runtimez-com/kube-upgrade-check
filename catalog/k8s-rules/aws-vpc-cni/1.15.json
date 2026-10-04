@@ -1,0 +1,23 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.15-cninode-rbac-required",
+  "severity": "MEDIUM",
+  "title": "With security groups for pods (ENABLE_POD_ENI=true), aws-node needs get/list/watch/patch on cninodes.vpcresources.k8s.aws",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ClusterRoles and env VALUES are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Add watch permission for CNINode resource",
+  "remediation": "From v1.15 ipamd records its features on the node's CNINode object (patch) and, in v1.15.5–v1.19.3, caches CNINode for every cluster (list/watch); from v1.19.4 the cache is gated by ENABLE_POD_ENI. Clusters that run security groups for pods must upgrade with the release manifest / chart / EKS add-on so the aws-node ClusterRole carries get/list/watch/patch on cninodes.vpcresources.k8s.aws — an image-only bump keeps the old ClusterRole and the CNINode calls are forbidden.",
+  "verifyCommand": "kubectl get clusterrole aws-node -o json | jq -r '[.rules[] | select((.apiGroups // []) | index(\"vpcresources.k8s.aws\")) | .verbs[]] | unique | join(\",\")'  # needs get,list,patch,watch when ENABLE_POD_ENI=true; empty = the ClusterRole predates v1.15",
+  "coversNotes": [
+   "Feature - Add support for VPC Resource Controller's CNINode (reintroduce #2442)"
+  ]
+ }
+]

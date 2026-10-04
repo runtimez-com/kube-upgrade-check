@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.22-describe-subnets-required-for-eni-creation",
+  "severity": "HIGH",
+  "title": "From v1.22, with subnet discovery on, ENI creation stops when ec2:DescribeSubnets is denied",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the CNI role's IAM policy is AWS-side; ENABLE_SUBNET_DISCOVERY's VALUE is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Enhanced subnet discovery - allow customers to exclude specific subnets from pod allocation by tagging with `kubernetes.io/role/cni=0`",
+  "remediation": "v1.22 checks, before creating a secondary ENI, whether the subnet is excluded by a kubernetes.io/role/cni=0 tag (e97bfe7e, IsSubnetExcluded), which calls ec2:DescribeSubnets again. With ENABLE_SUBNET_DISCOVERY on (the default) a failed call aborts the attempt (\"Quit ENI creation attempt\"), so a node whose CNI role lacks ec2:DescribeSubnets stops growing ENIs and new pods wait for IPs once the warm pool drains (v1.23.2's fail-open fix covers ipamd's setup path only). Grant ec2:DescribeSubnets (it is in AmazonEKS_CNI_Policy's documented set since v1.18.4) or set ENABLE_SUBNET_DISCOVERY=false before upgrading.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '\"ENABLE_SUBNET_DISCOVERY=\" + ([.spec.template.spec.containers[] | .env[]? | select(.name == \"ENABLE_SUBNET_DISCOVERY\") | .value][0] // \"(unset = true)\")'  # true/unset = the CNI role (IRSA role of the aws-node service account, else the node role) must allow ec2:DescribeSubnets"
+ }
+]

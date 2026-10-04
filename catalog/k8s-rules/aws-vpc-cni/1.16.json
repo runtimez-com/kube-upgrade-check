@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.16-mtu-values-validated",
+  "severity": "MEDIUM",
+  "title": "AWS_VPC_ENI_MTU / POD_MTU outside 576–9001 (1280–9001 on IPv6) stop aws-node from starting (v1.16.4)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the MTU VALUES are not collected (env names only)"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Add validation for MTU",
+  "remediation": "From v1.16.4 the aws-node entrypoint validates AWS_VPC_ENI_MTU and POD_MTU before installing the CNI binaries and exits on a non-integer or a value below 576 (1280 when ENABLE_IPv6=true) or above 9001 — the DaemonSet crash-loops and new pods get no IP. Fix the values before upgrading.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | .name as $c | .env[]? | select(.name | test(\"^(AWS_VPC_ENI_MTU|POD_MTU)$\")) | \"\\($c): \\(.name)=\\(.value // \"(from \\(.valueFrom | keys | join(\",\")))\")\"'  # a value that is not an integer in 576-9001 (1280-9001 on IPv6) makes v1.16.4+ exit at startup"
+ }
+]

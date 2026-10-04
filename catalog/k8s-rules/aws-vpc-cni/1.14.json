@@ -1,0 +1,18 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.14-network-policies-become-enforceable",
+  "severity": "INFO",
+  "title": "From v1.14 the VPC CNI can enforce this cluster's NetworkPolicies — audit them before turning enforcement on",
+  "detection": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "NetworkPolicy",
+   "reason": "fires on any NetworkPolicy object; whether enforcement is on is the aws-eks-nodeagent's --enable-network-policy flag"
+  },
+  "quote": "`v1.14.0` introduces Kubernetes Network Policy support. This is accomplished via the `aws-eks-nodeagent` container, which is now present in the `aws-node` pod.",
+  "remediation": "The NetworkPolicies listed are inert under a VPC CNI below v1.14 (unless another engine enforces them). Upgrading adds the aws-eks-nodeagent container to aws-node; once --enable-network-policy=true (EKS add-on `enableNetworkPolicy`) they start dropping traffic they deny. Review them, and enable enforcement as its own change, not as a side effect of the upgrade.",
+  "verifyCommand": "kubectl get networkpolicy -A -o json | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each policy printed starts dropping the traffic it denies once the VPC CNI's network policy agent enforces it",
+  "coversNotes": [
+   "VPC CNI versions v1.14, and greater support Kubernetes Network Policies.. Network Policies"
+  ]
+ }
+]

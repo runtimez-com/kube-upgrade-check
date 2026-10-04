@@ -1,4 +1,5 @@
 8e5c16309119bb16c41daa4b2cce2f0f158a6b1dbcdc71ac760b300cbf7df536  k8s-addons/argocd.json
+62bb72695be5fb15847696c24a63bdba1151d33aa8161f15010ac0513132cf00  k8s-addons/aws-vpc-cni.json
 19e9d8e2fe075e9546164667578bb9a5cb230b32e896ec23706037b892900f13  k8s-addons/cert-manager.json
 304b28ca22eee897264ea54aa7f068fc522410d6cf1323aaf4a3e529f6bb8f68  k8s-addons/cluster-autoscaler.json
 dc55c0b3fccbcffc84c27893b8906ac61f0d1e70f1f6d6786e798922c3ec78b3  k8s-addons/coredns.json
@@ -29,6 +30,20 @@ db5d7e06864bc8919ca7d7914d045dd67ff1c3ac39830ac5d6c9159f2c52fcc0  k8s-rules/argo
 c40a386d3ae546c38fb7d5101287e2ebfba8d3badb462c499617af67c5c274c5  k8s-rules/argocd/3.4.json
 6abaae6afefab3d667ddb11952ade37edc176862681e4c634a562d7b7ad82bb9  k8s-rules/argocd/3.5.json
 9322a3039ec197324ab7674bd17e03c753b49d142dd824e38940ccd545da0a8d  k8s-rules/argocd/_excluded.json
+0e1906ddd5e767bc339b6f5b8c8f4278dcfeacbae9ce5e1e6716c7a9d6f4b409  k8s-rules/aws-vpc-cni/1.10.json
+a5eb653548ef55cfcf9cdf11b2d05d928299de8f7ed2a85e1a9855f795a98b92  k8s-rules/aws-vpc-cni/1.11.json
+c22bd76a3c76f124d87544974cee10a9371cb264eda72856465546870d8a96d7  k8s-rules/aws-vpc-cni/1.12.json
+1fb8e6ce744fb984b3c629a98c78690c63b8e004dc6cf955703b95e5dedc34b6  k8s-rules/aws-vpc-cni/1.13.json
+c242863c12aae6d11a07fc1566a9dd1e86189d611a4e17e1844366361cd7db5d  k8s-rules/aws-vpc-cni/1.14.json
+c97151df32a11ae3b8e0980b9e269552ecca7dfadcf4395e4d41ea36a46c4702  k8s-rules/aws-vpc-cni/1.15.json
+5e670b9ffe3f923e6b65bd67c026131a2d4616139ba589d15006dc307b2cf430  k8s-rules/aws-vpc-cni/1.16.json
+bc61be50b066a0b72647c795dff288388a68356e2cd2e99a1a40c338bd0b220d  k8s-rules/aws-vpc-cni/1.18.json
+f223df9860d09466421b56271c96c9e3e1a2ba4b35d56cbfb781ed141e6e51bb  k8s-rules/aws-vpc-cni/1.19.json
+051c20ebb85fae1c31d72b10c3e4595b7a14120e2843016ccb67a6f0a518c1bf  k8s-rules/aws-vpc-cni/1.20.json
+62bef3f0a9220c26dd392a4b9587a7ab2a477c685e9cd79e5b2945aba7ce1cde  k8s-rules/aws-vpc-cni/1.21.json
+ea8371be9c120dcb60ccf45671892ecee76053daa17f6a5df6062f0b977b1d9d  k8s-rules/aws-vpc-cni/1.22.json
+5ec83e29f3a4523c091799ea43a81aeba290700d87f672da620fe7cbaea11eac  k8s-rules/aws-vpc-cni/1.23.json
+759a3c46c6d82dd6b4a691ec2f048c7b014c9c6fe843d9e50be336900b5baa09  k8s-rules/aws-vpc-cni/_excluded.json
 94ef925e31270e56367b537cacf61e4a2fba8970bd24e52ec26788bfcbc68aba  k8s-rules/cert-manager/1.10.json
 62d22bc9bf0d5b46dec33c8ffddf774fb0e78a96daad5a63aa8d5da26c0c756f  k8s-rules/cert-manager/1.11.json
 31708b58e598ab49e17815d1e3e6ac1707b043a3ecb26345966bd619b729e2ba  k8s-rules/cert-manager/1.12.json
