@@ -58,6 +58,9 @@ var projectors = map[string]projector{
 	"EnvoyFilter":     projectEnvoyFilter,
 
 	"Service": projectService,
+	// StorageClass has no spec: provisioner and the binding fields are top-level. Same four keys
+	// the agent's ResourceMapper writes (parameters are not collected by either).
+	"StorageClass": projectStorageClass,
 }
 
 // HasProjector reports whether a kind's rows are derived rather than raw.
@@ -203,6 +206,16 @@ func projectService(obj map[string]any, base map[string]any) map[string]any {
 	spec, _ := obj["spec"].(map[string]any)
 	delete(out, "externalIPs")
 	out["hasExternalIPs"] = len(listAt(spec, "externalIPs")) > 0
+	return out
+}
+
+func projectStorageClass(obj map[string]any, base map[string]any) map[string]any {
+	out := base
+	for _, k := range []string{"provisioner", "reclaimPolicy", "volumeBindingMode", "allowVolumeExpansion"} {
+		if v, ok := obj[k]; ok {
+			out[k] = v
+		}
+	}
 	return out
 }
 

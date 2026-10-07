@@ -363,3 +363,31 @@ func TestRealCatalogAgainstAnEmptyInventory(t *testing.T) {
 			skipped, detectable, owned)
 	}
 }
+
+// StorageClass hints select on provisioner from the typed storage collector (EBS CSI: "the CSI
+// StorageClasses"). The in-tree class must not be named; an unread storage collector is not a hit.
+func TestStorageClassHintNamesOnlyTheMatchingProvisioner(t *testing.T) {
+	r := rule("sc", "1.36", "", catalog.Detection{Kind: catalog.DetectNotDetectable, Reason: "StorageClass parameters are not collected"})
+	r.Scope = &catalog.ScopeHint{Kind: catalog.DetectSpecFieldEquals, ObjectKind: "StorageClass", Target: "provisioner", Value: "ebs.csi.aws.com"}
+	in := inv()
+	in.Collected[inventory.CollectorStorage] = inventory.CollectionState{OK: true}
+	in.StorageClasses = []inventory.StorageClass{
+		{Name: "gp2", Provisioner: "kubernetes.io/aws-ebs"},
+		{Name: "gp3-csi", Provisioner: "ebs.csi.aws.com"},
+	}
+	findings, _ := Analyze(in, nil, "1.35", "1.36", cat(r), nil)
+	f := byRule(findings, "sc")
+	if f == nil {
+		t.Fatal("expected an advisory")
+	}
+	if len(f.Evidence) != 1 || !strings.Contains(f.Evidence[0], "1 StorageClass") || !strings.Contains(f.Evidence[0], "gp3-csi") || strings.Contains(f.Evidence[0], "gp2") {
+		t.Errorf("hint must name only the CSI class: %v", f.Evidence)
+	}
+
+	unread := inv()
+	unread.StorageClasses = in.StorageClasses
+	findings, _ = Analyze(unread, nil, "1.35", "1.36", cat(r), nil)
+	if f := byRule(findings, "sc"); f == nil || len(f.Evidence) != 0 {
+		t.Errorf("an unread storage collector must not produce a hint, got %+v", f)
+	}
+}
