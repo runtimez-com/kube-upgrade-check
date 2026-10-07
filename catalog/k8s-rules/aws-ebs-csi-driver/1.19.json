@@ -1,0 +1,23 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.19-windows-20h2-unsupported",
+  "severity": "LOW",
+  "title": "Windows 20H2 nodes are no longer supported by the EBS CSI node plugin",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a Windows node's OS build is not collected in a form the rule can read; osImage names the edition"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Node",
+   "target": "osImage",
+   "value": "(?i)windows"
+  },
+  "quote": "Windows 20H2 hosts are no longer supported.",
+  "remediation": "Replace Windows 20H2 (build 19042) nodes with a supported Windows Server LTSC release before upgrading: the Windows node plugin image is no longer built for 20H2, so its pods there cannot pull.",
+  "verifyCommand": "kubectl get nodes -l kubernetes.io/os=windows -o json | jq -r '.items[] | \"\\(.metadata.name): \\(.status.nodeInfo.osImage) \\(.status.nodeInfo.kernelVersion)\"'  # a kernelVersion of 10.0.19042.* is Windows 20H2",
+  "coversNotes": [
+   "Drop support for Windows 20H2"
+  ]
+ }
+]

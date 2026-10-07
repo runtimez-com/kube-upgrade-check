@@ -1,0 +1,26 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.59-describe-instance-types-becoming-mandatory",
+  "severity": "MEDIUM",
+  "title": "Custom IAM policies must add ec2:DescribeInstanceTypes (mandatory in a future release)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the controller's IAM policy is AWS-side; IRSA shows only the role ARN and EKS Pod Identity nothing at all"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment",
+   "objectName": "^ebs-csi-controller$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
+  },
+  "quote": "If you use a custom IAM policy, you will need to add `DescribeInstanceTypes` to your policy.",
+  "remediation": "Add ec2:DescribeInstanceTypes to a custom EBS CSI policy now. From v1.59 the driver calls it to handle instances with several EBS cards and falls back to a built-in table when denied; a later release removes the fallback. The AWS-managed policies include it. While here, consider the new least-privilege managed policies (issue #2918).",
+  "verifyCommand": "kubectl -n kube-system get sa ebs-csi-controller-sa -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}{\"\\n\"}'  # prints the controller's IRSA role (empty = EKS Pod Identity or node role); list its policies with aws iam list-attached-role-policies --role-name ROLE_NAME",
+  "coversNotes": [
+   "URGENT (1.59.0): The EBS CSI Driver now calls DescribeInstanceTypes at runtime to determine if an instance",
+   "URGENT (1.59.0): New AWS-managed IAM policies are available for the EBS CSI Driver that restrict the IAM",
+   "Call DescribeInstanceTypes at runtime for EBS multi-card instances"
+  ]
+ }
+]

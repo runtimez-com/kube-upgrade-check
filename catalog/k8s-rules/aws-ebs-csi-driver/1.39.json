@@ -1,0 +1,21 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.39-iam-createvolume-from-snapshot",
+  "severity": "HIGH",
+  "title": "Custom IAM policies must allow CreateVolume from snapshots (#2190)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the controller's IAM policy is AWS-side; IRSA shows only the role ARN and EKS Pod Identity nothing at all"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment",
+   "objectName": "^ebs-csi-controller$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
+  },
+  "quote": "Due to an upcoming change in handling of IAM polices for the CreateVolume API when creating a volume from an EBS snapshot, a change to your EBS CSI Driver policy may be needed.",
+  "remediation": "If the controller's role uses the AWS-managed AmazonEBSCSIDriverPolicy, nothing to do (AWS updated it in every partition on 2025-01-13). With a custom policy, apply the change in GitHub issue #2190: CreateVolume from a snapshot is now authorized against the snapshot resource as well, so the policy's ec2:CreateVolume statement must allow the snapshot ARN (and any tag conditions must not exclude it). Upstream: this applies to every driver version, upgraded or not.",
+  "verifyCommand": "kubectl -n kube-system get sa ebs-csi-controller-sa -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}{\"\\n\"}'  # prints the controller's IRSA role (empty = EKS Pod Identity or node role); list its policies with aws iam list-attached-role-policies --role-name ROLE_NAME"
+ }
+]

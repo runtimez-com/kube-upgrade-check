@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.26-helm-reuse-values-unsupported",
+  "severity": "LOW",
+  "title": "The aws-ebs-csi-driver Helm chart will stop supporting helm upgrade --reuse-values",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "how the chart is upgraded (and whether the EKS add-on manages it instead) is not visible in the cluster"
+  },
+  "quote": "The EBS CSI Driver Helm chart will stop supporting `--reuse-values` in a future release",
+  "remediation": "If the driver is installed with the aws-ebs-csi-driver Helm chart, upgrade it with the full values file (helm upgrade -f values.yaml), not --reuse-values: reused values skip every new chart default, so new required values render empty. The EKS managed add-on is unaffected.",
+  "verifyCommand": null
+ }
+]

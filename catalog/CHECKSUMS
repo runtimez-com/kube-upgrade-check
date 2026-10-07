@@ -1,4 +1,5 @@
 8e5c16309119bb16c41daa4b2cce2f0f158a6b1dbcdc71ac760b300cbf7df536  k8s-addons/argocd.json
+efab019ea897f09e6f7666311e5daefbafc713ee3070e22c2824206a17c81619  k8s-addons/aws-ebs-csi-driver.json
 62bb72695be5fb15847696c24a63bdba1151d33aa8161f15010ac0513132cf00  k8s-addons/aws-vpc-cni.json
 19e9d8e2fe075e9546164667578bb9a5cb230b32e896ec23706037b892900f13  k8s-addons/cert-manager.json
 304b28ca22eee897264ea54aa7f068fc522410d6cf1323aaf4a3e529f6bb8f68  k8s-addons/cluster-autoscaler.json
@@ -14,6 +15,7 @@ ce45c80df1f865444e48f227678874acffb6d9411447acaaedd86304769abd37  k8s-adoption/a
 febd41bff3586ac5be142b6389ae31ac487c4ac9cc687a9f6f01a75d8f734400  k8s-deprecations/removed-apis.json
 bab8fdf5d672928d23c223226d22616e0856b2920bf44edf8b1f43f854275201  k8s-node-runtime/node-runtime-rules.json
 4eaec5d73d76c314be5546cc21f5b0bbd83fdd97c5773c970252d12e94439947  k8s-plugins/removed-volume-plugins.json
+9322a3039ec197324ab7674bd17e03c753b49d142dd824e38940ccd545da0a8d  k8s-rules/argocd/_excluded.json
 d60a5b71b42b0348e754c1666db25cb3c9c8de889c141aa626e9c34f1a140102  k8s-rules/argocd/2.10.json
 16c61a3a3d3fb8b08552a4fc5e24217764097fe907e761e554b0149d254643fe  k8s-rules/argocd/2.11.json
 b0906d2b36d0df68d391bbde89d3d39625c6e2ca949d944289cd5f7d9ade86e4  k8s-rules/argocd/2.12.json
@@ -29,7 +31,28 @@ db5d7e06864bc8919ca7d7914d045dd67ff1c3ac39830ac5d6c9159f2c52fcc0  k8s-rules/argo
 1a4c87906d1952f5b3c8b914c3900f8ab90ac2e8a4c3f70eba07f9227157c2a1  k8s-rules/argocd/3.3.json
 c40a386d3ae546c38fb7d5101287e2ebfba8d3badb462c499617af67c5c274c5  k8s-rules/argocd/3.4.json
 6abaae6afefab3d667ddb11952ade37edc176862681e4c634a562d7b7ad82bb9  k8s-rules/argocd/3.5.json
-9322a3039ec197324ab7674bd17e03c753b49d142dd824e38940ccd545da0a8d  k8s-rules/argocd/_excluded.json
+0c38193886e29f2c56372023b02d046fb685ded8953a08b93563d194f201ca38  k8s-rules/aws-ebs-csi-driver/_excluded.json
+ac31a88ed35052efd2334481e34120a4bd3a8c398bd2482462ea84187d0879fe  k8s-rules/aws-ebs-csi-driver/1.17.json
+3dbe277f52ca8e7cb461595a8324c4a932191536d951d57ad9ab8758f09533bc  k8s-rules/aws-ebs-csi-driver/1.19.json
+a99a8f083436caf8bf9b1bdb3ec45a94420a3f09ebe1346f17f1880909b6f26e  k8s-rules/aws-ebs-csi-driver/1.23.json
+49a782ed58089782b92be97e3be0e6c0f3f8800f79221f94bbeea3540edd0c70  k8s-rules/aws-ebs-csi-driver/1.26.json
+5b72074ac6bf829845bf6d7aaa834b7d8be124d4052074561d0145cd8d06b0e7  k8s-rules/aws-ebs-csi-driver/1.28.json
+3a1493dc2dbf3b12d9d07d4ae184b82639502d94d538e5e29a774cad65afce23  k8s-rules/aws-ebs-csi-driver/1.33.json
+1d48eb148d42c93d8c2568e10b623d28a1547aabd6c8248c116b5191dd878dfb  k8s-rules/aws-ebs-csi-driver/1.36.json
+0a7a5cd6f1d29204054e2837ceb0313055723b4fe622de18c0829de17d834dbd  k8s-rules/aws-ebs-csi-driver/1.37.json
+48bdffdf0ec4a6240031a770b17726508a5f28c5c1935943247b3a92de428d80  k8s-rules/aws-ebs-csi-driver/1.38.json
+7f82a74850b57109b2bc8c32e2c10b925c852c55c29968362824e033520fbd0b  k8s-rules/aws-ebs-csi-driver/1.39.json
+50265be0fba6df41b0e8460221031159f542c626bd1dffd487b7e946c61efce7  k8s-rules/aws-ebs-csi-driver/1.40.json
+50f3ea7cb1e5a7e507202d18099720f1ec7782b622925cf254f126c2b64c2092  k8s-rules/aws-ebs-csi-driver/1.47.json
+de11007ca2fc99d26fb6fed6c0bc97d6a820e742506944575739eb914d7bf078  k8s-rules/aws-ebs-csi-driver/1.49.json
+013bb02c71b3cfbc902f098955ca4dfae15cf6768c976f04d1abe9fb950a0901  k8s-rules/aws-ebs-csi-driver/1.50.json
+e68e616f00f66086ba9b4c637eeafb4ff0976740044201cd8fede6c4e837c27f  k8s-rules/aws-ebs-csi-driver/1.51.json
+aba8f8999567809f8e9d611c73f64c18719455ba68e61c831b6e7bacd39def4e  k8s-rules/aws-ebs-csi-driver/1.54.json
+d97b18b2b24acc96c1882d9b0842e9eb9791ef24b000dca2404ea84c6f366ce5  k8s-rules/aws-ebs-csi-driver/1.55.json
+3c1f2fc99c4b97207afb3ef15ee86cb0e8748e5e6b25400c7fc95d77d2e7686c  k8s-rules/aws-ebs-csi-driver/1.59.json
+9affeb894f77e2465c2b73136fc3b53e7a252763ed4711b57e8cf166b8424558  k8s-rules/aws-ebs-csi-driver/1.62.json
+544f72cc7d374e034c0e9184ef1f7ab937f91a227fac98d1996c7865b4a22e37  k8s-rules/aws-ebs-csi-driver/1.63.json
+759a3c46c6d82dd6b4a691ec2f048c7b014c9c6fe843d9e50be336900b5baa09  k8s-rules/aws-vpc-cni/_excluded.json
 0e1906ddd5e767bc339b6f5b8c8f4278dcfeacbae9ce5e1e6716c7a9d6f4b409  k8s-rules/aws-vpc-cni/1.10.json
 a5eb653548ef55cfcf9cdf11b2d05d928299de8f7ed2a85e1a9855f795a98b92  k8s-rules/aws-vpc-cni/1.11.json
 c22bd76a3c76f124d87544974cee10a9371cb264eda72856465546870d8a96d7  k8s-rules/aws-vpc-cni/1.12.json
@@ -43,7 +66,7 @@ f223df9860d09466421b56271c96c9e3e1a2ba4b35d56cbfb781ed141e6e51bb  k8s-rules/aws-
 62bef3f0a9220c26dd392a4b9587a7ab2a477c685e9cd79e5b2945aba7ce1cde  k8s-rules/aws-vpc-cni/1.21.json
 ea8371be9c120dcb60ccf45671892ecee76053daa17f6a5df6062f0b977b1d9d  k8s-rules/aws-vpc-cni/1.22.json
 5ec83e29f3a4523c091799ea43a81aeba290700d87f672da620fe7cbaea11eac  k8s-rules/aws-vpc-cni/1.23.json
-759a3c46c6d82dd6b4a691ec2f048c7b014c9c6fe843d9e50be336900b5baa09  k8s-rules/aws-vpc-cni/_excluded.json
+8fb7b0d66349c2e8c5f6fef6a9e8db8160556bf27d505e24cd73ec0b54b6724e  k8s-rules/cert-manager/_excluded.json
 94ef925e31270e56367b537cacf61e4a2fba8970bd24e52ec26788bfcbc68aba  k8s-rules/cert-manager/1.10.json
 62d22bc9bf0d5b46dec33c8ffddf774fb0e78a96daad5a63aa8d5da26c0c756f  k8s-rules/cert-manager/1.11.json
 31708b58e598ab49e17815d1e3e6ac1707b043a3ecb26345966bd619b729e2ba  k8s-rules/cert-manager/1.12.json
@@ -63,7 +86,7 @@ d88902c021b30b80030974365fcf5e42d39e3c190c562b89e7a5c3e316ec393a  k8s-rules/cert
 d45d2d6d286c319e27c9ba0d6ff2298b3ee6f4606901e9a9809fd17d3565e2f1  k8s-rules/cert-manager/1.6.json
 ee91008f7a67d53016f16a05f542562941ed36450b74afebdc52fecb4132f137  k8s-rules/cert-manager/1.7.json
 d8dbada242847d8256846b6607f8cbae3c90f305aa27a2da93254b0ae50d2b80  k8s-rules/cert-manager/1.8.json
-8fb7b0d66349c2e8c5f6fef6a9e8db8160556bf27d505e24cd73ec0b54b6724e  k8s-rules/cert-manager/_excluded.json
+9063af159216d717d2fe0ad690f3569042faca9be08ff87d383b1c7a83b9d7a5  k8s-rules/coredns/_excluded.json
 173b55daf34cdc4ec85ab42f35d049ef6c96cd88aaa9079558163dbc228c0c21  k8s-rules/coredns/1.10.json
 42d657c01fdf039dcb1a787cc8daa331505c776ed52d657c84672fac6a88c3b4  k8s-rules/coredns/1.11.json
 26cb19b3065fde890ba54f620ec5e247a69786a01c2b42ca6526cd07337052f4  k8s-rules/coredns/1.12.json
@@ -74,7 +97,7 @@ a11a9fbb9c5267116d91b81f3f3c1459925128a70ab9e2cf6ef171804c24a003  k8s-rules/core
 6893b761f2c2c22bf2af976f190346a04f74cae3a6c1b5aa506816f9a624594d  k8s-rules/coredns/1.7.json
 730340471225b0f67a0b0eead298c18cb4fc08aad867b9723fc9cde44729a00d  k8s-rules/coredns/1.8.json
 3dbe0b01996316a8ac8e10cd2fb6d64706caa7ac32b1eb82d043ddbae94abd3c  k8s-rules/coredns/1.9.json
-9063af159216d717d2fe0ad690f3569042faca9be08ff87d383b1c7a83b9d7a5  k8s-rules/coredns/_excluded.json
+1538c40c572aea1c7ded4895aabb2e867daf88eb54c11b7f42bd5281aaf0ac6f  k8s-rules/istio/_excluded.json
 2e13b8cc8778a66383b848a79cdb3f1c3b544f138f40c07b8da5d7eada45d2a1  k8s-rules/istio/1.20.json
 df621ea7a4edbd2dcdca36b16b57e33c621c1e4c39594d6cdb44c82ddc80d567  k8s-rules/istio/1.21.json
 45072210ea440c05c1a91e79d11ca7110d36c98a4283eefd2dc2822368cd98d0  k8s-rules/istio/1.22.json
@@ -87,7 +110,7 @@ f0353291cf7aea17f1be4fb3783d81858cf0844b44f32453a31e6800c259f4a3  k8s-rules/isti
 d7015a15d53fcb1186e8098ffcf58dbb64051e46b714866773f01da72ceff207  k8s-rules/istio/1.29.json
 1b9394beba3285b5e79bd78c588da287024117fbd5cdc471c157230b0b5f296a  k8s-rules/istio/1.30.json
 f89efdbd1e75e2748ebf7b3b461fb421b2aac4d09ea2c7cc22cb63767468ed3a  k8s-rules/istio/1.31.json
-1538c40c572aea1c7ded4895aabb2e867daf88eb54c11b7f42bd5281aaf0ac6f  k8s-rules/istio/_excluded.json
+51dc514ae2e3bab7aede918c43da846c535ce3f939e33f9fc1c12b5278138c83  k8s-rules/karpenter/_excluded.json
 c90f12cfdf36822b248eb80cbe67a530b4bd2027b3040dc533d99c459be3f6eb  k8s-rules/karpenter/0.24.json
 afdd70e86894c61a6fccba446b6ef32fb3e14065aca74f575dd7beb60bd8340b  k8s-rules/karpenter/0.26.json
 b478c1be75d4c2cb0b3cd656c93cc6ce64d8a03076e37033343b65b1e5cc7a66  k8s-rules/karpenter/0.27.json
@@ -109,7 +132,7 @@ a68a573174c71b78c4855f4e0d792b93cef2381d474e3687f7069ddce693b409  k8s-rules/karp
 5cd872044d74ba80aa42f2844be97459453a37f107818ebaca3539ab4049c968  k8s-rules/karpenter/1.6.json
 c898759fc604613949c08c8022edf4aa81d5ee0e66a4b7c4abe458fc09a6eedb  k8s-rules/karpenter/1.7.json
 8ded38d0e2d3eda60c318e2c155182003a148bb33bbeaa6e883757a29a2908fe  k8s-rules/karpenter/1.8.json
-51dc514ae2e3bab7aede918c43da846c535ce3f939e33f9fc1c12b5278138c83  k8s-rules/karpenter/_excluded.json
+bdde5808830eadf0308dcc7d935831b7f25f05e7d875caa887093686d7bc9fc2  k8s-rules/kube-proxy/_excluded.json
 bc2ca6f7001a628e489ed9b0e62c11fb76fd351d35642a0b5c0ae1c7e2fba205  k8s-rules/kube-proxy/1.21.json
 d50cf39e906cc245e91191ee3fc54bafdd0285c493e3f58031484128c7e13592  k8s-rules/kube-proxy/1.22.json
 1566592913df9b3e8c3910ab0be431eb642ee8d359ba287378a3a6dd4b6be49d  k8s-rules/kube-proxy/1.23.json
@@ -122,9 +145,9 @@ f0e49c11256914b12151b9b139b620a4cb01e0dbc90a8b7fc21aa93c19d7e8ba  k8s-rules/kube
 80e8795d5efff36cede651f80d5b64ef1979fe8d11556cbfcf2483c0b4ef3d76  k8s-rules/kube-proxy/1.35.json
 84d2d522d5f4dbdd6c8bf5750341bf04ab8ec286b66efbb1af3f9d67738854a1  k8s-rules/kube-proxy/1.36.json
 31af9c005cec7dfb7f570430377ba1f56af8f9ed212f0954dc40b9cdde84203a  k8s-rules/kube-proxy/1.37.json
-bdde5808830eadf0308dcc7d935831b7f25f05e7d875caa887093686d7bc9fc2  k8s-rules/kube-proxy/_excluded.json
-b340bdcce149bd77df03060b860dcc5d79db95a8e143a90b152b65d98aa3b3b8  k8s-rules/kubernetes-skew-policy/0.0.json
 37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570  k8s-rules/kubernetes-skew-policy/_excluded.json
+b340bdcce149bd77df03060b860dcc5d79db95a8e143a90b152b65d98aa3b3b8  k8s-rules/kubernetes-skew-policy/0.0.json
+a85814d9e9fe39546ed41d3bd5fe5ce238bfe07010491c6c85b040ddbf28fac9  k8s-rules/kubernetes/_excluded.json
 c8d5c8f5e509109b4156424095e7251aa2c33aee23063fb551d6664c7dbceaed  k8s-rules/kubernetes/1.30.json
 ac8fb4248a4c2629885821a93770ccee1d045e2a7aa914c2766e56efd59aa35f  k8s-rules/kubernetes/1.31.json
 db821789dd37ddeee2142ce2ca0ef23dcf22e5d2dc6f211107eb65786aeba226  k8s-rules/kubernetes/1.32.json
@@ -133,7 +156,7 @@ cd3592617e0f6d8656b2460cb6b2e91822d384ad322d91bddd7eee6869bcedf6  k8s-rules/kube
 bab6b43f83735f4cd2fa90d505a04e225d51384c1f365c0fc5dd2af9956f1ba3  k8s-rules/kubernetes/1.35.json
 6ce825a32181e85cd3d0a85033334835b444036d334c5fb665601258cdda8bd0  k8s-rules/kubernetes/1.36.json
 41560129ef9406a8d8f19ddbe2ef6595c24d995fb0d271f154c3a6cfa17079bd  k8s-rules/kubernetes/1.37.json
-a85814d9e9fe39546ed41d3bd5fe5ce238bfe07010491c6c85b040ddbf28fac9  k8s-rules/kubernetes/_excluded.json
+d2ef37b01c04ef5dcc7d2528101c7eb7b75c1bd5c8f27f868980ef74ded66531  k8s-rules/traefik/_excluded.json
 953c4aac4bb32efc8fc50930e9d5fa92d28f07036093327aaad44ceeb19c9e38  k8s-rules/traefik/2.10.json
 30d182e4232c70e395b6f2d4966ec1e75d9dc3c20d0958b56f825fb11fb3a3b1  k8s-rules/traefik/2.11.json
 4c0a0f64f3e9ce98ed8739ee973032b4893ea1e1d77f5f82323f2bc40a6a973e  k8s-rules/traefik/3.0.json
@@ -144,4 +167,3 @@ a2198fcfd05ad3a4f4d7fcead1f7438bc25a1148cde95826e4e3abdcf72d2123  k8s-rules/trae
 087779df523f269304d139a2e2504c3c33011aba9797bc4c9ce17ba3335078e9  k8s-rules/traefik/3.5.json
 25fffa1578b3443c3277326d0aaddc4f67ba8b051fc8ee5c52bbe2ae2f169b3c  k8s-rules/traefik/3.6.json
 bba25ba6f70181f08678394789ba59f71975809cddb826240409488b1cc2591a  k8s-rules/traefik/3.7.json
-d2ef37b01c04ef5dcc7d2528101c7eb7b75c1bd5c8f27f868980ef74ded66531  k8s-rules/traefik/_excluded.json

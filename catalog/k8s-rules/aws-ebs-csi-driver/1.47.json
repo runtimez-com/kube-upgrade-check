@@ -1,0 +1,24 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.47-blockexpress-parameter-deprecated",
+  "severity": "LOW",
+  "title": "StorageClass parameter blockExpress is deprecated and ignored; new io2 volumes cap at 256,000 IOPS",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "StorageClass parameters are not collected yet (Storage tab slice); the hint names the EBS CSI StorageClasses"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "The `blockExpress` StorageClass parameter is deprecated, effective immediately",
+  "remediation": "Remove blockExpress from io2 StorageClasses: from v1.47 it only logs a deprecation warning, and every new io2 volume is Block Express (up to 256,000 IOPS). Volumes above 64,000 IOPS may not reach full performance on non-Nitro instances.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # a parameter blockExpress=… is ignored from v1.47",
+  "coversNotes": [
+   "URGENT (1.47.0): Starting in v1.47.0, newly created io2 volumes will always use a cap of 256,000 IOPS,",
+   "URGENT (1.47.0): Starting in v1.47.0, the blockExpress parameter has no effect (other than logging a"
+  ]
+ }
+]

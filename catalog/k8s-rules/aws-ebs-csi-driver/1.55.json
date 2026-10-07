@@ -1,0 +1,14 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.55-a1-instances-unsupported",
+  "severity": "HIGH",
+  "title": "a1.* instances are not supported from v1.55",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a node's instance type is a label, which the rule vocabulary cannot scan by value"
+  },
+  "quote": "**`v1.55.0` and later of the EBS CSI Driver does not support `a1.*` instances.**",
+  "remediation": "Move workloads off a1.* (first-generation Graviton) nodes before upgrading — the driver from v1.55 does not support them and the -a1compat image is no longer published, so the node plugin on those nodes cannot run. Replace them with a current Graviton family (m7g, c7g, r7g, …) and drop -a1compat image overrides.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | select(.metadata.labels[\"node.kubernetes.io/instance-type\"] // \"\" | startswith(\"a1.\")) | .metadata.name'  # each printed node is an a1.* instance the driver no longer supports"
+ }
+]

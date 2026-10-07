@@ -1,0 +1,23 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.33-topology-key-changed",
+  "severity": "MEDIUM",
+  "title": "New volumes use topology.kubernetes.io/zone instead of topology.ebs.csi.aws.com/zone",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "what depends on the topology label (StorageClass allowedTopologies, scripts, policies) is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "The AZ topology key `CreateVolume` returns has changed from `topology.ebs.csi.aws.com/zone` to `topology.kubernetes.io/zone`. Volumes created on `v1.33.0` or any future version will be incompatible with versions before `v1.28.0`. No other customer-facing impact is expected unless you directly depend on the topology label.",
+  "remediation": "Check anything that selects on topology.ebs.csi.aws.com/zone — StorageClass allowedTopologies, admission policies, tooling that reads PV nodeAffinity — and accept topology.kubernetes.io/zone as well: PVs created from v1.33 carry only the standard key. After this upgrade do not roll the driver back below v1.28.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | select(.allowedTopologies != null) | \"\\(.metadata.name): \\([.allowedTopologies[].matchLabelExpressions[].key] | join(\",\"))\"'  # a StorageClass listing topology.ebs.csi.aws.com/zone depends on the old key",
+  "coversNotes": [
+   "Migrate CreateVolume response topology to standard label topology.kubernetes.io/zone"
+  ]
+ }
+]

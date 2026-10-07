@@ -1,0 +1,78 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.38-iam-createvolume-from-snapshot",
+  "severity": "HIGH",
+  "title": "Custom IAM policies must allow CreateVolume from snapshots (#2190)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the controller's IAM policy is AWS-side; IRSA shows only the role ARN and EKS Pod Identity nothing at all"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment",
+   "objectName": "^ebs-csi-controller$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
+  },
+  "quote": "Due to an upcoming change in handling of IAM polices for the CreateVolume API when creating a volume from an EBS snapshot, a change to your EBS CSI Driver policy may be needed.",
+  "remediation": "If the controller's role uses the AWS-managed AmazonEBSCSIDriverPolicy, nothing to do (AWS updated it in every partition on 2025-01-13). With a custom policy, apply the change in GitHub issue #2190: CreateVolume from a snapshot is now authorized against the snapshot resource as well, so the policy's ec2:CreateVolume statement must allow the snapshot ARN (and any tag conditions must not exclude it). Upstream: this applies to every driver version, upgraded or not.",
+  "verifyCommand": "kubectl -n kube-system get sa ebs-csi-controller-sa -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}{\"\\n\"}'  # prints the controller's IRSA role (empty = EKS Pod Identity or node role); list its policies with aws iam list-attached-role-policies --role-name ROLE_NAME"
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.38-v1-38-0-images-recalled",
+  "severity": "HIGH",
+  "title": "v1.38.0 images were promoted incorrectly — do not run them",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "target": "containers[].image",
+   "value": "aws-ebs-csi-driver:v1\\.38\\.0([^0-9]|$)",
+   "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
+  },
+  "quote": "Do not use any images from `v1.38.0` and upgrade directly to `v1.38.1`.",
+  "remediation": "Move every EBS CSI workload off v1.38.0 now — straight to v1.38.1 or the target version. The v1.38.0 images were promoted by a process error and are not the reviewed release.",
+  "verifyCommand": "kubectl -n kube-system get deploy/ebs-csi-controller ds/ebs-csi-node -o json | jq -r '.items[] | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($w): \\(.image)\"'  # a tag of v1.38.0 is the recalled build",
+  "introducedIn": [
+   "1.38.1"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.38-metrics-renamed",
+  "severity": "MEDIUM",
+  "title": "EBS CSI metrics renamed (aws_ebs_csi_ prefix, _total, seconds) — dashboards and alerts on the old names go blank",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "dashboards, recording rules and alerts live outside the cluster inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment",
+   "objectName": "^ebs-csi-controller$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
+  },
+  "quote": "The controller plugin metrics now use the prefix `aws_ebs_csi_` instead of `cloudprovider_aws_`.",
+  "remediation": "Rewrite dashboards, recording rules and alerts: controller metrics move from cloudprovider_aws_* to aws_ebs_csi_*; node (NVMe) metrics gain the aws_ebs_csi_ prefix and a _total suffix on counters, and their time units change from microseconds to seconds (divide old thresholds by 1,000,000). From v1.41 the old controller names are off unless the controller runs --deprecated-metrics=true, and from v1.42 the node service no longer serves controller metrics.",
+  "verifyCommand": "kubectl -n kube-system get deploy ebs-csi-controller -o json | jq -r '.spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | .args | join(\" \")'  # --http-endpoint means metrics are scraped (rename dashboards); --deprecated-metrics=true keeps the old names until it is removed",
+  "coversNotes": [
+   "URGENT (1.38.1): Node plugin metrics have been renamed to follow Prometheus best practices",
+   "URGENT (1.38.1): Added aws_ebs_csi_ prefix",
+   "URGENT (1.38.1): Added _total suffix for counters",
+   "URGENT (1.38.1): Changed time units from microseconds to seconds for all counters",
+   "Confirm metrics to Prometheus best practices"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.38-kustomize-volumeattributesclass-default",
+  "severity": "LOW",
+  "title": "Kustomize installs: VolumeAttributesClass is on by default (extra errors without the feature gate)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which install method rendered the workloads is not collected, nor the control plane's feature gates"
+  },
+  "quote": "If you are deploying using the Kustomize manifests on a cluster that does not have the `VolumeAttributesClass` feature gate enabled on the control plane, you may see harmless extra failures related to the feature in the csi-provisioner and/or csi-resizer logs.",
+  "remediation": "Only for installs built from the upstream Kustomize overlays: on Kubernetes before 1.34 (VolumeAttributesClass not GA) expect VolumeAttributesClass errors in csi-provisioner / csi-resizer logs; they are harmless. Do not chase them as an upgrade failure.",
+  "verifyCommand": null
+ }
+]

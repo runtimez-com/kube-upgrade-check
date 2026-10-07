@@ -1,0 +1,21 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.17-k8s-gcr-io-images-must-move",
+  "severity": "HIGH",
+  "title": "EBS CSI images pulled from k8s.gcr.io must move to registry.k8s.io",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "target": "containers[].image",
+   "value": "^k8s\\.gcr\\.io/",
+   "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
+  },
+  "quote": "If you are using `k8s.gcr.io` you MUST [move to `registry.k8s.io`]",
+  "remediation": "Repoint every EBS CSI container image (the driver and its csi-* sidecars and livenessprobe) that still pulls from k8s.gcr.io to registry.k8s.io, public.ecr.aws or the EKS ECR registry. k8s.gcr.io is frozen: tags newer than its freeze do not exist there, so an upgrade that only bumps tags fails to pull.",
+  "verifyCommand": "kubectl -n kube-system get deploy/ebs-csi-controller ds/ebs-csi-node -o json | jq -r '.items[] | .metadata.name as $w | .spec.template.spec.containers[] | select(.image | test(\"^k8s\\\\.gcr\\\\.io/\")) | \"\\($w): \\(.name) \\(.image)\"'  # each printed container still pulls from the frozen k8s.gcr.io registry",
+  "coversNotes": [
+   "URGENT (1.17.0): Issues related to k8s.gcr.io will no longer be accepted. public.ecr.aws and"
+  ]
+ }
+]
