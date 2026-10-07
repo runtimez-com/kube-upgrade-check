@@ -1,0 +1,18 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.23-al2023-base-image-no-downgrade",
+  "severity": "MEDIUM",
+  "title": "Crossing v1.23 is one-way: volumes formatted after it may not mount on an older driver",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a rollback hazard: nothing in the current state shows which volumes were formatted by which driver"
+  },
+  "quote": "New volumes created on versions of the EBS CSI Driver with an AL2023 base image may fail to mount or resize on versions of the EBS CSI Driver with an AL2 base image. For this reason, downgrading the EBS CSI Driver across base images will not be supported and is strongly discouraged.",
+  "remediation": "Plan this upgrade's rollback as 'roll back to v1.23 or newer'. The v1.23 image formats with e2fsprogs 1.46.5 and xfsprogs 5.18.0; a volume it formats can carry filesystem features the AL2-based driver's tools cannot mount or resize. The same newer xfsprogs formats XFS with bigtime/inobtcount, which nodes on Linux kernel 5.4 or older cannot mount: on such nodes with XFS StorageClasses, new volumes fail to mount until the node plugin runs --legacy-xfs (EKS add-on / Helm node.legacyXFS, available from v1.35, so the target must be v1.35 or newer), or the nodes move to a newer kernel.",
+  "verifyCommand": null,
+  "coversNotes": [
+   "URGENT (1.23.0): The EBS CSI Driver's Linux base image was upgraded from Amazon Linux 2 (AL2) to Amazon",
+   "Upgrade Linux base image to AL2023"
+  ]
+ }
+]

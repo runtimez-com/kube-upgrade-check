@@ -391,6 +391,18 @@ func rowsOf(inv *inventory.Inventory, kind string) ([]row, rowState, string) {
 		}
 		return out, rowsRead, ""
 	}
+	if kind == "StorageClass" {
+		// The typed storage collector already lists every class (name + provisioner, cluster-scoped);
+		// StorageClass hints — e.g. "the EBS CSI StorageClasses" — select on provisioner.
+		if !inv.Read(inventory.CollectorStorage) {
+			return nil, rowsUnread, inv.Collected[inventory.CollectorStorage].Reason
+		}
+		out := make([]row, 0, len(inv.StorageClasses))
+		for _, sc := range inv.StorageClasses {
+			out = append(out, row{kind: kind, ref: sc.Name, name: sc.Name, spec: map[string]any{"provisioner": sc.Provisioner}})
+		}
+		return out, rowsRead, ""
+	}
 	if reason, ok := inv.CRUnread[kind]; ok {
 		return nil, rowsUnread, reason
 	}
@@ -1158,6 +1170,10 @@ func typedCount(inv *inventory.Inventory, kind string) int {
 	switch kind {
 	case "Node":
 		return len(inv.Nodes)
+	case "StorageClass":
+		if n := len(inv.StorageClasses); n > 0 {
+			return n
+		}
 	case "Deployment", "DaemonSet", "StatefulSet", "Job", "CronJob", "ReplicaSet":
 		n := 0
 		for _, w := range inv.Workloads {

@@ -268,10 +268,14 @@ type Addon struct {
 	// inferred from the shape: a currency hop selects release-note rules the same way a support
 	// hop does, but it is not a claim that the Kubernetes upgrade requires the move, and every
 	// surface that shows it says so.
-	CurrencyHop    bool          `json:"currencyHop"`
-	InventoryKinds []string      `json:"inventoryKinds"`
-	Rules          []AddonRule   `json:"rules"`
-	UpgradeNotes   []UpgradeNote `json:"upgradeNotes"`
+	CurrencyHop bool `json:"currencyHop"`
+	// SupportedMinorsBehindLatest is the vendor's own support policy ("the latest version and one
+	// prior" = 1): an installed version more minors behind LatestKnownVersion is outside it. Not a
+	// Kubernetes compatibility window. Nil when the vendor states no such policy.
+	SupportedMinorsBehindLatest *int          `json:"supportedMinorsBehindLatest"`
+	InventoryKinds              []string      `json:"inventoryKinds"`
+	Rules                       []AddonRule   `json:"rules"`
+	UpgradeNotes                []UpgradeNote `json:"upgradeNotes"`
 }
 
 // ---------- k8s-adoption/adoption-suggestions.json ----------

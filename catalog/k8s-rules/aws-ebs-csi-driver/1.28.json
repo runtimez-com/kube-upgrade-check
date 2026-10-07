@@ -1,0 +1,40 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.28-reserved-attachments-heuristic",
+  "severity": "LOW",
+  "title": "Node attachment limits are guessed from IMDS — nodes with extra non-CSI volumes should pin --reserved-volume-attachments",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "whether a node mounts extra non-CSI EBS volumes is decided by its launch template, not the cluster"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^ebs-csi-node$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
+  },
+  "quote": "It is strongly encouraged for users that need to reserve a well-known number of volume slots for non-CSI volumes (such as mounting an extra volume for `/var/lib/docker` data) use this new CLI option to avoid incorrect or incosistent behavior from the heuristic.",
+  "remediation": "On node groups whose launch template attaches extra EBS volumes (a /var/lib/docker or containerd data disk), set --reserved-volume-attachments on the node plugin (EKS add-on / Helm: node.reservedVolumeAttachments) to the number of non-CSI EBS volumes INCLUDING the root volume (the value replaces the heuristic's 'block device mappings + 1 for root'; upstream's example is 2 for root + one data disk). The option is new in v1.28; the heuristic is older. Otherwise the plugin's IMDS guess can over-report the CSINode attach limit and pods get stuck attaching instead of being scheduled elsewhere.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | select($w | startswith(\"ebs-csi-node\")) | \"\\($n)/\\($w): \\(.args | join(\" \"))\"'  # no --reserved-volume-attachments / --volume-attach-limit means the IMDS heuristic decides the limit",
+  "coversNotes": [
+   "Add ability to override heuristic-determined reserved attachments via",
+   "In its default behavior, the EBS CSI Driver will attempt to guess the number of reserved"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.28-topology-key-migration-rollback-floor",
+  "severity": "LOW",
+  "title": "Volumes created after the topology-key migration cannot be used by a driver older than v1.28",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which volumes were created after the migration is not collected"
+  },
+  "quote": "After this future migration, downgrades of the EBS CSI Driver to versions prior to `v1.28.0` will become impossible in some environments (particularly, environments not running the [AWS CCM](https://github.com/kubernetes/cloud-provider-aws)).",
+  "remediation": "Treat v1.28 as the rollback floor once the driver is at v1.33 or newer: volumes it creates carry the topology.kubernetes.io/zone key, which drivers before v1.28 do not report, so those volumes may not be scheduled or attached after a rollback below v1.28. Upstream scopes this to some environments — particularly clusters NOT running the AWS cloud controller manager, whose nodes would otherwise still carry the standard zone label.",
+  "verifyCommand": "kubectl get pv -o json | jq -r '.items[] | select(.spec.csi.driver == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\([.spec.nodeAffinity.required.nodeSelectorTerms[].matchExpressions[].key] | unique | join(\",\"))\"'  # PVs listing topology.kubernetes.io/zone need a driver at v1.28 or newer",
+  "coversNotes": [
+   "A future release of the EBS CSI Driver will migrate the topology key for created volumes"
+  ]
+ }
+]
