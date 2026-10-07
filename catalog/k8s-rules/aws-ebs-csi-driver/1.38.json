@@ -15,8 +15,8 @@
    "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
   },
   "quote": "Due to an upcoming change in handling of IAM polices for the CreateVolume API when creating a volume from an EBS snapshot, a change to your EBS CSI Driver policy may be needed.",
-  "remediation": "If the controller's role uses the AWS-managed AmazonEBSCSIDriverPolicy, nothing to do (AWS updated it in every partition on 2025-01-13). With a custom policy, apply the change in GitHub issue #2190: CreateVolume from a snapshot is now authorized against the snapshot resource as well, so the policy's ec2:CreateVolume statement must allow the snapshot ARN (and any tag conditions must not exclude it). Upstream: this applies to every driver version, upgraded or not.",
-  "verifyCommand": "kubectl -n kube-system get sa ebs-csi-controller-sa -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}{\"\\n\"}'  # prints the controller's IRSA role (empty = EKS Pod Identity or node role); list its policies with aws iam list-attached-role-policies --role-name ROLE_NAME"
+  "remediation": "If the controller's role uses the AWS-managed AmazonEBSCSIDriverPolicy, nothing to do (AWS updated it in every partition on 2025-01-13). With a custom policy, apply the change in GitHub issue #2190: CreateVolume from a snapshot is now authorized against the snapshot resource as well, so add a statement allowing ec2:CreateVolume on arn:aws:ec2:*:*:snapshot/* with no tag condition (upstream's example policy). Upstream: this applies to every driver version, upgraded or not.",
+  "verifyCommand": "kubectl get sa -A -o json | jq -r '.items[] | select(.metadata.name == \"ebs-csi-controller-sa\") | \"\\(.metadata.namespace): \\(.metadata.annotations[\"eks.amazonaws.com/role-arn\"] // \"no IRSA annotation\")\"'  # prints the controller's IRSA role; with none, aws eks list-pod-identity-associations --cluster-name CLUSTER_NAME --service-account ebs-csi-controller-sa names the Pod Identity role; list its policies with aws iam list-attached-role-policies --role-name ROLE_NAME"
  },
  {
   "ruleId": "rtz-aws-ebs-csi-driver-1.38-v1-38-0-images-recalled",
@@ -25,14 +25,14 @@
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment|DaemonSet",
-   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
    "target": "containers[].image",
    "value": "aws-ebs-csi-driver:v1\\.38\\.0([^0-9]|$)",
    "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
   },
   "quote": "Do not use any images from `v1.38.0` and upgrade directly to `v1.38.1`.",
-  "remediation": "Move every EBS CSI workload off v1.38.0 now — straight to v1.38.1 or the target version. The v1.38.0 images were promoted by a process error and are not the reviewed release.",
-  "verifyCommand": "kubectl -n kube-system get deploy/ebs-csi-controller ds/ebs-csi-node -o json | jq -r '.items[] | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($w): \\(.image)\"'  # a tag of v1.38.0 is the recalled build",
+  "remediation": "Move every EBS CSI workload off v1.38.0 — straight to v1.38.1 or the target version. Upstream: the v1.38.0 images were promoted incorrectly due to a process error; v1.38.1 differs from it only by golang.org/x/crypto v0.30.0 -> v0.31.0.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($n)/\\($w): \\(.image)\"'  # a tag of v1.38.0 is the recalled build",
   "introducedIn": [
    "1.38.1"
   ]
@@ -53,8 +53,8 @@
    "value": "(^|/)aws-ebs-csi-driver([:@]|$)"
   },
   "quote": "The controller plugin metrics now use the prefix `aws_ebs_csi_` instead of `cloudprovider_aws_`.",
-  "remediation": "Rewrite dashboards, recording rules and alerts: controller metrics move from cloudprovider_aws_* to aws_ebs_csi_*; node (NVMe) metrics gain the aws_ebs_csi_ prefix and a _total suffix on counters, and their time units change from microseconds to seconds (divide old thresholds by 1,000,000). From v1.41 the old controller names are off unless the controller runs --deprecated-metrics=true, and from v1.42 the node service no longer serves controller metrics.",
-  "verifyCommand": "kubectl -n kube-system get deploy ebs-csi-controller -o json | jq -r '.spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | .args | join(\" \")'  # --http-endpoint means metrics are scraped (rename dashboards); --deprecated-metrics=true keeps the old names until it is removed",
+  "remediation": "Rewrite dashboards, recording rules and alerts: controller metrics move from cloudprovider_aws_* to aws_ebs_csi_* — not a pure prefix swap: cloudprovider_aws_api_throttled_requests_total -> aws_ebs_csi_api_request_throttles_total, cloudprovider_aws_api_request_errors -> aws_ebs_csi_api_request_errors_total, cloudprovider_aws_api_request_duration_seconds -> aws_ebs_csi_api_request_duration_seconds; node (NVMe) metrics gain the aws_ebs_csi_ prefix and a _total suffix on counters, and their time units change from microseconds to seconds (divide old thresholds by 1,000,000). From v1.41 the old controller names are off unless the controller runs --deprecated-metrics=true, and from v1.42 the node service no longer serves controller metrics.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | select($w == \"ebs-csi-controller\") | \"\\($n)/\\($w): \\(.args | join(\" \"))\"'  # --http-endpoint means metrics are scraped (rename dashboards); --deprecated-metrics=true keeps the old names until it is removed",
   "coversNotes": [
    "URGENT (1.38.1): Node plugin metrics have been renamed to follow Prometheus best practices",
    "URGENT (1.38.1): Added aws_ebs_csi_ prefix",

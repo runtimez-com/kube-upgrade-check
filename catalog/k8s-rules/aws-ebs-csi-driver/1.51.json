@@ -6,14 +6,14 @@
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment|DaemonSet",
-   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
    "target": "containers[].image",
    "value": "aws-ebs-csi-driver:v1\\.51\\.0([^0-9]|$)",
    "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
   },
   "quote": "**WARNING: This version contains a bug that breaks handling of throughput. It is strongly recommended to skip directly to `v1.51.1` or later.**",
   "remediation": "This release mishandles StorageClass throughput: volumes can be created without the throughput you asked for. Upgrade straight past it (to the target version); if the cluster runs it now, re-check gp3 volumes created while it ran (aws ec2 describe-volumes --query 'Volumes[].[VolumeId,Throughput]').",
-  "verifyCommand": "kubectl -n kube-system get deploy ebs-csi-controller -o jsonpath='{.spec.template.spec.containers[?(@.name==\"ebs-plugin\")].image}{\"\\n\"}'  # a tag of v1.51.0 is the affected build",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($n)/\\($w): \\(.image)\"'  # a tag of v1.51.0 is the affected build",
   "introducedIn": [
    "1.51.1"
   ]

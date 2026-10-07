@@ -6,13 +6,13 @@
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment|DaemonSet",
-   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
    "target": "containers[].image",
    "value": "aws-ebs-csi-driver:v[0-9.]+-a1compat",
    "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
   },
   "quote": "`v1.55.0` and later will not support `a1.*` instances.",
-  "remediation": "Move workloads off a1.* (first-generation Graviton) nodes before upgrading — the driver from v1.55 does not support them and the -a1compat image is no longer published, so the node plugin on those nodes cannot run. Replace them with a current Graviton family (m7g, c7g, r7g, …) and drop -a1compat image overrides.",
+  "remediation": "Move workloads off a1.* (first-generation Graviton) nodes before upgrading — the driver from v1.55 does not support them and the -a1compat image is no longer published, so the node plugin on those nodes cannot run. Replace them with a current Graviton family (m7g, c7g, r7g, …) and drop -a1compat image overrides; Helm installs must also remove a1CompatibilityDaemonSet from their values (chart v2.55 drops the ebs-csi-node-a1compat DaemonSet, and values schema validation may reject the key).",
   "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | select(.metadata.labels[\"node.kubernetes.io/instance-type\"] // \"\" | startswith(\"a1.\")) | .metadata.name'  # each printed node is an a1.* instance the driver drops in v1.55"
  }
 ]

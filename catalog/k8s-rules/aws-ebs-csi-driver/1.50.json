@@ -2,20 +2,20 @@
  {
   "ruleId": "rtz-aws-ebs-csi-driver-1.50-xfs-nrext64-al2-kernels",
   "severity": "HIGH",
-  "title": "New XFS volumes may not mount on Amazon Linux 2 nodes (xfsprogs nrext64) — set legacyXFS",
+  "title": "New XFS volumes may not mount on nodes with older kernels (xfsprogs nrext64; Amazon Linux 2) — set legacyXFS",
   "detection": {
    "kind": "NOT_DETECTABLE",
-   "reason": "StorageClass fstype is not collected yet (Storage tab slice); the hint names the Amazon Linux 2 nodes"
+   "reason": "StorageClass fstype and node kernel versions are not collected yet (Storage tab slice); the hint names nodes whose OS image ships an older kernel"
   },
   "scope": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Node",
    "target": "osImage",
-   "value": "^Amazon Linux 2$"
+   "value": "^Amazon Linux 2$|^Ubuntu 2[02]\\.04|^Bottlerocket"
   },
   "quote": "**As a result, newly formatted XFS volumes may fail to mount on nodes with older kernel versions.**",
-  "remediation": "On clusters whose nodes run Amazon Linux 2 (or another kernel older than 5.10) and whose StorageClasses use csi.storage.k8s.io/fstype: xfs, set legacy XFS formatting before upgrading — EKS add-on node.legacyXFS=true / Helm node.legacyXFS / flag --legacy-xfs on the node plugin (v1.49.1+, and from v1.49.1 it also disables nrext64). Otherwise new XFS volumes are formatted with nrext64 and fail to mount on those nodes. Moving the nodes to AL2023 removes the need.",
-  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # fstype=xfs (csi.storage.k8s.io/fstype) on a cluster with Amazon Linux 2 nodes needs legacyXFS",
+  "remediation": "On clusters with XFS StorageClasses (csi.storage.k8s.io/fstype: xfs) and nodes on older kernels — upstream names Amazon Linux 2; the nrext64 feature needs Linux 5.19 or newer, so AL2 (4.14/5.10), Ubuntu 20.04/22.04 GA kernels and Bottlerocket on 5.10/5.15 are affected — set legacy XFS formatting before upgrading: EKS add-on / Helm node.legacyXFS=true, flag --legacy-xfs on the node plugin. It also disables nrext64 only in v1.49.1, v1.50.1 and v1.51.0 or newer (not v1.49.0 / v1.50.0), so target one of those. Otherwise new XFS volumes are formatted with nrext64 and fail to mount on those nodes. The setting affects only volumes formatted after it is enabled: volumes already formatted by v1.49.0 / v1.50.0 must be re-created. Moving the nodes to a newer kernel (AL2023) removes the need.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | \"\\(.metadata.name): \\(.status.nodeInfo.osImage) kernel \\(.status.nodeInfo.kernelVersion)\"'  # a kernel older than 5.19 cannot mount nrext64 XFS; then: kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # fstype=xfs (csi.storage.k8s.io/fstype) on a cluster with such nodes needs legacyXFS",
   "coversNotes": [
    "URGENT (1.50.0): A workaround is available in v1.50.1 and later.",
    "URGENT (1.50.1): A workaround is available via the --legacy-xfs and node.legacyXFS parameters, see the full",
@@ -29,16 +29,34 @@
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment|DaemonSet",
-   "objectName": "^ebs-csi-(controller|node|node-windows)$",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
    "target": "containers[].image",
    "value": "aws-ebs-csi-driver:v1\\.50\\.[01]([^0-9]|$)",
    "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
   },
   "quote": "**WARNING: This version contains a bug that breaks handling of throughput. It is strongly recommended to skip directly to `v1.50.2` or later.**",
   "remediation": "This release mishandles StorageClass throughput: volumes can be created without the throughput you asked for. Upgrade straight past it (to the target version); if the cluster runs it now, re-check gp3 volumes created while it ran (aws ec2 describe-volumes --query 'Volumes[].[VolumeId,Throughput]').",
-  "verifyCommand": "kubectl -n kube-system get deploy ebs-csi-controller -o jsonpath='{.spec.template.spec.containers[?(@.name==\"ebs-plugin\")].image}{\"\\n\"}'  # a tag of v1.50.0 or v1.50.1 is the affected build",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($n)/\\($w): \\(.image)\"'  # a tag of v1.50.0 or v1.50.1 is the affected build",
   "introducedIn": [
    "1.50.2"
   ]
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.50-gp3-iops-cap-from-ec2",
+  "severity": "LOW",
+  "title": "gp3 IOPS are no longer clamped at 16,000 — StorageClasses relying on the clamp now provision more IOPS",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "StorageClass parameters are not collected yet (Storage tab slice); the hint names the EBS CSI StorageClasses"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "Retrieve maximum IOPS limit dynamically via `CreateVolume` dry-run to support increased IOPS limits for GP3 and other volume types",
+  "remediation": "StorageClasses that size IOPS from capacity (iopsPerGB, with allowAutoIOPSPerGBIncrease) or request more IOPS than the old clamp now provision more IOPS — and cost more — than before the upgrade: v1.44 raised the io2 IOPS:GiB ratio from 500:1 to 1000:1, v1.47 the io2 total cap from 64,000 to 256,000 (Block Express), and v1.50 replaced gp3's fixed 16,000 cap with the limit EC2 reports. Set an explicit iops (and throughput) on those StorageClasses to keep today's cost.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # type=gp3 with iopsPerGB, or iops above 16000, now provisions up to the EC2-reported maximum"
  }
 ]
