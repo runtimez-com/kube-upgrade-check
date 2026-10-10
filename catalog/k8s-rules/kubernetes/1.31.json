@@ -37,6 +37,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.31-pv-mount-options-annotation-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "PersistentVolumes still using the volume.beta.kubernetes.io/mount-options annotation now warn on every write",
     "detection": {

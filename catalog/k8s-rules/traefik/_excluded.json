@@ -58,5 +58,10 @@
     "version": "3.6",
     "note": "Docker provider: minimum Docker Engine version",
     "reason": "the Docker provider is not a Kubernetes provider, and the Docker Engine API version it requires is a property of the Docker host, not of any Kubernetes object."
+  },
+  {
+    "version": "3.7",
+    "note": "Consul Catalog and Nomad: colliding service configurations",
+    "reason": "the Consul Catalog and Nomad providers are not Kubernetes providers — they discover configuration from the Consul service catalog and Nomad job specifications, so nothing they declare is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
   }
 ]
