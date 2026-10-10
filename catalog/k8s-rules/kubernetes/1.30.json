@@ -53,6 +53,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.30-apparmor-annotations-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "The AppArmor beta annotations are deprecated in favour of securityContext.appArmorProfile",
     "detection": {

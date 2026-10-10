@@ -58,7 +58,7 @@
   {
     "ruleId": "rtz-istio-1.27-native-sidecar-default",
     "severity": "HIGH",
-    "title": "Native sidecars are on by default — `istio-proxy` becomes an init container, which other mutating webhooks and controllers may not expect",
+    "title": "Native sidecars switch on automatically once every node runs Kubernetes 1.33 — `istio-proxy` becomes an init container, which other mutating webhooks and controllers may not expect",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "which webhooks assume istio-proxy is a regular container is not derivable from their configuration; the mutating webhooks are the population to review"
@@ -68,7 +68,7 @@
       "objectKind": "MutatingWebhookConfiguration"
     },
     "quote": "Native sidecars are now enabled by default for eligible pods. This changes `istio-proxy`from a container to an init container. This can cause compatibility issues with other mutating webhooks or controllers in your cluster that expect to modify the `istio-proxy` as a regular container.",
-    "remediation": "Test every other mutating webhook and any controller that inspects `spec.containers` for `istio-proxy` (vault-injector, OPA/Kyverno mutations, log sidecar injectors, custom operators) against a canary namespace before upgrading; set `ENABLE_NATIVE_SIDECARS=false` on istiod to keep the classic container where a controller cannot be fixed.",
+    "remediation": "Test every other mutating webhook and any controller that inspects `spec.containers` for `istio-proxy` (vault-injector, OPA/Kyverno mutations, log sidecar injectors, custom operators) against a canary namespace before upgrading; set `ENABLE_NATIVE_SIDECARS=false` on istiod, or annotate the pods `sidecar.istio.io/nativeSidecar: \"false\"`, to keep the classic container where a controller cannot be fixed. The 1.27 default is `auto`, not `true` as the release note says: injection switches only when every Node (Fargate pods included) reports kubelet 1.33 or newer, so the change lands when the last older node is gone. rtz-istio-native-sidecar-switch names the affected workloads.",
     "verifyCommand": "kubectl get mutatingwebhookconfigurations -o json | jq -r '.items[] | select(.metadata.name | test(\"istio\") | not) | .metadata.name'  # each printed webhook may mutate pods after Istio injection and must cope with istio-proxy as an init container"
   },
   {

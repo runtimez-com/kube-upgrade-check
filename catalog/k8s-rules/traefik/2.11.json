@@ -70,17 +70,19 @@
     "verifyCommand": "kubectl get tlsoptions.traefik.containo.us,tlsstores.traefik.containo.us,tlsoptions.traefik.io,tlsstores.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name == \"default\") | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # any row is a cluster-wide default owned by that namespace"
   },
   {
-    "ruleId": "rtz-traefik-2.11-conflicting-tls-options-fall-back-to-default",
-    "severity": "HIGH",
-    "title": "Routers sharing a host name with different TLS options fall back to default",
+    "ruleId": "rtz-traefik-2.11-strict-tls-options-available",
+    "severity": "LOW",
+    "title": "New core.strictTLSOptions option can turn the silent default-TLS fallback into disabled routers",
     "detection": {
-      "kind": "SPEC_FIELD_PRESENT",
-      "objectKind": "IngressRoute",
-      "target": "tls"
+      "kind": "NOT_DETECTABLE",
+      "reason": "core.strictTLSOptions is a static (install) option set through container args, Helm values or a static config file; whether two routers actually conflict is the live Traefik risk rule tls-options-conflict, which names the routes"
     },
-    "quote": "The TLS options are configured on a router, but they are applied during the TLS handshake, before the routing occurs, and are therefore mapped to the host names found in the router rule rather than to the router itself.",
-    "remediation": "Review the listed routes: where two serve the same host name on the same entry point with different TLS options, Traefik cannot choose and applies the `default` options for that host name. Consolidate to one TLS option per host name, or split the host names across entry points. The failure is silent — a route can look strictly configured while serving the default policy.",
-    "verifyCommand": "kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.tls != null) | .metadata.namespace + \"/\" + .metadata.name + \"  entryPoints=\" + ((.spec.entryPoints // []) | join(\",\")) + \"  tlsOptions=\" + (.spec.tls.options.name // \"default\")' | sort # two rows sharing a host with different tlsOptions both fall back to default"
+    "quote": "Starting with `v2.11.55`, the new `core.strictTLSOptions` static configuration option disables this fallback: the routers involved in the conflict are marked in error and are not built at all.",
+    "remediation": "Nothing changes on upgrade: a host served on one entry point with different TLS options already falls back to the `default` options, and still does. This release adds core.strictTLSOptions, which disables the conflicting routers instead. Check the Risk tab for tls-options-conflict first — enabling the option while a conflict exists takes those routers down.",
+    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[]?.args[]?] | map(tostring) | any(test(\"(?i)strictTLSOptions\"))) | .metadata.namespace + \"/\" + .metadata.name' # names printed already set core.strictTLSOptions; also check Helm values and any static config file",
+    "introducedIn": [
+      "2.11.55"
+    ]
   },
   {
     "ruleId": "rtz-traefik-2.11-connection-headers-removed-earlier",
