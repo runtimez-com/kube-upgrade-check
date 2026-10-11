@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.21-cluster-policy-endpoint-prerequisites",
+  "severity": "MEDIUM",
+  "title": "Network Policy Agent v1.3.5+ assumes the ClusterPolicyEndpoint CRD and aws-node RBAC for it",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the rule asks whether a CRD and an RBAC grant are ABSENT; the hint names the networking.k8s.aws CRDs that are present"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "CustomResourceDefinition",
+   "target": "group",
+   "value": "^networking\\.k8s\\.aws$"
+  },
+  "quote": "Removing CPE CRD checks as the CRD should be installed by default",
+  "remediation": "From Network Policy Agent v1.3.5 (bundled with CNI v1.21.2) the agent watches clusterpolicyendpoints.networking.k8s.aws without first checking the CRD exists, and v1.21.0/v1.21.1 add aws-node ClusterRole rules for clusterpolicyendpoints, clusterpolicyendpoints/status and the /apis/networking.k8s.aws discovery URL. On EKS the control plane's network policy controller installs the CRD; on a self-managed install it comes from the aws-network-policy-agent project, not the VPC CNI chart. Before enabling enforcement on an agent at v1.3.5+, make sure both the CRD and the release ClusterRole are present.",
+  "verifyCommand": "kubectl get crd clusterpolicyendpoints.networking.k8s.aws -o name 2>/dev/null || echo 'MISSING CRD clusterpolicyendpoints.networking.k8s.aws'; kubectl auth can-i list clusterpolicyendpoints.networking.k8s.aws --as=system:serviceaccount:kube-system:aws-node  # MISSING or 'no' = the v1.3.5+ agent cannot watch ClusterPolicyEndpoints once enforcement is on"
+ }
+]

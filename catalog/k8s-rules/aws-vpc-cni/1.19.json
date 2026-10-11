@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.19-enforcing-mode-without-the-agent-container",
+  "severity": "MEDIUM",
+  "title": "NETWORK_POLICY_ENFORCING_MODE set on aws-node without the aws-eks-nodeagent container fails every pod (v1.19.4+)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the rule asks whether the agent container is ABSENT while the env name is present; the vocabulary tests presence only"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "Skip configuring NP related if network_policy_enforcing_mode is not set",
+  "remediation": "From v1.19.4 the CNI plugin calls the Network Policy Agent on every pod ADD whenever NETWORK_POLICY_ENFORCING_MODE is non-empty (v1.19.3 did so only in strict mode). A raw-manifest aws-node that dropped the aws-eks-nodeagent container but kept NETWORK_POLICY_ENFORCING_MODE=standard then fails every pod sandbox with `add cmd: failed to setup network policy`. Remove the variable, or keep the agent container (the chart drops the variable for you when nodeAgent is disabled).",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '[.spec.template.spec.containers[] | .name] as $n | [.spec.template.spec.containers[] | .env[]? | select(.name == \"NETWORK_POLICY_ENFORCING_MODE\") | .value] as $m | if (($m | length) != 0 and ($n | index(\"aws-eks-nodeagent\") | not)) then \"BROKEN: NETWORK_POLICY_ENFORCING_MODE=\\($m[0]) without aws-eks-nodeagent\" else \"ok\" end'  # BROKEN = every new pod fails to get a network on v1.19.4+"
+ }
+]

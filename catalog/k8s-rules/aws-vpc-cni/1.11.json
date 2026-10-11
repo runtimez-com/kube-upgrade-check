@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.11-prefix-delegation-bare-metal-no-downgrade",
+  "severity": "LOW",
+  "title": "Prefix delegation on bare-metal nodes: a later rollback below v1.11 is disruptive and unsupported",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "ENABLE_PREFIX_DELEGATION's VALUE is not collected (env names only) and whether a node is bare metal is decided by its instance type"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "target": "containers[].image",
+   "value": "(^|/)amazon-k8s-cni([:@]|$)"
+  },
+  "quote": "If you're using Prefix Delegation feature on Bare Metal instances, downgrading to an earlier version of VPC CNI from v1.11+ will be disruptive and not supported.",
+  "remediation": "Treat crossing v1.11 as one-way on clusters that run prefix delegation on *.metal nodes: plan the rollback path as 'drain and replace the metal nodes', not 'reapply the old manifest'. Changing ENABLE_PREFIX_DELEGATION itself also needs kubelet max-pods updated (kubelet restart or node recycle).",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | select(.name == \"aws-node\") | .env[]? | select(.name == \"ENABLE_PREFIX_DELEGATION\") | \"ENABLE_PREFIX_DELEGATION=\\(.value)\"'  # =true together with nodes whose label node.kubernetes.io/instance-type ends in .metal means a rollback below v1.11 is unsupported"
+ }
+]

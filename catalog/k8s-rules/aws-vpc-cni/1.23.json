@@ -1,0 +1,35 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.23-network-policy-agent-v1-4-1-required",
+  "severity": "HIGH",
+  "title": "VPC CNI v1.23 requires the Network Policy Agent at v1.4.1+ and the release's aws-node probes",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^aws-node$",
+   "target": "containers[].image",
+   "value": "(^|/)aws-network-policy-agent:v?1\\.([0-3]\\.\\d+|4\\.0)([^0-9.]|$)",
+   "reason": "read from the image TAG of the aws-node DaemonSet's aws-eks-nodeagent container — a digest-pinned image (@sha256:…) or a mirrored tag without the version is not resolved and reads clean"
+  },
+  "quote": "This release must be run with Network Policy Agent `v1.4.1`. #3739 moves the IPAMD gRPC server from a TCP port to a Unix domain socket, so the Network Policy Agent must be on `v1.4.1` to connect over the socket.",
+  "remediation": "Upgrade with the v1.23 manifest / chart / EKS add-on version, which changes three things together: the aws-eks-nodeagent image to Network Policy Agent v1.4.1+, and the aws-node liveness/readiness probes from `-addr=:50051` to `-addr=unix:///var/run/aws-node/ipamd.sock`, because v1.23 serves ipamd's gRPC only on that socket. Kept old, they fail in two ways. An agent below v1.4.1 started with --enable-network-policy=true dials ipamd on TCP and waits forever before serving its own socket, so pods fail with `add cmd: failed to setup network policy` while NETWORK_POLICY_ENFORCING_MODE is set (an agent below v1.2.6 already broke that way from CNI v1.20.2, which dials the agent at /var/run/aws-node/npa.sock). The old probes hit a TCP port nothing listens on, so aws-node never goes Ready and the liveness probe restarts it. The same release also scrubs pod data from the ipamd introspection endpoint.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | \"\\(.name): \\(.image) probe=\\([.livenessProbe | .. | strings | select(test(\"addr=\"))] | join(\" \"))\"'  # on v1.23+ aws-eks-nodeagent must be v1.4.1+ and the aws-node probe must say -addr=unix:///var/run/aws-node/ipamd.sock",
+  "coversNotes": [
+   "Move gRPC server to Unix socket and scrub introspection data",
+   "Serve node IP and instance ID to the Network Policy Agent via gRPC — the agent now sources",
+   "Add Region to NetworkPolicyAgentConfigReply so the agent can resolve its region without"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.23-hyperpod-nodes-need-sagemaker-iam",
+  "severity": "MEDIUM",
+  "title": "SageMaker HyperPod nodes: the CNI now attaches ENIs through the SageMaker API (v1.23.2)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which nodes are HyperPod nodes and what the CNI role may call are AWS-side"
+  },
+  "quote": "Use the `sagemaker:AttachClusterNodeNetworkInterface` API for HyperPod nodes",
+  "remediation": "On SageMaker HyperPod nodes v1.23.2 attaches secondary ENIs with sagemaker:AttachClusterNodeNetworkInterface (cc8fe2a0) instead of ec2:AttachNetworkInterface, and needs sts:GetCallerIdentity to build the call. Add both to the CNI role used by HyperPod node groups before upgrading, or those nodes stop growing ENIs.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | select(.metadata.labels | tostring | test(\"sagemaker\")) | .metadata.name'  # each node printed carries SageMaker labels and is likely a HyperPod node that needs the SageMaker attach permission"
+ }
+]

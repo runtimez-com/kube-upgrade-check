@@ -1,0 +1,29 @@
+{
+ "addonId": "aws-vpc-cni",
+ "displayName": "Amazon VPC CNI",
+ "detect": {
+  "imageSuffixes": [
+   "/amazon-k8s-cni"
+  ]
+ },
+ "source": {
+  "url": "https://github.com/aws/amazon-vpc-cni-k8s/blob/v1.23.2/CHANGELOG.md",
+  "ref": "aws/amazon-vpc-cni-k8s @ v1.23.2 (7bb32b54d7c56f3ee3c5a63bddf97c4af49ea8ec; CHANGELOG.md, README.md, docs/troubleshooting.md)",
+  "lastVerified": "2026-10-04",
+  "note": "The VPC CNI publishes NO Kubernetes compatibility matrix — supportWindows is deliberately OMITTED and the hop is the opt-in CURRENCY hop (currencyHop=true) to latestKnownVersion, the newest CHANGELOG release at the pinned tag; every surface says it is NOT required by the Kubernetes upgrade. What the README does publish is a table of the OLDEST recommended VPC CNI version per Kubernetes release (README 'Recommended Version', last edited 2025-07 at 401ed22d, rows 1.28-1.33): it is a floor, not a window, and is transcribed as recommendedFloors so a cluster whose CNI is below the floor for its TARGET Kubernetes gets a finding — a target above the newest row (1.33) is reported as 'no vendor floor published', never as compatible. The EKS managed add-on's real per-Kubernetes compatibility lives only in `aws eks describe-addon-versions --addon-name vpc-cni` and is not transcribed (it changes weekly and needs AWS credentials). Since 2026-10-04 this entry carries ZERO hand-written rules/upgradeNotes: the notes are extracted mechanically into scripts/readiness-agent/kb/aws-vpc-cni/notes-<minor>.md (extract-aws-vpc-cni-notes.py, tag v1.23.2, floor 1.10 — a CHANGELOG filter plus a fixed list of version-scoped README/troubleshooting passages) and the rules live in src/main/resources/k8s-rules/aws-vpc-cni/ (sourceId aws-vpc-cni, hop-scoped: the CNI's 1.x minors overlap Kubernetes minors by number, so selecting them against the Kubernetes hop would be a wrong-axis match). Detection: the aws-node container image repository ends in /amazon-k8s-cni on every EKS region's ECR and public.ecr.aws/eks; the version is that image's tag (v1.22.4-eksbuild.3 → 1.22.4). The aws-vpc-cni-init init container (amazon-k8s-cni-init) is a different repository and does not match."
+ },
+ "supportWindows": null,
+ "latestKnownVersion": "1.23.2",
+ "currencyHop": true,
+ "recommendedFloors": [
+  { "k8s": "1.28", "minVersion": "1.13.4" },
+  { "k8s": "1.29", "minVersion": "1.14.1" },
+  { "k8s": "1.30", "minVersion": "1.16.0" },
+  { "k8s": "1.31", "minVersion": "1.16.4" },
+  { "k8s": "1.32", "minVersion": "1.17.1" },
+  { "k8s": "1.33", "minVersion": "1.17.1" }
+ ],
+ "rules": [],
+ "upgradeNotes": [],
+ "inventoryKinds": []
+}

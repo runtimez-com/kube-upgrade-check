@@ -1,0 +1,48 @@
+[
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.12-configure-rpfilter-env-is-a-no-op",
+  "severity": "LOW",
+  "title": "AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER is deprecated (v1.12.1+) — setting it does nothing",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "DaemonSet",
+   "objectName": "^aws-node$",
+   "target": "containers[].env[].name",
+   "value": "^AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER$",
+   "reason": "read from the env NAMES of the aws-node DaemonSet's containers (the agent ships names, never values) — a variable injected through envFrom / the chart's extraEnv from a ConfigMap is not seen"
+  },
+  "quote": "`AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER` has been deprecated, so setting this environment variable results in a no-op.",
+  "remediation": "Remove AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER from the aws-node DaemonSet. From v1.12.1 the init container always configures the primary interface's rp_filter, so `false` no longer hands that job to you — anything that relied on ipamd leaving rp_filter alone must be checked.",
+  "verifyCommand": "kubectl -n kube-system get ds aws-node -o json | jq -r '.spec.template.spec.containers[] | .env[]? | select(.name == \"AWS_VPC_K8S_CNI_CONFIGURE_RPFILTER\") | \"\\(.name)=\\(.value)\"'  # a printed line is a setting v1.12.1+ ignores"
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.12-nftables-distributions-need-1-12-1",
+  "severity": "MEDIUM",
+  "title": "Nodes on nftables distributions (RHEL 8+, Ubuntu 21+) need VPC CNI v1.12.1+",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which iptables backend a node's OS uses is not collected; its osImage names the distribution"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Node",
+   "target": "osImage",
+   "value": "(?i)(red hat|rhel|rocky|alma|ubuntu 2[1-9]|ubuntu 3)"
+  },
+  "quote": "Prior to v1.12.1, the VPC CNI image only contained `iptables-legacy`. Newer distributions of RHEL (RHEL 8.x+), Ubuntu (Ubuntu 21.x+), etc. have moved to using `nftables`.",
+  "remediation": "On nodes whose OS defaults to nftables, a VPC CNI below v1.12.1 programs iptables-legacy rules the kernel's nft tables do not see. v1.12.1 ships both binaries (ENABLE_NFTABLES=true selects iptables-nft on 1.12.x) and v1.13.2+ picks the mode from kubelet's automatically — land on 1.13.2+ and drop any custom-built nft image.",
+  "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | \"\\(.metadata.name): \\(.status.nodeInfo.osImage)\"'  # RHEL 8+, Rocky/Alma, Ubuntu 21+ nodes default to nftables and need VPC CNI v1.12.1+"
+ },
+ {
+  "ruleId": "rtz-aws-vpc-cni-1.12-downgrade-below-1-12-1-breaks-pod-deletion",
+  "severity": "LOW",
+  "title": "Rolling back below v1.12.1 after running it can leave pod deletion failing (#2321)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "a rollback hazard: nothing in the current state shows which pods were created under which CNI version"
+  },
+  "quote": "If you created pods with VPC CNI version >= 1.12.1, then downgraded to a version < 1.12.1 and pod deletion is failing",
+  "remediation": "Plan the rollback of this upgrade as 'roll back to v1.12.1 or newer'. If a downgrade below v1.12.1 is unavoidable, recycle the nodes so no pod created by the newer CNI is deleted by the older one.",
+  "verifyCommand": null
+ }
+]
