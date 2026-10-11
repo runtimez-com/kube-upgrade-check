@@ -24,19 +24,6 @@
     "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.contentType != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed re-enable auto-detection for the routers that reference them; nothing printed means no backend gets a guessed Content-Type in v3"
   },
   {
-    "ruleId": "rtz-traefik-3.0-crd-apiextensions-v1beta1-removed",
-    "severity": "HIGH",
-    "title": "Traefik CRDs defined with apiextensions.k8s.io/v1beta1",
-    "detection": {
-      "kind": "API_VERSION_IN_USE",
-      "objectKind": "CustomResourceDefinition",
-      "target": "apiextensions.k8s.io/v1beta1"
-    },
-    "quote": "In v3, the Traefik CRD API Version `apiextensions.k8s.io/v1beta1` (removed since Kubernetes v1.22) support has been removed.",
-    "remediation": "Re-install the Traefik CRDs from the v3 manifests, which declare `apiextensions.k8s.io/v1`. A CRD still defined with the v1beta1 API version cannot be applied on Kubernetes 1.22+, so this usually surfaces as a failed chart upgrade rather than a routing outage.",
-    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.apiVersion == \"apiextensions.k8s.io/v1beta1\") | .metadata.name' # names printed are defined with the removed CRD API version"
-  },
-  {
     "ruleId": "rtz-traefik-3.0-deprecated-options-removed",
     "severity": "HIGH",
     "title": "A batch of deprecated options is removed in v3",
@@ -48,8 +35,8 @@
       "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
     },
     "quote": "- The `tracing.datadog.globaltag` option has been removed.",
-    "remediation": "Audit the static configuration and middleware definitions for the whole removed set, not just the Datadog tag: `tls.caOptional` (ForwardAuth and the HTTP/Consul/Etcd/Redis/ZooKeeper/Consul Catalog/Docker providers), the Headers middleware's `sslRedirect`, `sslTemporaryRedirect`, `sslHost`, `sslForceHost` and `featurePolicy`, and StripPrefix's `forceSlash`. Traefik refuses to start on an unknown option, so each survivor is a failed rollout.",
-    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select((.spec.headers.sslRedirect // .spec.headers.sslHost // .spec.headers.featurePolicy // .spec.stripPrefix.forceSlash // .spec.forwardAuth.tls.caOptional) != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set an option removed in v3"
+    "remediation": "Audit the static configuration and middleware definitions for the whole removed set, not just the Datadog tag. Two different failure modes: (1) static options such as `tracing.datadog.globaltag` and `tls.caOptional` on ForwardAuth and the HTTP/Consul/Etcd/Redis/ZooKeeper/Consul Catalog/Docker providers are rejected at startup — a failed rollout; (2) the Headers middleware's `sslRedirect`, `sslTemporaryRedirect`, `sslHost`, `sslForceHost` and `featurePolicy` are still ACCEPTED by the v3 CRD but no longer applied, so the HTTP→HTTPS redirect silently disappears with no error or log — move it to an entry-point redirection or a RedirectScheme middleware before upgrading. StripPrefix `forceSlash` is still honoured, with a deprecation warning.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select((.spec.headers.sslRedirect // .spec.headers.sslHost // .spec.headers.featurePolicy // .spec.stripPrefix.forceSlash // .spec.forwardAuth.tls.caOptional) != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set an option v3 drops (ssl* are ignored silently)"
   },
   {
     "ruleId": "rtz-traefik-3.0-experimental-http3-option-removed",
@@ -85,19 +72,6 @@
     "verifyCommand": "kubectl get tlsroutes.gateway.networking.k8s.io,tcproutes.gateway.networking.k8s.io -A 2>/dev/null # any rows = experimental-channel routes that need experimentalChannel enabled; a NotFound error = the CRDs are absent and this does not apply"
   },
   {
-    "ruleId": "rtz-traefik-3.0-ingress-networking-v1beta1-removed",
-    "severity": "HIGH",
-    "title": "Ingress objects on networking.k8s.io/v1beta1, which Traefik v3 no longer reads",
-    "detection": {
-      "kind": "API_VERSION_IN_USE",
-      "objectKind": "Ingress",
-      "target": "networking.k8s.io/v1beta1"
-    },
-    "quote": "In v3, the Kubernetes Ingress API Group `networking.k8s.io/v1beta1` (removed since Kubernetes v1.22) support has been removed.",
-    "remediation": "Re-apply the listed Ingress objects under `networking.k8s.io/v1`. Kubernetes itself removed this API group in 1.22, so on any supported cluster these objects are already being served through the v1 API — the risk is in manifests and GitOps templates that still declare the old apiVersion.",
-    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select(.apiVersion == \"networking.k8s.io/v1beta1\") | .metadata.namespace + \"/\" + .metadata.name' # names printed are still on the removed group; no output = clean"
-  },
-  {
     "ruleId": "rtz-traefik-3.0-ingress-path-matching-no-regex",
     "severity": "MEDIUM",
     "title": "Kubernetes Ingress default path matching no longer supports regexes",
@@ -117,21 +91,18 @@
   },
   {
     "ruleId": "rtz-traefik-3.0-ipwhitelist-renamed-ipallowlist",
-    "severity": "MEDIUM",
-    "title": "IPWhiteList middleware renamed to IPAllowList",
+    "severity": "LOW",
+    "title": "IPWhiteList middleware is deprecated in favour of IPAllowList",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
-    },
-    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Middleware",
       "target": "types[]",
-      "value": "^ipWhiteList$"
+      "value": "^ipWhiteList$",
+      "reason": "the Middleware projection names each Middleware's types; a MiddlewareTCP is not collected, so a TCP ipWhiteList is not checked"
     },
     "quote": "In v3, we renamed the `IPWhiteList` middleware to `IPAllowList` without changing anything to the configuration.",
-    "remediation": "Rename the middleware type from `ipWhiteList` to `ipAllowList` in every Middleware object and in any router that references one. The configuration body is unchanged, so this is a pure rename — but a Middleware left on the old type is not recognised by v3 and the router referencing it fails to load.",
-    "verifyCommand": "kubectl get middlewares.traefik.io,middlewares.traefik.containo.us -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.ipWhiteList != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still use the removed ipWhiteList type"
+    "remediation": "Rename the middleware type from `ipWhiteList` to `ipAllowList` in every Middleware object; the configuration body is unchanged. Not urgent: v3.0 through v3.7.14 still build `ipWhiteList` as a deprecated middleware (commit ff7966f9c re-introduced it), so routes keep working — the rename only avoids a future removal.",
+    "verifyCommand": "kubectl get middlewares.traefik.io,middlewares.traefik.containo.us -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.ipWhiteList != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still use the deprecated ipWhiteList type"
   },
   {
     "ruleId": "rtz-traefik-3.0-open-connections-metric-replaced",

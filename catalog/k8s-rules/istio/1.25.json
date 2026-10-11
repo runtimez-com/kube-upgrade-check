@@ -11,11 +11,11 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/proxyv2([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/proxyv2([:@]|$)"
     },
     "quote": "As of Envoy 1.33, the default internalAddressConfig is set to an empty set. In previous versions the default was all private IPs. To preserve internal headers when useRemoteAddress is set or at the gateway, the internalAddressConfig must be set explicitly",
     "remediation": "Where ingress gateways depend on `x-envoy-*` headers from in-mesh callers, configure `meshNetworks` with the mesh CIDRs (gateways use it as soon as it is set); sidecars with `useRemoteAddress` additionally need `ENABLE_HCM_INTERNAL_NETWORKS=true` on istiod. Never list all private IPs — that leaves the gateway open to header manipulation (GHSA-ffhv-fvxq-r6mf). Otherwise no action.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/proxyv2\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.template.spec.containers[0].image'  # each printed gateway stops trusting x-envoy headers from private IPs unless ENABLE_HCM_INTERNAL_NETWORKS and meshNetworks are set"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/proxyv2\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.template.spec.containers[0].image'  # each printed gateway stops trusting x-envoy headers from private IPs unless ENABLE_HCM_INTERNAL_NETWORKS and meshNetworks are set"
   },
   {
     "ruleId": "rtz-istio-1.25-dns-respects-exclusion-annotations",
@@ -96,7 +96,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/ztunnel([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/ztunnel([:@]|$)"
     },
     "quote": "If you are installing the chart with a release name other than `ztunnel`, the resource names will change, triggering downtime. In this scenario, it is recommended to set `--set resourceName=ztunnel` to override back to the previous default.",
     "remediation": "If the ztunnel Helm release is not named `ztunnel`, add `--set resourceName=ztunnel` to the 1.25 upgrade so the DaemonSet keeps its name; otherwise the old DaemonSet is deleted and a new one created, interrupting ambient traffic on every node. (1.26 reverts the default.)",
@@ -160,7 +160,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "When installing on GKE, use `--set global.platform=gke` (Helm) or `--set values.global.platform=gke` (istioctl) to apply GKE-specific value overrides. This replaces the previous GKE autodetection based on K8S version used in the `istio-cni` chart.",
     "remediation": "On GKE, set `global.platform=gke` on every chart (base, istiod, istio-cni, ztunnel) so the CNI bin/conf directories, the ResourceQuota (added at 1.26) and the node-agent settings come from the profile. The 1.25–1.28 istio-cni chart still autodetects GKE from the node version string (the template calls it deprecated), so an install without the value keeps working for now; istioctl sets it automatically from 1.26, Helm never does.",

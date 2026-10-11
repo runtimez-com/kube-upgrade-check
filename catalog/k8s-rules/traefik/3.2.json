@@ -57,20 +57,6 @@
     "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select(.rules[]?.apiGroups[]? == \"gateway.networking.k8s.io\") | .metadata.name as $n | .rules[] | select(.resources[]? == \"grpcroutes\") | $n' # a name confirms the grpcroutes grant is present"
   },
   {
-    "ruleId": "rtz-traefik-3.2-swarm-labels-deprecated",
-    "severity": "LOW",
-    "title": "Swarm-specific traefik.docker.* labels deprecated",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "these are Docker Swarm service labels; the Swarm provider is not a Kubernetes provider and no such object is collected"
-    },
-    "quote": "In v3.2.2, Swarm-specific labels have been deprecated and will be removed in a future version.",
-    "remediation": "Kubernetes-only deployments are unaffected. If the same Traefik also runs the Swarm provider, rename `traefik.docker.network` to `traefik.swarm.network` and `traefik.docker.lbswarm` to `traefik.swarm.lbswarm`.",
-    "coversNotes": [
-      "Swarm Provider Label Updates"
-    ]
-  },
-  {
     "ruleId": "rtz-traefik-3.2-x-forwarded-prefix-stripped-when-untrusted",
     "severity": "HIGH",
     "title": "X-Forwarded-Prefix is stripped from untrusted sources",

@@ -63,5 +63,100 @@
     "version": "3.7",
     "note": "Consul Catalog and Nomad: colliding service configurations",
     "reason": "the Consul Catalog and Nomad providers are not Kubernetes providers — they discover configuration from the Consul service catalog and Nomad job specifications, so nothing they declare is a Kubernetes object this platform collects. A Traefik that runs only the Kubernetes providers is unaffected by this note."
+  },
+  {
+    "version": "3.6",
+    "note": "BasicAuth Middleware",
+    "reason": "covered by `rtz-traefik-3.7-basicauth-requires-non-empty-users`, whose introducedIn [\"2.11.48\", \"3.6.19\", \"3.7.3\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "StripPrefix and StripPrefixRegex Middleware",
+    "reason": "covered by `rtz-traefik-3.7-strip-prefix-rejects-non-normalised-paths`, whose introducedIn [\"2.11.48\", \"3.6.19\", \"3.7.3\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "Kubernetes providers: `crossProviderNamespaces`",
+    "reason": "covered by `rtz-traefik-3.7-cross-provider-namespaces`, whose introducedIn [\"2.11.46\", \"3.6.17\", \"3.7.1\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "Kubernetes CRD: Errors middleware `errorRequestHeaders`",
+    "reason": "covered by `rtz-traefik-3.7-errors-middleware-error-request-headers`, whose introducedIn [\"2.11.53\", \"3.6.24\", \"3.7.8\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "HTTP/1 CONNECT requests",
+    "reason": "covered by `rtz-traefik-3.7-http1-connect-rejected`, whose introducedIn [\"2.11.53\", \"3.6.24\", \"3.7.9\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "Kubernetes Gateway API Provider: generated router, middleware, and service names",
+    "reason": "covered by `rtz-traefik-3.7-gateway-generated-name-hash-changed`, whose introducedIn [\"3.6.25\", \"3.7.10\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both)."
+  },
+  {
+    "version": "3.6",
+    "note": "UnderscoreHeadersStrategy",
+    "reason": "no 3.6 release carries `aliasHeadersStrategy` (`git grep aliasHeadersStrategy v3.6.25` finds nothing, and v3.6.26 was cancelled), so a 3.6 rule could only recommend an option the install rejects; the change is covered by `rtz-traefik-3.7-alias-headers-strategy-replaces-underscore` (introducedIn [\"2.11.56\", \"3.7.12\"])."
+  },
+  {
+    "version": "3.6",
+    "note": "Encoded Characters in Request Path",
+    "reason": "net no-op for every supported target: the reject-by-default behaviour existed only in v3.6.4–v3.6.6 and v3.6.7 flipped the options back to a `true` default, which every 3.7.x target carries; the one install this still concerns (3.6.4–3.6.6, whose hardening goes away) is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\", \"3.7.0\"])."
+  },
+  {
+    "version": "2.10",
+    "note": "Nomad Namespace",
+    "reason": "not a Kubernetes provider — nothing it configures is a Kubernetes object this platform collects (the same disposition as the SwarmMode and Consul notes)."
+  },
+  {
+    "version": "3.2",
+    "note": "Swarm Provider Label Updates",
+    "reason": "not a Kubernetes provider — nothing it configures is a Kubernetes object this platform collects (the same disposition as the SwarmMode and Consul notes)."
+  },
+  {
+    "version": "2.11",
+    "note": "Docker provider: minimum Docker Engine version",
+    "reason": "not a Kubernetes provider — nothing it configures is a Kubernetes object this platform collects (the same disposition as the SwarmMode and Consul notes)."
+  },
+  {
+    "version": "3.0",
+    "note": "Kubernetes Ingress API Group `networking.k8s.io/v1beta1`",
+    "reason": "unreachable on every supported EKS version (1.31–1.37): Kubernetes stopped serving this API in 1.22, so no object can still use it and a rule could never fire."
+  },
+  {
+    "version": "3.0",
+    "note": "Traefik CRD API Version `apiextensions.k8s.io/v1beta1`",
+    "reason": "unreachable on every supported EKS version (1.31–1.37): Kubernetes stopped serving this API in 1.22, so no object can still use it and a rule could never fire."
+  },
+  {
+    "version": "2.11",
+    "note": "IPWhiteList (HTTP)",
+    "reason": "covered by `rtz-traefik-3.0-ipwhitelist-renamed-ipallowlist` (detectable on Middleware types[]); a 2.11 copy is selected only from 2.10 or earlier, and then beside the 3.0 rule."
+  },
+  {
+    "version": "2.11",
+    "note": "IPWhiteList (TCP)",
+    "reason": "covered by `rtz-traefik-3.0-ipwhitelist-renamed-ipallowlist`; MiddlewareTCP is not collected, and v3.7.14 still builds the TCP ipWhiteList as deprecated."
+  },
+  {
+    "version": "2.11",
+    "note": "Encoded Characters in Request Path",
+    "reason": "net no-op for every supported target: reject-by-default existed only in v2.11.32–v2.11.34 and v2.11.35 flipped the options back to a `true` default; the remaining effect is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\", \"3.7.0\"])."
+  },
+  {
+    "version": "2.11",
+    "note": "h2c Upgrade Requests",
+    "reason": "covered by `rtz-traefik-3.7-h2c-upgrade-headers-no-longer-forwarded`, whose introducedIn [\"2.11.57\", \"3.7.13\"] carries this line's patch — one rule per change, so a hop from any line selects it once."
+  },
+  {
+    "version": "2.11",
+    "note": "Request Target Validation",
+    "reason": "covered by `rtz-traefik-3.7-rootless-request-target-rejected`, whose introducedIn [\"2.11.57\", \"3.7.13\"] carries this line's patch — one rule per change, so a hop from any line selects it once."
+  },
+  {
+    "version": "2.11",
+    "note": "Conflicting TLS options",
+    "reason": "covered by `rtz-traefik-3.7-strict-tls-options-available`, whose introducedIn [\"2.11.55\", \"3.7.11\"] carries this line's patch — one rule per change, so a hop from any line selects it once."
   }
 ]

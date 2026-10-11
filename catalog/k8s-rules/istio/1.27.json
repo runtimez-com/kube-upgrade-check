@@ -15,8 +15,12 @@
       "objectName": "^cacerts$"
     },
     "quote": "With this fix, `istiod` will now validate the entire CA bundle and return an explicit error if any required file is missing, rather than falling back silently.",
-    "remediation": "istiod 1.27 requires all four files in the `cacerts` Secret (`ca-cert.pem`, `ca-key.pem`, `root-cert.pem`, `cert-chain.pem`) and exits with `failed to create an istiod CA: incomplete signing CA bundle detected` when one is missing — previously only `ca-key.pem` was checked and the rest silently fell back to the self-signed CA. Before upgrading, confirm the Secret carries all four keys; if the mesh has in fact been running on the self-signed CA, either complete the bundle (workloads re-certify on rotation) or delete the partial Secret to keep the self-signed CA deliberately.",
-    "verifyCommand": "kubectl get secret cacerts -n istio-system -o json | jq -r '.data | keys | join(\" \")'  # istiod 1.27 needs all of: ca-cert.pem ca-key.pem root-cert.pem cert-chain.pem — a shorter list stops istiod from starting"
+    "remediation": "istiod 1.27.0 (and 1.26.1 onwards) requires all four files in the `cacerts` Secret (`ca-cert.pem`, `ca-key.pem`, `root-cert.pem`, `cert-chain.pem`) and exits with `failed to create an istiod CA: incomplete signing CA bundle detected` when one is missing — previously only `ca-key.pem` was checked and the rest silently fell back to the self-signed CA. Before upgrading, confirm the Secret carries all four keys; if the mesh has in fact been running on the self-signed CA, either complete the bundle (workloads re-certify on rotation) or delete the partial Secret to keep the self-signed CA deliberately.",
+    "verifyCommand": "kubectl get secret cacerts -n istio-system -o json | jq -r '.data | keys | join(\" \")'  # istiod 1.27 needs all of: ca-cert.pem ca-key.pem root-cert.pem cert-chain.pem — a shorter list stops istiod from starting",
+    "introducedIn": [
+      "1.26.1",
+      "1.27.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.27-grafana-dashboards-regenerate",

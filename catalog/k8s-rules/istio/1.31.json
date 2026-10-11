@@ -11,30 +11,35 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "As a result, Istio is removing the `nftables` version pinning. Users are advised to update the `nftables` package on their nodes to the latest available version to ensure that the fixed version is installed. If you continue to experience `nftables` crashes on your nodes, downgrade to an older version of Istio and contact your node OS provider to request that the fix be backported to your OS version.",
     "remediation": "Only clusters that opted into native nftables (`global.nativeNftables=true`, rendered as `NATIVE_NFTABLES` in the istio-cni ConfigMap) are affected; iptables mode does not run nft. Before upgrading, update the `nftables` package on every node to a build carrying the upstream fix; a node whose nft crashes after the upgrade needs the fix from the OS vendor or a downgrade of Istio.",
-    "verifyCommand": "kubectl get configmap -n istio-system -l app=istio-cni -o json | jq -r '.items[].data.NATIVE_NFTABLES // \"unset\"'  # \"true\" means native nftables is on and every node's nftables package must carry the fix before 1.31"
+    "verifyCommand": "kubectl get configmap -n istio-system -l app=istio-cni -o json | jq -r '.items[].data.NATIVE_NFTABLES // \"unset\"'  # \"true\" means native nftables is on and every node's nftables package must carry the fix before 1.31",
+    "introducedIn": [
+      "1.29.7",
+      "1.30.4",
+      "1.31.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.31-gateway-api-crds-below-minimum-ignored",
     "severity": "HIGH",
-    "title": "Gateway API CRDs below Istio's minimum bundle version are silently ignored (in effect since 1.30 for TLSRoute) — TLS passthrough gateways stop programming listeners",
+    "title": "istiod 1.31 ignores a TCPRoute CRD below Gateway API bundle v1.6.0 — TCPRoutes stop being programmed",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the bundle version is an annotation VALUE on the CRD and rules compare keys, not values; the hint names the four CRDs istiod version-gates and the command prints their bundle versions"
+      "reason": "the bundle version is an annotation VALUE on the CRD and rules compare keys, not values; the hint names the TCPRoute CRD and the command prints its bundle version"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "target": "group",
       "value": "^gateway\\.networking\\.k8s\\.io$",
-      "objectName": "^(grpcroutes|backendtlspolicies|tlsroutes|tcproutes)\\.gateway\\.networking\\.k8s\\.io$"
+      "objectName": "^tcproutes\\.gateway\\.networking\\.k8s\\.io$"
     },
     "quote": "Resources backed by such CRDs are silently filtered by istiod, which previously made TLS passthrough breakage after upgrading to Istio 1.30 with stale Gateway API CRDs hard to discover.",
-    "remediation": "istiod's CRD watcher drops any Gateway API CRD whose `gateway.networking.k8s.io/bundle-version` annotation is below its minimum: GRPCRoute needs bundle v1.1.0 and BackendTLSPolicy v1.4.0 (since 1.28), TLSRoute needs v1.5.0 since 1.30 and TCPRoute v1.6.0 since 1.31. A TLSRoute on a 1.4.x bundle is never read after upgrading to 1.30: the Gateway reports `attachedRoutes: 0`, no listener is programmed and passthrough traffic fails with no error in the resource status. Upgrade the Gateway API CRDs to at least the listed bundle before upgrading istiod; from 1.31 `istioctl analyze` reports it as IST0176.",
-    "verifyCommand": "kubectl get crd grpcroutes.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io tlsroutes.gateway.networking.k8s.io tcproutes.gateway.networking.k8s.io -o custom-columns='CRD:.metadata.name,BUNDLE:.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version' --ignore-not-found  # minimums: grpcroutes v1.1.0, backendtlspolicies v1.4.0, tlsroutes v1.5.0 (1.30), tcproutes v1.6.0 (1.31); a lower bundle is silently ignored"
+    "remediation": "istiod 1.31 watches TCPRoute at `v1` and drops a `tcproutes.gateway.networking.k8s.io` CRD whose `gateway.networking.k8s.io/bundle-version` annotation is below v1.6.0: no TCPRoute is read, the Gateway reports `attachedRoutes: 0` for its TCP listeners and that traffic fails with no error in the route's status. Upgrade the TCPRoute CRD to at least bundle v1.6.0 before upgrading istiod; `istioctl analyze` reports a stale CRD as IST0176. (The other gated CRDs are not new at 1.31: GRPCRoute v1.1.0 and BackendTLSPolicy v1.4.0 already applied, and TLSRoute v1.5.0 is the 1.30 rule.)",
+    "verifyCommand": "kubectl get crd tcproutes.gateway.networking.k8s.io -o custom-columns='CRD:.metadata.name,BUNDLE:.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version' --ignore-not-found  # below v1.6.0 is ignored by istiod 1.31"
   },
   {
     "ruleId": "rtz-istio-1.31-send-unhealthy-endpoints-default",
@@ -48,16 +53,16 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
     },
     "quote": "By default, Istio will now send unhealthy endpoints unless `OutlierDetection.minHealthPercent` is being configured on a Service. This can be disabled by setting `PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS` to `false` or using compatibility profiles.",
-    "remediation": "For every service without `outlierDetection.minHealthPercent`, istiod now sends not-ready endpoints (marked unhealthy) and forces Envoy's panic threshold to 0 — the panic-mode fallback that used to spread requests over ALL endpoints when most were unready is gone, so such requests fail fast (`no healthy upstream`) instead. Set `outlierDetection.minHealthPercent` on the DestinationRules where panic mode was relied on, or set `PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS=false` on istiod.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS|PILOT_SEND_UNHEALTHY_ENDPOINTS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means unhealthy endpoints are sent after upgrade"
+    "remediation": "For every service where no DestinationRule sets `outlierDetection.minHealthPercent` above 0, istiod now also sends the not-ready endpoints (marked unhealthy) and pins Envoy's panic threshold to 0 unless the DestinationRule sets one. Requests still go to ready pods only. What changes is locality-aware routing: not-ready pods now count against their zone's health, so with DestinationRule locality load balancing (`localityLbSetting` with outlier detection) traffic spills to other zones once under about 71% of a zone's pods are ready (Envoy's overprovisioning factor 1.4), where 1.30, which left not-ready pods out, kept it local while any ready pod remained; services using `trafficDistribution` already behaved this way. Check services that rely on zone-local traffic, or set `PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS=false` on istiod to keep the 1.30 behaviour.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_AUTO_SEND_UNHEALTHY_ENDPOINTS|PILOT_SEND_UNHEALTHY_ENDPOINTS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means unhealthy endpoints are sent after upgrade"
   },
   {
     "ruleId": "rtz-istio-1.31-autoregistered-workloadentries-need-tunnel-label",
     "severity": "MEDIUM",
-    "title": "Auto-registered WorkloadEntries created before 1.31 stay on plaintext until re-registered or labelled `networking.istio.io/tunnel=http`",
+    "title": "Auto-registered WorkloadEntries created before the fix (1.29.6 / 1.30.3 / 1.31.0) stay on plaintext until re-registered or labelled `networking.istio.io/tunnel=http`",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "the affected entries are auto-registered AND missing the tunnel label — two conditions on one object the vocabulary cannot combine; the auto-registered entries are the candidates"
@@ -69,7 +74,12 @@
     },
     "quote": "workloads auto-registered before upgrading continue to be reached over plaintext until either they re-register (reconnect a fresh instance) or the label (`networking.istio.io/tunnel=http`) is added to their existing WorkloadEntry.",
     "remediation": "Only meshes where VM proxies speak HBONE are affected: ambient-enrolled VMs, or sidecar meshes running with `ENABLE_HBONE=true` on the proxy and `PILOT_ENABLE_SIDECAR_HBONE_LISTENING=true` on istiod. There, for each auto-registered WorkloadEntry (annotated `istio.io/autoRegistrationGroup`) without the `networking.istio.io/tunnel` label, restart the VM/proxy so it re-registers, or add the label by hand — until then that workload is reached over plaintext. A plain sidecar mesh's unlabelled entries are correct as they are.",
-    "verifyCommand": "kubectl get workloadentries.networking.istio.io -A -o json | jq -r '.items[] | select(.metadata.annotations[\"istio.io/autoRegistrationGroup\"] != null) | select(.metadata.labels[\"networking.istio.io/tunnel\"] == null) | .metadata.namespace + \"/\" + .metadata.name'  # each printed WorkloadEntry was auto-registered before 1.31 and stays plaintext until it re-registers or is labelled"
+    "verifyCommand": "kubectl get workloadentries.networking.istio.io -A -o json | jq -r '.items[] | select(.metadata.annotations[\"istio.io/autoRegistrationGroup\"] != null) | select(.metadata.labels[\"networking.istio.io/tunnel\"] == null) | .metadata.namespace + \"/\" + .metadata.name'  # each printed WorkloadEntry was auto-registered before 1.31 and stays plaintext until it re-registers or is labelled",
+    "introducedIn": [
+      "1.29.6",
+      "1.30.3",
+      "1.31.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.31-spawn-upstream-span-flag-removed",
@@ -84,7 +94,7 @@
     },
     "quote": "The environment variable `PILOT_SPAWN_UPSTREAM_SPAN_FOR_GATEWAY` has been removed. The behavior it controlled (spawning a separate tracing span for each upstream request for gateway when using the Telemetry API) is now always enabled.",
     "remediation": "Remove the variable from istiod. If it was `false`, gateway traces gain one extra span per upstream request at 1.31; adjust trace-volume budgets or sampling accordingly. `compatibilityVersion: 1.30` lists the flag but it is inert there too.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_SPAWN_UPSTREAM_SPAN_FOR_GATEWAY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means gateway traces gain an upstream span at 1.31"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_SPAWN_UPSTREAM_SPAN_FOR_GATEWAY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means gateway traces gain an upstream span at 1.31"
   },
   {
     "ruleId": "rtz-istio-1.31-wds-reconnect-exceeds-grpc-limit",
@@ -98,11 +108,16 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/ztunnel([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/ztunnel([:@]|$)"
     },
     "quote": "This request can exceed istiod's default 4MiB gRPC receive limit, leaving ztunnel in a reconnect loop with `ResourceExhausted: grpc: received message larger than max` errors.",
     "remediation": "On meshes near 40,000 workloads and services, raise `ISTIO_GPRC_MAXRECVMSGSIZE` on istiod before upgrading (about 1MiB per 10,000 resources, e.g. `--set pilot.env.ISTIO_GPRC_MAXRECVMSGSIZE=33554432`) and watch istiod logs for the error after upgrading.",
-    "verifyCommand": "kubectl get pods,workloadentries.networking.istio.io -A -o json | jq -r '.items | length | tostring + \" pods+workloadentries\"'  # near 40000 (plus services) raise ISTIO_GPRC_MAXRECVMSGSIZE on istiod before the 1.31 upgrade"
+    "verifyCommand": "kubectl get pods,workloadentries.networking.istio.io -A -o json | jq -r '.items | length | tostring + \" pods+workloadentries\"'  # near 40000 (plus services) raise ISTIO_GPRC_MAXRECVMSGSIZE on istiod before the 1.31 upgrade",
+    "introducedIn": [
+      "1.29.7",
+      "1.30.4",
+      "1.31.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.31-xds-api-generator-requires-identity",
@@ -114,6 +129,11 @@
     },
     "quote": "Custom MCP consumers connecting to istiod's api generator from non-system namespaces are now rejected. Standard sidecar, gateway, and ztunnel traffic is unaffected.",
     "remediation": "Move custom MCP/XDS-API consumers into the Istio root namespace (or give them a control-plane identity), or set `ENABLE_XDS_API_GENERATOR_AUTH=false` on istiod. Sidecars, gateways and ztunnel need nothing.",
-    "verifyCommand": null
+    "verifyCommand": null,
+    "introducedIn": [
+      "1.29.7",
+      "1.30.4",
+      "1.31.0"
+    ]
   }
 ]
