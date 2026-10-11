@@ -35,7 +35,7 @@ tidy:
 # The catalog is vendored into the runtimez backend as well; this file is what the backend's
 # parity test compares against, so regenerate it whenever a catalog file changes.
 checksums:
-	@cd catalog && find . -name '*.json' | sort | xargs shasum -a 256 > CHECKSUMS && \
+	@cd catalog && find . -name '*.json' | LC_ALL=C sort | xargs shasum -a 256 > CHECKSUMS && \
 	  sed -i.bak 's|  \./|  |' CHECKSUMS && rm -f CHECKSUMS.bak && \
 	  echo "wrote catalog/CHECKSUMS ($$(wc -l < CHECKSUMS | tr -d ' ') files)"
 
