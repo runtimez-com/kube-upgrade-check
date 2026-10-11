@@ -95,7 +95,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "**Removed** `values.cni.privileged` flag from `istio-cni` node agent chart in favor of feature-specific permissions.",
     "remediation": "Drop `cni.privileged` from your values or IstioOperator for tidiness; the 1.22 chart ignores it (the API field is only deprecated, so istioctl still accepts it) and the node agent declares the capabilities it needs itself.",
@@ -148,7 +148,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "**Deprecated** usage of `values.istio_cni` in favor of `values.pilot.cni`",
     "remediation": "Move `istio_cni.enabled` (and `provider`) to `pilot.cni.*` in the istiod Helm values. The old key still works at 1.22; 1.24 removes it, after which an istiod chart that only sees `istio_cni` injects the `istio-init` container instead of `istio-validation` on a CNI-enabled cluster.",
@@ -167,7 +167,7 @@
     },
     "quote": "**Removed** the `PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS` feature flag.",
     "remediation": "Remove the variable from istiod. If it was set to `false`, per-pod listeners for headless Services are generated again at 1.22 — watch proxy config size on meshes with large headless Services.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_HEADLESS_SERVICE_POD_LISTENERS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag"
   },
   {
     "ruleId": "rtz-istio-1.22-first-party-jwt-removed",
@@ -185,7 +185,7 @@
     },
     "quote": "**Removed** the `first-party-jwt` legacy option for `values.global.jwtPolicy`. Support for the more secure `third-party-jwt` has been default for many years and is supported in all Kubernetes platforms.",
     "remediation": "Drop `global.jwtPolicy` from your values (istioctl only warns about it). At 1.22 nothing renders `JWT_POLICY` any more: an istiod or proxy still carrying `JWT_POLICY=first-party-jwt` is treated as third-party. The only real requirement is projected service-account tokens, which every supported Kubernetes serves.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(JWT_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed value of first-party-jwt is the option 1.22 removes"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(JWT_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed value of first-party-jwt is the option 1.22 removes"
   },
   {
     "ruleId": "rtz-istio-1.22-destinationrule-duplicate-subsets-rejected",

@@ -11,11 +11,11 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "The default file permissions for CNI config files written by Istio have changed from 0644 to 0600.",
     "remediation": "No action for the runtime, which reads the file as root. Node-level tooling that reads `/etc/cni/net.d/*istio*` as a non-root group member needs `values.cni.env.CNI_CONF_GROUP_READ=true` on the istio-cni DaemonSet (0640).",
-    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" CNI_CONF_GROUP_READ=\" + ([.spec.template.spec.containers[].env[]? | select(.name == \"CNI_CONF_GROUP_READ\") | .value] | join(\",\"))'  # an empty value means CNI config files become 0600 at 1.30"
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" CNI_CONF_GROUP_READ=\" + ([.spec.template.spec.containers[].env[]? | select(.name == \"CNI_CONF_GROUP_READ\") | .value] | join(\",\"))'  # an empty value means CNI config files become 0600 at 1.30"
   },
   {
     "ruleId": "rtz-istio-1.30-cni-agent-honours-excludenamespaces",
@@ -62,11 +62,17 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
     },
     "quote": "XDS debug endpoints (syncz, config_dump) on port 15010 now require authentication. This affects istioctl commands using --plaintext flag and custom tooling using plaintext XDS.",
     "remediation": "Drop `--plaintext` from istioctl invocations and move custom XDS clients to the authenticated port (15012) with a service account token; `ENABLE_DEBUG_ENDPOINT_AUTH=false` on istiod restores the old behaviour.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_DEBUG_ENDPOINT_AUTH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means plaintext XDS debug access is refused after upgrade"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_DEBUG_ENDPOINT_AUTH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means plaintext XDS debug access is refused after upgrade",
+    "introducedIn": [
+      "1.27.8",
+      "1.28.5",
+      "1.29.1",
+      "1.30.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.30-gateway-tls-listeners-no-alpha-gate",
@@ -79,5 +85,24 @@
     "quote": "Gateway listeners with `protocol: TLS` (used for TLS passthrough via `TLSRoute`) are now accepted without requiring `PILOT_ENABLE_ALPHA_GATEWAY_API=true`, since TLSRoute graduated to GA in Gateway API v1.5.0.",
     "remediation": "A Gateway that already declared a `protocol: TLS` listener while the alpha flag was off starts serving it (and any attached TLSRoute) at 1.30. Confirm those listeners are meant to be live; remove them if not.",
     "verifyCommand": "kubectl get gateways.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(.spec.listeners[]? | .protocol == \"TLS\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed Gateway has a TLS listener that becomes active at 1.30 without the alpha flag"
+  },
+  {
+    "ruleId": "rtz-istio-1.30-tlsroute-crd-below-1-5-ignored",
+    "severity": "HIGH",
+    "title": "istiod 1.30 ignores a TLSRoute CRD below Gateway API bundle v1.5.0 — TLS passthrough routes stop being programmed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the bundle version is an annotation VALUE on the CRD and rules compare keys, not values; the hint names the TLSRoute CRD and the command prints its bundle version"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^gateway\\.networking\\.k8s\\.io$",
+      "objectName": "^tlsroutes\\.gateway\\.networking\\.k8s\\.io$"
+    },
+    "quote": "Gateway listeners with `protocol: TLS` (used for TLS passthrough via `TLSRoute`) are now accepted without requiring `PILOT_ENABLE_ALPHA_GATEWAY_API=true`, since TLSRoute graduated to GA in Gateway API v1.5.0.",
+    "remediation": "istiod 1.30 watches TLSRoute at `v1` and drops a `tlsroutes.gateway.networking.k8s.io` CRD whose `gateway.networking.k8s.io/bundle-version` annotation is below v1.5.0: no TLSRoute is read, the Gateway reports `attachedRoutes: 0` and passthrough traffic fails with no error in the route's status. The opposite gate holds before the upgrade: 1.27.9, 1.28.6 and 1.29.2 onwards ignore a TLSRoute CRD above bundle v1.4.0. Upgrade the TLSRoute CRD to bundle v1.5.x in the same change window as istiod and expect TLSRoutes to be unserved by whichever control plane does not match it while both run. From 1.30.1, `istioctl analyze` reports a stale CRD as IST0176.",
+    "verifyCommand": "kubectl get crd tlsroutes.gateway.networking.k8s.io -o custom-columns='CRD:.metadata.name,BUNDLE:.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version' --ignore-not-found  # below v1.5.0 is ignored by istiod 1.30; above v1.4.0 is ignored by 1.27.9 / 1.28.6 / 1.29.2 onwards"
   }
 ]

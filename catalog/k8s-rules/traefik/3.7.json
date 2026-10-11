@@ -11,12 +11,13 @@
       "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
     },
     "quote": "From version `v3.7.12` onwards, a new `aliasHeadersStrategy` entry point option deprecates and replaces the `underscoreHeadersStrategy` option introduced in `v3.6.20`.",
-    "remediation": "Move the entry point from `underscoreHeadersStrategy` to `aliasHeadersStrategy`. The replacement is broader: it covers every aliasing character rather than the underscore alone, so re-check which header names you actually intend to accept before switching.",
+    "remediation": "Move the entry point from `underscoreHeadersStrategy` to `aliasHeadersStrategy` (the first release carrying it is v3.6.22 on the changelog, not the v3.6.20 the guide names, and no 3.6 release has `aliasHeadersStrategy`). The default `keep` changes nothing for traffic. The break to avoid is setting BOTH options on one entry point with different values: Traefik then rejects the install configuration (`cannot have both underscoreHeadersStrategy and aliasHeadersStrategy options configured with different values`) and does not start. The replacement also covers every aliasing character, not only the underscore — re-check the header names you accept before choosing `delete` or `reject`.",
     "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"underscoreHeadersStrategy\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set the deprecated option; also check Helm values and any static config ConfigMap",
     "coversNotes": [
       "UnderscoreHeadersStrategy"
     ],
     "introducedIn": [
+      "2.11.56",
       "3.7.12"
     ]
   },
@@ -26,7 +27,7 @@
     "title": "BasicAuth middleware without users unmounts its routers",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+      "reason": "the Middleware projection names each Middleware's TYPE (`types[]`), so the Middlewares of this type are named as candidates — but whether one is affected depends on its configuration body, which the projection does not carry, so the item cannot be settled"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -35,9 +36,10 @@
       "value": "^basicAuth$"
     },
     "quote": "From version `v3.7.3` onwards, the BasicAuth middleware requires a non-empty users configuration in order to be built successfully. Previously, the middleware would be built successfully but always return a 401 status code for any request. Now, an error occurs and any routers using it will be unmounted. For the same request, a 404 status code is served instead of a 401 status code.",
-    "remediation": "Give every BasicAuth middleware a non-empty `users` list (or a `usersFile`/secret reference that resolves) before upgrading. This is a behaviour change with real blast radius: a middleware that previously just returned 401 now fails to build, and every router referencing it is unmounted — those routes return 404 rather than prompting for credentials.",
+    "remediation": "Give every BasicAuth middleware a non-empty `users` list (or a `secret` reference that resolves to users) before upgrading. This is a behaviour change with real blast radius: a middleware that previously just returned 401 now fails to build, and every router referencing it is unmounted — those routes return 404 rather than prompting for credentials.",
     "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.basicAuth != null) | select(((.spec.basicAuth.users // []) | length) == 0 and (.spec.basicAuth.secret // \"\") == \"\") | .metadata.namespace + \"/\" + .metadata.name' # names printed have no users and will unmount their routers",
     "introducedIn": [
+      "2.11.48",
       "3.6.19",
       "3.7.3"
     ]
@@ -59,6 +61,7 @@
     "remediation": "Treat the ability to create a TLSOption or TLSStore named `default` as a cluster-wide privilege and restrict it with RBAC. Audit which namespaces can create them today, and have security-sensitive routers reference their TLS options explicitly rather than relying on the default, so a default defined elsewhere cannot silently weaken them.",
     "verifyCommand": "kubectl get tlsoptions.traefik.io,tlsstores.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name == \"default\") | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # any row is a cluster-wide default owned by that namespace",
     "introducedIn": [
+      "2.11.55",
       "3.7.11"
     ]
   },
@@ -101,6 +104,7 @@
     "remediation": "Decide this deliberately rather than inheriting the default. The option governs whether resources in one provider may reference resources in another; enabling it widens what a namespace owner can reach across provider boundaries.",
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |crossProviderNamespaces' # rows show whether crossProviderNamespaces is set on the providers; nothing printed means the default applies, decide it explicitly; a static configuration file mounted from a ConfigMap is not listed, read it too",
     "introducedIn": [
+      "2.11.46",
       "3.6.17",
       "3.7.1"
     ]
@@ -111,7 +115,7 @@
     "title": "errorRequestHeaders needs updated CRDs to be usable",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+      "reason": "the Middleware projection names each Middleware's TYPE (`types[]`), so the Middlewares of this type are named as candidates — but whether one is affected depends on its configuration body, which the projection does not carry, so the item cannot be settled"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -123,6 +127,7 @@
     "remediation": "Apply the updated CRD manifest for this Traefik minor BEFORE upgrading if you intend to use `errorRequestHeaders` on the Errors middleware. Until the CRD carries the field the API server strips it, so the option appears to apply and silently does nothing.",
     "verifyCommand": "kubectl get crd middlewares.traefik.io -o json | jq -e '.spec.versions[].schema.openAPIV3Schema.properties.spec.properties.errors.properties.errorRequestHeaders' >/dev/null 2>&1 && echo \"errorRequestHeaders present in CRD schema\" || echo \"CRD schema predates errorRequestHeaders\"",
     "introducedIn": [
+      "2.11.53",
       "3.6.24",
       "3.7.8"
     ]
@@ -142,7 +147,7 @@
       "value": "(?i)providers\\.kubernetesgateway"
     },
     "quote": "Starting with `v3.7.0`, the Kubernetes Gateway API provider supports version v1.5.1 of the specification, which requires the Gateway API CRDs to be updated.",
-    "remediation": "Update the Gateway API CRDs to v1.5.1 BEFORE upgrading Traefik. The provider reads fields the older CRDs do not carry, so on stale CRDs routes are accepted and silently not programmed. A related change rides along and needs no action: the provider's Kubernetes client QPS/Burst rise to 50/100 from v3.7.3. The v3.7.10 move to spec v1.6.1 is its own item.",
+    "remediation": "Update the Gateway API CRDs to v1.5.1 or later BEFORE upgrading Traefik. The 3.7 provider always watches TLSRoute v1 and BackendTLSPolicy v1, which older bundles do not serve, and Traefik documents what an unserved watched version does: the Kubernetes Gateway provider never completes its startup, so NO Gateway API route is served — not just the new kinds — and no error is logged while Traefik keeps running. A related change needs no action: the provider's Kubernetes client QPS/Burst rise to 50/100 from v3.7.3. The v3.7.10 move to spec v1.6.1 is its own item.",
     "verifyCommand": "kubectl get crd gateways.gateway.networking.k8s.io -o jsonpath='{.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version}{\"\\n\"}' # must be v1.5.1 or later",
     "coversNotes": [
       "Kubernetes Gateway API Provider"
@@ -228,6 +233,7 @@
     "remediation": "A backend that accepted such an upgrade now serves those requests over HTTP/1.1. To keep cleartext HTTP/2 to a backend, declare it with the h2c scheme (`scheme: h2c` on the IngressRoute service, or the `traefik.ingress.kubernetes.io/service.serversscheme: h2c` Ingress annotation).",
     "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.scheme == \"h2c\") | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .name' # services printed already use h2c with prior knowledge and are unaffected",
     "introducedIn": [
+      "2.11.57",
       "3.7.13"
     ]
   },
@@ -242,6 +248,7 @@
     "quote": "Starting with `v3.7.9`, HTTP/1 `CONNECT` requests are rejected with a `501 Not Implemented` response.",
     "remediation": "No action for almost every deployment: HTTP/1 CONNECT was non-functional before this change, so the rejection makes existing behaviour explicit rather than removing a capability. Only investigate if a client genuinely issues HTTP/1 CONNECT to Traefik.",
     "introducedIn": [
+      "2.11.53",
       "3.6.24",
       "3.7.9"
     ]
@@ -278,6 +285,7 @@
     "quote": "Starting with `v3.7.13`, a request whose target is rootless, that is a target made of a scheme followed by something that does not start with a slash, is rejected with a `400 Bad Request` response.",
     "remediation": "No action for normal clients: such a target is none of the forms HTTP/1.1 allows, and it escaped the path handling and routing rules. Only investigate if a client starts receiving 400s after the upgrade.",
     "introducedIn": [
+      "2.11.57",
       "3.7.13"
     ]
   },
@@ -299,6 +307,7 @@
     "remediation": "Enabling `safeNaming` is the safer configuration, but it renames the generated routers, middlewares and services. Anything that references those generated names — dashboards, metrics queries, alerting rules, API scripts — has to be updated in the same change. Leaving it off keeps a real collision risk across namespaces.",
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |safeNaming' # nothing printed means safeNaming is unset; enabling it renames every generated router, middleware and service; a static configuration file mounted from a ConfigMap is not listed, read it too",
     "introducedIn": [
+      "2.11.55",
       "3.7.11"
     ]
   },
@@ -314,6 +323,7 @@
     "remediation": "Nothing changes on upgrade: a host served on one entry point with different TLS options already falls back to the `default` options, and still does. This release adds core.strictTLSOptions, which disables the conflicting routers instead. Check the Risk tab for tls-options-conflict first — enabling the option while a conflict exists takes those routers down.",
     "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[]?.args[]?] | map(tostring) | any(test(\"(?i)strictTLSOptions\"))) | .metadata.namespace + \"/\" + .metadata.name' # names printed already set core.strictTLSOptions; also check Helm values and any static config file",
     "introducedIn": [
+      "2.11.55",
       "3.7.11"
     ]
   },
@@ -323,7 +333,7 @@
     "title": "StripPrefix returns 400 when the stripped path is not normalised",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
+      "reason": "the Middleware projection names each Middleware's TYPE (`types[]`), so the Middlewares of this type are named as candidates — but whether one is affected depends on its configuration body, which the projection does not carry, so the item cannot be settled"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -335,6 +345,7 @@
     "remediation": "Check any client or upstream that relies on `.`/`..` segments surviving a StripPrefix. Those requests now get a 400 instead of being forwarded. This is a hardening change, so the right fix is normally to fix the caller's path rather than to work around it.",
     "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.stripPrefix != null or .spec.stripPrefixRegex != null) | .metadata.namespace + \"/\" + .metadata.name + \"  \" + ((.spec.stripPrefix.prefixes // .spec.stripPrefixRegex.regex // []) | join(\",\"))' # names printed strip a prefix; a caller whose path still carries . or .. segments after stripping now receives 400",
     "introducedIn": [
+      "2.11.48",
       "3.6.19",
       "3.7.3"
     ]
@@ -344,17 +355,17 @@
     "severity": "MEDIUM",
     "title": "Negative weights in TCP/UDP weighted services are now rejected",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "service weights live in spec.routes[].services[], nested inside the routes array, so they are not a top-level field the evaluator can match"
-    },
-    "scope": {
-      "kind": "KIND_PRESENT",
-      "objectKind": "IngressRouteTCP"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRouteTCP",
+      "target": "routes[].services[].weight",
+      "value": "^-",
+      "reason": "the IngressRouteTCP projection carries each route service's weight; IngressRouteUDP is not collected, so a negative UDP weight is not checked"
     },
     "quote": "Negative weights in a TCP or UDP weighted service are now rejected when the service is built. Such a configuration previously made the load-balancer selection loop endlessly while holding its lock, which consumed a CPU core and blocked every subsequent connection to that service until Traefik was restarted.",
     "remediation": "Remove any negative weight from TCP and UDP weighted services before upgrading — the service now fails to build instead of being accepted. This one is worth fixing regardless of the upgrade: on earlier versions the same configuration pins a CPU core and blocks every subsequent connection to that service until Traefik restarts.",
     "verifyCommand": "kubectl get ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select((.weight // 0) < 0) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  weight=\" + (.weight|tostring)' # rows printed fail to build in 3.7",
     "introducedIn": [
+      "2.11.56",
       "3.7.12"
     ]
   },
@@ -374,6 +385,7 @@
     "remediation": "No configuration change is required — this only changes what the API reports. Note it when debugging: a TCP/UDP weighted service whose child is missing now shows as `disabled` with the error attached, where before it reported neither an error nor a status. The routers referencing it were already not created either way.",
     "verifyCommand": "kubectl get ingressroutetcps.traefik.io,ingressrouteudps.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | select((.services // [])[1] != null) | .services[] | \"\\($r.kind) \\($r.metadata.namespace)/\\($r.metadata.name) child \\(.namespace // $r.metadata.namespace)/\\(.name):\\(.port)\"' # every child Service printed must exist; a missing child now marks the parent weighted service disabled in the API",
     "introducedIn": [
+      "2.11.56",
       "3.7.12"
     ]
   },
@@ -408,6 +420,90 @@
     "remediation": "If any rule already contains a literal `*.` host, confirm the new semantics match what you intended: it now matches exactly one level of subdomain — not the apex, and not deeper subdomains. Routers that previously never matched such traffic may start receiving it. IngressRouteTCP routers using HostSNI(`*.example.com`) carry the same change and are not matched by this rule — check them by hand.",
     "introducedIn": [
       "3.7.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-ingress-nginx-generated-names-keep-dots",
+    "severity": "LOW",
+    "title": "Ingress-NGINX provider keeps dots in generated router and service names",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the change is in the names Traefik generates from Ingress and Secret names; an Ingress name is metadata, which no spec-path rule reads"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesingressnginx"
+    },
+    "quote": "Starting with `v3.7.14`, the resource names are kept as is: the router of an Ingress named `my.ingress` is now `default-my.ingress-rule-0-path-0` instead of `default-my-ingress-rule-0-path-0`. Dashboards, alerts and API queries relying on the previous names must be updated.",
+    "remediation": "Traffic is unchanged. Update dashboards, alerts and API queries that name routers, services, serversTransports or TLS options generated for an Ingress or Secret whose name contains a dot, and for Ingresses with `nginx.ingress.kubernetes.io/ssl-passthrough` (their HTTP routers are renamed after the rule and path). Two Ingresses named `my.ingress` and `my-ingress` no longer collide, so the one that was silently overridden starts serving.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select(.metadata.name | contains(\".\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed get new generated router names at 3.7.14",
+    "introducedIn": [
+      "3.7.14"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-gateway-equal-precedence-routes-deterministic",
+    "severity": "MEDIUM",
+    "title": "Gateway API: of two routes that match equally well, only the one with precedence serves",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Gateway API routes (HTTPRoute, GRPCRoute, TLSRoute, TCPRoute) are not collected, so routes sharing a listener and a rule cannot be compared"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.7.14`, only the route that has precedence serves the requests. The specification gives precedence to the older route, then to the first route in alphabetical order by `{namespace}/{name}`. Traefik does not create the routers of the other routes.",
+    "remediation": "Find routes attached to the same listener that produce the same rule — typically one route with no host name and one with the listener's host name. Before 3.7.14 either could serve (and it could change at each reload); from 3.7.14 the older route, then the alphabetically first `{namespace}/{name}`, always serves and the other gets no router. If the app team relies on the route that loses, give it a distinct match (host, path or header) before upgrading. Traefik logs a warning naming the router that serves the rule.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | [(.spec.parentRefs // [] | map(.name + \"/\" + (.sectionName // \"*\")) | join(\",\")), (.spec.hostnames // [] | join(\",\")), .metadata.creationTimestamp, .metadata.namespace + \"/\" + .metadata.name] | @tsv' | sort # routes on the same parent/listener with the same match: only the oldest serves at 3.7.14",
+    "introducedIn": [
+      "3.7.14"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-gateway-tlsroute-router-names-change",
+    "severity": "LOW",
+    "title": "Gateway API: TLSRoute router and service names change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Gateway API routes are not collected, and the change is in names Traefik generates, which no collected object carries"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.7.14`, the hash suffix of the TLSRoute router names is also derived from the router rule, so the names of all the TLSRoute routers, and of the services derived from them, change.",
+    "remediation": "Update dashboards, alerts and API queries that name TLSRoute routers or their services. A TLSRoute attached to several TLS listeners on one entry point previously kept only one router; from 3.7.14 every listener gets its own, so passthrough traffic that was silently dropped on the other listeners starts being served.",
+    "verifyCommand": "kubectl get tlsroutes.gateway.networking.k8s.io -A -o name 2>/dev/null # every TLSRoute listed gets new router and service names at 3.7.14",
+    "introducedIn": [
+      "3.7.14"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-otel-duration-histograms-follow-aggregation-env",
+    "severity": "LOW",
+    "title": "OpenTelemetry request-duration histograms follow the exponential-aggregation environment variable",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the switch is an environment variable's VALUE, and the agent sends environment variable names only"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)metrics\\.otlp"
+    },
+    "quote": "Starting with `v3.7.14`, these histograms follow this environment variable, and the `metrics.otlp.explicitBoundaries` option only applies to explicit bucket histograms.",
+    "remediation": "Operators only — no traffic effect. If the Traefik pod sets `OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION=base2_exponential_bucket_histogram`, the `traefik_*_request_duration_seconds` histograms switch from explicit buckets to exponential ones: update dashboards and alerts that read the bucket series.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].env[]?.name] | index(\"OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION\")) | .metadata.namespace + \"/\" + .metadata.name' # workloads printed set the variable; check its value",
+    "introducedIn": [
+      "3.7.14"
     ]
   }
 ]

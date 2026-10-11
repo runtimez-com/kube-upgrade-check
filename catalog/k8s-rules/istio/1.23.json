@@ -72,7 +72,7 @@
     },
     "quote": "**Removed** the `ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH` feature flag.",
     "remediation": "Remove the listed variables from the istiod Deployment (`pilot.env`); each is a no-op at 1.23. `istioctl experimental wait` goes with the distribution-tracking flag — scripts using it must poll `istioctl proxy-status` instead.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH|ENABLE_OPTIMIZED_CONFIG_REBUILD|PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING|ENABLE_OTEL_BUILTIN_RESOURCE_LABELS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a flag 1.23 no longer reads",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ISTIO_ENABLE_OPTIMIZED_SERVICE_PUSH|ENABLE_OPTIMIZED_CONFIG_REBUILD|PILOT_ENABLE_CONFIG_DISTRIBUTION_TRACKING|ENABLE_OTEL_BUILTIN_RESOURCE_LABELS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a flag 1.23 no longer reads",
     "coversNotes": [
       "Removed (51898)",
       "Removed (drop-distribution)",

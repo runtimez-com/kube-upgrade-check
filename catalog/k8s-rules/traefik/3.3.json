@@ -52,7 +52,11 @@
     },
     "quote": "Starting with v3.3.6, incoming request paths are now automatically cleaned before processing for security and consistency.",
     "remediation": "Routing and backend paths both change for requests containing `/../`, `/./` or duplicate slashes. Rules written against the uncleaned form may stop matching, and backends that saw the raw path now see the collapsed one. Test representative URLs rather than reasoning from the rules alone.",
-    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '//|/\\.\\.?(/|$)' # rules printed match on a path with ./ ../ or doubled slashes, which are now collapsed before matching"
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '//|/\\.\\.?(/|$)' # rules printed match on a path with ./ ../ or doubled slashes, which are now collapsed before matching",
+    "introducedIn": [
+      "2.11.23",
+      "3.3.6"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.3-tracing-global-attributes-renamed",

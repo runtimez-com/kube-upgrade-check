@@ -30,11 +30,11 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/ztunnel([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/ztunnel([:@]|$)"
     },
     "quote": "In this release, we have reverted to default to a static `ztunnel` name again. As previously, this can be overriden with `--set resourceName=my-custom-name`.",
     "remediation": "If the 1.25 upgrade left the ztunnel DaemonSet named after a non-`ztunnel` release (without `resourceName`), the 1.26 upgrade renames it back to `ztunnel`, recreating the DaemonSet; pass `--set resourceName=<current name>` to keep it, or plan the brief ambient interruption.",
-    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/ztunnel\"))) | select(.metadata.name != \"ztunnel\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed DaemonSet is not named ztunnel and is renamed by the 1.26 chart unless resourceName is set"
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/ztunnel\"))) | select(.metadata.name != \"ztunnel\") | .metadata.namespace + \"/\" + .metadata.name'  # a printed DaemonSet is not named ztunnel and is renamed by the 1.26 chart unless resourceName is set"
   },
   {
     "ruleId": "rtz-istio-1.26-enable-auto-sni-flag-removed",
@@ -49,7 +49,7 @@
     },
     "quote": "**Removed** deprecated `ENABLE_AUTO_SNI` flag and related codepaths.",
     "remediation": "Remove the variable from istiod. If it was `false`, TLS-originating DestinationRules without an explicit `sni` start sending the request host as SNI at 1.26; set `tls.sni` explicitly on upstreams that must receive a fixed name.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_AUTO_SNI)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means auto-SNI turns on at 1.26"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_AUTO_SNI)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means auto-SNI turns on at 1.26"
   },
   {
     "ruleId": "rtz-istio-1.26-cni-agent-no-host-network",
@@ -63,10 +63,10 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "**Improved** The CNI agent to no longer require `hostNetwork`, improving compatibility. Dynamic switching to the host network is now performed whenever necessary. The old behavior can temporarily be restored by setting the `ambient.shareHostNetworkNamespace` field in the `istio-cni` chart.",
     "remediation": "No action on a stock install. NetworkPolicies or node firewall rules written for a host-network `istio-cni-node` pod must allow the pod-network pod instead; `ambient.shareHostNetworkNamespace=true` on the istio-cni chart restores the old placement temporarily.",
-    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" hostNetwork=\" + ((.spec.template.spec.hostNetwork // false) | tostring)'  # hostNetwork=true before the upgrade becomes false after it unless shareHostNetworkNamespace is set"
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" hostNetwork=\" + ((.spec.template.spec.hostNetwork // false) | tostring)'  # hostNetwork=true before the upgrade becomes false after it unless shareHostNetworkNamespace is set"
   }
 ]

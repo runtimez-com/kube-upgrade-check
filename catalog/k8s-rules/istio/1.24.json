@@ -106,7 +106,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "**Removed** writing kubeconfig to CNI net directory.",
     "remediation": "Nothing to change on a stock install. Tooling or a custom CNI chain that read `/etc/cni/net.d/ZZZ-istio-cni-kubeconfig` or the `CNI_NET_DIR` key of the `istio-cni-config` ConfigMap must stop expecting them.",
@@ -127,7 +127,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "**Removed** unused `istio_cni` values from the `istiod` chart that were marked as deprecated (#49290) 2 releases ago.",
     "remediation": "Helm users of the istiod chart: set `pilot.cni.enabled=true` (and `pilot.cni.provider` if used) before upgrading; with only `istio_cni.enabled` the 1.24 injector no longer knows the cluster runs istio-cni and injects the privileged `istio-init` container, which PodSecurity-restricted namespaces reject. istioctl/IstioOperator installs that enable `components.cni` derive `pilot.cni.enabled` automatically and are safe.",
@@ -163,7 +163,7 @@
     },
     "quote": "**Removed** support for the `1.20` `compatibilityProfile`. This configured the following settings: `ENABLE_EXTERNAL_NAME_ALIAS`, `PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING`, `VERIFY_CERTIFICATE_AT_CLIENT`, and `ENABLE_AUTO_SNI`. All of these flags, with the exception of `ENABLE_AUTO_SNI`, have also been removed from Istio entirely.",
     "remediation": "Remove `compatibilityVersion: 1.20` and the listed istiod variables. Before doing so, complete the 1.21 migrations they were holding back: ExternalName Services as aliases, overlapping wildcard hosts by specificity, and `caCertificates`/`insecureSkipVerify` on TLS-originating DestinationRules.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_EXTERNAL_NAME_ALIAS|PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING|VERIFY_CERTIFICATE_AT_CLIENT)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a 1.20-compatibility setting that 1.24 stops honouring"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_EXTERNAL_NAME_ALIAS|PERSIST_OLDEST_FIRST_HEURISTIC_FOR_VIRTUAL_SERVICE_HOST_MATCHING|VERIFY_CERTIFICATE_AT_CLIENT)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a 1.20-compatibility setting that 1.24 stops honouring"
   },
   {
     "ruleId": "rtz-istio-1.24-enablecoredump-annotation-removed",
@@ -205,11 +205,11 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
     },
     "quote": "**Fixed** default retry policy to exclude retries on 503 which is potentially unsafe for idempotent requets. It can be reverted by setting \"EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY\" to false.",
     "remediation": "Routes without an explicit `retries` block stop retrying 503 responses at 1.24. Where that retry was relied on, add `retries.retryOn: \"503,…\"` to the VirtualService route (the durable fix) or set `EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY=false` on istiod — a stopgap only: the flag is removed at 1.27 with the 1.23 compatibility profile, without a release note.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means the new default (no 503 retry) is in force after upgrade"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(EXCLUDE_UNSAFE_503_FROM_DEFAULT_RETRY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means the new default (no 503 retry) is in force after upgrade"
   },
   {
     "ruleId": "rtz-istio-1.24-inbound-retry-policy-default",
@@ -223,11 +223,11 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/pilot([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
     },
     "quote": "**Added** retry policy for inbound requests that automatically resets the requests that the service has not seen/processed. It can be reverted by setting \"ENABLE_INBOUND_RETRY_POLICY\" to false.",
     "remediation": "No action expected; requests reset before the application read them are retried on the inbound side. Set `ENABLE_INBOUND_RETRY_POLICY=false` on istiod if inbound retries must not happen (the flag is removed at 1.27 with the 1.23 compatibility profile, unannounced).",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_INBOUND_RETRY_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means inbound retries are on after upgrade"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(ENABLE_INBOUND_RETRY_POLICY)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means inbound retries are on after upgrade"
   },
   {
     "ruleId": "rtz-istio-1.24-destinationrule-tls-preferred-for-external",

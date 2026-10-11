@@ -70,21 +70,6 @@
     "verifyCommand": "kubectl get tlsoptions.traefik.containo.us,tlsstores.traefik.containo.us,tlsoptions.traefik.io,tlsstores.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name == \"default\") | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # any row is a cluster-wide default owned by that namespace"
   },
   {
-    "ruleId": "rtz-traefik-2.11-strict-tls-options-available",
-    "severity": "LOW",
-    "title": "New core.strictTLSOptions option can turn the silent default-TLS fallback into disabled routers",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "core.strictTLSOptions is a static (install) option set through container args, Helm values or a static config file; whether two routers actually conflict is the live Traefik risk rule tls-options-conflict, which names the routes"
-    },
-    "quote": "Starting with `v2.11.55`, the new `core.strictTLSOptions` static configuration option disables this fallback: the routers involved in the conflict are marked in error and are not built at all.",
-    "remediation": "Nothing changes on upgrade: a host served on one entry point with different TLS options already falls back to the `default` options, and still does. This release adds core.strictTLSOptions, which disables the conflicting routers instead. Check the Risk tab for tls-options-conflict first — enabling the option while a conflict exists takes those routers down.",
-    "verifyCommand": "kubectl get deploy,daemonset -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[]?.args[]?] | map(tostring) | any(test(\"(?i)strictTLSOptions\"))) | .metadata.namespace + \"/\" + .metadata.name' # names printed already set core.strictTLSOptions; also check Helm values and any static config file",
-    "introducedIn": [
-      "2.11.55"
-    ]
-  },
-  {
     "ruleId": "rtz-traefik-2.11-connection-headers-removed-earlier",
     "severity": "MEDIUM",
     "title": "Connection header directives are stripped before the middleware chain",
@@ -115,17 +100,6 @@
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |crossProviderNamespaces' # rows show whether crossProviderNamespaces is set on the providers; nothing printed means the default applies, decide it explicitly; a static configuration file mounted from a ConfigMap is not listed, read it too"
   },
   {
-    "ruleId": "rtz-traefik-2.11-docker-minimum-engine-version",
-    "severity": "LOW",
-    "title": "Docker provider requires Docker Engine v19.03 or above",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "this concerns the Docker provider, which is not part of any Kubernetes object collected for this cluster"
-    },
-    "quote": "Starting with `v2.11.45`, the Docker provider requires Docker API version v1.40 or above (Docker Engine v19.03).",
-    "remediation": "Not applicable to a Kubernetes-only deployment. If the same Traefik configuration is also used against a Docker host, update that engine or pin `DOCKER_API_VERSION`."
-  },
-  {
     "ruleId": "rtz-traefik-2.11-encoded-characters-defaults-flipped-to-true",
     "severity": "HIGH",
     "title": "Encoded-character options default to true, disabling the 2.11.32 hardening",
@@ -142,18 +116,6 @@
     "quote": "Since `v2.11.35`, the options for encoded characters now have a `true` default value. This means that Traefik will not reject requests with a path containing a specific set of encoded characters by default. It is now up to the users to configure the security hardening of encoded characters.",
     "remediation": "Read this together with 2.11.32: the hardening added there is OFF again by default from 2.11.35, and securing it becomes explicitly the operator's job. If you relied on 2.11.32 rejecting encoded characters, set those options back to `false` explicitly — otherwise moving past 2.11.35 silently reopens what 2.11.32 closed.",
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |encoded' # rows show any encoded-character option set on an entry point; nothing printed means the relaxed default (true) applies from this version, set them to false explicitly to keep the hardening; a static configuration file mounted from a ConfigMap is not listed, read it too"
-  },
-  {
-    "ruleId": "rtz-traefik-2.11-encoded-characters-rejected-by-default",
-    "severity": "HIGH",
-    "title": "Requests with certain encoded characters are rejected with 400",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "this is request-time behaviour, not a property of any collected object"
-    },
-    "quote": "Since `v2.11.32`, for security reasons Traefik now rejects requests with a path containing a specific set of encoded characters by default. When such a request is received, Traefik responds with a `400 Bad Request` status code.",
-    "remediation": "Check whether any client legitimately encodes those characters in the path — some SDKs and legacy integrations encode slashes. Those requests start returning 400 on 2.11.32.",
-    "verifyCommand": "( kubectl get ingressroutes.traefik.containo.us,ingressroutes.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed expect percent-encoded characters in the path; the clients sending them may now receive 400 unless the encoded-character options are relaxed"
   },
   {
     "ruleId": "rtz-traefik-2.11-errors-middleware-error-request-headers",
@@ -278,24 +240,6 @@
     },
     "quote": "Starting with `v2.11.53`, HTTP/1 `CONNECT` requests are rejected with a `501 Not Implemented` response.",
     "remediation": "No action for almost every deployment: HTTP/1 CONNECT was non-functional before this change, so the rejection makes existing behaviour explicit rather than removing a capability."
-  },
-  {
-    "ruleId": "rtz-traefik-2.11-ipwhitelist-deprecated",
-    "severity": "MEDIUM",
-    "title": "IPWhiteList middleware deprecated in favour of IPAllowList",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the Middleware projection carries only the top-level type KEY NAMES as a list, and the evaluator compares a field's whole value rather than testing list membership, so a single middleware type inside that list cannot be matched"
-    },
-    "scope": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "Middleware",
-      "target": "types[]",
-      "value": "^ipWhiteList$"
-    },
-    "quote": "In `v2.11`, the `IPWhiteList` middleware is deprecated, please use the IPAllowList middleware instead.",
-    "remediation": "Rename every `ipWhiteList` middleware to `ipAllowList` while still on v2 — the configuration body is unchanged. Doing it here rather than during the v3 jump matters: in v3 the old name is removed outright, so a Middleware left on it stops being recognised and the routers referencing it fail to load.",
-    "verifyCommand": "kubectl get middlewares.traefik.containo.us,middlewares.traefik.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.ipWhiteList != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed still use the deprecated type"
   },
   {
     "ruleId": "rtz-traefik-2.11-maximum-router-priority-value-changed",

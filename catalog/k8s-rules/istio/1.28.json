@@ -9,7 +9,12 @@
     },
     "quote": "For Kubernetes Gateway API gateways, access to referenced TLS secrets now requires both namespace and service account match (previously only namespace) or an explicit `ReferenceGrant`. Gateways using a hostname address remain namespace-only.",
     "remediation": "istiod now checks that the proxy asking for a listener's `certificateRefs` Secret runs as the Gateway's expected ServiceAccount (`<gateway>-istio`, or the `gateway.istio.io/service-account` annotation) in the Secret's namespace; a gateway Deployment you pointed at another ServiceAccount, or a listener referencing a Secret in another namespace without a `ReferenceGrant`, stops receiving the certificate and its HTTPS listener fails TLS handshakes. Align the ServiceAccount or add the ReferenceGrant before upgrading. Manual deployments addressed by hostname keep the old namespace-only check.",
-    "verifyCommand": "kubectl get gateways.gateway.networking.k8s.io -A -o json | jq -r '.items[] | .metadata.namespace as $ns | .metadata.name as $n | .spec.listeners[]? | .tls.certificateRefs[]? | select(.namespace != null and .namespace != $ns) | $ns + \"/\" + $n + \" references \" + .namespace + \"/\" + .name'  # each printed cross-namespace certificate ref needs a ReferenceGrant from 1.28; also check that managed gateway pods run as the ServiceAccount named after the Gateway with an -istio suffix"
+    "verifyCommand": "kubectl get gateways.gateway.networking.k8s.io -A -o json | jq -r '.items[] | .metadata.namespace as $ns | .metadata.name as $n | .spec.listeners[]? | .tls.certificateRefs[]? | select(.namespace != null and .namespace != $ns) | $ns + \"/\" + $n + \" references \" + .namespace + \"/\" + .name'  # each printed cross-namespace certificate ref needs a ReferenceGrant from 1.28; also check that managed gateway pods run as the ServiceAccount named after the Gateway with an -istio suffix",
+    "introducedIn": [
+      "1.26.5",
+      "1.27.2",
+      "1.28.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.28-inferencepool-endpointpicker-port",
@@ -89,6 +94,6 @@
     },
     "quote": "The Pilot environment flags `METRIC_ROTATION_INTERVAL` and `METRIC_GRACEFUL_DELETION_INTERVAL` have been removed. Use the pod annotation `sidecar.istio.io/statsEvictionInterval` with the new stats eviction API instead.",
     "remediation": "Remove both variables from istiod and, where stale-metric eviction was in use, annotate the affected pod templates with `sidecar.istio.io/statsEvictionInterval: <duration>`.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(METRIC_ROTATION_INTERVAL|METRIC_GRACEFUL_DELETION_INTERVAL)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a flag 1.28 removes"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(METRIC_ROTATION_INTERVAL|METRIC_GRACEFUL_DELETION_INTERVAL)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # each printed line is a flag 1.28 removes"
   }
 ]

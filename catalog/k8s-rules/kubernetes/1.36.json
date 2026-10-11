@@ -13,6 +13,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.36-service-externalips-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "Service spec.externalIPs is deprecated",
     "detection": {

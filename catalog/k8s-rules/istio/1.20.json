@@ -46,7 +46,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Deployment",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/operator([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/operator([:@]|$)"
     },
     "quote": "**Removed** support for installing `ambient` profile with in-cluster operator.",
     "remediation": "An `IstioOperator` resource with `spec.profile: ambient` that is reconciled by the in-cluster operator stops installing at 1.20. Move the ambient install to `istioctl install` or the Helm charts (istio-cni, ztunnel, istiod with `profile=ambient`); the in-cluster operator itself is deprecated.",
@@ -65,7 +65,7 @@
     },
     "quote": "**Removed** the `PILOT_ENABLE_DESTINATION_RULE_INHERITANCE` experimental feature, which has been disable-by-default since it was created.",
     "remediation": "Remove the variable from istiod. If it was set to `true`, mesh-wide or namespace-wide DestinationRules no longer merge into host-specific ones — copy the inherited `trafficPolicy` settings into each host DestinationRule before upgrading.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_DESTINATION_RULE_INHERITANCE)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of true means inherited DestinationRule settings are lost at 1.20"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_DESTINATION_RULE_INHERITANCE)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of true means inherited DestinationRule settings are lost at 1.20"
   },
   {
     "ruleId": "rtz-istio-1.20-custom-network-filters-removed",

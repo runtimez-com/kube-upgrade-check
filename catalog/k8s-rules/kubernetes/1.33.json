@@ -13,6 +13,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.33-topology-mode-annotation-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "Service annotation service.kubernetes.io/topology-mode is deprecated — use spec.trafficDistribution",
     "detection": {
@@ -41,6 +42,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.33-endpoints-api-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "core/v1 Endpoints is deprecated — consumers should read EndpointSlice",
     "detection": {
@@ -137,6 +139,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.33-resource-v1beta1-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "resource.k8s.io/v1beta1 is deprecated — DRA drivers and clients should move to v1beta2 (or v1 from 1.34)",
     "detection": {

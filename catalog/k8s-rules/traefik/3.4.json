@@ -42,7 +42,11 @@
     "coversNotes": [
       "Request Path Matching Examples"
     ],
-    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; re-test them against real request URLs, unreserved characters are decoded and encodings uppercased"
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; re-test them against real request URLs, unreserved characters are decoded and encodings uppercased",
+    "introducedIn": [
+      "2.11.25",
+      "3.4.1"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.4-reserved-characters-stay-encoded",
@@ -54,7 +58,11 @@
     },
     "quote": "Starting with v3.4.1, reserved characters (per RFC 3986) remain encoded during router rule matching to prevent routing ambiguity.",
     "remediation": "The upstream note's own table is the thing to check: a path like `/foo%2Fbar` no longer matches a rule written as if the encoded slash were decoded. Any rule that depended on an encoded separator being decoded before matching must be rewritten.",
-    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; a rule that relied on an encoded separator being decoded before matching no longer matches"
+    "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '%[0-9A-Fa-f]{2}' # rules printed match on a percent-encoded path; a rule that relied on an encoded separator being decoded before matching no longer matches",
+    "introducedIn": [
+      "2.11.25",
+      "3.4.1"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.4-rule-syntax-options-deprecated",

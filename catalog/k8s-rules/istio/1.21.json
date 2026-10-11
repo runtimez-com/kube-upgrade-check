@@ -129,7 +129,7 @@
     },
     "quote": "**Removed** the `PILOT_ENABLE_INBOUND_PASSTHROUGH` setting, which has been enabled-by-default for the past 8 releases.",
     "remediation": "Remove the variable from istiod. If it was set to `false`, sidecars go back to inbound passthrough at 1.21: inbound listeners no longer rewrite to `127.0.0.1`, so applications that only bound to localhost need `Sidecar.ingress[].defaultEndpoint: 127.0.0.1:<port>` instead.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_INBOUND_PASSTHROUGH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means inbound listeners change to passthrough at 1.21"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(PILOT_ENABLE_INBOUND_PASSTHROUGH)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # a printed line is the removed flag; a value of false means inbound listeners change to passthrough at 1.21"
   },
   {
     "ruleId": "rtz-istio-1.21-legacy-telemetry-envoyfilters-removed",

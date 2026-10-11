@@ -47,7 +47,12 @@
     },
     "quote": "Tools accessing debug endpoints from non-system namespaces (such as Kiali or custom monitoring tools) may be affected. Non-system namespaces are now restricted to config_dump, ndsz, and edsz endpoints for same-namespace proxies only.",
     "remediation": "Run Kiali (and any tool that reads istiod `/debug/*`) in the Istio root namespace, upgrade it to a release that copes with the restriction, or set `ENABLE_DEBUG_ENDPOINT_AUTH=false` on istiod to restore the old access.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"kiali/kiali\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.template.spec.containers[0].image'  # a printed Kiali outside the Istio root namespace loses most debug endpoints at 1.29 unless ENABLE_DEBUG_ENDPOINT_AUTH=false"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"kiali/kiali\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.template.spec.containers[0].image'  # a printed Kiali outside the Istio root namespace loses most debug endpoints at 1.29 unless ENABLE_DEBUG_ENDPOINT_AUTH=false",
+    "introducedIn": [
+      "1.27.6",
+      "1.28.4",
+      "1.29.0"
+    ]
   },
   {
     "ruleId": "rtz-istio-1.29-circuit-breaker-remaining-metrics-off",
@@ -65,7 +70,7 @@
     },
     "quote": "Previously, these metrics were tracked by default. Now, tracking is disabled by default for better proxy memory usage.",
     "remediation": "Dashboards or alerts on `envoy_cluster_circuit_breakers_*_remaining_*` go empty after upgrade. Set `DISABLE_TRACK_REMAINING_CB_METRICS=false` on istiod (or use the compatibility version) to keep them; the DestinationRules with a `connectionPool` are where the limits being tracked are defined.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(DISABLE_TRACK_REMAINING_CB_METRICS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means remaining_* circuit-breaker metrics stop after upgrade"
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | (.metadata.namespace + \"/\" + .metadata.name) as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^(DISABLE_TRACK_REMAINING_CB_METRICS)$\")) | $n + \": \" + .name + \"=\" + (.value // \"(valueFrom)\")'  # no printed line means remaining_* circuit-breaker metrics stop after upgrade"
   },
   {
     "ruleId": "rtz-istio-1.29-ambient-iptables-reconcile-default-on",
@@ -79,10 +84,10 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
       "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release)/install-cni([:@]|$)"
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/install-cni([:@]|$)"
     },
     "quote": "Iptables reconciliation is now enabled by default for ambient workloads in release 1.29.0. When a new `istio-cni` DaemonSet pod starts up, it will automatically inspect pods that were previously enrolled in the ambient mesh and upgrade their in-pod iptables/nftables rules",
     "remediation": "No action expected: after the istio-cni upgrade, already-enrolled ambient pods get their redirection rules brought up to date without a restart. Set `--set cni.ambient.reconcileIptablesOnStartup=false` to keep the old behaviour.",
-    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[].env[]? | select(.name | test(\"RECONCILE\")) | .name + \"=\" + (.value // \"\")] | join(\",\"))'  # no reconcile setting printed means the 1.29 default (on) applies"
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[].env[]? | select(.name | test(\"RECONCILE\")) | .name + \"=\" + (.value // \"\")] | join(\",\"))'  # no reconcile setting printed means the 1.29 default (on) applies"
   }
 ]

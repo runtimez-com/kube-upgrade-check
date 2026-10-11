@@ -58,6 +58,7 @@
   },
   {
     "ruleId": "rtz-k8s-1.35-traffic-distribution-preferclose-deprecated",
+    "deprecationOnly": true,
     "severity": "LOW",
     "title": "Service trafficDistribution: PreferClose is deprecated in favour of PreferSameZone",
     "detection": {
