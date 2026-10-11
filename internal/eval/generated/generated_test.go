@@ -1,6 +1,7 @@
 package generated
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -389,5 +390,93 @@ func TestStorageClassHintNamesOnlyTheMatchingProvisioner(t *testing.T) {
 	findings, _ = Analyze(unread, nil, "1.35", "1.36", cat(r), nil)
 	if f := byRule(findings, "sc"); f == nil || len(f.Evidence) != 0 {
 		t.Errorf("an unread storage collector must not produce a hint, got %+v", f)
+	}
+}
+
+// The hosted evaluator tests an annotation's value too (Traefik's router.pathmatcher is fine as
+// Path, broken as Host). Only annotation KEYS are collected here, so a key-only match would name
+// the Ingresses that set it correctly: such a rule declines, it never fires on the key alone.
+func TestAnnotationValueRuleDeclines_LabelValueNarrows(t *testing.T) {
+	c, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"rtz-traefik-3.7-ingress-pathmatcher-annotation-restricted",
+		"rtz-traefik-3.7-ingress-nginx-authorization-header-stripped"} {
+		var d *catalog.Detection
+		for _, r := range c.GeneratedRules {
+			if r.RuleID == id {
+				d = &r.Detection
+			}
+		}
+		if d == nil {
+			t.Fatalf("%s is not in the catalog", id)
+		}
+		if _, err := newMatcher(*d); err == nil || !strings.Contains(err.Error(), "annotation values are not collected") {
+			t.Errorf("%s: want a decline, got %v", id, err)
+		}
+	}
+
+	m, err := newMatcher(catalog.Detection{Kind: catalog.DetectLabelKeyPresent, ObjectKind: "Pod", Target: "auth-type", Value: "^basic$"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hit, note := m.matches(row{ref: "ns/basic", labels: map[string]string{"example.io/auth-type": "basic"}}); !hit || !strings.Contains(note, "example.io/auth-type") {
+		t.Errorf("basic must match by the name part, got %v %q", hit, note)
+	}
+	if hit, _ := m.matches(row{ref: "ns/digest", labels: map[string]string{"example.io/auth-type": "digest"}}); hit {
+		t.Error("digest must not match ^basic$")
+	}
+}
+
+// RE2 is not java.util.regex: every slice-2 Traefik regex must compile here and decide the same
+// strings the hosted evaluator's TraefikShippedRulesTest decides.
+func TestTraefikSlice2RegexesMatchTheHostedEvaluator(t *testing.T) {
+	c, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]struct{ hits, misses []string }{
+		"rtz-traefik-3.0-single-value-matchers": {
+			hits: []string{"Host(`a.example.com`, `b.example.com`)", "PathPrefix(`/a`,`/b`)", "HostSNI(`a`, `b`)",
+				`Method("GET", "POST")`, "Host(`a`) && ClientIP(`10.0.0.1`, `10.0.0.2`)", "host(`a`, `b`)", "HOST(`a`, `b`)",
+				"Pathprefix(`/a`, `/b`)"},
+			misses: []string{"Host(`a.example.com`) || Host(`b.example.com`)", "Header(`X-A`, `b`)", "Query(`k`, `v`)",
+				"QueryRegexp(`k`, `v`)", "Host(`a,b.example.com`)", "PathRegexp(`^/a{1,3}`)", "Header(`Host`, `a`)"},
+		},
+		"rtz-traefik-3.0-query-key-value-never-matches": {
+			hits:   []string{"Query(`mobile=true`)", `Path(` + "`/a`" + `) && Query("a=b")`, "query(`mobile=true`)"},
+			misses: []string{"Query(`mobile`)", "Query(`mobile`, `true`)", "Query(`k`, `v=1`)", "QueryRegexp(`k`, `v=1`)", "queryregexp(`k=v`)"},
+		},
+		"rtz-traefik-3.0-vendor-tracing-backends-block-startup": {
+			hits:   []string{"--tracing.jaeger.samplingServerURL=http://j:5778", "--tracing.zipkin=true", "--TRACING.DATADOG.localAgentHostPort=dd:8126", "--tracing.spanNameLimit=100"},
+			misses: []string{"--tracing.otlp.http.endpoint=http://c:4318", "--metrics.datadog=true", "--tracing.otlp.http.endpoint=http://tracing.jaeger.svc:4318"},
+		},
+		"rtz-traefik-3.7-wildcard-subdomain-host-matching": {
+			hits:   []string{"Host(`*.example.com`)", "HostSNI(`*.example.com`)", `Host("*.a.example.com")`, "host(`*.example.com`)"},
+			misses: []string{"Host(`example.com`)", "HostSNI(`*`)", "HostSNI(`a.example.com`)"},
+		},
+	}
+	for id, tc := range cases {
+		var value string
+		for _, r := range c.GeneratedRules {
+			if r.RuleID == id {
+				value = r.Detection.Value
+			}
+		}
+		re, err := regexp.Compile(value)
+		if err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+		for _, s := range tc.hits {
+			if !re.MatchString(s) {
+				t.Errorf("%s must match %s", id, s)
+			}
+		}
+		for _, s := range tc.misses {
+			if re.MatchString(s) {
+				t.Errorf("%s must not match %s", id, s)
+			}
+		}
 	}
 }

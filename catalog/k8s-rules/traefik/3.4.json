@@ -77,5 +77,20 @@
     },
     "quote": "In v3.4, rule syntax configuration options will be removed in the next major version.",
     "remediation": "`core.defaultRuleSyntax` and the per-router `ruleSyntax` option were transitional helpers for the v2-to-v3 migration and are removed in the next major version. Any router still relying on v2 rule syntax has to be migrated before then — this is the deadline for finishing the 3.0 router-rule work, not a new change in itself."
+  },
+  {
+    "ruleId": "rtz-traefik-3.4-serverstransport-rootcassecrets-deprecated",
+    "severity": "LOW",
+    "title": "ServersTransport rootCAsSecrets is deprecated in favour of rootCAs",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServersTransport",
+      "target": "rootCAsSecrets[]",
+      "value": ".+",
+      "reason": "checked spec.rootCAsSecrets on ServersTransport; ServersTransportTCP is not collected"
+    },
+    "quote": "The `rootCAsSecrets` option (Secrets only) is still supported but deprecated. It will be removed in the next major release.",
+    "remediation": "Nothing breaks on v3. Move each entry to `rootCAs` (`- secret: <name>`, which also accepts `- configMap: <name>`) so the next major version does not drop the backend CA and fail TLS to the backends that use this transport.",
+    "verifyCommand": "kubectl get serverstransports.traefik.io -A -o json | jq -r '.items[] | select(.spec.rootCAsSecrets != null) | .metadata.namespace + \"/\" + .metadata.name' # transports printed still use rootCAsSecrets"
   }
 ]
