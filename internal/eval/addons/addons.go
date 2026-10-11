@@ -104,7 +104,7 @@ func forcedHop(d detection, targetVersion string) (Hop, bool) {
 			return Hop{}, false
 		}
 		latest := addon.LatestKnownVersion
-		if !catalog.IsParseable(latest) || catalog.CompareVersions(latest, installed) <= 0 {
+		if !catalog.IsParseable(latest) || catalog.AtOrPast(latest, installed) {
 			return Hop{}, false
 		}
 		return Hop{AddonID: addon.AddonID, InstalledVersion: installed, RequiredVersion: latest, Reason: HopCurrency}, true

@@ -124,3 +124,33 @@ func TestStaleAddonsCountsUnknownAgeAsStale(t *testing.T) {
 		t.Errorf("missing lastVerified must count as stale, got %v", got)
 	}
 }
+
+func TestIntroducedInIsValidatedAgainstTheFilesLine(t *testing.T) {
+	ok := GeneratedRule{RuleID: "r", IntroducedIn: []string{"3.6.24", "3.7.9"}}
+	if err := validateIntroducedIn(ok, "3.7"); err != nil {
+		t.Fatalf("valid list rejected: %v", err)
+	}
+	if err := validateIntroducedIn(GeneratedRule{RuleID: "r"}, "3.7"); err != nil {
+		t.Fatalf("absent list rejected: %v", err)
+	}
+	for _, bad := range [][]string{{}, {"3.7"}, {"3.6.24"}, {"3.7.9", "3.8.1"}, {"3.7.0", "3.7.10"}} {
+		if err := validateIntroducedIn(GeneratedRule{RuleID: "r", IntroducedIn: bad}, "3.7"); err == nil {
+			t.Errorf("%v must be rejected for a 3.7 file", bad)
+		}
+	}
+}
+
+func TestAtOrPastTreatsAFloatingTagOnTheLatestLineAsCurrent(t *testing.T) {
+	cases := []struct {
+		latest, installed string
+		want              bool
+	}{
+		{"3.7.13", "v3.7.13", true}, {"3.7.13", "v3.7.14", true}, {"3.7.13", "v3.7.2", false},
+		{"3.7.13", "v3.7", true}, {"3.7.13", "v3.6", false}, {"3.7", "v3.7.2", true},
+	}
+	for _, c := range cases {
+		if got := AtOrPast(c.latest, c.installed); got != c.want {
+			t.Errorf("AtOrPast(%s, %s) = %v, want %v", c.latest, c.installed, got, c.want)
+		}
+	}
+}
