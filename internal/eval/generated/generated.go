@@ -260,14 +260,7 @@ func onPath(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hop
 				}
 				continue
 			}
-			v := rule.AppliesAtVersion
-			if !catalog.IsParseable(v) {
-				continue
-			}
-			if lo := catalog.AddonMinor(hop.InstalledVersion); lo != "" && catalog.CompareVersions(v, lo) <= 0 {
-				continue
-			}
-			if hi := catalog.AddonMinor(hop.RequiredVersion); hi != "" && catalog.CompareVersions(v, hi) > 0 {
+			if !inAddonHop(rule, hop.InstalledVersion, hop.RequiredVersion) {
 				continue
 			}
 		}
@@ -275,6 +268,56 @@ func onPath(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hop
 	}
 	sort.Slice(sel.skipped, func(i, j int) bool { return sel.skipped[i].source < sel.skipped[j].source })
 	return sel
+}
+
+// inAddonHop decides whether an add-on rule belongs to the hop (installed, required]. Without
+// IntroducedIn: minor-granular, AppliesAtVersion in (minor(installed), minor(required)]. With it:
+// patch-precise — out when the installed release LINE already carries the change (an entry on that
+// line at or below the installed patch: a backport), in when some entry lies in (installed,
+// required]; a two-part required version is that whole line; an unreadable installed version keeps
+// the rule. Mirrors the backend's GeneratedRuleEvaluator.inHop.
+func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
+	if len(rule.IntroducedIn) == 0 {
+		v := rule.AppliesAtVersion
+		if !catalog.IsParseable(v) {
+			return false
+		}
+		if lo := catalog.AddonMinor(installed); lo != "" && catalog.CompareVersions(v, lo) <= 0 {
+			return false
+		}
+		if hi := catalog.AddonMinor(required); hi != "" && catalog.CompareVersions(v, hi) > 0 {
+			return false
+		}
+		return true
+	}
+	known := catalog.IsParseable(installed)
+	if known {
+		line := catalog.AddonMinor(installed)
+		for _, s := range rule.IntroducedIn {
+			if catalog.AddonMinor(s) == line && catalog.CompareVersions(s, installed) <= 0 {
+				return false
+			}
+		}
+	}
+	for _, s := range rule.IntroducedIn {
+		if known && catalog.CompareVersions(s, installed) <= 0 {
+			continue
+		}
+		if reaches(required, s) {
+			return true
+		}
+	}
+	return false
+}
+
+func reaches(required, patch string) bool {
+	if !catalog.IsParseable(required) {
+		return true
+	}
+	if len(catalog.Components(required)) == 2 {
+		return catalog.CompareVersions(catalog.AddonMinor(patch), required) <= 0
+	}
+	return catalog.CompareVersions(patch, required) <= 0
 }
 
 // hopTarget is the version an advisory is headed for: the Kubernetes target, or the add-on's
