@@ -548,7 +548,14 @@ type matcher struct {
 
 func newMatcher(d catalog.Detection) (matcher, error) {
 	m := matcher{d: d}
-	if d.Kind == catalog.DetectSpecPathMatches {
+	switch {
+	case d.Kind == catalog.DetectAnnotationKeyPresent && d.Value != "":
+		// The hosted evaluator also tests the annotation's value (Traefik's router.pathmatcher is fine
+		// as Path and broken as Host). This CLI collects annotation keys only, never values, so a
+		// key-only match would name every object that set the annotation correctly: decline instead.
+		return m, fmt.Errorf("the rule also needs the annotation's value to match /%s/, and annotation values are not collected", d.Value)
+	case d.Kind == catalog.DetectSpecPathMatches,
+		d.Kind == catalog.DetectLabelKeyPresent && d.Value != "":
 		p, err := regexp.Compile(d.Value)
 		if err != nil {
 			return m, fmt.Errorf("rule value is not a valid regex: %s", d.Value)
@@ -567,8 +574,11 @@ func (m matcher) matches(r row) (bool, string) {
 		return true, ""
 	case catalog.DetectLabelKeyPresent:
 		var keys []string
-		for k := range r.labels {
-			keys = append(keys, k)
+		for k, v := range r.labels {
+			// an optional value regex narrows the key to the values whose meaning changed
+			if m.pattern == nil || m.pattern.MatchString(v) {
+				keys = append(keys, k)
+			}
 		}
 		if hit := matchKey(keys, d.Target); hit != "" {
 			if hit != d.Target {
