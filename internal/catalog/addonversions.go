@@ -107,3 +107,14 @@ func IsPrefixOf(prefix, version string) bool {
 
 // Specificity is the component count, used to pick the most specific matching window.
 func Specificity(version string) int { return len(Components(version)) }
+
+// AtOrPast reports whether installed is at or past latest — or is a two-part, floating version
+// ("v3.7") on latest's own line: it may already run that newest patch, and a currency hop would
+// list every patch change of the line against it. Mirrors the backend's AddonVersions.atOrPast.
+func AtOrPast(latest, installed string) bool {
+	if CompareVersions(latest, installed) <= 0 {
+		return true
+	}
+	i, l := Components(installed), Components(latest)
+	return len(i) == 2 && len(l) >= 2 && i[0] == l[0] && i[1] == l[1]
+}

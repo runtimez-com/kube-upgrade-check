@@ -17,16 +17,20 @@ import (
 // ("kubernetes", or an add-on id) and the file name is the version the rule applies at, and
 // a rule that carried them twice could disagree with where it sits.
 type GeneratedRule struct {
-	RuleID           string     `json:"ruleId"`
-	SourceID         string     `json:"-"`
-	AppliesAtVersion string     `json:"-"`
-	Severity         Severity   `json:"severity"`
-	Title            string     `json:"title"`
-	Quote            string     `json:"quote"`
-	Remediation      string     `json:"remediation"`
-	VerifyCommand    string     `json:"verifyCommand"`
-	Detection        Detection  `json:"detection"`
-	Scope            *ScopeHint `json:"scope"`
+	RuleID           string `json:"ruleId"`
+	SourceID         string `json:"-"`
+	AppliesAtVersion string `json:"-"`
+	// IntroducedIn names the PATCH release(s) that ship the change, one per release line carrying it
+	// (["3.6.24", "3.7.9"] for a fix the vendor backported to 3.6). Empty = the change lands at
+	// AppliesAtVersion and the minor-granular hop window applies. See generated.inAddonHop.
+	IntroducedIn  []string   `json:"introducedIn,omitempty"`
+	Severity      Severity   `json:"severity"`
+	Title         string     `json:"title"`
+	Quote         string     `json:"quote"`
+	Remediation   string     `json:"remediation"`
+	VerifyCommand string     `json:"verifyCommand"`
+	Detection     Detection  `json:"detection"`
+	Scope         *ScopeHint `json:"scope"`
 	// Gate is a precondition on ANOTHER kind that a detectable rule needs before its detection
 	// means anything (Argo CD's selector-format change only bites clusters whose cluster Secret
 	// carries auto-label-cluster-info). No object satisfies it: the rule clears with the
@@ -201,6 +205,9 @@ func loadGeneratedRules(fsys fs.FS, root string) ([]GeneratedRule, error) {
 		for i := range rules {
 			rules[i].SourceID = source
 			rules[i].AppliesAtVersion = version
+			if err := validateIntroducedIn(rules[i], version); err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
+			}
 			if err := rules[i].Validate(); err != nil {
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
@@ -221,4 +228,40 @@ func loadGeneratedRules(fsys fs.FS, root string) ([]GeneratedRule, error) {
 		return out[i].RuleID < out[j].RuleID
 	})
 	return out, nil
+}
+
+// validateIntroducedIn: patch versions (x.y.z), at least one on the file's own line, none on a newer
+// line — a rule filed under 3.7 naming only a 3.6 patch, or a 3.8 one, is misfiled. Mirrors the
+// backend's StaticRuleSource.introducedIn.
+func validateIntroducedIn(r GeneratedRule, fileVersion string) error {
+	if r.IntroducedIn == nil {
+		return nil
+	}
+	if len(r.IntroducedIn) == 0 {
+		return fmt.Errorf("%s: introducedIn must be a non-empty list of patch versions", r.RuleID)
+	}
+	onOwnLine := false
+	lines := map[string]bool{}
+	for _, v := range r.IntroducedIn {
+		c := Components(v)
+		if len(c) < 3 {
+			return fmt.Errorf("%s: introducedIn entry %q is not a patch version", r.RuleID, v)
+		}
+		// inAddonHop drops the rule at the FIRST entry at or below the installed patch, so a second
+		// entry on the same line would never be reached: two changes on one line are two rules.
+		if lines[AddonMinor(v)] {
+			return fmt.Errorf("%s: introducedIn names two patches on the %s line", r.RuleID, AddonMinor(v))
+		}
+		lines[AddonMinor(v)] = true
+		switch line := CompareVersions(AddonMinor(v), fileVersion); {
+		case line > 0:
+			return fmt.Errorf("%s: introducedIn entry %q is on a release line newer than the file's %s", r.RuleID, v, fileVersion)
+		case line == 0:
+			onOwnLine = true
+		}
+	}
+	if !onOwnLine {
+		return fmt.Errorf("%s: introducedIn names no patch on the file's own line %s", r.RuleID, fileVersion)
+	}
+	return nil
 }

@@ -365,3 +365,35 @@ func TestShippedCoreDNSRulesAgainstAProjectedCorefile(t *testing.T) {
 		}
 	}
 }
+
+// Patch-precise selection (IntroducedIn), Traefik on EKS 2026-10-01: a v3.6.25 install was shown 3.7
+// changes the vendor had already backported to 3.6.x, and a v3.7.2 install would have been told it was
+// current. Mirrors the backend's IntroducedInSelectionTest.
+func TestAddonRulesWithIntroducedInSelectByPatch(t *testing.T) {
+	r := func(since ...string) catalog.GeneratedRule {
+		x := advisoryRule("traefik", "x", "3.7")
+		x.IntroducedIn = since
+		return x
+	}
+	cases := []struct {
+		name               string
+		rule               catalog.GeneratedRule
+		installed, require string
+		want               bool
+	}{
+		{"backport already on the installed line", r("3.6.24", "3.7.9"), "v3.6.25", "3.7.13", false},
+		{"backport not yet on the installed line", r("3.6.24", "3.7.9"), "v3.6.23", "3.7.13", true},
+		{"patch change inside the line reaches an early patch", r("3.7.7"), "v3.7.2", "3.7.13", true},
+		{"patch change already installed", r("3.7.7"), "v3.7.7", "3.7.13", false},
+		{"hop stops short of the patch", r("3.7.7"), "v3.6.25", "3.7.6", false},
+		{"a two-part required version is the whole line", r("3.7.12"), "v3.6.25", "3.7", true},
+		{"unreadable installed version keeps the rule", r("3.6.24", "3.7.9"), "latest", "3.7.13", true},
+		{"no IntroducedIn keeps the minor window", r(), "v3.6.25", "3.7.13", true},
+		{"no IntroducedIn, same minor installed", r(), "v3.7.2", "3.7.13", false},
+	}
+	for _, c := range cases {
+		if got := inAddonHop(c.rule, c.installed, c.require); got != c.want {
+			t.Errorf("%s: inAddonHop(%v, %s, %s) = %v, want %v", c.name, c.rule.IntroducedIn, c.installed, c.require, got, c.want)
+		}
+	}
+}
