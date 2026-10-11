@@ -1,0 +1,20 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.44-io2-iops-ratio-raised",
+  "severity": "LOW",
+  "title": "io2 StorageClasses sized by iopsPerGB now provision up to 1000 IOPS/GiB (was 500) — more IOPS, more cost",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "StorageClass parameters are not collected yet (Storage tab slice); the hint names the EBS CSI StorageClasses"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "Increase io2 volume maximum iops:size ratio from 500:1 to 1000:1 to match EC2 behavior",
+  "remediation": "StorageClasses that size IOPS from capacity (iopsPerGB, with allowAutoIOPSPerGBIncrease) or request more IOPS than the old clamp now provision more IOPS — and cost more — than before the upgrade: v1.44 raised the io2 IOPS:GiB ratio from 500:1 to 1000:1, v1.47 the io2 total cap from 64,000 to 256,000 (Block Express), and v1.50 replaced gp3's fixed 16,000 cap with the limit EC2 reports. Set an explicit iops (and throughput) on those StorageClasses to keep today's cost.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # type=io2 with iopsPerGB above 500 (or allowAutoIOPSPerGBIncrease) now gets more IOPS per GiB"
+ }
+]

@@ -1,0 +1,1017 @@
+[
+ {
+  "version": "1.17",
+  "note": "Add support for XFS custom block sizes",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.17",
+  "note": "Add support for instances with more than 52 volumes attached",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.17",
+  "note": "Fix improper handling of manually-mounted volumes",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.17",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.18",
+  "note": "URGENT (1.18.0): This will be the last minor release of the AWS EBS CSI Driver to support Windows 20H2",
+  "reason": "announcement; the removal it announces is rtz-aws-ebs-csi-driver-1.19-windows-20h2-unsupported"
+ },
+ {
+  "version": "1.18",
+  "note": "Add support for Fast Snapshot Restore",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.18",
+  "note": "Support for interpolated tags in VolumeSnapshotClass",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.18",
+  "note": "Add target to run External Storage tests on Windows nodes",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.18",
+  "note": "Add non-negative check on volume limit for CSINode",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.18",
+  "note": "Fix volume mounts on AWS Snow devices",
+  "reason": "AWS Snow Family devices only (deprecated 1.40, removed 1.44) — EKS on EC2 and Outposts are unaffected, and a Snow device cannot be told apart from the cluster inventory"
+ },
+ {
+  "version": "1.18",
+  "note": "Improve consistency/idempotency of Windows mounting",
+  "reason": "Windows-node behaviour fix/feature; nothing to change"
+ },
+ {
+  "version": "1.18",
+  "note": "Add liveness probe for node-driver-registrar container",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (a probe added to the shipped manifests)"
+ },
+ {
+  "version": "1.18",
+  "note": "Fix calculation of attached block devices from IMDS",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.18",
+  "note": "Migrate Kustomize configuration from 'bases' to 'resources'",
+  "reason": "the upstream Kustomize overlay's own syntax; an install built from those overlays re-renders the same objects"
+ },
+ {
+  "version": "1.18",
+  "note": "Reduce CI flakiness by removing unnecessary SSH certificates",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.19",
+  "note": "Add support for annotation-based volume modification via volume-modifier-for-k8s sidecar",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.19",
+  "note": "Add startup taint removal feature",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (the node plugin removes ebs.csi.aws.com/agent-not-ready only when a node bootstrap adds it)"
+ },
+ {
+  "version": "1.19",
+  "note": "Check for 'not mounted' in linux Unstage/Unpublish",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.19",
+  "note": "Update list of nitro instances",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.19",
+  "note": "Allow throughput with defaulted GP3 volume type",
+  "reason": "relaxation: a StorageClass that set throughput without type now works"
+ },
+ {
+  "version": "1.19",
+  "note": "Use dl.k8s.io instead of kubernetes-release bucket",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.19",
+  "note": "Migrate to EKS-D Windows base images",
+  "reason": "Windows-node behaviour fix/feature; nothing to change (base image of the Windows node plugin)"
+ },
+ {
+  "version": "1.20",
+  "note": "Enable leader election in csi-resizer sidecar",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (leader election args on the shipped resizer)"
+ },
+ {
+  "version": "1.20",
+  "note": "Namespace-scoped leases permissions",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (the shipped Role grants leases; nothing to add by hand)"
+ },
+ {
+  "version": "1.20",
+  "note": "Add additionalArgs parameter for sidecars",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.20",
+  "note": "Fix context handling in WaitForVolumeAttachment & add in-flight checks to",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Idempotent unmount from NodeUnstageVolume / NodeUnpublishVolume",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.20",
+  "note": "Remove condition on iopspergb key being mandatory for io1 volumes",
+  "reason": "relaxation: io1 StorageClasses no longer need iopsPerGB"
+ },
+ {
+  "version": "1.20",
+  "note": "Avoid generating manifests with empty envFrom fields",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them"
+ },
+ {
+  "version": "1.20",
+  "note": "Update logline to remove \"formatted\"",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface (log wording)"
+ },
+ {
+  "version": "1.20",
+  "note": "Revert Increase external test pod start timeout",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.20",
+  "note": "Remove old coverage banner from README",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.20",
+  "note": "Allow to set automountServiceAccountToken in ServiceAccount",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.20",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.21",
+  "note": "Enable setting throughput without specifying volume type when modifying volumes",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.21",
+  "note": "Reorder device names to prevent bad behavior on non-nitro instance types",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (device-name allocation on non-Nitro instances)"
+ },
+ {
+  "version": "1.21",
+  "note": "Replace deprecated command with environment file in CI",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.22",
+  "note": "URGENT (1.22.0): In an upcoming version, the EBS CSI Driver will upgrade the base image from AL2 to AL2023.",
+  "reason": "announcement; the base-image change it announces is rtz-aws-ebs-csi-driver-1.23-al2023-base-image-no-downgrade"
+ },
+ {
+  "version": "1.22",
+  "note": "Request coalescing for resizing and modifying volume",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.22",
+  "note": "Support specifying inode size for filesystem format",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.22",
+  "note": "Correct volume limits for i4i instance types",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.22",
+  "note": "Add i4i.large to volume limits config",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.22",
+  "note": "Add volume limits for m7i family",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.22",
+  "note": "Cherry-pick from v1.23.1: Do not call ModifyVolume if the volume is already in the desired",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.22",
+  "note": "Upgrade volume-modifier-for-k8s sidecar to 0.1.3 for Leader election conflict with",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (sidecar leader-election conflict)"
+ },
+ {
+  "version": "1.23",
+  "note": "PreStop lifecycle hook to alleviate 6+ minute force-detach delay",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (shipped preStop hook; force-detach delays get shorter)"
+ },
+ {
+  "version": "1.23",
+  "note": "Do not call ModifyVolume if the volume is already in the desired state",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.23",
+  "note": "Dependancy upgrades",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.23",
+  "note": "Upgrade volume-modifier-for-k8s sidecar to 0.1.3 for Leader election conflict with",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (sidecar leader-election conflict)"
+ },
+ {
+  "version": "1.23",
+  "note": "Add compatibility workaround for A1 instance family",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (the -a1compat image; its removal is the 1.55 rule)"
+ },
+ {
+  "version": "1.23",
+  "note": "Upgrade dependencies (and resolve CVEs found in #1800)",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.24",
+  "note": "Support clustered allocation with ext4 filesystems. This allows developers to enable torn",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.24",
+  "note": "Add volume limits for m7a, c7a, c7i, r7a, r7iz instance families",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.24",
+  "note": "Fix DeleteDisk error handling in volume creation failure",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.24",
+  "note": "Document topologies in parameters.md",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.24",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.24",
+  "note": "Metric Instrumentation Framework",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.24",
+  "note": "Add compatibility workaround for A1 instance family",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (the -a1compat image; its removal is the 1.55 rule)"
+ },
+ {
+  "version": "1.24",
+  "note": "Upgrade dependencies (and resolve CVEs found in #1800)",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.25",
+  "note": "Feature: Multi-Attach for io2 block devices",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.25",
+  "note": "Mitigate EC2 rate-limit issues by batching DescribeVolume API requests",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.25",
+  "note": "Update default sidecar timeout values in chart to improve driver performance",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them"
+ },
+ {
+  "version": "1.25",
+  "note": "Increase default QPS and worker threads of sidecars in chart to improve driver performance",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them"
+ },
+ {
+  "version": "1.25",
+  "note": "Add volume limits for r7i",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.25",
+  "note": "Upgrade driver & sidecar dependencies for v1.25.0",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.25",
+  "note": "Update modify-volume.md",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.26",
+  "note": "Add retry and background run to node taint removal",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.26",
+  "note": "Add U7i attachment limits",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.26",
+  "note": "Clamp minimum reported attachment limit to 1 to prevent undefined limit (This will prevent",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.26",
+  "note": "Instances listed under maxVolumeLimits not taking into account ENIs/Instance storage",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.26",
+  "note": "Upgrade dependencies for aws-ebs-csi-driver v1.26.0",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.26",
+  "note": "Fix csi sidecar container restarts after 30 minutes of idleness by upgrading to latest",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.26",
+  "note": "Fix regression for those upgrading from pre-v1.12.0 who have misconfigured GP3 storage",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.26",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.27",
+  "note": "Enable use of driver on AMIs with instance store mounts",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.27",
+  "note": "Remove premature CreateVolume error if requested IOPS is below minimum",
+  "reason": "relaxation: an IOPS request below the minimum is rounded up instead of failing"
+ },
+ {
+  "version": "1.27",
+  "note": "Fix taint removal retry for non-swallowed errors",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.27",
+  "note": "Bump go/sidecar dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.28",
+  "note": "Report zone via well-known topology key in NodeGetInfo",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (nodes gain the topology.kubernetes.io/zone segment)"
+ },
+ {
+  "version": "1.28",
+  "note": "Add 6 minute attachment delay FAQ entry",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.28",
+  "note": "Add --modify-volume-request-handler-timeout CLI option",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.29",
+  "note": "Implement KEP3751 (\"ControllerModifyVolume\")",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (VolumeAttributesClass support)"
+ },
+ {
+  "version": "1.29",
+  "note": "Batch EC2 DescribeSnapshots calls",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.29",
+  "note": "Batch EC2 DescribeInstances calls",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.29",
+  "note": "Validate Karpenter Disruption taints as part of preStop node evaluation",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.29",
+  "note": "Add OS topology key to node segments map",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.29",
+  "note": "Add c6id and r6id adjusted limits to volume_limits.go",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.29",
+  "note": "Ensure CSINode allocatable count is set on node before removing startup taint",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.29",
+  "note": "Return ErrInvalidArgument in cloud upon EC2 ModifyVolume",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.29",
+  "note": "Upgrade to go v1.22",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.29",
+  "note": "Correctly forward os.version for Windows images in multi-arch manifests",
+  "reason": "Windows-node behaviour fix/feature; nothing to change"
+ },
+ {
+  "version": "1.30",
+  "note": "Add options to run metrics endpoint over HTTPS",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.30",
+  "note": "Remove DeleteDisk call in CreateDisk path",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.30",
+  "note": "Run taint removal only if Kubernetes API is available",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.30",
+  "note": "Migrate to AWS SDKv2",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface (the credential chain still honours IRSA, Pod Identity and the node role)"
+ },
+ {
+  "version": "1.30",
+  "note": "Batch EC2 DescribeVolumesModifications API calls",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.30",
+  "note": "Fix relationship between node service and mounter interface",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.30",
+  "note": "Fix DeleteSnapshot error message",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.30",
+  "note": "Add explicit AttachVolume call in WaitForAttachmentState",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.30",
+  "note": "Handle deleted Node case in hook; Add support for CAS taint",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.31",
+  "note": "Add Alpha Support for Windows HostProcess Containers",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.31",
+  "note": "Replace coalescer implementation with new coalescer package",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.31",
+  "note": "Add make cluster/image command; Build image and cluster in parallel for CI",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.32",
+  "note": "The next minor version (v1.33.0) of the EBS CSI Driver will migrate the AZ topology label",
+  "reason": "announcement; the change is rtz-aws-ebs-csi-driver-1.33-topology-key-changed"
+ },
+ {
+  "version": "1.32",
+  "note": "Fix off-by-one error in ENI calculation when using IMDS metadata",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.32",
+  "note": "Greatly clarify misleading metadata logging",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface (log wording)"
+ },
+ {
+  "version": "1.33",
+  "note": "Add ability to modify EBS volume tags via VolumeAttributesClass",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.33",
+  "note": "Add --kubeconfig flag for out-of-cluster auth",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.33",
+  "note": "Bump GCR sidecars that reference broken tags",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (the shipped manifests' sidecar tags; the registry move itself is the 1.17 rule)"
+ },
+ {
+  "version": "1.33",
+  "note": "Change coalescer InputType from comparable to any",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.34",
+  "note": "Consider accelerators when calculating node attachment limit",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.34",
+  "note": "Consider GPUs when calculating node attachment limit",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.34",
+  "note": "Ensure ModifyVolume returns InvalidArgument error code if VAC contains invalid parameter",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.34",
+  "note": "Document metadata requirement and available sources",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.34",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.35",
+  "note": "Add legacy-xfs driver option for clusters that mount XFS volumes to nodes with Linux",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (the option is what rtz-aws-ebs-csi-driver-1.49-xfs-nrext64-al2-kernels tells AL2 clusters to set)"
+ },
+ {
+  "version": "1.35",
+  "note": "Add local snapshots on outposts",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.35",
+  "note": "Add support for outpost nodegroups to make cluster/create",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.38",
+  "note": "URGENT (1.38.1): _(This warning is the same as previous releases and can be disregarded if you have already",
+  "reason": "boilerplate preface of the repeated IAM warning (the rule quotes the warning)"
+ },
+ {
+  "version": "1.39",
+  "note": "URGENT (1.39.0): _(This warning is the same as previous releases and can be disregarded if you have already",
+  "reason": "boilerplate preface of the repeated IAM warning (the rule quotes the warning)"
+ },
+ {
+  "version": "1.36",
+  "note": "Prevent VolumeInUse error when volume is still attaching",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.36",
+  "note": "Add v1 Karpenter disrupted taint to pre-stop hook",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.36",
+  "note": "Update example policy for IAM change",
+  "reason": "documentation or example change only (docs/example-iam-policy.json; the action is the IAM rule)"
+ },
+ {
+  "version": "1.36",
+  "note": "Add EnableFSRs to example policy",
+  "reason": "documentation or example change only (only needed when a VolumeSnapshotClass enables fast snapshot restore)"
+ },
+ {
+  "version": "1.36",
+  "note": "Add m8g, c8g, x8g, g6e, and p5e attachment limits",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.36",
+  "note": "Update FAQ to include section on Volume Attachment Capacity Issues",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.36",
+  "note": "Use protobuf content type instead of json for k8s client",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.36",
+  "note": "Migrate to kubekins-e2e-v2",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.37",
+  "note": "Export EBS detailed performance statistics as Prometheus metrics for CSI-managed volumes",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.37",
+  "note": "Update example-iam-policy.json for non 'aws' partitions",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.37",
+  "note": "Upgrade dependencies",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.39",
+  "note": "Note that tags-only modification does not lead to 6-hour modification cooldown period.",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.39",
+  "note": "Update the example IAM policy to be in sync with the AWS managed policy",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.38",
+  "note": "Prevent attempting to query NVMe metrics of NVMe volumes from other CSI drivers",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.40",
+  "note": "URGENT (1.40.0): Support for the EBS CSI Driver on AWS Snow Family devices is deprecated, effective",
+  "reason": "AWS Snow Family devices only (deprecated 1.40, removed 1.44) — EKS on EC2 and Outposts are unaffected, and a Snow device cannot be told apart from the cluster inventory"
+ },
+ {
+  "version": "1.40",
+  "note": "Support String Interpolation for Modifying Tags On Existing Volumes Through VAC",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.40",
+  "note": "Fix raw pointer log in EnableFastSnapshotRestores",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.40",
+  "note": "Add volume expansion & modification scalability test type to ebs-scale-test tool",
+  "reason": "upstream test/CI/tooling change; ships nothing to a cluster"
+ },
+ {
+  "version": "1.40",
+  "note": "Error code label is now supported EBS CSI API request error metrics",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (an `error` label on aws_ebs_csi_api_request_errors_total)"
+ },
+ {
+  "version": "1.41",
+  "note": "URGENT (1.41.0): Prior to this release, disabled metrics (prefixed with cloudprovider_aws_) were on by",
+  "reason": "folded into rtz-aws-ebs-csi-driver-1.38-metrics-renamed, whose remediation states the v1.41 default flip"
+ },
+ {
+  "version": "1.41",
+  "note": "Error code label is now supported EBS CSI API request error metrics",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (an `error` label on aws_ebs_csi_api_request_errors_total)"
+ },
+ {
+  "version": "1.41",
+  "note": "Fix metrics.md To Show How to Export Leader Pods for Sidecars",
+  "reason": "documentation or example change only"
+ },
+ {
+  "version": "1.41",
+  "note": "Fix p4d.24xlarge reporting wrong volume limit",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.41",
+  "note": "Skip IMDS call if AWS_EC2_METADATA_DISABLED=true",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.41",
+  "note": "Add Logs On How We Calculate CSINode.allocatables in NodeGetInfo",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface (log lines)"
+ },
+ {
+  "version": "1.41",
+  "note": "Sets deprecatedMetrics to false by default",
+  "reason": "folded into rtz-aws-ebs-csi-driver-1.38-metrics-renamed (same default flip)"
+ },
+ {
+  "version": "1.42",
+  "note": "Remove controller metrics from the node service.",
+  "reason": "folded into rtz-aws-ebs-csi-driver-1.38-metrics-renamed (its remediation states it)"
+ },
+ {
+  "version": "1.42",
+  "note": "Add more descriptive Prometheus HELP texts to each metric from the controller.",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.43",
+  "note": "Add aws_ebs_csi_ec2_detach_pending_seconds_total controller metric for detecting if volume",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.43",
+  "note": "Introduced new StorageClass parameter: volumeInitializationRate - when creating a volume",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.44",
+  "note": "Remove support for Snow Devices. See",
+  "reason": "AWS Snow Family devices only (deprecated 1.40, removed 1.44) — EKS on EC2 and Outposts are unaffected, and a Snow device cannot be told apart from the cluster inventory"
+ },
+ {
+  "version": "1.45",
+  "note": "Add --metadata-sources which dictates which sources are used to retrieve instance",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.45",
+  "note": "Added Lock To Prevent Multiple Resize Attempts On The Same Volume If An In-flight Resize",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.45",
+  "note": "Ensure string interpolation works for AWS resource tags specified in VAC or --extra-tags",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.45",
+  "note": "Reliably remove the ebs.csi.aws.com/agent-not-ready taint at start‑up using a short‑lived",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.45",
+  "note": "Remove duplicate ErrNotFound log in ControllerPublishVolume path",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface (log lines)"
+ },
+ {
+  "version": "1.46",
+  "note": "Added StorageClass parameter 'blockAttachUntilInitialized' for users who want to delay",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.46",
+  "note": "Add support for updating node's max attachable volume count by directing Kubelet to",
+  "reason": "on by default (chart / kustomize nodeAllocatableUpdatePeriodSeconds: 10) but inert until kubelet's MutableCSINodeAllocatableCount gate is on (beta, default-on from Kubernetes 1.34); then kubelet refreshes the CSINode attach limit and a pod failing to attach on the limit is marked Failed — its controller recreates it; nothing to change for the driver upgrade"
+ },
+ {
+  "version": "1.46",
+  "note": "Return RESOURCE_EXHAUSTED gRPC error code when AWS quotas are exceeded",
+  "reason": "a gRPC status code read by the CSI sidecars (they retry it as before); event text keeps the AWS error code"
+ },
+ {
+  "version": "1.47",
+  "note": "Support attaching and detaching volumes from Amazon SageMaker HyperPod nodes on EKS",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.47",
+  "note": "Increase robustness of taint removal via resync",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.47",
+  "note": "Prevent liveness probe failure (and thus CrashLoopBackoff) without proper logging by",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.48",
+  "note": "Add ability to provision volumes using AZ-ID",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.49",
+  "note": "Rate limit metrics endpoint to 5 requests/second with burst of 10 - Excessive requests",
+  "reason": "metrics endpoint now rate-limited to 5 req/s (burst 10); a normal scrape interval is far below it"
+ },
+ {
+  "version": "1.49",
+  "note": "Update several incorrect EBS volume limits via generating table from DescribeInstanceTypes",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.49",
+  "note": "Fix cluster tags incorrectly overriding user-specified tags from StorageClass parameters",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.49",
+  "note": "Fix off-by-one error in volume limits for default nitro instances which would get PVCs",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.50",
+  "note": "Fix throughput handling when creating volumes",
+  "reason": "the fix for rtz-aws-ebs-csi-driver-1.50-throughput-bug-skip-release"
+ },
+ {
+  "version": "1.50",
+  "note": "Fix off-by-one error in volume limits for default nitro instances which would get PVCs",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.51",
+  "note": "Add support for creating instant, point-in-time copies of EBS volumes within the same",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.51",
+  "note": "Fix throughput handling when creating volumes",
+  "reason": "the fix for rtz-aws-ebs-csi-driver-1.51-throughput-bug-skip-release"
+ },
+ {
+  "version": "1.51",
+  "note": "Fix off-by-one error in volume limits for default nitro instances which would get PVCs",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.52",
+  "note": "Add ALPHA metadata-labeler sidecar and metadata source",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.52",
+  "note": "Improve handling of volume types that do not have hardcoded IOPS limits and/or do not",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.52",
+  "note": "Improve error handling of taint removal; Fix last chance taint removal not functioning",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.52",
+  "note": "Minor tweaks to NVMe metrics collector performance",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.52",
+  "note": "Fix off-by-one error in volume limits for default nitro instances which would get PVCs",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.53",
+  "note": "Add node-local volume support, enabling a single cluster-wide PV/PVC to mount",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.53",
+  "note": "Add support for custom build-time plugins to extend or modify EBS CSI Driver behavior.",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.55",
+  "note": "Add new StorageClass parameter ext4EncryptionSupport to enable encryption support in ext4",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.55",
+  "note": "Added VolumeSnapshotClass parameters to lock EBS snapshots after creation",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.55",
+  "note": "Automatically assign EBS card index for instances with multiple EBS cards",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (multi-EBS-card instances)"
+ },
+ {
+  "version": "1.55",
+  "note": "Cache known bad AWS IDs and remove from batched calls",
+  "reason": "performance/rate-limit improvement inside the controller; no configuration change"
+ },
+ {
+  "version": "1.55",
+  "note": "Automatically detect and prevent use of IMDS on Hyper-pod nodes",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.55",
+  "note": "Detect, abort, and force a retry of attachments stuck for longer than 90 seconds",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (stuck attachments retry after 90 s)"
+ },
+ {
+  "version": "1.55",
+  "note": "Prevent startup crash when alpha metadata-labeler feature is enabled by initializing",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.56",
+  "note": "Add support for Windows Server 2025",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.56",
+  "note": "Update CSI sidecar images to address CVE-2025-61726",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.56",
+  "note": "Fix error handling when re-fetching the node object during agent-not-ready taint removal",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.57",
+  "note": "The following instance types incorrectly report 128 attachments from the",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.57",
+  "note": "Rescan disks before resize operations on Windows.",
+  "reason": "Windows-node behaviour fix/feature; nothing to change"
+ },
+ {
+  "version": "1.58",
+  "note": "When --k8s-tag-cluster-id is set, tag volumes and snapshots with",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (an extra ebs.csi.aws.com/cluster-name tag on new volumes; the managed policies already allow it — a custom policy restricting CreateTags keys is covered by the 1.59 managed-policy rule)"
+ },
+ {
+  "version": "1.58",
+  "note": "Append driver mode to user agent string for metadata labeler container.",
+  "reason": "internal code, build or dependency change with no manifest, flag or API surface"
+ },
+ {
+  "version": "1.59",
+  "note": "Prevent deletion of reserved tag keys during volume modification",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.60",
+  "note": "Fix init order bug that allowed modifying tags reserved for use by the EBS CSI Driver",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.60",
+  "note": "Bump all CSI sidecars (csi-attacher, csi-node-driver-registrar, csi-provisioner,",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action (CVE-2026-33814 in golang.org/x/net)"
+ },
+ {
+  "version": "1.62",
+  "note": "URGENT (1.62.0): In the next minor version of the EBS CSI Driver (v1.62.0), the -fips container images will",
+  "reason": "announcement (upstream's 'next minor version (v1.62.0)' is v1.63: v1.62 still publishes -fips); the removal is rtz-aws-ebs-csi-driver-1.63-fips-images-discontinued"
+ },
+ {
+  "version": "1.62",
+  "note": "URGENT (1.62.0): This change only affects users directly relying on or customizing the -fips image. If you",
+  "reason": "scope line of the announcement; the 1.63 rule carries it"
+ },
+ {
+  "version": "1.62",
+  "note": "Disallow overriding driver-reserved tags when --warn-on-invalid-tag is true.",
+  "reason": "only with --warn-on-invalid-tag=true (opt-in); reserved tag keys were never meant to be set"
+ },
+ {
+  "version": "1.63",
+  "note": "This is a security patch release. It updates every CSI sidecar container to a version",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.63",
+  "note": "The driver image itself was not affected by either advisory. This release also refreshes",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.65",
+  "note": "Quote all user-supplied values rendered into container args and priorityClassName in the",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (chart rendering; values render as before)"
+ },
+ {
+  "version": "1.66",
+  "note": "Support new encrypted EBS clones",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ }
+]

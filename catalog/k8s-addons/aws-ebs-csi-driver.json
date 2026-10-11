@@ -1,0 +1,22 @@
+{
+  "addonId": "aws-ebs-csi-driver",
+  "displayName": "Amazon EBS CSI driver",
+  "detect": {
+    "imageSuffixes": [
+      "/aws-ebs-csi-driver"
+    ]
+  },
+  "source": {
+    "url": "https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/27426b099e2d/CHANGELOG.md",
+    "ref": "kubernetes-sigs/aws-ebs-csi-driver @ master 27426b099e2d (CHANGELOG.md; carries the v1.66.0 entry the v1.66.0 tag does not)",
+    "lastVerified": "2026-10-07",
+    "note": "The EBS CSI driver publishes NO Kubernetes compatibility matrix: its README says only that it 'is compatible with all Kubernetes versions supported by the Kubernetes project and/or Amazon EKS (including extended support versions)', so supportWindows is deliberately OMITTED and the hop is the opt-in CURRENCY hop (currencyHop=true) to latestKnownVersion, the newest CHANGELOG release at the pinned commit; every surface says it is NOT required by the Kubernetes upgrade. What the README does publish is a support POLICY — 'Support will be provided for the latest version and one prior version' — transcribed as supportedMinorsBehindLatest=1: an installed minor older than that gets a finding. The EKS managed add-on's per-Kubernetes compatibility lives only in `aws eks describe-addon-versions --addon-name aws-ebs-csi-driver` and is not transcribed. Rules: zero hand-written rules/upgradeNotes here; the notes are extracted mechanically into scripts/readiness-agent/kb/aws-ebs-csi-driver/notes-<minor>.md (extract-aws-ebs-csi-driver-notes.py, floor 1.17 = the first release with an Urgent Upgrade Notes section; Urgent / [ACTION REQUIRED] / deprecation sections kept whole, other bullets filtered by an upgrade vocabulary; the Dependencies sections dropped) and the rules live in src/main/resources/k8s-rules/aws-ebs-csi-driver/ (sourceId aws-ebs-csi-driver, hop-scoped: the driver's 1.x minors overlap Kubernetes minors by number). The pinned ref is a master COMMIT, not the v1.66.0 tag, because each release's CHANGELOG entry is written on master after the tag. The aws-ebs-csi-driver Helm chart's own CHANGELOG (chart versions 2.x, versioned separately) is NOT read: it only affects self-managed Helm installs. Detection: the ebs-plugin container image repository ends in /aws-ebs-csi-driver on EKS ECR (…/eks/aws-ebs-csi-driver), public.ecr.aws/ebs-csi-driver and registry.k8s.io/provider-aws; the version is that image's tag (v1.66.0, v1.54.0-a1compat → 1.54.0). The csi-* sidecars and livenessprobe are separate repositories and do not match."
+  },
+  "supportWindows": null,
+  "latestKnownVersion": "1.66.0",
+  "currencyHop": true,
+  "supportedMinorsBehindLatest": 1,
+  "rules": [],
+  "upgradeNotes": [],
+  "inventoryKinds": []
+}

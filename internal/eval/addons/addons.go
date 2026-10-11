@@ -356,6 +356,9 @@ func judge(inv *inventory.Inventory, d detection, currentVersion, targetVersion 
 	status.UpgradeNotes = notesOnPath(d.addon, d.version)
 
 	findings := windowFinding(d, status, targetVersion)
+	if verdict == VerdictNoVendorData {
+		findings = append(findings, vendorSupportPolicyFinding(d, targetVersion)...)
+	}
 	findings = append(findings, ruleFindings(inv, d, registry, skipped)...)
 	return status, findings
 }
@@ -495,6 +498,45 @@ func windowFinding(d detection, status report.AddonStatus, targetVersion string)
 		Category:         "RELIABILITY",
 		Severity:         severity,
 		ScoreImpact:      severity.ScoreImpact(),
+		ResourceName:     d.workloadRef,
+		ResourceType:     d.addon.AddonID,
+		AppliesAtVersion: catalog.MinorOf(targetVersion),
+		SourceURL:        d.addon.Source.URL,
+		Evidence:         []string{fmt.Sprintf("Detected %s from %s", displayVersion(d), d.workloadRef)},
+	}}
+}
+
+// vendorSupportPolicyFinding mirrors the hosted product's rtz-addon-<id>-outside-vendor-support:
+// the installed version is more minors behind LatestKnownVersion than the vendor's stated support
+// policy allows. Same major only; nothing when there is no policy or a version does not parse.
+func vendorSupportPolicyFinding(d detection, targetVersion string) []report.Finding {
+	policy, latest := d.addon.SupportedMinorsBehindLatest, d.addon.LatestKnownVersion
+	if policy == nil || !catalog.IsParseable(d.version) || !catalog.IsParseable(latest) {
+		return nil
+	}
+	i, l := catalog.Components(d.version), catalog.Components(latest)
+	if i[0] != l[0] {
+		return nil
+	}
+	behind := l[1] - i[1]
+	if behind <= *policy {
+		return nil
+	}
+	name := displayName(d.addon)
+	oldest := fmt.Sprintf("%d.%d", l[0], l[1]-*policy)
+	ruleID := "rtz-addon-" + d.addon.AddonID + "-outside-vendor-support"
+	return []report.Finding{{
+		ID:     report.NewID(ruleID, d.workloadRef),
+		RuleID: ruleID,
+		Title: fmt.Sprintf("%s %s is %d minor releases behind the latest (%s) — outside the vendor's support policy",
+			name, d.version, behind, latest),
+		Recommendation: fmt.Sprintf("The vendor supports the latest version and %d prior (%s.x and %d.%d.x as of %s); "+
+			"bugs and vulnerabilities are fixed only there. Upgrade %s to %s. This is the vendor's support policy, "+
+			"not a Kubernetes compatibility window. Source: %s.",
+			*policy, oldest, l[0], l[1], d.addon.Source.LastVerified, name, latest, d.addon.Source.URL),
+		Category:         "RELIABILITY",
+		Severity:         catalog.SeverityMedium,
+		ScoreImpact:      catalog.SeverityMedium.ScoreImpact(),
 		ResourceName:     d.workloadRef,
 		ResourceType:     d.addon.AddonID,
 		AppliesAtVersion: catalog.MinorOf(targetVersion),

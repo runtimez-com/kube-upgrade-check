@@ -426,3 +426,45 @@ func TestOpenEndedSupportWindows(t *testing.T) {
 		}
 	}
 }
+
+// The vendor's own support policy (EBS CSI README: "the latest version and one prior") — the same
+// MEDIUM finding and text the hosted product emits, only in the NO_VENDOR_DATA branch.
+func TestVendorSupportPolicyFinding(t *testing.T) {
+	one := 1
+	addon := catalog.Addon{AddonID: "ebs", DisplayName: "Amazon EBS CSI driver", LatestKnownVersion: "1.66.0",
+		SupportedMinorsBehindLatest: &one, Source: catalog.AddonSource{URL: "https://example/CHANGELOG.md", LastVerified: "2026-10-07"}}
+	d := detection{addon: addon, version: "v1.50.1", workloadRef: "Deployment/kube-system/ebs-csi-controller"}
+
+	got := vendorSupportPolicyFinding(d, "1.35")
+	if len(got) != 1 {
+		t.Fatalf("16 minors behind with a 1-minor policy must report, got %d findings", len(got))
+	}
+	f := got[0]
+	if f.RuleID != "rtz-addon-ebs-outside-vendor-support" || f.Severity != catalog.SeverityMedium {
+		t.Errorf("id/severity = %s/%s", f.RuleID, f.Severity)
+	}
+	if !strings.Contains(f.Title, "v1.50.1 is 16 minor releases behind the latest (1.66.0)") {
+		t.Errorf("title = %q", f.Title)
+	}
+	if !strings.Contains(f.Recommendation, "1.65.x and 1.66.x as of 2026-10-07") || !strings.Contains(f.Recommendation, "not a Kubernetes compatibility window") {
+		t.Errorf("recommendation = %q", f.Recommendation)
+	}
+
+	for _, v := range []string{"v1.66.0", "v1.65.2-eksbuild.1", "latest"} {
+		if got := vendorSupportPolicyFinding(detection{addon: addon, version: v}, "1.35"); len(got) != 0 {
+			t.Errorf("%s must not report, got %v", v, got)
+		}
+	}
+	noPolicy := addon
+	noPolicy.SupportedMinorsBehindLatest = nil
+	if got := vendorSupportPolicyFinding(detection{addon: noPolicy, version: "v1.10.0"}, "1.35"); len(got) != 0 {
+		t.Error("no policy, no finding")
+	}
+
+	// through Analyze: the shipped EBS catalog carries the policy
+	cat := realCatalog(t)
+	ebs, ok := cat.AddonByID("aws-ebs-csi-driver")
+	if !ok || ebs.SupportedMinorsBehindLatest == nil || *ebs.SupportedMinorsBehindLatest != 1 {
+		t.Fatalf("the vendored EBS catalog must carry supportedMinorsBehindLatest=1, got ok=%v %+v", ok, ebs.SupportedMinorsBehindLatest)
+	}
+}

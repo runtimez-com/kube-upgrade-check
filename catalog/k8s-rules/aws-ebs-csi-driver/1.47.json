@@ -1,0 +1,24 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.47-blockexpress-parameter-deprecated",
+  "severity": "MEDIUM",
+  "title": "Every new io2 volume is Block Express (cap 256,000 IOPS, was 64,000) — iopsPerGB io2 StorageClasses may provision more",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "StorageClass parameters are not collected yet (Storage tab slice); the hint names the EBS CSI StorageClasses"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "The `blockExpress` StorageClass parameter is deprecated, effective immediately",
+  "remediation": "From v1.47 every new io2 volume is Block Express and the io2 IOPS cap is 256,000 (64,000 before, unless the StorageClass set blockExpress): an io2 StorageClass that sizes IOPS by iopsPerGB, or asks for more than 64,000, now provisions more IOPS — and costs more. Set an explicit iops on those StorageClasses to bound cost. The blockExpress parameter itself is ignored (a deprecation log line) — remove it. Volumes above 64,000 IOPS may not reach full performance on non-Nitro instances.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | \"\\(.metadata.name): \\(.parameters // {} | to_entries | map(\"\\(.key)=\\(.value)\") | join(\" \"))\"'  # type=io2 with iopsPerGB or iops above 64000 now provisions more; blockExpress=… is ignored from v1.47",
+  "coversNotes": [
+   "URGENT (1.47.0): Starting in v1.47.0, newly created io2 volumes will always use a cap of 256,000 IOPS,",
+   "URGENT (1.47.0): Starting in v1.47.0, the blockExpress parameter has no effect (other than logging a"
+  ]
+ }
+]

@@ -488,3 +488,22 @@ func TestWorkloadSelectorIsFlattenedToMatchLabels(t *testing.T) {
 		t.Errorf("an expressions-only selector must not be carried, got %v", spec["selector"])
 	}
 }
+
+// StorageClass carries its fields at the top level (no spec); without a projector the row was empty
+// and every "the CSI StorageClasses" hint named nothing (live rtz-eks 2026-10-07).
+func TestStorageClassProjectsItsTopLevelFields(t *testing.T) {
+	obj := map[string]any{
+		"metadata":          map[string]any{"name": "gp3-csi"},
+		"provisioner":       "ebs.csi.aws.com",
+		"reclaimPolicy":     "Delete",
+		"volumeBindingMode": "WaitForFirstConsumer",
+		"parameters":        map[string]any{"type": "gp3", "iops": "20000"},
+	}
+	got := projectSpec("StorageClass", obj, nil)
+	if got["provisioner"] != "ebs.csi.aws.com" || got["volumeBindingMode"] != "WaitForFirstConsumer" || got["reclaimPolicy"] != "Delete" {
+		t.Fatalf("projected = %v", got)
+	}
+	if _, ok := got["parameters"]; ok {
+		t.Error("parameters are not collected by the agent either; the CLI must not carry them")
+	}
+}
