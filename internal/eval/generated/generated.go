@@ -325,7 +325,7 @@ func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 			if catalog.AddonMinor(s) != targetLine {
 				continue
 			}
-			return !(known && catalog.CompareVersions(s, installed) <= 0) && reaches(required, s)
+			return (!known || catalog.CompareVersions(s, installed) > 0) && reaches(required, s)
 		}
 	}
 	for _, s := range rule.IntroducedIn {
