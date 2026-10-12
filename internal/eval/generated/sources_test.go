@@ -388,6 +388,7 @@ func TestAddonRulesWithIntroducedInSelectByPatch(t *testing.T) {
 		{"hop stops short of the patch", r("3.7.7"), "v3.6.25", "3.7.6", false},
 		{"a two-part required version is the whole line", r("3.7.12"), "v3.6.25", "3.7", true},
 		{"unreadable installed version keeps the rule", r("3.6.24", "3.7.9"), "latest", "3.7.13", true},
+		{"unless the required line never got it", r("2.11.48", "3.6.19", "3.7.3"), "latest", "3.3.7", false},
 		{"no IntroducedIn keeps the minor window", r(), "v3.6.25", "3.7.13", true},
 		{"no IntroducedIn, same minor installed", r(), "v3.7.2", "3.7.13", false},
 		// the required line's own entry decides a three-part required version

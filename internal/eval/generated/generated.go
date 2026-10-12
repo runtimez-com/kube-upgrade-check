@@ -275,8 +275,8 @@ func onPath(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hop
 // patch-precise — out when the installed release LINE already carries the change (an entry on that
 // line at or below the installed patch: a backport), in when some entry lies in (installed,
 // required]; a two-part required version is that whole line; a required line with no entry of its
-// own is out when a newer line has one; an unreadable installed version keeps the rule. Mirrors the
-// backend's GeneratedRuleEvaluator.inHop.
+// own is out when a newer line has one; an unreadable installed version keeps the rule unless the
+// required line never got the change. Mirrors the backend's GeneratedRuleEvaluator.inHop.
 func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 	if len(rule.IntroducedIn) == 0 {
 		v := rule.AppliesAtVersion
@@ -330,9 +330,6 @@ func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 	}
 	for _, s := range rule.IntroducedIn {
 		if known && catalog.CompareVersions(s, installed) <= 0 {
-			continue
-		}
-		if partTarget && catalog.CompareVersions(catalog.AddonMinor(s), targetLine) > 0 {
 			continue
 		}
 		if reaches(required, s) {
