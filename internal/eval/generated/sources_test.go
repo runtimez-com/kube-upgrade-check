@@ -388,8 +388,19 @@ func TestAddonRulesWithIntroducedInSelectByPatch(t *testing.T) {
 		{"hop stops short of the patch", r("3.7.7"), "v3.6.25", "3.7.6", false},
 		{"a two-part required version is the whole line", r("3.7.12"), "v3.6.25", "3.7", true},
 		{"unreadable installed version keeps the rule", r("3.6.24", "3.7.9"), "latest", "3.7.13", true},
+		{"unless the required line never got it", r("2.11.48", "3.6.19", "3.7.3"), "latest", "3.3.7", false},
 		{"no IntroducedIn keeps the minor window", r(), "v3.6.25", "3.7.13", true},
 		{"no IntroducedIn, same minor installed", r(), "v3.7.2", "3.7.13", false},
+		// the required line's own entry decides a three-part required version
+		{"own-line entry above the required patch", r("2.11.48", "3.6.19", "3.7.3"), "v2.11.30", "3.7.2", false},
+		{"own-line entry at or below the required patch", r("2.11.48", "3.6.19", "3.7.3"), "v2.11.30", "3.7.14", true},
+		{"older line reached, own line entry", r("2.11.48", "3.6.19", "3.7.3"), "v2.11.30", "3.6.25", true},
+		// a line with no entry, cut before a newer line's entry, never got the change
+		{"line cut before a newer entry line", r("2.11.48", "3.6.19", "3.7.3"), "v2.11.30", "3.3.7", false},
+		{"two-part line cut before a newer entry line", r("2.11.48", "3.6.19", "3.7.3"), "v2.11.30", "3.3", false},
+		{"last 3.6 predates the 3.7 entry", r("2.11.56", "3.7.12"), "v2.11.30", "3.6.25", false},
+		{"line newer than every entry carries it", r("2.11.23", "3.3.6"), "v2.11.20", "3.5.6", true},
+		{"line older than the 3.3 entry", r("2.11.23", "3.3.6"), "v2.11.20", "3.2.5", false},
 	}
 	for _, c := range cases {
 		if got := inAddonHop(c.rule, c.installed, c.require); got != c.want {
