@@ -274,8 +274,9 @@ func onPath(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hop
 // IntroducedIn: minor-granular, AppliesAtVersion in (minor(installed), minor(required)]. With it:
 // patch-precise — out when the installed release LINE already carries the change (an entry on that
 // line at or below the installed patch: a backport), in when some entry lies in (installed,
-// required]; a two-part required version is that whole line; an unreadable installed version keeps
-// the rule. Mirrors the backend's GeneratedRuleEvaluator.inHop.
+// required]; a two-part required version is that whole line; a required line with no entry of its
+// own is out when a newer line has one; an unreadable installed version keeps the rule. Mirrors the
+// backend's GeneratedRuleEvaluator.inHop.
 func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 	if len(rule.IntroducedIn) == 0 {
 		v := rule.AppliesAtVersion
@@ -299,8 +300,39 @@ func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 			}
 		}
 	}
+	// A three-part required version carries the change only if its own line's entry is at or below
+	// it (1.31.0 lacks a fix first shipped as 1.31.1, even though 1.30.4 had it). A line with no entry
+	// carries it when an older line did — unless a NEWER line has an entry: that line first shipped
+	// without it, so a line cut before it never got it (Traefik 3.0–3.5 lack a fix listed as
+	// 2.11.48 / 3.6.19, and 3.6.25 one listed as 2.11.56 / 3.7.12).
+	parseable := catalog.IsParseable(required)
+	partTarget := parseable && len(catalog.Components(required)) > 2
+	targetLine := ""
+	if parseable {
+		targetLine = catalog.AddonMinor(required)
+		ownEntry, newerEntry := false, false
+		for _, s := range rule.IntroducedIn {
+			c := catalog.CompareVersions(catalog.AddonMinor(s), targetLine)
+			ownEntry = ownEntry || c == 0
+			newerEntry = newerEntry || c > 0
+		}
+		if !ownEntry && newerEntry {
+			return false
+		}
+	}
+	if partTarget {
+		for _, s := range rule.IntroducedIn {
+			if catalog.AddonMinor(s) != targetLine {
+				continue
+			}
+			return !(known && catalog.CompareVersions(s, installed) <= 0) && reaches(required, s)
+		}
+	}
 	for _, s := range rule.IntroducedIn {
 		if known && catalog.CompareVersions(s, installed) <= 0 {
+			continue
+		}
+		if partTarget && catalog.CompareVersions(catalog.AddonMinor(s), targetLine) > 0 {
 			continue
 		}
 		if reaches(required, s) {
