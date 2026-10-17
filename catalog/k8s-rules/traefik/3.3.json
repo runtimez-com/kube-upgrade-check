@@ -59,6 +59,21 @@
     ]
   },
   {
+    "ruleId": "rtz-traefik-3.3-sticky-sessions-reach-terminating-pods",
+    "severity": "MEDIUM",
+    "title": "Sticky sessions keep reaching pods that are terminating",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute",
+      "target": "routes[].services[].sticky",
+      "value": "^cookie$",
+      "reason": "checked spec.routes[].services[].sticky on IngressRoute; sticky sessions set on a TraefikService or through Ingress annotations are not scanned"
+    },
+    "quote": "**[k8s/ingress,sticky-session,k8s/crd,k8s]** Support serving endpoints ([#11121](https://github.com/traefik/traefik/pull/11121) by [BZValoche](https://github.com/BZValoche))",
+    "remediation": "From v3.3 Traefik keeps endpoints that are terminating but still serving as fenced servers: new clients never reach them, but a client whose sticky cookie points at such a pod keeps being sent there until the pod stops serving. Make sure these backends finish in-flight sessions during termination (a preStop delay, readiness turning false early, a terminationGracePeriodSeconds that covers the longest session), or the sticky clients see errors on every rollout.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.sticky.cookie != null) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  -> \" + .name' # services printed use sticky cookies"
+  },
+  {
     "ruleId": "rtz-traefik-3.3-tracing-global-attributes-renamed",
     "severity": "LOW",
     "title": "tracing.globalAttributes renamed to tracing.resourceAttributes",

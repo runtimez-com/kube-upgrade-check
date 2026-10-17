@@ -104,5 +104,131 @@
     "quote": "Gateway listeners with `protocol: TLS` (used for TLS passthrough via `TLSRoute`) are now accepted without requiring `PILOT_ENABLE_ALPHA_GATEWAY_API=true`, since TLSRoute graduated to GA in Gateway API v1.5.0.",
     "remediation": "istiod 1.30 watches TLSRoute at `v1` and drops a `tlsroutes.gateway.networking.k8s.io` CRD whose `gateway.networking.k8s.io/bundle-version` annotation is below v1.5.0: no TLSRoute is read, the Gateway reports `attachedRoutes: 0` and passthrough traffic fails with no error in the route's status. The opposite gate holds before the upgrade: 1.27.9, 1.28.6 and 1.29.2 onwards ignore a TLSRoute CRD above bundle v1.4.0. Upgrade the TLSRoute CRD to bundle v1.5.x in the same change window as istiod and expect TLSRoutes to be unserved by whichever control plane does not match it while both run. From 1.30.1, `istioctl analyze` reports a stale CRD as IST0176.",
     "verifyCommand": "kubectl get crd tlsroutes.gateway.networking.k8s.io -o custom-columns='CRD:.metadata.name,BUNDLE:.metadata.annotations.gateway\\.networking\\.k8s\\.io/bundle-version' --ignore-not-found  # below v1.5.0 is ignored by istiod 1.30; above v1.4.0 is ignored by 1.27.9 / 1.28.6 / 1.29.2 onwards"
+  },
+  {
+    "ruleId": "rtz-istio-1.30-listenerset-conflicts-rejected",
+    "severity": "LOW",
+    "title": "Conflicting ListenerSet listeners are now rejected",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ListenerSet objects are not collected; the ListenerSet CRD istiod reads from 1.30 (listenersets.gateway.networking.k8s.io, v1) is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^gateway\\.networking\\.k8s\\.io$",
+      "objectName": "^listenersets\\.gateway\\.networking\\.k8s\\.io$"
+    },
+    "quote": "Conflicting listeners are now correctly rejected and ListenerSet status conditions report in compliance with Gateway API 1.5.",
+    "remediation": "A ListenerSet listener that conflicts on hostname or protocol with another listener on the same port stops being programmed after the upgrade. Check each ListenerSet's status conditions and give conflicting listeners distinct hostnames or ports first.",
+    "verifyCommand": "kubectl get listenersets.gateway.networking.k8s.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.status.listeners[]? | .name + \":\" + ([.conditions[]? | select(.type==\"Conflicted\" and .status==\"True\") | \"CONFLICTED\"] | join(\",\"))] | join(\" \"))'",
+    "introducedIn": [
+      "1.30.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-export-to-defaults-honoured",
+    "severity": "LOW",
+    "title": "Non-default defaultServiceExportTo / defaultVirtualServiceExportTo lists are honoured",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "meshConfig is not collected; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "additional namespaces in meshConfig.defaultServiceExportTo and meshConfig.defaultVirtualServiceExportTo were not being honored when the default included the current namespace as \".\".",
+    "remediation": "Before 1.30.3 a default list other than the plain [\"*\"] was not applied as written (one holding \".\" plus namespaces kept objects private; one naming only namespaces exported them nowhere). After it, Services and VirtualServices without their own exportTo become visible exactly to the listed namespaces, so proxies there receive their config and VirtualService routing for the first time. Check the defaults list only the namespaces you mean.",
+    "verifyCommand": "kubectl get configmap -n istio-system -o json | jq -r '.items[] | select(.data.mesh != null) | \"== \" + .metadata.name, .data.mesh' | grep -E -A4 '^== |default(Service|VirtualService)ExportTo'  # any list other than [\"*\"] changes visibility at the upgrade",
+    "introducedIn": [
+      "1.30.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-waypoint-inbound-default-retries",
+    "severity": "LOW",
+    "title": "Waypoints apply the mesh default HTTP retry policy to the services they serve",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which routes already set retries is not collected; namespaces and Services using a waypoint are the population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace|Service",
+      "target": "istio.io/use-waypoint"
+    },
+    "quote": "The mesh config's defaultHttpRetryPolicy will apply to local services attached to waypoints.",
+    "remediation": "Requests through a waypoint start being retried by the mesh default policy, as sidecars already did. For services where a retry is unsafe, set retries explicitly on their VirtualService (attempts: 0) before the upgrade.",
+    "verifyCommand": "kubectl get ns,svc -A -o json | jq -r '.items[] | select(.metadata.labels[\"istio.io/use-waypoint\"] != null) | .kind + \" \" + (.metadata.namespace // \"-\") + \"/\" + .metadata.name + \" waypoint=\" + .metadata.labels[\"istio.io/use-waypoint\"]'",
+    "introducedIn": [
+      "1.30.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-external-sds-gateway-resource-name",
+    "severity": "LOW",
+    "title": "A gateway using an external SDS provider requests the credential name, not sds://<provider>, as the SDS resource",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the SDS server serves the credential name is not on the cluster; Istio Gateways with an sds:// credentialName are the population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Gateway",
+      "target": "servers[].tls.credentialName",
+      "value": "^sds://"
+    },
+    "quote": "use the credential name (after stripping the `sds://` prefix) as the SDS resource name instead of the provider name.",
+    "remediation": "After the upgrade a gateway without a local credential socket asks the external SDS server for the credential name with sds:// stripped (and `<credential-name>-cacert` for MUTUAL). Gateways whose pods mount the credential socket keep requesting the full sds:// name. Make the SDS server serve the certificate under the new name before upgrading, or TLS on those servers stops.",
+    "verifyCommand": "kubectl get gateways.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.servers[]? | (.tls.credentialName // \"\") | startswith(\"sds://\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.servers[]? | (.tls.credentialName // \"\") | select(startswith(\"sds://\"))] | join(\" \"))'  # the SDS server must serve each printed credential name (sds:// stripped), plus NAME-cacert for MUTUAL",
+    "introducedIn": [
+      "1.30.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-multinetwork-ingress-through-waypoint",
+    "severity": "LOW",
+    "title": "Cross-network ingress traffic to a Service labelled istio.io/ingress-use-waypoint now goes through its waypoint",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the network topology and the waypoint's policies are not compared; Services with the label are the population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "istio.io/ingress-use-waypoint"
+    },
+    "quote": "multi-network ambient now routes to the waypoint when the ingress on one network calls a service on a different network",
+    "remediation": "Ingress calls that cross networks used to skip the waypoint; they now pass through it, so its L7 AuthorizationPolicies and routing apply and a caller they do not admit gets 403. Check the waypoint's policies admit those callers before upgrading.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.labels[\"istio.io/ingress-use-waypoint\"] != null) | .metadata.namespace + \"/\" + .metadata.name + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"(namespace)\")'  # check each waypoint's AuthorizationPolicies admit the cross-network ingress callers",
+    "introducedIn": [
+      "1.29.4",
+      "1.30.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-multicluster-ingress-waypoint-authz",
+    "severity": "LOW",
+    "title": "Ingress gateways stop bypassing the waypoint for multi-cluster services on another network",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the network topology and the waypoint's policies are not compared; Services with the label are the population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "istio.io/ingress-use-waypoint"
+    },
+    "quote": "causing authorization policies to not be enforced.",
+    "remediation": "Requests from an ingress gateway to remote workloads on a different network now go through the waypoint, so authorization policies there apply and can deny traffic that used to pass. Check those policies admit the ingress gateway before upgrading.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.labels[\"istio.io/ingress-use-waypoint\"] != null) | .metadata.namespace + \"/\" + .metadata.name + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"(namespace)\")'  # check each waypoint's AuthorizationPolicies admit the cross-network ingress callers",
+    "introducedIn": [
+      "1.29.7",
+      "1.30.4"
+    ]
   }
 ]

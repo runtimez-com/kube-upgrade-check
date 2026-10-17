@@ -135,5 +135,94 @@
       "1.30.4",
       "1.31.0"
     ]
+  },
+  {
+    "ruleId": "rtz-istio-1.31-jwks-fetch-blocks-metadata-addresses",
+    "severity": "LOW",
+    "title": "istiod no longer fetches a RequestAuthentication jwksUri from link-local or cloud metadata addresses",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "RequestAuthentication objects are not collected; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "istiod now blocks link-local and known cloud metadata addresses (such as `169.254.169.254`) at the dial level by default and rejects fetched responses that are not a valid JWKS.",
+    "remediation": "A jwksUri that resolves to a link-local or cloud metadata address (169.254.0.0/16, for example) stops yielding keys after the upgrade, and requests carrying a JWT for that issuer fail validation. Serve the JWKS from another address, or inline the keys with `jwks`. A response that is not a JWKS document is now rejected at fetch time; it could not validate tokens before either.",
+    "verifyCommand": "kubectl get requestauthentications.security.istio.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.jwtRules[]? | (.jwksUri // (\"(inline or discovery: \" + (.issuer // \"?\") + \")\"))] | join(\" \"))'  # a printed URI (or discovered jwks_uri) on 169.254.0.0/16 or a cloud metadata host stops working",
+    "introducedIn": [
+      "1.29.7",
+      "1.30.4",
+      "1.31.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.31-wasm-oci-plaintext-retry-allowlist",
+    "severity": "MEDIUM",
+    "title": "Wasm OCI images are no longer re-fetched over plain HTTP unless the registry is listed in WASM_INSECURE_REGISTRIES",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "WasmPlugin objects and the proxies' WASM_INSECURE_REGISTRIES value are not collected; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "The plaintext retry is now only attempted for registries the operator has explicitly allowlisted via `WASM_INSECURE_REGISTRIES`.",
+    "remediation": "A WasmPlugin whose oci:// image lives on a registry that only speaks plain HTTP no longer loads after the upgrade; with failStrategy FAIL_CLOSE (the default) its proxies then deny the traffic the plugin applies to. Serve that registry over HTTPS, or add its host to WASM_INSECURE_REGISTRIES on the proxies (for example through proxyMetadata) before upgrading.",
+    "verifyCommand": "kubectl get wasmplugins.extensions.istio.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.url + \" failStrategy=\" + (.spec.failStrategy // \"FAIL_CLOSE\")'  # an oci:// (or scheme-less) URL on a plain-HTTP registry needs HTTPS or a WASM_INSECURE_REGISTRIES entry",
+    "introducedIn": [
+      "1.29.9",
+      "1.30.6",
+      "1.31.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.31-xds-debug-proxyid-exact",
+    "severity": "LOW",
+    "title": "istiod's debug endpoints match proxyID exactly — tooling passing a partial proxy ID gets nothing back",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which scripts or dashboards call istiod's debug endpoints is not on the cluster; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "`proxyID` must now be the exact `<pod>.<namespace>` (or full connection ID); short forms such as `proxyID=istio-ingressgateway` no longer match.",
+    "remediation": "Update scripts and dashboards that call /debug/config_dump, /debug/edsz or the istio.io/debug/config_dump XDS type with a short proxyID to pass the full `<pod>.<namespace>`.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/pilot\"))) | .metadata.namespace + \"/\" + .metadata.name'  # callers of these istiod debug endpoints must pass the full proxyID, POD.NAMESPACE",
+    "introducedIn": [
+      "1.29.9",
+      "1.30.6",
+      "1.31.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.31-canary-waypoint-namespace-isolation",
+    "severity": "LOW",
+    "title": "A canary waypoint in another namespace is now refused for a NAMESPACE-visibility ServiceEntry, like the primary waypoint",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "serviceEntryVisibility and the waypoint's namespace are not read; Namespaces and ServiceEntries carrying the canary label (a ServiceEntry inherits its namespace's) are the population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace|ServiceEntry",
+      "target": "istio.io/use-waypoint-canary"
+    },
+    "quote": "The canary waypoint is now subject to the same cross-namespace refusal as the primary.",
+    "remediation": "If a ServiceEntry with NAMESPACE visibility sends its canary share through a waypoint in another namespace, that share is refused after the upgrade. Move the canary waypoint into the ServiceEntry's namespace, or drop the istio.io/use-waypoint-canary label, before upgrading.",
+    "verifyCommand": "kubectl get ns,serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select(.metadata.labels[\"istio.io/use-waypoint-canary\"] != null) | .kind + \" \" + (.metadata.namespace // \"-\") + \"/\" + .metadata.name + \" canary=\" + .metadata.labels[\"istio.io/use-waypoint-canary\"] + \" canary-namespace=\" + (.metadata.labels[\"istio.io/use-waypoint-canary-namespace\"] // \"(own namespace)\")'  # a canary-namespace other than the ServiceEntry's own is refused after the upgrade for a NAMESPACE-visibility ServiceEntry",
+    "introducedIn": [
+      "1.31.1"
+    ]
   }
 ]

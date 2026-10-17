@@ -412,12 +412,12 @@
     "title": "Host and HostSNI gain single-level wildcard subdomain matching",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "IngressRoute",
+      "objectKind": "IngressRoute|IngressRouteTCP",
       "target": "routes[].match",
-      "value": "Host\\(\\s*`\\*\\.[^`]+`\\s*\\)"
+      "value": "\\b(?i:Host|HostSNI)\\s*\\(\\s*(`\\*\\.[^`]+`|\"\\*\\.[^\"]+\")\\s*\\)"
     },
     "quote": "Since `v3.7.0`, the `Host` and `HostSNI` matchers support wildcard subdomain matching (e.g., `*.example.com`). This allows matching any direct subdomain of a domain with a single-level wildcard prefix. For example, `*.example.com` matches `foo.example.com` but not `foo.bar.example.com` or `example.com` itself.",
-    "remediation": "If any rule already contains a literal `*.` host, confirm the new semantics match what you intended: it now matches exactly one level of subdomain — not the apex, and not deeper subdomains. Routers that previously never matched such traffic may start receiving it. IngressRouteTCP routers using HostSNI(`*.example.com`) carry the same change and are not matched by this rule — check them by hand.",
+    "remediation": "If any rule already contains a literal `*.` host, confirm the new semantics match what you intended: it now matches exactly one level of subdomain — not the apex, and not deeper subdomains. Routers that previously never matched such traffic may start receiving it; for an IngressRouteTCP router using ``HostSNI(`*.example.com`)`` that is TLS connections for every direct subdomain.",
     "introducedIn": [
       "3.7.0"
     ]
@@ -449,7 +449,7 @@
     "title": "Gateway API: of two routes that match equally well, only the one with precedence serves",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Gateway API routes (HTTPRoute, GRPCRoute, TLSRoute, TCPRoute) are not collected, so routes sharing a listener and a rule cannot be compared"
+      "reason": "the coded check rtz-traefik-gateway-equal-rule-route-not-served compares HTTPRoutes and GRPCRoutes per listener and rule when the agent ships their resolved parents and match digests; TLSRoutes and TCPRoutes, and routes whose listeners or matches are not fully known, are not compared"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -470,7 +470,7 @@
     "title": "Gateway API: TLSRoute router and service names change",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Gateway API routes are not collected, and the change is in names Traefik generates, which no collected object carries"
+      "reason": "the change is in router and service names Traefik generates, which no collected object carries; the coded check rtz-traefik-gateway-tlsroute-router-names-change names the served TLSRoutes"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -504,6 +504,124 @@
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].env[]?.name] | index(\"OTEL_EXPORTER_OTLP_METRICS_DEFAULT_HISTOGRAM_AGGREGATION\")) | .metadata.namespace + \"/\" + .metadata.name' # workloads printed set the variable; check its value",
     "introducedIn": [
       "3.7.14"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-ingress-pathmatcher-annotation-restricted",
+    "severity": "LOW",
+    "title": "Ingress router.pathmatcher accepts only Path, PathPrefix and PathRegexp",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "traefik.ingress.kubernetes.io/router.pathmatcher",
+      "value": "^(?!(Path|PathPrefix|PathRegexp)$).",
+      "reason": "checked the router.pathmatcher annotation's value on Ingress"
+    },
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Ingress",
+      "target": "rules[].paths[].pathType",
+      "value": "^ImplementationSpecific$",
+      "reason": "Traefik reads the annotation only for paths whose pathType is ImplementationSpecific; Prefix and Exact paths ignore it"
+    },
+    "quote": "**[k8s/ingress]** Avoid ingress path matcher injection and backport 11d251415 ([#13227](https://github.com/traefik/traefik/pull/13227) @rtribotte)",
+    "remediation": "Set the annotation to `Path`, `PathPrefix` or `PathRegexp` (exact case), or remove it. From these patches Traefik refuses any other value (\"invalid router path matcher\"), logs \"Skipping path.\" and builds no router for that path, so the Ingress's ImplementationSpecific paths answer 404 after the upgrade. A value that worked before by being pasted into the rule (`pathprefix`, `Host`, `Query`) is what breaks; a value that never parsed was already 404.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | (.metadata.annotations // {})[\"traefik.ingress.kubernetes.io/router.pathmatcher\"] as $m | select($m != null and ($m | IN(\"Path\",\"PathPrefix\",\"PathRegexp\") | not)) | .metadata.namespace + \"/\" + .metadata.name + \"  \" + $m' # Ingresses printed are skipped after the upgrade",
+    "introducedIn": [
+      "2.11.48",
+      "3.6.19",
+      "3.7.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-ingress-nginx-authorization-header-stripped",
+    "severity": "MEDIUM",
+    "title": "Backends behind ingress-nginx basic or digest auth stop receiving Authorization",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "nginx.ingress.kubernetes.io/auth-type",
+      "value": "^(basic|digest)$",
+      "reason": "checked the nginx.ingress.kubernetes.io/auth-type annotation's value on Ingress"
+    },
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesingressnginx",
+      "reason": "only Traefik's Kubernetes Ingress NGINX provider translates these annotations; with the provider off, Traefik never reads them"
+    },
+    "quote": "**[k8s/ingress-nginx]** Remove Authorization header for basic and digest auth  ([#13631](https://github.com/traefik/traefik/pull/13631) @josmo)",
+    "remediation": "Traefik now mirrors ingress-nginx and removes the `Authorization` header before the request reaches the backend of an Ingress protected by basic or digest auth. A backend that reads the user from that header (or forwards it to another service) loses it at the upgrade: pass the identity another way, for example with `nginx.ingress.kubernetes.io/auth-url` and a response header, before upgrading.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations // {})[\"nginx.ingress.kubernetes.io/auth-type\"] | IN(\"basic\",\"digest\")) | .metadata.namespace + \"/\" + .metadata.name' # backends of the Ingresses printed stop receiving Authorization",
+    "introducedIn": [
+      "3.7.14"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-sni-host-mismatch-421",
+    "severity": "MEDIUM",
+    "title": "Routes with their own TLS options answer 421 more often when SNI and Host differ",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a client sends no SNI, or an SNI that differs from its Host header, is decided per request; the routes it can affect are named"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute",
+      "target": "tlsDetail.options",
+      "value": "^name="
+    },
+    "quote": "**[server]** Move snicheck to ctx instead of simulated routing ([#13214](https://github.com/traefik/traefik/pull/13214) @juliens)",
+    "remediation": "For routes that use a non-default TLSOption, Traefik now checks the SNI against the Host header on the request itself, so clients that send no SNI or reuse one connection for several hosts (HTTP/2 connection coalescing, some health checkers and proxies) get `421 Misdirected Request`. Test those clients against the upgraded controller, and make them send an SNI that matches the Host.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | select(.spec.tls.options != null) | .metadata.namespace + \"/\" + .metadata.name + \"  options=\" + .spec.tls.options.name' # routes printed enforce SNI = Host for their TLS options",
+    "introducedIn": [
+      "2.11.48",
+      "3.6.19",
+      "3.7.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-tlsoption-applies-to-wildcard-host",
+    "severity": "MEDIUM",
+    "title": "A route's TLSOption now applies to its wildcard Host",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the change bites only where a wildcard Host or HostSNI route also names a TLSOption that is stricter than the default; one predicate cannot test both, so the wildcard routes are named"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute|IngressRouteTCP",
+      "target": "routes[].match",
+      "value": "\\b(?i:Host|HostSNI)\\s*\\(\\s*(`\\*\\.[^`]+`|\"\\*\\.[^\"]+\")\\s*\\)"
+    },
+    "quote": "Since `v3.7.0`, TLSOptions can now be associated with routers using wildcard `Host` and `HostSNI` matchers (e.g., `Host(`*.example.com`)`).",
+    "remediation": "Before v3.7 such a router fell back to the default TLS options with a warning. From v3.7 the route's own TLSOption applies, so a stricter minVersion, cipher list or client-certificate requirement (mTLS) starts being enforced on the wildcard hosts. Check the clients of these routes against the TLSOption they name.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | select(.spec.tls.options != null) | . as $o | .spec.routes[]? | select(.match | test(\"Host\\\\(\\\\s*[`\\\"]\\\\*\\\\.\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  options=\" + $o.spec.tls.options.name' # routes printed start enforcing their TLSOption on wildcard hosts",
+    "introducedIn": [
+      "3.7.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-cors-wildcard-credentials-and-max-age",
+    "severity": "LOW",
+    "title": "CORS headers change: no Max-Age 0 by default, wildcard with credentials reflects the origin",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the difference shows in browser preflight behaviour per origin; the Middlewares that configure CORS are named"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Middleware",
+      "target": "headers",
+      "value": "^accessControlAllowOriginWildcard="
+    },
+    "quote": "**[middleware]** Fix CORS Max-Age set to 0 by default ([#13371](https://github.com/traefik/traefik/pull/13371) @AnatoleLucet)",
+    "remediation": "Two CORS fixes land together. Traefik no longer sends `Access-Control-Max-Age: 0` when `accessControlMaxAge` is unset, so browsers start caching preflights for their own default. And a wildcard origin list combined with `accessControlAllowCredentials: true` now answers with the requesting origin, which browsers accept, instead of `*`, which they reject, so cross-origin credentialed calls that used to fail start succeeding. Review both for the Middlewares named.",
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.headers.accessControlAllowOriginList != null) | .metadata.namespace + \"/\" + .metadata.name + \"  credentials=\" + ((.spec.headers.accessControlAllowCredentials // false) | tostring) + \" maxAge=\" + ((.spec.headers.accessControlMaxAge // \"unset\") | tostring)' # Middlewares printed send different CORS headers",
+    "introducedIn": [
+      "3.6.22",
+      "3.7.6"
     ]
   }
 ]

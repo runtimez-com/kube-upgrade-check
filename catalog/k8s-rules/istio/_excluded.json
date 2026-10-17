@@ -118,5 +118,725 @@
     "version": "1.30",
     "note": "Untaint controller",
     "reason": "removes a requirement (`PILOT_ENABLE_NODE_UNTAINT_CONTROLLERS` is now set automatically when `taint.enabled` is on); an install that still sets it explicitly is unaffected"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59443)",
+    "reason": "covered by the coded check rtz-istio-gateway-api-crd-ignored (IstioUpgradeChecks.maximumBundle: TLSRoute bundle above 1.4.0 ignored on 1.29.2, above 1.4.1 from 1.29.3 to 1.29.9)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (59876)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (gw-api-1_4_1)",
+    "reason": "the Gateway API client istiod is built against; the CRD bundle bounds it gates on are the coded check rtz-istio-gateway-api-crd-ignored"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.5 (multicluster-kubecontroller-double-close)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (61254)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (backendtlspolicy-sidecar-failclosed)",
+    "reason": "covered by the coded check rtz-istio-backend-tls-policy-behaviour (IstioUpgradeChecks.backendTlsPolicy, BACKEND_TLS_FAIL_CLOSED)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (delta-wds-watchset-retention)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (gateway-tls-ref-grant-order)",
+    "reason": "ResolvedRefs status no longer reveals whether an unauthorised cross-namespace Secret exists; routing is unchanged"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (peerauth-by-ns)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.7/1.30.4/1.31.1 (sidecar-annotation-yaml-injection)",
+    "reason": "annotation values are escaped in the injection templates; only values carrying YAML control characters — the injection vector — render differently"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.8/1.30.5/1.31.1 (61020)",
+    "reason": "stops the CNI agent flipping its iptables backend between restarts; duplicate rules stop appearing, nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.8/1.30.5/1.31.1 (61250)",
+    "reason": "JWKS fetches negotiate HTTP/2 again like Go's default transport; a JWKS endpoint that served HTTP/1.1 still does"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.8/1.30.5/1.31.1 (61502)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.8/1.30.5/1.31.1 (analyze-multicluster-secret-sanitize)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.8/1.30.5/1.31.2 (ambient-network-gateway-order)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.4/1.31.1 (krt-debugger-leak)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (41937)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (61594 #2)",
+    "reason": "pickers resolve per backendRef; two HTTPRoutes sharing a rule name stop serving each other's picker — a fix"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (61594 #3)",
+    "reason": "a CORS filter no longer drops a rule's InferencePool picker — a fix"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (61594)",
+    "reason": "each InferencePool backendRef gets its own endpoint picker, so traffic follows the declared weights; a fix for routes that were mis-scored"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (61791)",
+    "reason": "OpenShift UID/GID resolution for custom SCCs; proxies that failed to start now start"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (62124)",
+    "reason": "a validation WARNING only; nothing is rejected on apply and nothing changes at runtime"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (ambient-address-premarshal-deterministic)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (authz-method-case-insensitive)",
+    "reason": "covered by the coded checks rtz-istio-authz-method-case-denies / rtz-istio-authz-method-case-admits (IstioUpgradeChecks.authzMethodCase)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (kube-client-deadlines #2)",
+    "reason": "covered by the coded check rtz-istio-kube-client-deadlines (IstioUpgradeChecks.kubeClientDeadlines)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (kube-client-deadlines)",
+    "reason": "covered by the coded check rtz-istio-kube-client-deadlines (IstioUpgradeChecks.kubeClientDeadlines)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (manifest-translate-shell-escape)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (oidc-sub-claim-panic)",
+    "reason": "istiod no longer panics on a token with a malformed sub; well-formed service-account tokens are accepted as before"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (ra-k8s-csr-hardening #2)",
+    "reason": "a timer leak on the CSR RA path; certificates are issued as before"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (ra-k8s-csr-hardening #3)",
+    "reason": "covered by the coded check rtz-istio-ra-workload-cert-ttl-cap (IstioUpgradeChecks.raWorkloadCertTtl)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (ra-k8s-csr-hardening)",
+    "reason": "error text from the CSR RA path is logged instead of returned; certificates are issued as before"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.29.9/1.30.6/1.31.2 (stop-crashing-istiod-on-waypoint-address-collision)",
+    "reason": "a colliding waypoint address is skipped with a warning instead of crashing istiod"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.4/1.31.1 (ambient-remote-networks-leak)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.4/1.31.1 (listenerset-conflict-owner-kind)",
+    "reason": "a Gateway and a ListenerSet of the same name no longer mark each other's listeners Conflicted; listeners that were wrongly dropped are programmed"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.5/1.31.1 (61648)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.5/1.31.1 (fix-stats-interval-duration-rendering #2)",
+    "reason": "statsEvictionInterval keeps sub-second precision instead of truncating it; same configured value, honoured exactly"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.5/1.31.1 (fix-stats-interval-duration-rendering)",
+    "reason": "statsFlushInterval values of 1m+ or sub-second no longer break the bootstrap; proxies that failed to start now start"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.5/1.31.1 (serviceentry-empty-workload-selector)",
+    "reason": "covered by the coded checks rtz-istio-serviceentry-empty-selector / -today (IstioUpgradeChecks.serviceEntryEmptySelector)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.5/1.31.1 (status-queue-stale-generation)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.6/1.31.2 (62067)",
+    "reason": "restores gateway clusters an incremental push wrongly removed; nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.6/1.31.2 (kclient-delayed-shutdown-handler)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.30.6/1.31.2 (partial-eds-skipped-configs)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (61073)",
+    "reason": "makes clearing the CRL work; an existing ca-crl.pem is enforced as before (the CRL itself is the coded check rtz-istio-1.27-ca-crl-enforced)"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (61330)",
+    "reason": "fixes ALLOW_ANY_DYNAMIC_DNS on IPv6-only clusters; nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (agw-canary-waypoint-service-bindings)",
+    "reason": "canary agentgateway waypoints get the service's routes and policies; connections that were rejected now work"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (default-chart-webhook-failurepolicy)",
+    "reason": "stops the default chart's webhook conflicting with server-side-apply helm upgrades; failurePolicy itself is unchanged"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (kiali-update-v2.31)",
+    "reason": "the Kiali sample addon's version; not part of an Istio install"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (serviceentry-workload-proxy-push #2)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.1 (serviceentry-workload-proxy-push)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (61924)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (cluster-connection-buffer-limit)",
+    "reason": "new optional ProxyConfig field; its EDGE-profile default applies only to gateways that opted into the EDGE connection profile, whose purpose is those defaults"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (eds-destination-rule-push)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (gateway-config-dependency-scoping)",
+    "reason": "an istiod/ztunnel internal fix (push computation, caching, leak or race); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (global-downstream-connection-limit)",
+    "reason": "new optional ProxyConfig field; it only takes precedence where it is set"
+  },
+  {
+    "version": "1.31",
+    "note": "Patch 1.31.2 (wds-debounce)",
+    "reason": "adds PILOT_ENABLE_WDS_DEBOUNCE defaulting to the existing behaviour; nothing changes unless it is set"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59028)",
+    "reason": "waypoints add the TLS inspector for TLS-only ports, so SNI routing to wildcard DYNAMIC_DNS ServiceEntries works; nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59117)",
+    "reason": "baggage-based peer metadata is not used on routes with TLS or PROXY traffic policies; telemetry labels in multicluster can be less complete, traffic is unchanged"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59156)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59171)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59238)",
+    "reason": "adds an optional setting that changes nothing unless it is set (DEBUG_ENDPOINT_AUTH_ALLOWED_NAMESPACES)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (59321)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (fix-null-resource-limits)",
+    "reason": "null resource limits or requests no longer fail validation; injection that failed now works"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (jwks-private-key-leak)",
+    "reason": "the JWKS fetch-failure fallback no longer validates tokens signed with a key published in Istio's source; a real token never validated against it, so legitimate requests are unchanged"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (statusgen-xds-auth #2)",
+    "reason": "covered by the corpus rule rtz-istio-1.30-xds-debug-endpoints-require-auth (introducedIn 1.27.8/1.28.5/1.29.1/1.30.0)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (statusgen-xds-auth)",
+    "reason": "covered by the corpus rule rtz-istio-1.30-xds-debug-endpoints-require-auth (introducedIn 1.27.8/1.28.5/1.29.1/1.30.0)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.1 (xds-debug-namespace-auth)",
+    "reason": "passes the caller's namespace to the same debug authorization as statusgen-xds-namespace; see the corpus rule rtz-istio-1.30-xds-debug-endpoints-require-auth"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (58302)",
+    "reason": "Helm v4 / server-side-apply install support; the chart renders the same objects"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59473)",
+    "reason": "istiod falls back to the local trust domain until it can read the remote one, instead of validating the wrong one; nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59495)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59513)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59700)",
+    "reason": "service-account names are quoted in the matcher regex; a Kubernetes name's only special character is '.', which matched itself before as well, so named accounts match as before; only a value written as a pattern (e.g. ns/app-.+), which the policy API never promised, stops matching"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (59709)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (jwks-uri-block-follows-redirect)",
+    "reason": "BLOCKED_CIDRS_IN_JWKS_URIS also applies after redirects and to issuer discovery; it only matters where an operator set it, and enforces what they asked for"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (wasm-gzip-decompression-limit)",
+    "reason": "HTTP-fetched gzip Wasm modules get the size limit OCI and other fetch paths already enforce"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (webhook-failurepolicy-upgrade)",
+    "reason": "failurePolicy is left to the webhook controller on helm upgrade (Helm 4, Flux); its runtime value is unchanged"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (webhook-https-timeouts)",
+    "reason": "the webhook server gets the read-header and idle timeouts the HTTP server already had; nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.2 (ztunnel-h2-ping-broken-pipe)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (59523)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (59768)",
+    "reason": "a workload certificate no longer outlives its signing certificate; past that point it was invalid anyway"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (59961)",
+    "reason": "adds an optional setting that changes nothing unless it is set (PILOT_HBONE_INITIAL_*_WINDOW_SIZE)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (59992)",
+    "reason": "principal and namespace values are regex-escaped, so a '.' or '[' no longer matches other identities; only identities the policy never named, or values written as patterns, stop matching"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (aws-brancheni-probe-fix)",
+    "reason": "covered by the coded check rtz-istio-ambient-sgp-strict-probes (IstioUpgradeChecks.ambientSecurityGroupsStrict, AWS_BRANCH_ENI_PROBE_FIX 1.28.7/1.29.3/1.30.0)"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (fix-istioctl-zc-canonical)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked"
+  },
+  {
+    "version": "1.29",
+    "note": "Patch 1.29.3 (statusgen-xds-namespace)",
+    "reason": "debug tooling calling the authenticated XDS debug endpoints from a non-system namespace sees only its own namespace's proxies; the authentication change itself is the corpus rule rtz-istio-1.30-xds-debug-endpoints-require-auth"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.3/1.30.3 (59912)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.4/1.30.1 (59535)",
+    "reason": "ListenerSet HTTPS listeners on manually deployed Gateways get their certificates; nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.4/1.30.1 (59933)",
+    "reason": "invalid header values in route filters are reported as InvalidFilter status instead of silently dropped; the filters were not applied before either"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.4/1.30.1 (60328 #2)",
+    "reason": "istio-cni falls back to iptables when the node's nft lacks JSON, instead of retrying forever; nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.4/1.30.1 (60328)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.4/1.30.1 (60423)",
+    "reason": "ztunnel stops sending traffic to not-ready endpoints of Services that never asked for it; a fix"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.5/1.30.2 (59959)",
+    "reason": "changing a Gateway's istio.io/rev no longer blanks its config briefly; nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.5/1.30.2 (ambient-probe-ipset-reconcile)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.5/1.30.2 (istio-hashable-string)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working (config generation for proxies older than 1.29.2)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.5/1.30.2 (krt-dependency-reverse-index-leak)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (60731)",
+    "reason": "EXIT_ON_ZERO_ACTIVE_CONNECTIONS now fires on ambient gateways and waypoints, so they drain on zero connections instead of waiting out terminationGracePeriodSeconds — the behaviour the setting asks for"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (60788 #2)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-autoregistered-workloadentries-need-tunnel-label (introducedIn 1.29.6/1.30.3/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (60788)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-autoregistered-workloadentries-need-tunnel-label (introducedIn 1.29.6/1.30.3/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (60806)",
+    "reason": "cross-network east-west traffic to services with L7 policies is no longer blocked by a spurious deny-all; a fix"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (cni-ztunnel-poddeleted-deadlock)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.6/1.30.3 (needresync-leak)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (58492)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-nftables-version-unpinned (introducedIn 1.29.7/1.30.4/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (61049)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (61095)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (61168)",
+    "reason": "istio-cni stops enrolling hostNetwork pods in ambient; they cannot be redirected per pod"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (close-scan-netns-fd-leak)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (envoyfilter-proxyversion-length)",
+    "reason": "an EnvoyFilter proxyVersion match longer than 1024 characters no longer matches any proxy (validation warns); real version expressions are a few dozen characters"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (krt-collection-teardown-leaks)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (leaderelection-cycle-goroutine-leak)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (service-port-name-collision)",
+    "reason": "generated Gateway Service port names that collide are disambiguated with the port number; Services that were rejected are created"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (validate-netns-ownership)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (wds-reconnect-version-skip #2)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-wds-reconnect-exceeds-grpc-limit (introducedIn 1.29.7/1.30.4/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (wds-reconnect-version-skip)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-wds-reconnect-exceeds-grpc-limit (introducedIn 1.29.7/1.30.4/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (xds-api-generator-auth #2)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-xds-api-generator-requires-identity (introducedIn 1.29.7/1.30.4/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.7/1.30.4 (xds-api-generator-auth)",
+    "reason": "covered by the corpus rule rtz-istio-1.31-xds-api-generator-requires-identity (introducedIn 1.29.7/1.30.4/1.31.0)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.9/1.30.4 (ambient-global-nodes-collection-leak)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.9/1.30.6 (invalid-listener-without-tls-section)",
+    "reason": "no internal listener is generated for an HTTPS/TLS listener without a TLS section; such a listener could not serve TLS"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.29.9/1.30.6 (strict-gateway-merging)",
+    "reason": "adds PILOT_ENABLE_STRICT_GATEWAY_MERGING, default false on 1.29/1.30; the 1.31 default flip is the coded check rtz-istio-1.31-strict-gateway-merging"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (57817)",
+    "reason": "Gateway API conflict resolution for BackendTLSPolicies on one target (the oldest wins, the rest report Conflicted); only conflicting policies change — the CRD and policies are the coded check rtz-istio-backend-tls-policy-behaviour"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (60122)",
+    "reason": "adds an optional setting that changes nothing unless it is set (the istio.io/ignore-policy-attachment annotation)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (60312)",
+    "reason": "covered by the coded check rtz-istio-1.30.0-ring-hash-stale (IstioUpgradeChecks.ringHash1300)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (agw-fix-agentgateway-configuration-for-listenerset)",
+    "reason": "the experimental agentgateway now programs ListenerSets and their routes; sidecar and Envoy gateways are unaffected"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (agw-fix-listenerset-not-allowed-reporting)",
+    "reason": "agentgateway ListenerSet status reporting, and ListenerSet no longer needs PILOT_ENABLE_ALPHA_GATEWAY_API there (standard since Gateway API v1.5); the experimental agentgateway only"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (gateway-api-crd-version-analyzer)",
+    "reason": "an istioctl change; nothing on the cluster changes and no object can be checked (the CRD minimum it flags is the coded check rtz-istio-gateway-api-crd-ignored)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (kiali-update-v2.26)",
+    "reason": "the Kiali sample addon's version; not part of an Istio install"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.1 (multicluster-clusterstore-rlock-deadlock)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.2 (60322)",
+    "reason": "pilot-agent merges only text and OpenMetrics Envoy stats; protobuf responses it merged incorrectly before"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.2 (60638)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.2 (add-trust-domains-to-authz-policy)",
+    "reason": "new optional AuthorizationPolicy fields; nothing changes unless they are set"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.2 (agent-merge-envoy-stats-flag)",
+    "reason": "adds an optional setting that changes nothing unless it is set (PILOT_AGENT_MERGE_ENVOY_STATS)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.2 (gateway-api-crd-version-warn)",
+    "reason": "log level only (the CRD minimum it logs is the coded check rtz-istio-gateway-api-crd-ignored)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (59499)",
+    "reason": "adds an optional setting that changes nothing unless it is set (PILOT_NODE_UNTAINT_CONTROLLERS_TAINT_NAME)"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (60612)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (60629-vs-push-suppression)",
+    "reason": "restores the pre-1.30 rule that metadata-only VirtualService changes do not push; config is unchanged"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (60665)",
+    "reason": "a namespace's Telemetry applies to Services using a waypoint in another namespace, as configured"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (releasenote-waypoint-xds-scoping)",
+    "reason": "scopes ambient pushes to the affected waypoints (AMBIENT_SCOPED_ADDRESS_PUSHES=false reverts); config is unchanged"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.3 (wasmplugin-cross-namespace-waypoint)",
+    "reason": "a WasmPlugin targeting a Service no longer crash-loops a waypoint in another namespace; a fix"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (60668)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (60920)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (61043)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (61157)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (ambient-multicluster-sync-gating)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (external-sds-authority)",
+    "reason": "the gRPC authority for an external SDS provider is its configured service hostname; a server reachable at that name keeps working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.4 (multicluster-rebuild-collections-on-update)",
+    "reason": "an istiod/istio-cni/ztunnel internal fix (push computation, caching, leak, race or crash); no configuration changes meaning and nothing that worked stops working"
+  },
+  {
+    "version": "1.30",
+    "note": "Patch 1.30.5 (listenerset-listeners-not-valid)",
+    "reason": "a ListenerSet with no valid listener reports Accepted/Programmed False; none of its listeners was programmed before either"
   }
 ]
