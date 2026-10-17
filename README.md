@@ -14,6 +14,15 @@ support the version you are moving to.
 
 It reads your cluster and writes nothing. No account, no agent, no data leaves the machine.
 
+**Quick start**
+
+```bash
+kubectl krew install upgrade-check
+kubectl upgrade-check --target 1.34
+```
+
+Or `brew install runtimez-com/tap/kube-upgrade-check`. [All install options](#install) below.
+
 ![kube-upgrade-check scanning a cluster](docs/demo.gif)
 
 > That recording is a real scan, not a mock-up. Regenerate it any time with `vhs docs/demo.tape`.
@@ -227,11 +236,11 @@ Scanning with your own kubeconfig needs no setup. To run under a service account
 nothing else, apply [`rbac/clusterrole.yaml`](rbac/clusterrole.yaml). It grants reads and the two
 extras above; nothing in it can write.
 
-## Beyond one cluster
+## Going further
 
-This checks one cluster, once, from your terminal. If you want the same checks running
-continuously across a fleet, with history, with the CVEs that block an upgrade correlated against
-it, that is [runtimez](https://runtimez.io?utm_source=kube-upgrade-check-readme).
+- **What your EKS clusters cost on extended support:** the free [EKS extended support calculator](https://runtimez.io/eks-extended-support-calculator?utm_source=github&utm_medium=readme) shows today's bill, the Dec 2 change for 1.34, and the next 12 months.
+- **Watching a whole fleet:** [Runtimez](https://runtimez.io/?utm_source=github&utm_medium=readme) runs the same rules continuously across clusters, adds the add-on and runtime end-of-life dates, and keeps a history of every finding.
+- **Want a second pair of eyes?** [Book a 30-minute readiness check](https://calendly.com/silpa-runtimez/30min) on one of your clusters.
 
 ## Licence
 
