@@ -89,5 +89,149 @@
     "quote": "Iptables reconciliation is now enabled by default for ambient workloads in release 1.29.0. When a new `istio-cni` DaemonSet pod starts up, it will automatically inspect pods that were previously enrolled in the ambient mesh and upgrade their in-pod iptables/nftables rules",
     "remediation": "No action expected: after the istio-cni upgrade, already-enrolled ambient pods get their redirection rules brought up to date without a restart. Set `--set cni.ambient.reconcileIptablesOnStartup=false` to keep the old behaviour.",
     "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image] | any(test(\"(istio|istio-release|istio.io/release)/install-cni\"))) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[].env[]? | select(.name | test(\"RECONCILE\")) | .name + \"=\" + (.value // \"\")] | join(\",\"))'  # no reconcile setting printed means the 1.29 default (on) applies"
+  },
+  {
+    "ruleId": "rtz-istio-1.29-tlsroute-hostname-intersection",
+    "severity": "LOW",
+    "title": "A TLSRoute's hostnames are narrowed to the listener's hostname",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "TLSRoute hostnames and the Gateway listeners they attach to are not compared; the TLSRoute CRD is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^gateway\\.networking\\.k8s\\.io$",
+      "objectName": "^tlsroutes\\.gateway\\.networking\\.k8s\\.io$"
+    },
+    "quote": "Previously, a TLSRoute with a broad hostname (e.g. `*.com`) attached to a listener with a narrower hostname (e.g. `*.example.com`) would incorrectly match the full route hostname instead of only the intersection (`*.example.com`), as required by the Gateway API spec.",
+    "remediation": "SNI names a TLSRoute matched only because its hostname was broader than the listener's stop matching after the upgrade. Make each TLSRoute's hostnames fall within its listener's hostname, or widen the listener.",
+    "verifyCommand": "kubectl get tlsroutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" hostnames=\" + ((.spec.hostnames // []) | join(\",\")) + \" parents=\" + ([.spec.parentRefs[]? | .name + \"/\" + (.sectionName // \"*\")] | join(\",\"))'  # compare each hostname with its listener's hostname",
+    "introducedIn": [
+      "1.27.9",
+      "1.28.6",
+      "1.29.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-retry-budget-default-20-percent",
+    "severity": "LOW",
+    "title": "A DestinationRule retryBudget without `percent` allows 20% retries instead of 0.2% (1.28.6, 1.29.2), and from 1.29.2 a top-level budget reaches subsets",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the agent carries trafficPolicy key names, not retryBudget's fields or subsets' policies; DestinationRules with a top-level retryBudget are the population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DestinationRule",
+      "target": "trafficPolicy.keys[]",
+      "value": "^retryBudget$"
+    },
+    "quote": "the default `percent` for `retryBudget` in `DestinationRule` was incorrectly set to 0.2% instead of the intended 20%.",
+    "coversNotes": [
+      "Patch 1.29.2 (retry-budget-percent)",
+      "Patch 1.29.2 (retry-budget-subset-merge)"
+    ],
+    "remediation": "Where a retryBudget sets no `percent`, Envoy now lets retries reach 20% of active requests instead of 0.2% (from 1.28.6 and 1.29.2), so a failing upstream sees up to 100x more retries. From 1.29.2 (not on the 1.28 line) a top-level retryBudget also applies to subsets with their own trafficPolicy, and a subset-level budget is honoured. Set `percent` explicitly to keep today's limit.",
+    "verifyCommand": "kubectl get destinationrules.networking.istio.io -A -o json | jq -r '.items[] | select(.spec.trafficPolicy.retryBudget != null or ([.spec.subsets[]?.trafficPolicy.retryBudget] | any)) | .metadata.namespace + \"/\" + .metadata.name + \" percent=\" + ((.spec.trafficPolicy.retryBudget.percent // \"unset\") | tostring)'  # unset means 20% after the upgrade",
+    "introducedIn": [
+      "1.28.6",
+      "1.29.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-tls-defaults-min-version-enforced",
+    "severity": "LOW",
+    "title": "meshConfig.tlsDefaults.minProtocolVersion is enforced on downstream TLS as configured (it was mapped one or two versions too low)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "meshConfig is not collected; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "incorrect mapping of `meshConfig.tlsDefaults.minProtocolVersion` to `tls_minimum_protocol_version` in downstream TLS context.",
+    "remediation": "Before the fix istiod cast the mesh enum straight to Envoy's, so TLSV1_2 was applied as TLS 1.0 and TLSV1_3 as TLS 1.1 on downstream SIMPLE/MUTUAL TLS (gateway servers and Sidecar ingress TLS without their own minProtocolVersion). After it, clients below the configured minimum are refused. If tlsDefaults.minProtocolVersion is set, confirm every client speaks at least that version.",
+    "verifyCommand": "kubectl get configmap -n istio-system -o json | jq -r '.items[] | select(.data.mesh != null) | \"== \" + .metadata.name, .data.mesh' | grep -E -A3 '^== |^tlsDefaults'  # a minProtocolVersion under tlsDefaults (not meshMTLS), other than TLS_AUTO, is enforced as written after the upgrade",
+    "introducedIn": [
+      "1.27.6",
+      "1.28.4",
+      "1.29.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-waypoint-merges-virtualservices",
+    "severity": "LOW",
+    "title": "A waypoint applies the routes of every VirtualService for a host, not only the first",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which hosts have more than one VirtualService behind a waypoint is not compared; namespaces and Services using a waypoint are the population"
+    },
+    "scope": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace|Service",
+      "target": "istio.io/use-waypoint"
+    },
+    "quote": "applying multiple VirtualService for the same hostname to waypoints.",
+    "remediation": "Before the fix a waypoint used one VirtualService per host (as sidecars still do); after it, the routes of every VirtualService for that host are appended, gateway-style. A second, forgotten VirtualService for a waypoint-served host starts routing traffic. Before upgrading, make sure each such host has exactly the VirtualServices you mean.",
+    "verifyCommand": "kubectl get virtualservices.networking.istio.io -A -o json | jq -r '[.items[] | .metadata.namespace as $n | .spec.hosts[]? | $n + \" \" + .] | group_by(.) | map(select(length != 1)) | .[] | .[0] + \" x\" + (length | tostring)'  # hosts with several VirtualServices; check the ones a waypoint serves",
+    "introducedIn": [
+      "1.28.6",
+      "1.29.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-wasm-oci-bearer-realm-private-rejected",
+    "severity": "LOW",
+    "title": "Wasm OCI pulls refuse a bearer-token realm on localhost, a metadata host or a private, loopback or link-local IP",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "WasmPlugin objects and their registries' token realms are not collected; istiod is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/pilot([:@]|$)"
+    },
+    "quote": "validating bearer token realm URLs.",
+    "remediation": "A registry whose 401 challenge names a token realm on localhost, metadata.google.internal or a private/loopback/link-local IP literal (an in-cluster Harbor at https://10.x.x.x/service/token, for example) is refused, and the WasmPlugin stops loading; with failStrategy FAIL_CLOSE its traffic is denied. Serve the token endpoint under a DNS name before upgrading.",
+    "verifyCommand": "kubectl get wasmplugins.extensions.istio.io -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" \" + .spec.url'  # curl -sI https://REGISTRY/v2/ and read the realm= in WWW-Authenticate",
+    "introducedIn": [
+      "1.27.8",
+      "1.28.5",
+      "1.29.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-gateway-api-cors-preflights-and-origins",
+    "severity": "LOW",
+    "title": "Gateway API CORS filters answer preflights from unlisted origins themselves and parse origins strictly",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "HTTPRoute CORS filters are not projected; the HTTPRoute CRD is the subject"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^gateway\\.networking\\.k8s\\.io$",
+      "objectName": "^httproutes\\.gateway\\.networking\\.k8s\\.io$"
+    },
+    "quote": "properly parse Gateway API Cors origin when wildcard is used, and ignore unmatched preflights.",
+    "coversNotes": [
+      "Patch 1.29.1 (59018)",
+      "Patch 1.29.1 (59026)"
+    ],
+    "remediation": "A CORS preflight whose origin the route's filter does not allow is no longer forwarded to the backend (Envoy's unmatched-preflights policy becomes IGNORE), so a backend that answered CORS itself for other origins stops seeing them. Origins are parsed strictly. List every origin the route must allow in the filter before upgrading.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select([.spec.rules[]?.filters[]? | .type] | index(\"CORS\")) | .metadata.namespace + \"/\" + .metadata.name'  # routes with a CORS filter",
+    "introducedIn": [
+      "1.28.6",
+      "1.29.1"
+    ]
   }
 ]

@@ -116,6 +116,21 @@
     "remediation": "Rebuild any dashboard or alert using `traefik_entrypoint_open_connections`, `traefik_router_open_connections` or `traefik_service_open_connections`. They are replaced by one global metric, so per-entrypoint and per-service breakdowns are no longer available — panels keep rendering while quietly returning nothing."
   },
   {
+    "ruleId": "rtz-traefik-3.0-query-key-value-never-matches",
+    "severity": "HIGH",
+    "title": "Query(`key=value`) silently never matches in v3",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute",
+      "target": "routes[].match",
+      "value": "\\b(?i:Query)\\s*\\(\\s*(`[^`]*=|\"[^\"]*=)",
+      "reason": "checked spec.routes[].match on IngressRoute for a Query matcher whose single value holds key=value; v3 reads that whole string as the name of a parameter without a value; a router that opts back into the v2 syntax (routes[].syntax: v2) still matches it and is named anyway, because the per-route syntax is not collected; matcher names are matched in any case, as Traefik also registers each one in lower, upper and title case"
+    },
+    "quote": "`Query` can take a single value to match is the query value that has no value (e.g. `/search?mobile`).",
+    "remediation": "Rewrite ``Query(`key=value`)`` as ``Query(`key`, `value`)`` before upgrading. v3 reads a one-value Query as the name of a query parameter that has no value, so ``Query(`mobile=true`)`` looks for a parameter literally named `mobile=true`: the router is built, nothing is logged, and it never matches, so those requests fall through to another router or get a 404.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]? | select(.match | test(\"\\\\b(Query)\\\\s*\\\\(\\\\s*(`[^`]*=|\\\"[^\\\"]*=)\"; \"i\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .match' # rows printed use the v2 key=value form, which v3 never matches"
+  },
+  {
     "ruleId": "rtz-traefik-3.0-rbac-tcpserverstransport",
     "severity": "HIGH",
     "title": "KubernetesCRD RBAC and CRDs must be updated for TCPServersTransport",
@@ -149,6 +164,21 @@
     "verifyCommand": "kubectl get ingressroutes.traefik.io,ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]? | select(.match | test(\"Headers\\\\(|HeadersRegexp\\\\(\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .match' # rows printed use v2-only matchers; also review any PathPrefix that contains a regex"
   },
   {
+    "ruleId": "rtz-traefik-3.0-single-value-matchers",
+    "severity": "HIGH",
+    "title": "Matchers given several values stop building their router in v3",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "IngressRoute|IngressRouteTCP",
+      "target": "routes[].match",
+      "value": "\\b(?i:Host|HostRegexp|Path|PathPrefix|PathRegexp|Method|ClientIP|HostSNI|HostSNIRegexp|ALPN)\\s*\\(\\s*(`[^`]*`|\"[^\"]*\")\\s*,",
+      "reason": "checked spec.routes[].match on IngressRoute and IngressRouteTCP for a one-value matcher (Host, HostRegexp, Path, PathPrefix, PathRegexp, Method, ClientIP, HostSNI, HostSNIRegexp, ALPN) given a second value; a router that opts back into the v2 syntax (routes[].syntax: v2, or the defaultRuleSyntax install option) still accepts it and is named anyway, because the per-route syntax is not collected; matcher names are matched in any case, as Traefik also registers each one in lower, upper and title case"
+    },
+    "quote": "All matchers now take a single value (except `Header`, `HeaderRegexp`, `Query`, and `QueryRegexp` which take two) and should be explicitly combined using logical operators to mimic previous behavior.",
+    "remediation": "Split every multi-value matcher into single-value matchers joined with `||` before upgrading: ``Host(`a.example.com`, `b.example.com`)`` becomes ``Host(`a.example.com`) || Host(`b.example.com`)``. On v3 Traefik rejects the rule with \"unexpected number of parameters\" and builds no router for it, so the route answers 404 until it is rewritten. A router that sets `syntax: v2` (or an install with `defaultRuleSyntax=v2`) keeps the old form working, but that fallback is deprecated since v3.4.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io,ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]? | select(.match | test(\"\\\\b(Host|HostRegexp|Path|PathPrefix|PathRegexp|Method|ClientIP|HostSNI|HostSNIRegexp|ALPN)\\\\s*\\\\(\\\\s*(`[^`]*`|\\\"[^\\\"]*\\\")\\\\s*,\"; \"i\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .match' # rows printed pass a second value to a one-value matcher"
+  },
+  {
     "ruleId": "rtz-traefik-3.0-tcp-lb-termination-delay-deprecated",
     "severity": "MEDIUM",
     "title": "TCP LoadBalancer terminationDelay moved to TCPServersTransport",
@@ -163,5 +193,20 @@
     "quote": "The TCP LoadBalancer `terminationDelay` option has been deprecated. This option can now be configured directly on the `TCPServersTransport` level, please take a look at this documentation",
     "remediation": "Move `terminationDelay` from the TCP service definition onto a `TCPServersTransport`. The option governs how long Traefik waits before closing a half-open TCP connection, so dropping it silently changes connection teardown for long-lived TCP traffic.",
     "verifyCommand": "kubectl get ingressroutetcps.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.terminationDelay != null) | $o.metadata.namespace + \"/\" + $o.metadata.name' # names printed still set the deprecated option on the service"
+  },
+  {
+    "ruleId": "rtz-traefik-3.0-vendor-tracing-backends-block-startup",
+    "severity": "HIGH",
+    "title": "Vendor tracing backends stop Traefik v3 from starting",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)^-{1,2}tracing\\.(jaeger|zipkin|datadog|instana|haystack|elastic|spannamelimit)\\b",
+      "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — a tracing backend set through a static configuration file or environment variables is not scanned"
+    },
+    "quote": "Traefik v3 **no** longer supports direct output formats for specific vendors such as Instana, Jaeger, Zipkin, Haystack, Datadog, and Elastic.",
+    "remediation": "Remove every `--tracing.<vendor>.*` option and `--tracing.spanNameLimit`, and configure `--tracing.otlp.*` instead, pointing at the vendor's OTLP ingestion endpoint or at an OpenTelemetry Collector that exports in the vendor's format. While any of them is set, v3 logs that the tracing backend \"has been removed in v3\" and refuses to start, so the rollout fails and every route this controller serves goes down.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | . as $o | .spec.template.spec.containers[] | .args[]? | select(test(\"^-{1,2}tracing\\\\.(jaeger|zipkin|datadog|instana|haystack|elastic|spanNameLimit)\"; \"i\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .' # args printed stop Traefik v3 at startup"
   }
 ]
