@@ -25,7 +25,12 @@ Or `brew install runtimez-com/tap/kube-upgrade-check`. [All install options](#in
 
 ![kube-upgrade-check scanning a cluster](docs/demo.gif)
 
-> That recording is a real scan, not a mock-up. Regenerate it any time with `vhs docs/demo.tape`.
+Installed through krew, the same scan runs as a kubectl plugin:
+
+![kubectl upgrade-check scanning a cluster for 1.38](docs/demo-krew.gif)
+
+> Both recordings are real scans, not mock-ups. Regenerate them any time with `vhs docs/demo.tape`
+> and `vhs docs/demo-krew.tape`.
 
 ## Install
 
