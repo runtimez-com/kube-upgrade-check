@@ -237,13 +237,19 @@
     "title": "A ServiceEntry with a CIDR address now takes effect for ambient pods — the whole entry, not only the range",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "ServiceEntry addresses are not collected; the NONE and STATIC resolution ServiceEntries (the ones a CIDR address is valid on) are the population. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet is not affected."
+      "reason": "ServiceEntry addresses are not collected; the NONE and STATIC resolution ServiceEntries (the ones a CIDR address is valid on) are the population"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ServiceEntry",
       "target": "resolution",
       "value": "^(NONE|STATIC)$"
+    },
+    "gate": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "target": "/ztunnel",
+      "reason": "only an ambient (ztunnel) data plane is affected; a sidecar-only mesh has nothing to do"
     },
     "quote": "add support for cidrs in ztunnel",
     "coversNotes": [

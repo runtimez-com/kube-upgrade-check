@@ -260,11 +260,17 @@
       "objectKind": "Namespace",
       "target": "topology.istio.io/network"
     },
+    "gate": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "DaemonSet",
+      "target": "/ztunnel",
+      "reason": "only an ambient (ztunnel) data plane is affected; a sidecar-only mesh has nothing to do"
+    },
     "quote": "if network is the first scope, we will prefer those that match, but will allow the remaining scopes to calculate its rank.",
     "coversNotes": [
       "ztunnel 1.31.0 (#1980)"
     ],
-    "remediation": "Only multi-network meshes with Services using locality-aware traffic distribution (PreferClose and its siblings) change: endpoints on the client's network still rank first, but endpoints on other networks are now ordered by region and zone rather than tied. Failover traffic lands closer, and on different endpoints than before — check capacity of the remote-network endpoints that now rank highest. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet can ignore this.",
+    "remediation": "Only multi-network meshes with Services using locality-aware traffic distribution (PreferClose and its siblings) change: endpoints on the client's network still rank first, but endpoints on other networks are now ordered by region and zone rather than tied. Failover traffic lands closer, and on different endpoints than before — check capacity of the remote-network endpoints that now rank highest.",
     "verifyCommand": "kubectl get ns -l topology.istio.io/network -o json | jq -r '.items[] | .metadata.name + \" network=\" + .metadata.labels[\"topology.istio.io/network\"]'; kubectl get svc -A -o json | jq -r '.items[] | select(.spec.trafficDistribution != null or .metadata.annotations[\"networking.istio.io/traffic-distribution\"] != null) | .metadata.namespace + \"/\" + .metadata.name'  # these Services rank cross-network endpoints differently"
   },
   {
