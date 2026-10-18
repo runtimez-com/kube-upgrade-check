@@ -106,9 +106,9 @@ a4ccaacbdea58341a812057cda2794a29e39794e14ae4e95d147d7b060fa261d  k8s-rules/isti
 deadcea8add15b8c1dcb86264ee02a029c1a8cb0ce746bdfed68d3f9e68383ff  k8s-rules/istio/1.26.json
 2495eaf3cb7ecd27ac30c6f0d091659d02cfb0ab2bed8f48e5c1d8c213f95747  k8s-rules/istio/1.27.json
 6c90f1380cfd8b766ab11e30dab7703b8732bf361005216fdede66e7eed4ca0f  k8s-rules/istio/1.28.json
-c434d47570bb00611d78beb9442b96b0e8baf69186508e6c331579f209d7c7e0  k8s-rules/istio/1.29.json
-4ea5cb63c751828e0f1ff90088ba152652c4aca00adec525d53a221d4d413cb6  k8s-rules/istio/1.30.json
-103cb36d7146c5461dcbadd78b0e6a32574f9a14cd04498354a109244b268f68  k8s-rules/istio/1.31.json
+849f9a7095bda95210e2deed2dd37bd2d3f8e1ff224872acc26c7007e26bfbd3  k8s-rules/istio/1.29.json
+ed7ed30938dd80fc4eb3a299ab27aa98b0b3901d34a3e53f56ab004a9680a7e5  k8s-rules/istio/1.30.json
+f9efe0e071a220c223dd6122d31a309e28179e716311f2541e0bbc661bddebc3  k8s-rules/istio/1.31.json
 124de22cdbb21bd806918714b095795d9ef73148e4140ba4a3f03e159436af1a  k8s-rules/istio/_excluded.json
 c90f12cfdf36822b248eb80cbe67a530b4bd2027b3040dc533d99c459be3f6eb  k8s-rules/karpenter/0.24.json
 afdd70e86894c61a6fccba446b6ef32fb3e14065aca74f575dd7beb60bd8340b  k8s-rules/karpenter/0.26.json

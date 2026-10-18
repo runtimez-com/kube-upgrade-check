@@ -161,6 +161,26 @@ func TestNotDetectableIsAnAdvisoryWithReasonAndHint(t *testing.T) {
 	}
 }
 
+// A gated advisory states its precondition: the CLI does not evaluate gates on advisories, and the
+// backend's "ambient only" disclaimer moved into the gate, so the reader must still be told.
+func TestGatedAdvisoryStatesItsPrecondition(t *testing.T) {
+	r := rule("amb", "1.36", "", catalog.Detection{Kind: catalog.DetectNotDetectable, Reason: "addresses are not collected"})
+	r.Gate = &catalog.Gate{Kind: catalog.DetectImageRepositoryPresent, ObjectKind: "DaemonSet", Target: "/ztunnel",
+		Reason: "only an ambient (ztunnel) data plane is affected"}
+	f := byRule(func() []report.Finding { fs, _ := Analyze(inv(), nil, "1.35", "1.36", cat(r), nil); return fs }(), "amb")
+	if f == nil {
+		t.Fatal("expected an advisory")
+	}
+	if !strings.Contains(f.Recommendation, "Applies only if: only an ambient (ztunnel) data plane is affected") {
+		t.Errorf("the precondition must reach the reader: %q", f.Recommendation)
+	}
+	plain := rule("plain", "1.36", "", catalog.Detection{Kind: catalog.DetectNotDetectable, Reason: "x"})
+	g := byRule(func() []report.Finding { fs, _ := Analyze(inv(), nil, "1.35", "1.36", cat(plain), nil); return fs }(), "plain")
+	if g == nil || strings.Contains(g.Recommendation, "Applies only if") {
+		t.Error("an ungated advisory carries no precondition sentence")
+	}
+}
+
 // The window is (current, target]: a rule for a version the cluster already runs is not part
 // of this upgrade, and one past the target is not either.
 func TestWindowIsExclusiveBelowInclusiveAbove(t *testing.T) {
