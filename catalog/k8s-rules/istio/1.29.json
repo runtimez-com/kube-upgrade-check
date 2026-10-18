@@ -233,5 +233,50 @@
       "1.28.6",
       "1.29.1"
     ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-ztunnel-canonical-service-resolution",
+    "severity": "LOW",
+    "title": "ztunnel resolves a hostname shared by a Service and ServiceEntries to the canonical one",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which client namespaces define their own ServiceEntry for the host is not compared; ServiceEntries naming an in-cluster .svc host (the ones a Kubernetes Service now outranks) are the population. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet has no ztunnel to resolve through."
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "hosts[]",
+      "value": "\\.svc(\\.[a-z0-9.-]+)?$"
+    },
+    "quote": "canonical wds service",
+    "coversNotes": [
+      "ztunnel 1.29.0 (#1704)"
+    ],
+    "remediation": "When a Kubernetes Service and ServiceEntries name the same host, ztunnel now resolves it for outbound traffic and DNS to the canonical one (the Service, else the oldest ServiceEntry) unless the client's own namespace defines one. A ServiceEntry that re-declared an in-cluster .svc host to change its ports, addresses or waypoint for clients in other namespaces stops applying to them: move it into each client namespace or drop it. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet can ignore this.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.hosts[]? | test(\"[.]svc([.]|$)\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" hosts=\" + (.spec.hosts | join(\",\")) + \" created=\" + .metadata.creationTimestamp'  # compare each with the Service of the same name: the Service wins outside this ServiceEntry's namespace"
+  },
+  {
+    "ruleId": "rtz-istio-1.29-ztunnel-canonical-service-inbound",
+    "severity": "LOW",
+    "title": "ztunnel attributes inbound traffic for a shared hostname to the canonical Service",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which client namespaces define their own ServiceEntry for the host is not compared; ServiceEntries naming an in-cluster .svc host (the ones a Kubernetes Service now outranks) are the population. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet has no ztunnel to resolve through."
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "hosts[]",
+      "value": "\\.svc(\\.[a-z0-9.-]+)?$"
+    },
+    "quote": "prioritize canonical services on inbound",
+    "coversNotes": [
+      "ztunnel 1.29.1 (#1760)"
+    ],
+    "remediation": "From 1.29.1 (1.30.0 on the next line) ztunnel matches inbound traffic for a hostname shared by a Service and ServiceEntries to the canonical one too, so the destination service in telemetry and the waypoint chosen for inbound traffic follow the Service rather than a ServiceEntry re-declaring its .svc host. Check dashboards and waypoint policies keyed on such a ServiceEntry. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet can ignore this.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.hosts[]? | test(\"[.]svc([.]|$)\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" hosts=\" + (.spec.hosts | join(\",\")) + \" created=\" + .metadata.creationTimestamp'  # compare each with the Service of the same name: the Service wins outside this ServiceEntry's namespace",
+    "introducedIn": [
+      "1.29.1"
+    ]
   }
 ]
