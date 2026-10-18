@@ -146,6 +146,9 @@ func build(rules map[string]catalog.VolumePluginRule, key, kind, resourceName st
 	deprecatedKey := catalog.MinorKey(rule.DeprecatedIn)
 
 	switch {
+	case breakKey != 0 && targetKey >= breakKey && servedByMigration(rule, drivers):
+		return migrated(rule, key, kind, resourceName, currentKey, breakKey, targetVersion, extra)
+
 	case breakKey != 0 && targetKey >= breakKey:
 		severity := rule.Severity
 		if severity.Rank() == 0 {
@@ -209,6 +212,54 @@ func build(rules map[string]catalog.VolumePluginRule, key, kind, resourceName st
 	return nil
 }
 
+// servedByMigration reports whether Kubernetes keeps serving this plugin through CSI migration.
+//
+// For the plugins that have a CSI replacement, removing the in-tree code did not remove the
+// spec: csi-translation-lib rewrites the in-tree volume source and provisioner to the CSI
+// driver, so the objects keep working as long as that driver is installed. Only a driver list
+// that was actually read can say so; an unreadable one is left to the CRITICAL path, which
+// states that it could not be checked.
+func servedByMigration(rule catalog.VolumePluginRule, drivers driverInfo) bool {
+	driver := strings.TrimSpace(rule.ReplacementCSIDriver)
+	return driver != "" && drivers.known && drivers.names[driver]
+}
+
+// migrated is the finding for an object whose in-tree plugin is gone but which CSI migration
+// still serves. It is not an incident and does not block an upgrade, so it is reported as
+// cleanup rather than at the catalog's CRITICAL.
+func migrated(rule catalog.VolumePluginRule, key, kind, resourceName string,
+	currentKey, breakKey int, targetVersion, extra string) *report.Finding {
+
+	driver := strings.TrimSpace(rule.ReplacementCSIDriver)
+	removed := "is removed in"
+	if currentKey != 0 && currentKey >= breakKey {
+		removed = "was removed in"
+	}
+	severity := catalog.SeverityLow
+	return &report.Finding{
+		ID:     report.NewID("rtz-k8s-plugin-migrated-"+key, resourceName),
+		RuleID: "rtz-k8s-plugin-migrated-" + key,
+		Title: fmt.Sprintf("%s %s uses the in-tree volume plugin %q, which Kubernetes serves through the %s CSI driver",
+			kind, resourceName, key, driver),
+		Recommendation: fmt.Sprintf(
+			"%s %s still names the in-tree volume plugin %q. Its in-tree code %s %s, but CSI migration "+
+				"translates it to %s, which is installed on this cluster, so it keeps working and the %s "+
+				"upgrade does not change that. Nothing is broken. When convenient, move it to %s directly "+
+				"so it no longer depends on the translation.",
+			kind, resourceName, key, removed, rule.BreakIn(), driver, targetVersion, driver) + extra,
+		Category:         "RELIABILITY",
+		Severity:         severity,
+		ScoreImpact:      severity.ScoreImpact(),
+		ResourceName:     resourceName,
+		ResourceType:     kind,
+		AppliesAtVersion: catalog.MinorOf(rule.BreakIn()),
+		Evidence: []string{
+			fmt.Sprintf("%s %s declares volume source %q", kind, resourceName, key),
+			fmt.Sprintf("CSIDriver %s is installed", driver),
+		},
+	}
+}
+
 // driverInfo is the set of installed CSI drivers, plus whether we could read them at all.
 type driverInfo struct {
 	known bool
@@ -240,14 +291,7 @@ func csiReadiness(rule catalog.VolumePluginRule, drivers driverInfo, past bool) 
 		return fmt.Sprintf(" The replacement CSI driver (%s) could not be checked, because CSIDriver "+
 			"objects were not readable. Verify it is installed by hand.", driver)
 	}
-	if drivers.names[driver] {
-		if past {
-			return fmt.Sprintf(" The replacement CSI driver (%s) is installed, so the remaining work "+
-				"is repointing these volumes at it.", driver)
-		}
-		return fmt.Sprintf(" The replacement CSI driver (%s) is installed on this cluster, so the "+
-			"remaining work is migrating the volumes to it.", driver)
-	}
+	// An installed driver never reaches here: servedByMigration routes it to migrated().
 	if past {
 		return fmt.Sprintf(" The replacement CSI driver (%s) is not installed, so install it before "+
 			"the volumes can be repointed.", driver)

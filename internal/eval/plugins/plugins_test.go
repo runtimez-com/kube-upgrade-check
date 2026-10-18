@@ -103,19 +103,67 @@ func TestAlreadyBrokenChangesTheWording(t *testing.T) {
 	}
 }
 
-func TestCSIReadinessReportsInstalledDriver(t *testing.T) {
+// With the replacement driver installed, CSI migration keeps serving the in-tree spec, so
+// crossing the removal version is cleanup, not a CRITICAL break.
+func TestInstalledCSIDriverIsServedByMigration(t *testing.T) {
 	inv := &inventory.Inventory{
 		ClusterName: "test", Collected: allRead(),
 		PersistentVolumes: []inventory.PersistentVolume{{Name: "pv-1", SpecKeys: []string{"awsElasticBlockStore", "capacity"}}},
 		CSIDrivers:        []string{"ebs.csi.aws.com"},
 	}
 	findings, _ := Analyze(inv, "1.26", "1.27", []catalog.VolumePluginRule{awsEBSRule()})
-	f := byRule(findings, "rtz-k8s-plugin-removed-awsElasticBlockStore")
-	if f == nil {
-		t.Fatal("expected a finding")
+	if byRule(findings, "rtz-k8s-plugin-removed-awsElasticBlockStore") != nil {
+		t.Error("a plugin served by CSI migration must not be reported as removed")
 	}
-	if !strings.Contains(f.Recommendation, "is installed on this cluster") {
-		t.Errorf("should report the driver as present: %q", f.Recommendation)
+	f := byRule(findings, "rtz-k8s-plugin-migrated-awsElasticBlockStore")
+	if f == nil {
+		t.Fatal("expected a migration finding")
+	}
+	if f.Severity != catalog.SeverityLow {
+		t.Errorf("got %s, want LOW", f.Severity)
+	}
+	if !strings.Contains(f.Recommendation, "is removed in 1.27") || !strings.Contains(f.Recommendation, "Nothing is broken") {
+		t.Errorf("unexpected wording: %q", f.Recommendation)
+	}
+}
+
+// The stock EKS gp2 StorageClass on a cluster long past 1.27: it must not read as a live
+// incident, because the EBS CSI driver serves it.
+func TestAlreadyPastRemovalWithDriverIsNotAnIncident(t *testing.T) {
+	inv := &inventory.Inventory{
+		ClusterName: "test", Collected: allRead(),
+		StorageClasses: []inventory.StorageClass{{Name: "gp2", Provisioner: "kubernetes.io/aws-ebs"}},
+		CSIDrivers:     []string{"ebs.csi.aws.com", "efs.csi.aws.com"},
+	}
+	findings, _ := Analyze(inv, "1.34", "1.35", []catalog.VolumePluginRule{awsEBSRule()})
+	f := byRule(findings, "rtz-k8s-plugin-migrated-awsElasticBlockStore")
+	if f == nil || f.Severity != catalog.SeverityLow {
+		t.Fatalf("expected a LOW migration finding, got %+v", f)
+	}
+	for _, s := range []string{"live incident", "not mounting now"} {
+		if strings.Contains(f.Recommendation, s) {
+			t.Errorf("%q must not appear when CSI migration serves the plugin: %q", s, f.Recommendation)
+		}
+	}
+	if !strings.Contains(f.Recommendation, "was removed in 1.27") {
+		t.Errorf("past removal should use the past tense: %q", f.Recommendation)
+	}
+}
+
+// Without the replacement driver nothing serves the volumes, so the live-incident wording stays.
+func TestAlreadyPastRemovalWithoutDriverIsStillAnIncident(t *testing.T) {
+	inv := &inventory.Inventory{
+		ClusterName: "test", Collected: allRead(),
+		PersistentVolumes: []inventory.PersistentVolume{{Name: "pv-1", SpecKeys: []string{"awsElasticBlockStore"}}},
+		CSIDrivers:        []string{"efs.csi.aws.com"},
+	}
+	findings, _ := Analyze(inv, "1.34", "1.35", []catalog.VolumePluginRule{awsEBSRule()})
+	f := byRule(findings, "rtz-k8s-plugin-removed-awsElasticBlockStore")
+	if f == nil || f.Severity != catalog.SeverityCritical {
+		t.Fatalf("expected a CRITICAL removal finding, got %+v", f)
+	}
+	if !strings.Contains(f.Recommendation, "not mounting now") || !strings.Contains(f.Recommendation, "is not installed") {
+		t.Errorf("a missing driver should read as a live failure: %q", f.Recommendation)
 	}
 }
 
