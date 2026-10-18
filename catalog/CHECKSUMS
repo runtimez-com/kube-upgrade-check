@@ -109,7 +109,7 @@ deadcea8add15b8c1dcb86264ee02a029c1a8cb0ce746bdfed68d3f9e68383ff  k8s-rules/isti
 849f9a7095bda95210e2deed2dd37bd2d3f8e1ff224872acc26c7007e26bfbd3  k8s-rules/istio/1.29.json
 ed7ed30938dd80fc4eb3a299ab27aa98b0b3901d34a3e53f56ab004a9680a7e5  k8s-rules/istio/1.30.json
 f9efe0e071a220c223dd6122d31a309e28179e716311f2541e0bbc661bddebc3  k8s-rules/istio/1.31.json
-124de22cdbb21bd806918714b095795d9ef73148e4140ba4a3f03e159436af1a  k8s-rules/istio/_excluded.json
+2dd5a5a3197d564c963f1016398854930422cd49aeb12609fc573cfb0668a7ae  k8s-rules/istio/_excluded.json
 c90f12cfdf36822b248eb80cbe67a530b4bd2027b3040dc533d99c459be3f6eb  k8s-rules/karpenter/0.24.json
 afdd70e86894c61a6fccba446b6ef32fb3e14065aca74f575dd7beb60bd8340b  k8s-rules/karpenter/0.26.json
 b478c1be75d4c2cb0b3cd656c93cc6ce64d8a03076e37033343b65b1e5cc7a66  k8s-rules/karpenter/0.27.json

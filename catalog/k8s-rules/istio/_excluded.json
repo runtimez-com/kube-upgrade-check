@@ -146,8 +146,13 @@
   },
   {
     "version": "1.31",
-    "note": "Patch 1.29.7/1.30.4/1.31.1 (backendtlspolicy-sidecar-failclosed)",
-    "reason": "covered by the coded check rtz-istio-backend-tls-policy-behaviour (IstioUpgradeChecks.backendTlsPolicy, BACKEND_TLS_FAIL_CLOSED)"
+    "note": "Patch 1.29.7/1.30.4/1.31.1 edited 1.29.8/1.29.9/1.30.5/1.30.6/1.31.2 (backendtlspolicy-sidecar-failclosed)",
+    "reason": "covered by the coded check rtz-istio-backend-tls-policy-behaviour (IstioUpgradeChecks.backendTlsPolicy, BACKEND_TLS_FAIL_CLOSED); the 1.29.9/1.30.6/1.31.2 edit only moved the GHSA-qm8v-g4f9-qhjx id and credit into securityNotes, the fix itself is unchanged"
+  },
+  {
+    "version": "1.31",
+    "note": "Security fix (agw-mesh-backend-mtls)",
+    "reason": "the experimental agentgateway only (PILOT_ENABLE_AGENTGATEWAY): its traffic to sidecar-injected backends becomes mutual TLS, so STRICT backends and server-first TCP that failed now work; sidecar and Envoy gateways are unaffected"
   },
   {
     "version": "1.31",
