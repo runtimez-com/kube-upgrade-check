@@ -294,19 +294,20 @@
     "title": "OpenTelemetry tracing exports only the requests the proxy decided to sample (Envoy 1.39)",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "whether a tracing provider is OpenTelemetry lives in meshConfig, which is not read; Telemetry resources that configure tracing are the population"
+      "reason": "each proxy's sampling percentage and which Telemetry or mesh default selects the OpenTelemetry provider are not joined; the mesh ConfigMaps (istio, istio-<revision>) that define an opentelemetry extension provider are the population — a mesh whose tracing uses zipkin, datadog or another tracer is not affected"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "Telemetry",
-      "target": "keys[]",
-      "value": "^tracing$"
+      "objectKind": "ConfigMap",
+      "objectName": "^istio(-[a-z0-9-]+)?$",
+      "target": "istioMesh.extensionProviders[].type",
+      "value": "^opentelemetry$"
     },
     "quote": "Configurations that previously relied on the tracer exporting spans in those cases may export fewer OTLP spans after upgrade.",
     "coversNotes": [
       "Envoy 1.39.0 incompatible (tracing)"
     ],
-    "remediation": "Istio 1.31 bundles Envoy 1.39, whose OpenTelemetry tracer stops exporting a span just because the incoming traceparent says sampled: the proxy's own sampling decision (randomSamplingPercentage) now wins. With an OpenTelemetry provider and a sampling percentage below 100, expect fewer spans and broken traces where upstream services sample more than the mesh. Raise randomSamplingPercentage on the Telemetry resource (or the mesh default) to keep the old volume.",
-    "verifyCommand": "kubectl get telemetries.telemetry.istio.io -A -o json | jq -r '.items[] | select(.spec.tracing != null) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.tracing[] | ((.providers // []) | map(.name) | join(\",\")) + \" sampling=\" + ((.randomSamplingPercentage // \"mesh default\") | tostring)] | join(\"; \"))'; kubectl get cm istio -n istio-system -o jsonpath='{.data.mesh}' | grep -n -A4 opentelemetry  # an opentelemetry provider below 100% sampling exports fewer spans"
+    "remediation": "Istio 1.31 bundles Envoy 1.39, whose OpenTelemetry tracer exports a span only when the proxy's own sampling decision says so: an incoming traceparent marked sampled no longer forces it. With randomSamplingPercentage below 100 (Istio's mesh default is 1%), expect fewer spans and traces that break at the mesh where upstream SDKs sample more. Setting 100% restores parent-based export but also samples every request that arrives without a traceparent — size the collector for that, or tail-sample there.",
+    "verifyCommand": "kubectl get cm -n istio-system -o json | jq -r '.items[] | select(.metadata.name | test(\"^istio(-[a-z0-9-]+)?$\")) | .metadata.name'; kubectl get cm istio -n istio-system -o jsonpath='{.data.mesh}' | grep -n -A6 -i opentelemetry; kubectl get telemetries.telemetry.istio.io -A -o json | jq -r '.items[] | select(.spec.tracing != null) | .metadata.namespace + \"/\" + .metadata.name + \" sampling=\" + ([.spec.tracing[].randomSamplingPercentage // \"mesh default\"] | map(tostring) | join(\",\"))'  # an opentelemetry provider sampled below 100% exports fewer spans after the upgrade"
   }
 ]
