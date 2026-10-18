@@ -1053,5 +1053,150 @@
     "version": "1.31",
     "note": "ztunnel 1.31.0 (#1947)",
     "reason": "an unparsable DNS_PROXY_ADDR (proxyMetadata or ISTIO_META_DNS_PROXY_ADDR) already stopped ztunnel at startup before 1.31 (a panic); it now exits with a config error instead — same outcome, clearer message"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (server)",
+    "reason": "pilot-agent already passes --concurrency from ProxyConfig or the container's CPU limit (ISTIO_CPU_LIMIT); only a proxy explicitly set to concurrency 0 under a CPU limit changes, and it moves to the thread count Istio's own warning asks for"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (dynamic modules)",
+    "reason": "a filter or feature Istio never configures; only a hand-written EnvoyFilter could use it"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (http)",
+    "reason": "only the HTTP/2 RST_STREAM error code Envoy sends when it resets a stream changes (NO_ERROR → INTERNAL_ERROR); the stream is reset either way, and gRPC clients map both codes to INTERNAL"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (http #2)",
+    "reason": "the downstream stream is still reset on an upstream protocol error; only which reset reason is reported changes (revertible with the reset_ignore_upstream_reason runtime guard)"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (http #3)",
+    "reason": "opt-in: the flag that rejects early CONNECT data is \"disabled by default\""
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 incompatible (proto_api_scrubber)",
+    "reason": "a filter or feature Istio never configures; only a hand-written EnvoyFilter could use it"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (http)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (jwt_authn)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (tcp)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (http #2)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (http #3)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (quic)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (http #4)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (http #5)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (xds)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (xds #2)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (xds #3)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (router)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.29",
+    "note": "Envoy 1.37.0 removed (router #2)",
+    "reason": "the early-CONNECT-data guard became the router option reject_connect_request_early_data, off by default — nothing is rejected unless configured"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 incompatible (tcp_proxy)",
+    "reason": "applies only with tcp_proxy upstream_connect_mode other than IMMEDIATE, which Istio never sets; an EnvoyFilter that adds it must also set max_early_data_bytes"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 incompatible (on_demand)",
+    "reason": "a filter or feature Istio never configures; only a hand-written EnvoyFilter could use it"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 incompatible (boringssl/fips)",
+    "reason": "how Envoy itself is built; Istio ships the built proxy, so nothing in a mesh changes"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 incompatible (ext_proc)",
+    "reason": "an Envoy source-tree move (processing_effect_lib); configuration and behaviour are unchanged"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 removed (oauth2)",
+    "reason": "Istio never configures Envoy's oauth2 filter, and tokens \"remain encrypted by default\" for an EnvoyFilter that does"
+  },
+  {
+    "version": "1.30",
+    "note": "Envoy 1.38.0 removed (tcp_proxy)",
+    "reason": "removes a runtime guard that had already defaulted to the new behaviour for at least one Envoy release; only a proxy that set the guard to false (ProxyConfig runtimeValues or an EnvoyFilter) loses its opt-out"
+  },
+  {
+    "version": "1.31",
+    "note": "Envoy 1.39.0 incompatible (build)",
+    "reason": "how Envoy itself is built; Istio ships the built proxy, so nothing in a mesh changes"
+  },
+  {
+    "version": "1.31",
+    "note": "Envoy 1.39.0 incompatible (build #2)",
+    "reason": "the Intel DLB connection balancer is a contrib extension Istio's proxy does not build"
+  },
+  {
+    "version": "1.31",
+    "note": "Envoy 1.39.0 incompatible (tls)",
+    "reason": "the keyUsage default already flipped with Envoy 1.38 in Istio 1.30 (rtz-istio-1.30-envoy-rsa-key-usage-enforced, which a 1.29 → 1.31 hop also runs); 1.39 only drops the enforce_rsa_key_usage switch, which Istio never exposed — an EnvoyFilter setting it false stops having effect"
+  },
+  {
+    "version": "1.31",
+    "note": "Envoy 1.39.0 incompatible (tls_inspector)",
+    "reason": "rejects only ClientHellos outside TLS 1.0–1.3 (SSLv3 or malformed versions), which no supported client sends"
   }
 ]

@@ -287,5 +287,26 @@
     ],
     "remediation": "Unless ZTUNNEL_WORKER_THREADS or proxy concurrency is set, 1.31 ztunnel runs as many worker threads as its CPU limit rounded up — one thread for a limit of 1 core or less, half the old default — and, without a limit, a quarter of the node's cores (at least 2, and at least the CPU request), so large nodes get more. A ztunnel limited to 1 CPU loses throughput on upgrade: raise the limit to 2, or set ZTUNNEL_WORKER_THREADS=2.",
     "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image | test(\"/ztunnel[:@]\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[] | \"limits.cpu=\" + (.resources.limits.cpu // \"none\") + \" requests.cpu=\" + (.resources.requests.cpu // \"none\") + \" env=\" + ([.env[]?.name] | join(\",\"))] | join(\" \"))'  # a limit of 1 core or less without ZTUNNEL_WORKER_THREADS drops to one worker thread"
+  },
+  {
+    "ruleId": "rtz-istio-1.31-envoy-otel-honours-sampling",
+    "severity": "LOW",
+    "title": "OpenTelemetry tracing exports only the requests the proxy decided to sample (Envoy 1.39)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a tracing provider is OpenTelemetry lives in meshConfig, which is not read; Telemetry resources that configure tracing are the population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Telemetry",
+      "target": "keys[]",
+      "value": "^tracing$"
+    },
+    "quote": "Configurations that previously relied on the tracer exporting spans in those cases may export fewer OTLP spans after upgrade.",
+    "coversNotes": [
+      "Envoy 1.39.0 incompatible (tracing)"
+    ],
+    "remediation": "Istio 1.31 bundles Envoy 1.39, whose OpenTelemetry tracer stops exporting a span just because the incoming traceparent says sampled: the proxy's own sampling decision (randomSamplingPercentage) now wins. With an OpenTelemetry provider and a sampling percentage below 100, expect fewer spans and broken traces where upstream services sample more than the mesh. Raise randomSamplingPercentage on the Telemetry resource (or the mesh default) to keep the old volume.",
+    "verifyCommand": "kubectl get telemetries.telemetry.istio.io -A -o json | jq -r '.items[] | select(.spec.tracing != null) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.tracing[] | ((.providers // []) | map(.name) | join(\",\")) + \" sampling=\" + ((.randomSamplingPercentage // \"mesh default\") | tostring)] | join(\"; \"))'; kubectl get cm istio -n istio-system -o jsonpath='{.data.mesh}' | grep -n -A4 opentelemetry  # an opentelemetry provider below 100% sampling exports fewer spans"
   }
 ]
