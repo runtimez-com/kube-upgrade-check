@@ -233,5 +233,51 @@
       "1.28.6",
       "1.29.1"
     ]
+  },
+  {
+    "ruleId": "rtz-istio-1.29-ztunnel-crl-inbound-revocation",
+    "severity": "MEDIUM",
+    "title": "ztunnel enforces the plugged-in CA's CRL: inbound HBONE from a revoked certificate is refused",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the cacerts Secret (and whether it carries ca-crl.pem) is not collected; the ztunnel DaemonSet, which enforces the CRL, is the subject — a sidecar-only mesh has none"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/ztunnel([:@]|$)"
+    },
+    "quote": "feat: implement crl support in ztunnel",
+    "coversNotes": [
+      "ztunnel 1.29.0 (#1660/#1715)"
+    ],
+    "remediation": "Only meshes on a plugged-in CA whose cacerts Secret carries ca-crl.pem are affected: from 1.29 ztunnel refuses inbound HBONE connections whose peer certificate is on that CRL, and drains the ones already open. Check the CRL lists only certificates you intend to revoke (an intermediate on it revokes every workload certificate it signed) before upgrading.",
+    "verifyCommand": "kubectl get secret cacerts -n istio-system -o json | jq -r 'if (.data | has(\"ca-crl.pem\")) then \"plugged-in CA ships a CRL: ztunnel enforces it\" else \"no ca-crl.pem: nothing changes\" end'  # NotFound = no plugged-in CA, nothing changes"
+  },
+  {
+    "ruleId": "rtz-istio-1.29-ztunnel-canonical-service-resolution",
+    "severity": "LOW",
+    "title": "ztunnel resolves a hostname shared by a Service and ServiceEntries to the canonical one, inbound included",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which client namespaces define their own ServiceEntry for the host is not compared; ServiceEntries naming an in-cluster .svc host (the ones a Kubernetes Service now outranks) are the population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "hosts[]",
+      "value": "\\.svc(\\.[a-z0-9.-]+)?$"
+    },
+    "quote": "prioritize canonical services on inbound",
+    "coversNotes": [
+      "ztunnel 1.29.0 (#1704)",
+      "ztunnel 1.29.1 (#1760)"
+    ],
+    "remediation": "When a Kubernetes Service and ServiceEntries name the same host, ztunnel now resolves it to the canonical one (the Service, else the oldest ServiceEntry) unless the client's own namespace defines one, and attributes inbound traffic the same way. A ServiceEntry that re-declared an in-cluster .svc host to change its ports, addresses or waypoint for clients in other namespaces stops applying to them: move it into each client namespace or drop it.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.hosts[]? | test(\"[.]svc([.]|$)\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" hosts=\" + (.spec.hosts | join(\",\")) + \" created=\" + .metadata.creationTimestamp'  # compare each with the Service of the same name: the Service wins outside this ServiceEntry's namespace",
+    "introducedIn": [
+      "1.29.1"
+    ]
   }
 ]

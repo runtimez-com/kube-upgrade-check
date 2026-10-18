@@ -230,5 +230,26 @@
       "1.29.7",
       "1.30.4"
     ]
+  },
+  {
+    "ruleId": "rtz-istio-1.30-ztunnel-cidr-serviceentries",
+    "severity": "LOW",
+    "title": "ServiceEntry CIDR addresses now reach ztunnel: ambient traffic to those ranges is matched to the ServiceEntry",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ServiceEntry addresses are not collected; the NONE and STATIC resolution ServiceEntries (the ones a CIDR address is valid on) are the population"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ServiceEntry",
+      "target": "resolution",
+      "value": "^(NONE|STATIC)$"
+    },
+    "quote": "add support for cidrs in ztunnel",
+    "coversNotes": [
+      "ztunnel 1.30.0 (#1848)"
+    ],
+    "remediation": "Before 1.30 a ServiceEntry address written as a range (10.0.0.0/24) never reached ztunnel, so ambient pods sent traffic for that range straight out. From 1.30 ztunnel matches it to the ServiceEntry, so the entry's ports, its istio.io/use-waypoint label and the policies on it start applying to that traffic. Review range addresses on ServiceEntries before upgrading; remove any that were never meant to take effect.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.addresses[]? | contains(\"/\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" addresses=\" + (.spec.addresses | join(\",\")) + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"none\")'  # each line starts matching ambient traffic to that range at 1.30"
   }
 ]
