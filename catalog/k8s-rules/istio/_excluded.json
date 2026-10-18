@@ -892,7 +892,7 @@
   {
     "version": "1.29",
     "note": "ztunnel 1.29.2 (#1812)",
-    "reason": "how ztunnel watches the CRL file for changes (debounced file events); what the CRL enforces is the rtz-istio-1.29-ztunnel-crl-inbound-revocation rule"
+    "reason": "how ztunnel watches the CRL file for changes (debounced file events); CRL checking itself is opt-in (peerCaCrl.enabled)"
   },
   {
     "version": "1.29",
@@ -972,7 +972,7 @@
   {
     "version": "1.30",
     "note": "ztunnel 1.30.6 (#2164)",
-    "reason": "restores HTTP/2 data-frame handling to unlimited after a dependency's per-connection frame budget reset streams that sent many small frames; the budget is opt-in via HTTP2_DATA_FRAME_BUDGET, and upgrading to this patch fixes rather than breaks"
+    "reason": "sets the HTTP/2 data-frame budget to unlimited explicitly; no released ztunnel enforced one (the h2 crate stayed pinned at 0.4.15 until this patch), so traffic behaves as before"
   },
   {
     "version": "1.31",
@@ -1032,7 +1032,7 @@
   {
     "version": "1.31",
     "note": "ztunnel 1.31.0 (#2025)",
-    "reason": "ztunnel log wording or level only; traffic and configuration are unaffected"
+    "reason": "replaces ztunnel's log writer (a non-blocking appender, buffer raised to 10000 lines, still lossless); log content and traffic are unaffected"
   },
   {
     "version": "1.31",
@@ -1042,6 +1042,16 @@
   {
     "version": "1.31",
     "note": "ztunnel 1.31.2 (#2160)",
-    "reason": "restores HTTP/2 data-frame handling to unlimited after a dependency's per-connection frame budget reset streams that sent many small frames; the budget is opt-in via HTTP2_DATA_FRAME_BUDGET, and upgrading to this patch fixes rather than breaks"
+    "reason": "sets the HTTP/2 data-frame budget to unlimited explicitly; no released ztunnel enforced one (the h2 crate stayed pinned at 0.4.15 until this patch), so traffic behaves as before"
+  },
+  {
+    "version": "1.29",
+    "note": "ztunnel 1.29.0 (#1660/#1715)",
+    "reason": "CRL checking in ztunnel is opt-in: it loads a CRL only when CRL_PATH is set, which the chart does only under peerCaCrl.enabled (default false, new in 1.29); an upgrade alone enforces nothing. What changes for meshes that enabled it is the rtz-istio-1.31-ztunnel-crl-outbound-and-existing rule"
+  },
+  {
+    "version": "1.31",
+    "note": "ztunnel 1.31.0 (#1947)",
+    "reason": "an unparsable DNS_PROXY_ADDR (proxyMetadata or ISTIO_META_DNS_PROXY_ADDR) already stopped ztunnel at startup before 1.31 (a panic); it now exits with a config error instead — same outcome, clearer message"
   }
 ]

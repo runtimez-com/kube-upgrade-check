@@ -228,45 +228,24 @@
   {
     "ruleId": "rtz-istio-1.31-ztunnel-crl-outbound-and-existing",
     "severity": "MEDIUM",
-    "title": "ztunnel's CRL check now covers outbound connections and tears down open connections when a certificate is revoked",
+    "title": "With CRL checking on, ztunnel also refuses outbound connections and tears down open ones when a certificate is revoked",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the cacerts Secret (and whether it carries ca-crl.pem) is not collected; the ztunnel DaemonSet, which enforces the CRL, is the subject — a sidecar-only mesh has none"
+      "reason": "the CRL's contents are not collected; ztunnel DaemonSets with CRL_PATH set (the chart's peerCaCrl.enabled, off by default) are the population"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "DaemonSet",
-      "target": "containers[].image",
-      "value": "(^|/)(istio|istio-release|registry\\.istio\\.io/release)/ztunnel([:@]|$)"
+      "target": "containers[].env[].name",
+      "value": "^CRL_PATH$"
     },
     "quote": "introduce crl enforcement for new outbound connections",
     "coversNotes": [
       "ztunnel 1.31.0 (#1921)",
       "ztunnel 1.31.0 (#1986)"
     ],
-    "remediation": "Only meshes on a plugged-in CA whose cacerts Secret carries ca-crl.pem are affected: from 1.31 ztunnel also refuses outbound connections to a peer whose certificate is on the CRL, and closes connections already open when a CRL update revokes their certificate (reported as CERT_REVOKED). A client that only talked to a revoked server certificate stops working on upgrade — rotate those certificates first.",
-    "verifyCommand": "kubectl get secret cacerts -n istio-system -o json | jq -r 'if (.data | has(\"ca-crl.pem\")) then \"plugged-in CA ships a CRL: ztunnel enforces it\" else \"no ca-crl.pem: nothing changes\" end'  # NotFound = no plugged-in CA, nothing changes"
-  },
-  {
-    "ruleId": "rtz-istio-1.31-ztunnel-invalid-dns-proxy-addr-fatal",
-    "severity": "MEDIUM",
-    "title": "ztunnel refuses to start when DNS_PROXY_ADDR is not a valid socket address",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "environment values are collected as hashes, so whether DNS_PROXY_ADDR parses is unknown; DaemonSets that set it are the population"
-    },
-    "scope": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "DaemonSet",
-      "target": "containers[].env[].name",
-      "value": "^DNS_PROXY_ADDR$"
-    },
-    "quote": "fix: return config error for invalid DNS_PROXY_ADDR",
-    "coversNotes": [
-      "ztunnel 1.31.0 (#1947)"
-    ],
-    "remediation": "Up to 1.30 an unparsable DNS_PROXY_ADDR was ignored and the DNS proxy listened on its default address; from 1.31 ztunnel exits with a config error, so every node's ztunnel crash-loops and ambient traffic on those nodes stops. Make the value an IP:port (for example 127.0.0.1:15053) or remove it before upgrading.",
-    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[].env[]? | select(.name == \"DNS_PROXY_ADDR\") | .value // \"(from a reference)\"] | join(\",\"))' | grep -v ' $'  # each value must be IP:port"
+    "remediation": "Only ztunnel installed with peerCaCrl.enabled (CRL_PATH set, a plugged-in CA shipping ca-crl.pem) is affected: up to 1.30 it checked the CRL on inbound connections only; from 1.31 it also refuses outbound connections to a peer whose certificate is on the CRL, and closes connections already open when a CRL update revokes their certificate (reported as CERT_REVOKED). A client that only talked to a server with a revoked certificate stops working on upgrade — rotate those certificates first.",
+    "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].env[]?.name] | index(\"CRL_PATH\")) | .metadata.namespace + \"/\" + .metadata.name'; kubectl get configmap istio-ca-crl -n istio-system -o json | jq -r '.data[\"ca-crl.pem\"] | length | \"ca-crl.pem bytes=\" + tostring'  # a non-empty CRL is what gets enforced"
   },
   {
     "ruleId": "rtz-istio-1.31-ztunnel-network-scope-preferred",
@@ -285,7 +264,7 @@
     "coversNotes": [
       "ztunnel 1.31.0 (#1980)"
     ],
-    "remediation": "Only multi-network meshes with Services using locality-aware traffic distribution (PreferClose and its siblings) change: endpoints on the client's network still rank first, but endpoints on other networks are now ordered by region and zone rather than tied. Failover traffic lands closer, and on different endpoints than before — check capacity of the remote-network endpoints that now rank highest.",
+    "remediation": "Only multi-network meshes with Services using locality-aware traffic distribution (PreferClose and its siblings) change: endpoints on the client's network still rank first, but endpoints on other networks are now ordered by region and zone rather than tied. Failover traffic lands closer, and on different endpoints than before — check capacity of the remote-network endpoints that now rank highest. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet can ignore this.",
     "verifyCommand": "kubectl get ns -l topology.istio.io/network -o json | jq -r '.items[] | .metadata.name + \" network=\" + .metadata.labels[\"topology.istio.io/network\"]'; kubectl get svc -A -o json | jq -r '.items[] | select(.spec.trafficDistribution != null or .metadata.annotations[\"networking.istio.io/traffic-distribution\"] != null) | .metadata.namespace + \"/\" + .metadata.name'  # these Services rank cross-network endpoints differently"
   },
   {
@@ -306,7 +285,7 @@
     "coversNotes": [
       "ztunnel 1.31.0 (#1993)"
     ],
-    "remediation": "Unless ZTUNNEL_WORKER_THREADS or proxy concurrency is set, 1.31 ztunnel runs as many worker threads as its CPU limit rounded up — one thread for a limit of 1 core or less, half the old default — and, without a limit, a quarter of the node's cores (at least 2), so large nodes get more. A ztunnel limited to 1 CPU loses throughput on upgrade: raise the limit to 2, or set ZTUNNEL_WORKER_THREADS=2.",
+    "remediation": "Unless ZTUNNEL_WORKER_THREADS or proxy concurrency is set, 1.31 ztunnel runs as many worker threads as its CPU limit rounded up — one thread for a limit of 1 core or less, half the old default — and, without a limit, a quarter of the node's cores (at least 2, and at least the CPU request), so large nodes get more. A ztunnel limited to 1 CPU loses throughput on upgrade: raise the limit to 2, or set ZTUNNEL_WORKER_THREADS=2.",
     "verifyCommand": "kubectl get ds -A -o json | jq -r '.items[] | select([.spec.template.spec.containers[].image | test(\"/ztunnel[:@]\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" \" + ([.spec.template.spec.containers[] | \"limits.cpu=\" + (.resources.limits.cpu // \"none\") + \" requests.cpu=\" + (.resources.requests.cpu // \"none\") + \" env=\" + ([.env[]?.name] | join(\",\"))] | join(\" \"))'  # a limit of 1 core or less without ZTUNNEL_WORKER_THREADS drops to one worker thread"
   }
 ]

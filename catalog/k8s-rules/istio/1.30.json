@@ -234,10 +234,10 @@
   {
     "ruleId": "rtz-istio-1.30-ztunnel-cidr-serviceentries",
     "severity": "LOW",
-    "title": "ServiceEntry CIDR addresses now reach ztunnel: ambient traffic to those ranges is matched to the ServiceEntry",
+    "title": "A ServiceEntry with a CIDR address now takes effect for ambient pods — the whole entry, not only the range",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "ServiceEntry addresses are not collected; the NONE and STATIC resolution ServiceEntries (the ones a CIDR address is valid on) are the population"
+      "reason": "ServiceEntry addresses are not collected; the NONE and STATIC resolution ServiceEntries (the ones a CIDR address is valid on) are the population. Ambient (ztunnel) only: a mesh without a ztunnel DaemonSet is not affected."
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -249,7 +249,7 @@
     "coversNotes": [
       "ztunnel 1.30.0 (#1848)"
     ],
-    "remediation": "Before 1.30 a ServiceEntry address written as a range (10.0.0.0/24) never reached ztunnel, so ambient pods sent traffic for that range straight out. From 1.30 ztunnel matches it to the ServiceEntry, so the entry's ports, its istio.io/use-waypoint label and the policies on it start applying to that traffic. Review range addresses on ServiceEntries before upgrading; remove any that were never meant to take effect.",
-    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.addresses[]? | contains(\"/\")] | any) | .metadata.namespace + \"/\" + .metadata.name + \" addresses=\" + (.spec.addresses | join(\",\")) + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"none\")'  # each line starts matching ambient traffic to that range at 1.30"
+    "remediation": "Up to 1.29 istiod dropped a ServiceEntry from ambient entirely when any of its addresses was a multi-IP range (10.0.0.0/24), so ambient pods never saw it. From 1.30 the whole entry reaches ztunnel: its hosts resolve, its ports and istio.io/use-waypoint label apply, and traffic to the range is matched to it. Review those ServiceEntries before upgrading and remove any that were never meant to take effect for ambient workloads.",
+    "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.addresses[]? | select(contains(\"/\") and (endswith(\"/32\") or endswith(\"/128\") | not))] | any) | .metadata.namespace + \"/\" + .metadata.name + \" addresses=\" + (.spec.addresses | join(\",\")) + \" hosts=\" + (.spec.hosts | join(\",\")) + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"none\")'  # each entry starts applying to ambient pods at 1.30"
   }
 ]
