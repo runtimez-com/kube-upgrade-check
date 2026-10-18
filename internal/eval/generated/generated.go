@@ -1159,6 +1159,11 @@ func advisory(rule catalog.GeneratedRule, inv *inventory.Inventory, target strin
 	if reason := strings.TrimSpace(rule.Detection.Reason); reason != "" {
 		recommendation += " Not checked here: " + reason
 	}
+	// The backend clears a hint whose precondition is proven unmet; this CLI does not evaluate gates on
+	// advisories, so it states the precondition instead (an ambient-only change on a sidecar-only mesh).
+	if g := rule.Gate; g != nil && strings.TrimSpace(g.Reason) != "" {
+		recommendation += " Applies only if: " + strings.TrimSpace(g.Reason)
+	}
 	verify := strings.TrimSpace(rule.VerifyCommand)
 	if verify != "" {
 		recommendation += checkWith + verify
