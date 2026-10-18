@@ -5,7 +5,8 @@
     "imageSuffixes": [
       "istio/pilot",
       "istio-release/pilot",
-      "istio.io/release/pilot"
+      "istio.io/release/pilot",
+      "istio.tetratelabs.com/pilot"
     ]
   },
   "source": {
@@ -126,6 +127,35 @@
       "minK8s": "1.20",
       "maxK8s": "1.23",
       "eol": "2022-10-12"
+    }
+  ],
+  "distributions": [
+    {
+      "id": "tetrate",
+      "displayName": "Tetrate",
+      "versionMarker": "tetrate",
+      "eol": {
+        "1.31": "2027-10-27",
+        "1.30": "2027-07-14",
+        "1.29": "2027-04-16",
+        "1.28": "2027-01-05",
+        "1.27": "2026-10-11",
+        "1.26": "2026-07-08",
+        "1.25": "2026-05-03",
+        "1.24": "2026-01-07",
+        "1.23": "2025-10-14",
+        "1.22": "2025-07-13",
+        "1.21": "2025-05-13",
+        "1.20": "2025-01-14",
+        "1.19": "2024-11-05",
+        "1.18": "2024-08-03",
+        "1.17": "2024-04-14"
+      },
+      "source": {
+        "url": "https://docs.tetrate.io/istio-subscription/support",
+        "lastVerified": "2026-10-18",
+        "note": "Tetrate Istio Distro / Tetrate Istio Subscription: Tetrate-built images of community Istio (containers.istio.tetratelabs.com, fips-containers.istio.tetratelabs.com, addon-containers.istio.tetratelabs.com; tags 1.29.1-tetrate0, 1.29.1-tetratefips0, with -distroless/-debug/-ubi9 variants), recognised by the tetrate marker in the version suffix. eol = the \"Tetrate End-of-Support Date\" column of the support page, transcribed for every row it lists (1.17-1.31); a line it does not list keeps the upstream date above. Tetrate publishes no Kubernetes windows of its own, so the upstream supportWindows apply unchanged. Only the community column of that page is NOT used: it lags istio.io (it still reads 1.29 2026-10-12 Expected)."
+      }
     }
   ],
   "inventoryKinds": [],

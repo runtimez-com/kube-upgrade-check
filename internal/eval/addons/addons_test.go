@@ -78,6 +78,28 @@ func TestDetectionMatchesRepositorySuffix(t *testing.T) {
 	}
 }
 
+// Tetrate's Istio builds come from its own registries (community, FIPS, premium add-ons); one suffix
+// covers all three, and the -tetrate tag suffix still parses to the upstream release.
+func TestTetrateIstioBuildsAreDetected(t *testing.T) {
+	cat := realCatalog(t)
+	for _, image := range []string{
+		"containers.istio.tetratelabs.com/pilot:1.29.1-tetrate0",
+		"fips-containers.istio.tetratelabs.com/pilot:1.29.1-tetratefips0",
+		"addon-containers.istio.tetratelabs.com/pilot:1.29.1-tetrate0-distroless",
+	} {
+		result := Analyze(workloadInv(deployment("istio-system", "istiod", image, nil)),
+			"1.32", "1.33", cat.Addons, now)
+		st := statusOf(result, "istio")
+		if st == nil {
+			t.Errorf("image %q: istio not detected", image)
+			continue
+		}
+		if st.Verdict != VerdictSupported || st.InstalledVersion == "" {
+			t.Errorf("image %q: verdict %s version %q, want %s on 1.33", image, st.Verdict, st.InstalledVersion, VerdictSupported)
+		}
+	}
+}
+
 // The vendor publishes both a series row and a patch row that widened the ceiling. The more
 // specific row has to win, or every earlier patch silently inherits a version it never supported.
 func TestMoreSpecificSupportWindowWins(t *testing.T) {
