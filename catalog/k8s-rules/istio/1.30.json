@@ -251,5 +251,26 @@
     ],
     "remediation": "Up to 1.29 istiod dropped a ServiceEntry from ambient entirely when any of its addresses was a multi-IP range (10.0.0.0/24), so ambient pods never saw it. From 1.30 the whole entry reaches ztunnel: its hosts resolve, its ports and istio.io/use-waypoint label apply, and traffic to the range is matched to it. Review those ServiceEntries before upgrading and remove any that were never meant to take effect for ambient workloads.",
     "verifyCommand": "kubectl get serviceentries.networking.istio.io -A -o json | jq -r '.items[] | select([.spec.addresses[]? | select(contains(\"/\") and (endswith(\"/32\") or endswith(\"/128\") | not))] | any) | .metadata.namespace + \"/\" + .metadata.name + \" addresses=\" + (.spec.addresses | join(\",\")) + \" hosts=\" + (.spec.hosts | join(\",\")) + \" waypoint=\" + (.metadata.labels[\"istio.io/use-waypoint\"] // \"none\")'  # each entry starts applying to ambient pods at 1.30"
+  },
+  {
+    "ruleId": "rtz-istio-1.30-envoy-rsa-key-usage-enforced",
+    "severity": "MEDIUM",
+    "title": "Proxies now refuse a TLS server whose RSA certificate's keyUsage does not allow the handshake (Envoy 1.38)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the upstream servers' certificates are not collected; DestinationRules that originate TLS from a sidecar, gateway or waypoint (top-level tls.mode SIMPLE or MUTUAL) are the population — subset-level and port-level TLS, Gateway API BackendTLSPolicy and ProxyConfig collector tlsSettings (tracing, metrics and access-log services) are not read"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DestinationRule",
+      "target": "trafficPolicy.tls.mode",
+      "value": "^(SIMPLE|MUTUAL)$"
+    },
+    "quote": "The handshake will fail if the keyUsage extension is present and incompatible with the TLS usage.",
+    "coversNotes": [
+      "Envoy 1.38.0 incompatible (tls)"
+    ],
+    "remediation": "Istio 1.30 bundles Envoy 1.38, which turns enforce_rsa_key_usage on, and Istio does not turn it off (Envoy 1.39, in Istio 1.31, removes the switch). When a sidecar, gateway or waypoint opens TLS to a server with an RSA certificate whose keyUsage omits digitalSignature (TLS 1.3 and ECDHE) or keyEncipherment (RSA key exchange), the handshake now fails and requests to that destination return 503. Istio's own mTLS certificates are unaffected. Before upgrading, check the certificate of every destination these DestinationRules originate TLS to, and reissue any that fail. An EnvoyFilter setting enforce_rsa_key_usage back to false only buys time: Envoy 1.39 (Istio 1.31) ignores the option, so the certificate has to be reissued anyway.",
+    "verifyCommand": "kubectl get destinationrules.networking.istio.io -A -o json | jq -r '.items[] | select((.spec.trafficPolicy.tls.mode // \"\") | test(\"^(SIMPLE|MUTUAL)$\")) | .metadata.namespace + \"/\" + .metadata.name + \" host=\" + .spec.host + \" sni=\" + (.spec.trafficPolicy.tls.sni // \"-\")'  # then for each host: echo | openssl s_client -connect HOST:PORT -servername SNI | openssl x509 -noout -ext keyUsage — an RSA cert listing keyUsage without Digital Signature fails after the upgrade"
   }
 ]
