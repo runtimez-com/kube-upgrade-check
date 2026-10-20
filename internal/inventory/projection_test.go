@@ -507,3 +507,93 @@ func TestStorageClassProjectsItsTopLevelFields(t *testing.T) {
 		t.Error("parameters are not collected by the agent either; the CLI must not carry them")
 	}
 }
+
+// The per-app Argo CD facts the 3.0 / 2.13 / 3.1 rules read, derived the way the agent derives
+// them: argocd-cm's two settings as Argo's own tokens, the Application's in-cluster destination
+// and empty plugin env as booleans, its rendered source types, PDB conditions as
+// "type:status:reason", and a route's status parents. No URL, env name or env value leaves here.
+func TestArgoCDPerAppProjection(t *testing.T) {
+	cm := func(labels map[string]any, data map[string]any) map[string]any {
+		o := obj("ConfigMap", "argocd", "argocd-cm", map[string]any{"data": data})
+		o["metadata"].(map[string]any)["labels"] = labels
+		return projectSpec("ConfigMap", o, nil)
+	}
+	argo := map[string]any{"app.kubernetes.io/part-of": "argocd"}
+	if s := cm(argo, map[string]any{"url": "https://argo"})["argocdSettings"].(map[string]any); s["resourceTrackingMethod"] != "" || s["inClusterEnabled"] != true {
+		t.Errorf("absent keys = Argo's defaults: %+v", s)
+	}
+	if s := cm(argo, map[string]any{argocdTrackingKey: " annotation+label ", argocdInClusterKey: "false"})["argocdSettings"].(map[string]any); s["resourceTrackingMethod"] != "annotation+label" || s["inClusterEnabled"] != false {
+		t.Errorf("explicit values = %+v", s)
+	}
+	s := cm(argo, map[string]any{argocdTrackingKey: "labels", argocdInClusterKey: "no"})["argocdSettings"].(map[string]any)
+	if _, ok := s["resourceTrackingMethod"]; ok {
+		t.Errorf("an unknown tracking method is omitted, never shipped: %+v", s)
+	}
+	if _, ok := s["inClusterEnabled"]; ok {
+		t.Errorf("a non-boolean inClusterEnabled is omitted, never read as off: %+v", s)
+	}
+	if _, ok := cm(map[string]any{}, map[string]any{argocdInClusterKey: "false"})["argocdSettings"]; ok {
+		t.Error("an argocd-cm without part-of=argocd is not Argo CD's")
+	}
+
+	app := func(spec map[string]any) map[string]any {
+		return projectSpec("Application", obj("Application", "argocd", "a", map[string]any{"spec": spec}), nil)
+	}
+	for server, want := range map[string]bool{"https://kubernetes.default.svc": true, "https://kubernetes.default.svc/": true, "https://10.0.0.1": false, "": false} {
+		if got := app(map[string]any{"destination": map[string]any{"server": server}})["destinationInCluster"]; got != want {
+			t.Errorf("server %q: destinationInCluster = %v", server, got)
+		}
+	}
+	if app(map[string]any{"destination": map[string]any{"name": "in-cluster"}})["destinationInCluster"] != true {
+		t.Error("destination.name in-cluster is the in-cluster destination")
+	}
+	empty := app(map[string]any{"sources": []any{
+		map[string]any{"repoURL": "x"},
+		map[string]any{"plugin": map[string]any{"env": []any{map[string]any{"name": "TOKEN", "value": "s3cr3t"}, map[string]any{"name": "EMPTY", "value": ""}}}},
+	}})
+	if empty["pluginEnvEmpty"] != true {
+		t.Errorf("an empty plugin env value = %+v", empty)
+	}
+	if b, _ := json.Marshal(empty); strings.Contains(string(b), "TOKEN") || strings.Contains(string(b), "s3cr3t") || strings.Contains(string(b), "EMPTY") {
+		t.Errorf("plugin env leaked: %s", b)
+	}
+	if app(map[string]any{"source": map[string]any{"plugin": map[string]any{"env": []any{map[string]any{"name": "A", "value": "1"}}}}})["pluginEnvEmpty"] != false {
+		t.Error("pluginEnvEmpty is false when every value is set")
+	}
+
+	st := projectStatus("Application", map[string]any{"sourceType": "Helm", "sourceTypes": []any{"Kustomize", "Helm", "Bogus"}, "health": map[string]any{}}, &Projection{Keep: []string{"sourceTypes"}})
+	if got := fmt.Sprint(st["sourceTypes"]); got != "[Helm Kustomize]" {
+		t.Errorf("sourceTypes = %s (enum only, deduplicated)", got)
+	}
+	if got := fmt.Sprint(projectStatus("Application", map[string]any{}, nil)["sourceTypes"]); got != "[]" {
+		t.Errorf("no source type = [], got %s", got)
+	}
+
+	pdb := projectStatus("PodDisruptionBudget", map[string]any{"conditions": []any{
+		map[string]any{"type": "DisruptionAllowed", "status": "False", "reason": "Sync:Failed"},
+		map[string]any{"type": "Other", "status": "True"},
+	}}, &Projection{Keep: []string{"conditions"}})
+	if got := fmt.Sprint(pdb["conditions"]); got != "[DisruptionAllowed:False:SyncFailed Other:True:]" {
+		t.Errorf("pdb conditions = %s", got)
+	}
+
+	route := projectSpec("HTTPRoute", obj("HTTPRoute", "web", "r", map[string]any{"spec": map[string]any{}, "status": map[string]any{"parents": []any{
+		map[string]any{"controllerName": "c", "parentRef": map[string]any{"name": "gw", "namespace": "infra"}, "conditions": []any{
+			map[string]any{"type": "Accepted", "status": "True"},
+			map[string]any{"type": "ResolvedRefs", "status": "False"},
+		}},
+		map[string]any{"controllerName": "c", "parentRef": map[string]any{"name": "gw2"}, "conditions": []any{
+			map[string]any{"type": "Accepted", "status": "Unknown"},
+		}},
+	}}}), nil)
+	parents := leaves(t, route, "statusParents")
+	if len(parents) != 2 {
+		t.Fatalf("statusParents = %+v", parents)
+	}
+	if p := parents[0].(map[string]any); p["accepted"] != true || p["resolvedRefs"] != false || p["name"] != "gw" || p["namespace"] != "infra" {
+		t.Errorf("parent 0 = %+v", p)
+	}
+	if p := parents[1].(map[string]any); p["accepted"] != nil {
+		t.Errorf("Unknown stays absent: %+v", p)
+	}
+}

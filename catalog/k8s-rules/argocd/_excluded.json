@@ -105,24 +105,9 @@
     "reason": "an API-response change (credentials removed from project responses, GHSA-786q-9hcg-v9ff) that affects API clients; nothing on the cluster settles it."
   },
   {
-    "version": "3.2",
-    "note": "Added Healthchecks",
-    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
-  },
-  {
     "version": "3.3",
     "note": "Anonymous call to Settings API returns fewer fields",
     "reason": "an API-response change for anonymous callers of the Settings API; nothing on the cluster settles it."
-  },
-  {
-    "version": "3.3",
-    "note": "Added Healthchecks",
-    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
-  },
-  {
-    "version": "3.4",
-    "note": "Custom Healthchecks Added",
-    "reason": "a list of resource kinds that GAINED built-in health checks — additive, no action required by the note."
   },
   {
     "version": "3.5",

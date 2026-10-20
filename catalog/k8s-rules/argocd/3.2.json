@@ -20,10 +20,17 @@
     "title": "`.argocd-source.yaml` can now pin the Kustomize version",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "`.argocd-source.yaml` lives in the repository, not on the cluster"
+      "reason": "`.argocd-source.yaml` lives in the repository, not on the cluster. The hint names every Application Argo CD renders through Kustomize (its status source type)."
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "sourceTypes[]",
+      "value": "^Kustomize$"
     },
     "quote": "Starting with Argo CD v3.2, you can now set the Kustomize version in the `.argocd-source.yaml` file like this:",
-    "remediation": "If a repository already carries `kustomize.version` in `.argocd-source.yaml`, it now takes effect — make sure that version is registered under `kustomize.versions` in argocd-cm, or rendering fails."
+    "remediation": "If a repository already carries `kustomize.version` in `.argocd-source.yaml`, it now takes effect — make sure that version is registered under `kustomize.versions` in argocd-cm, or rendering fails.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.status.sourceType == \"Kustomize\" or ([.status.sourceTypes[]?] | index(\"Kustomize\"))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Kustomize — check whether their source path has a .argocd-source*.yaml naming a kustomize version"
   },
   {
     "ruleId": "rtz-argocd-3.2-cronjob-health-affects-application-health",
@@ -57,5 +64,24 @@
     "quote": "The `resources` field of the `status` resource of an ApplicationSet is now limited to 5000 elements by default. This is to prevent status bloat and exceeding etcd limits.",
     "remediation": "If an ApplicationSet generates more than 5000 Applications and your tooling reads `status.resources`, raise `applicationsetcontroller.status.max.resources.count` in argocd-cmd-params-cm or read the Applications directly.",
     "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.status.resources[4999] != null) | .metadata.namespace + \"/\" + .metadata.name' # names printed already exceed 5000 generated Applications"
+  },
+  {
+    "ruleId": "rtz-argocd-3.2-added-health-checks-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 23 resource kinds — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs whose group and kind are on the list (group and kind are matched separately, so a CRD pairing a listed group with another listed group's kind is named too) (CronJob has its own rule)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^[^.]+\\.(apps\\.3scale\\.net|capabilities\\.3scale\\.net|clickhouse\\-keeper\\.altinity\\.com|clickhouse\\.altinity\\.com|coralogix\\.com|datadoghq\\.com|projectcontour\\.io|promoter\\.argoproj\\.io)$",
+      "target": "kind",
+      "value": "^(APIManager|ActiveDoc|Alert|Application|ApplicationAuth|ArgoCDCommitStatus|Backend|ChangeTransferPolicy|ClickHouseInstallation|ClickHouseKeeperInstallation|CommitStatus|CustomPolicyDefinition|DatadogMetric|DeveloperAccount|DeveloperUser|ExtensionService|OpenAPI|Product|PromotionStrategy|ProxyConfigPromote|PullRequest|RecordingRuleGroupSet|Tenant)$"
+    },
+    "quote": "* datadoghq.com/DatadogMetric * CronJob * promoter.argoproj.io/ArgoCDCommitStatus * promoter.argoproj.io/ChangeTransferPolicy * promoter.argoproj.io/CommitStatus * promoter.argoproj.io/PromotionStrategy * promoter.argoproj.io/PullRequest * coralogix.com/Alert * coralogix.com/RecordingRuleGroupSet * projectcontour.io/ExtensionService * clickhouse-keeper.altinity.com/ClickHouseKeeperInstallation * clickhouse.altinity.com/ClickHouseInstallation * apps.3scale.net/APIManager * capabilities.3scale.net/ActiveDoc * capabilities.3scale.net/ApplicationAuth * capabilities.3scale.net/Application * capabilities.3scale.net/Backend * capabilities.3scale.net/CustomPolicyDefinition * capabilities.3scale.net/DeveloperAccount * capabilities.3scale.net/DeveloperUser * capabilities.3scale.net/OpenAPI * capabilities.3scale.net/Product * capabilities.3scale.net/ProxyConfigPromote * capabilities.3scale.net/Tenant",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(IN(.spec.group + \"/\" + .spec.names.kind; \"datadoghq.com/DatadogMetric\", \"promoter.argoproj.io/ArgoCDCommitStatus\", \"promoter.argoproj.io/ChangeTransferPolicy\", \"promoter.argoproj.io/CommitStatus\", \"promoter.argoproj.io/PromotionStrategy\", \"promoter.argoproj.io/PullRequest\", \"coralogix.com/Alert\", \"coralogix.com/RecordingRuleGroupSet\", \"projectcontour.io/ExtensionService\", \"clickhouse-keeper.altinity.com/ClickHouseKeeperInstallation\", \"clickhouse.altinity.com/ClickHouseInstallation\", \"apps.3scale.net/APIManager\", \"capabilities.3scale.net/ActiveDoc\", \"capabilities.3scale.net/ApplicationAuth\", \"capabilities.3scale.net/Application\", \"capabilities.3scale.net/Backend\", \"capabilities.3scale.net/CustomPolicyDefinition\", \"capabilities.3scale.net/DeveloperAccount\", \"capabilities.3scale.net/DeveloperUser\", \"capabilities.3scale.net/OpenAPI\", \"capabilities.3scale.net/Product\", \"capabilities.3scale.net/ProxyConfigPromote\", \"capabilities.3scale.net/Tenant\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 3.2 — check the status of their objects in your Applications"
   }
 ]

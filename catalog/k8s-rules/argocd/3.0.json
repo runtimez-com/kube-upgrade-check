@@ -127,30 +127,29 @@
     "title": "Bundled Helm 3.17.1: a `null` object in values.yaml now overrides the subchart value",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Helm values files live in Git; which Helm-rendered Application carries a `null` object in its values cannot be settled from the cluster"
+      "reason": "Helm values files live in Git; which Helm-rendered Application carries a `null` object in its values cannot be settled from the cluster. The hint names every Application Argo CD renders through Helm (its status source type, so charts detected without a `helm` block count too)"
     },
     "scope": {
-      "kind": "SPEC_FIELD_EQUALS",
+      "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Application",
-      "target": "helm",
-      "value": "true"
+      "target": "sourceTypes[]",
+      "value": "^Helm$"
     },
     "quote": "In Helm 3.17.1, this behavior changed and `null` object in `values.yaml` still results in this warning upon performing `helm template`, but the resulting K8s object will be overridden with the invalid `null` value.",
     "remediation": "Run `helm template` with Helm 3.17.x over every Helm-rendered Application and remove `null` objects from values files that produce the `cannot overwrite table with non table` warning — they now render as null.",
-    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.source.helm != null or ([.spec.sources[]?.helm] | any(. != null))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Helm — check their values files for null objects"
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.status.sourceType == \"Helm\" or ([.status.sourceTypes[]?] | index(\"Helm\"))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Helm — check their values files for null objects"
   },
   {
     "ruleId": "rtz-argocd-3.0-annotation-based-tracking-default",
     "severity": "HIGH",
     "title": "Resource tracking switches from labels to annotations by default",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the affected condition is `application.resourceTrackingMethod` being ABSENT or `label` in argocd-cm; only key names are collected, and absence is not a projected fact"
-    },
-    "scope": {
-      "kind": "KIND_PRESENT",
+      "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
-      "objectName": "^argocd-cm$"
+      "objectName": "^argocd-cm$",
+      "target": "argocdSettings.resourceTrackingMethod",
+      "value": "^(label)?$",
+      "reason": "reads `application.resourceTrackingMethod` from the argocd-cm agent 0.4.144+ projects: absent or `label` means the 3.0 switch to annotation tracking applies; `annotation` or `annotation+label` is already on it. An older agent does not project the setting, so the rule stays unsettled there"
     },
     "quote": "The default behavior for tracking resources has changed to use annotation-based tracking instead of label-based tracking.",
     "remediation": "Either set `application.resourceTrackingMethod: annotation` deliberately before upgrading, or opt out with `label`. After switching, sync every Application once (even if in sync) so orphan detection works on the next sync; resources you track by label outside Argo CD need the tracking annotation instead.",
@@ -167,6 +166,14 @@
       "value": "^ApplyOutOfSyncOnly=true$",
       "reason": "presence-only projection of the Application spec, as the agent emits it (keys, never repository URLs or credentials)"
     },
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^argocd-cm$",
+      "target": "argocdSettings.resourceTrackingMethod",
+      "value": "^(label)?$",
+      "reason": "upstream conditions this on label-based tracking (absent or `label` in argocd-cm, the 2.x default); an Argo CD already on annotation tracking has nothing to re-sync. An agent older than 0.4.144 does not project the setting, so the rule stays unsettled there"
+    },
     "quote": "If you are using label-based tracking, it is also important to detect whether you have Applications that use `ApplyOutOfSyncOnly=true` syncOptions, as such Applications are likely to have orphan resources after switching to `annotation` tracking method and need to be synced explicitly right after the upgrade.",
     "remediation": "Right after upgrading, run an explicit sync WITHOUT `ApplyOutOfSyncOnly` on each Application named here (UI, or the API with the option cleared) so their resources receive the tracking annotation; otherwise they read as orphans.",
     "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.syncPolicy.syncOptions[]? == \"ApplyOutOfSyncOnly=true\") | .metadata.namespace + \"/\" + .metadata.name' # names printed need an explicit full sync after the upgrade"
@@ -176,15 +183,19 @@
     "severity": "MEDIUM",
     "title": "`cluster.inClusterEnabled: \"false\"` — in-cluster Applications become Unknown and cannot sync",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the setting is the VALUE of an argocd-cm key; ConfigMap KEY names are collected, values are not"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "destinationInCluster",
+      "value": "^true$",
+      "reason": "names Applications whose destination is the in-cluster server (`https://kubernetes.default.svc`) or the cluster name `in-cluster`, as agent 0.4.144+ projects it"
     },
-    "scope": {
+    "gate": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^argocd-cm$",
-      "target": "keys[]",
-      "value": "^cluster\\.inClusterEnabled$"
+      "target": "argocdSettings.inClusterEnabled",
+      "value": "^false$",
+      "reason": "only an explicit `cluster.inClusterEnabled: \"false\"` in argocd-cm turns in-cluster Applications Unknown; an absent key means enabled. An agent older than 0.4.144 does not project the setting, so the rule stays unsettled there"
     },
     "quote": "When `cluster.inClusterEnabled: \"false\"` is explicitly configured, Applications currently configured to sync on the in-cluster cluster will now be in an Unknown state, without the possibility to sync resources.",
     "remediation": "Before upgrading with in-cluster disabled, migrate or clean up every Application whose destination is `https://kubernetes.default.svc` / `in-cluster` (re-enable in-cluster temporarily to delete them cleanly).",
@@ -231,12 +242,15 @@
     "severity": "LOW",
     "title": "Config management plugins now receive empty environment variables",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "what a plugin sidecar does with an empty environment variable is plugin code, not inventory"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "pluginEnvEmpty",
+      "value": "^true$",
+      "reason": "names Applications whose config management plugin source sets an env entry with an empty value, as agent 0.4.144+ projects it (presence only, never the names or values); what the plugin script does with it is not inspected"
     },
     "quote": "In Argo CD 3.0, empty environment variables are now passed to config management plugins.",
-    "remediation": "Check plugin scripts that test for a variable being unset — an empty string is now passed where the variable used to be absent.",
-    "verifyCommand": "kubectl -n argocd get deploy argocd-repo-server -o json | jq -r '.spec.template.spec.containers[1:][].name' # names printed are plugin sidecars whose scripts may now see empty variables"
+    "remediation": "Each Application named here passes an env entry with an empty value to its config management plugin. From 3.0 the plugin receives it as an empty variable where it used to be absent: check that the plugin script treats an empty variable the way it treated an unset one, or drop the empty entry.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select([.spec.source.plugin.env[]?, .spec.sources[]?.plugin.env[]?] | any((.value // \"\") == \"\")) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed pass an empty env value to their plugin"
   },
   {
     "ruleId": "rtz-argocd-3.0-ignore-differences-also-ignore-resource-updates",
