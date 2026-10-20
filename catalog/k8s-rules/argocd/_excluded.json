@@ -143,5 +143,30 @@
     "version": "3.5",
     "note": "mTLS support for repo-server",
     "reason": "an opt-in feature that is off by default; the note itself says no action is required for operators who do not configure it."
+  },
+  {
+    "version": "3.6",
+    "note": "Default local include paths now include Helm template helpers and Chart.lock",
+    "reason": "changes the default of the `argocd app diff --local --server-side-generate` CLI flag `--local-include`; it runs on a workstation or CI runner, nothing on the cluster settles it."
+  },
+  {
+    "version": "3.6",
+    "note": "Health transition events now identify the causing resource(s)",
+    "reason": "appends a `(Caused by ...)` suffix to an event message for off-cluster consumers that parse it; the events are short-lived and their parsers are not on the cluster."
+  },
+  {
+    "version": "3.6",
+    "note": "Health Checks During Deletion",
+    "reason": "enriches the health MESSAGE of a resource pending deletion (pending finalizers, optional `deletionMessage`); no status or sync behaviour changes, so nothing to settle before upgrading."
+  },
+  {
+    "version": "3.6",
+    "note": "Cluster `configHash` field",
+    "reason": "an additive, computed API field for API clients; it is not stored in the cluster Secret and nothing on the cluster settles it."
+  },
+  {
+    "version": "3.6",
+    "note": "Gitops Engine Changes",
+    "reason": "a Go library signature change for code that imports gitops-engine; nothing on the cluster."
   }
 ]

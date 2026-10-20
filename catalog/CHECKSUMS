@@ -1,4 +1,4 @@
-b97c59a65b6fbe756c4b11e66ba969bb5ebe0a055aab8e3fdcda78e89fef4ab9  k8s-addons/argocd.json
+bf3e556dbe1a0ce771716c16c6c6ddf3aaf2db8deea16c8c7f87cf3611ec591e  k8s-addons/argocd.json
 efab019ea897f09e6f7666311e5daefbafc713ee3070e22c2824206a17c81619  k8s-addons/aws-ebs-csi-driver.json
 62bb72695be5fb15847696c24a63bdba1151d33aa8161f15010ac0513132cf00  k8s-addons/aws-vpc-cni.json
 e346463574c37538fc5315c6b33c4600ddc6aee4ae8f9025b6e3d8580afe6351  k8s-addons/cert-manager.json
@@ -30,7 +30,8 @@ db5d7e06864bc8919ca7d7914d045dd67ff1c3ac39830ac5d6c9159f2c52fcc0  k8s-rules/argo
 1a4c87906d1952f5b3c8b914c3900f8ab90ac2e8a4c3f70eba07f9227157c2a1  k8s-rules/argocd/3.3.json
 c40a386d3ae546c38fb7d5101287e2ebfba8d3badb462c499617af67c5c274c5  k8s-rules/argocd/3.4.json
 6abaae6afefab3d667ddb11952ade37edc176862681e4c634a562d7b7ad82bb9  k8s-rules/argocd/3.5.json
-9322a3039ec197324ab7674bd17e03c753b49d142dd824e38940ccd545da0a8d  k8s-rules/argocd/_excluded.json
+154a44ddf55829f38d22f015420def256bb492dbe98fbf55dbd8433886c816ad  k8s-rules/argocd/3.6.json
+40f145505fc6c3ba5d239b8ecb54c6bade49faf5d8e0d4d45c872d264cf71e18  k8s-rules/argocd/_excluded.json
 ee5023da6aa2cbed68d9d0a4df8b3fb98d57e888d040aaf8940fc8f71cdc0f07  k8s-rules/aws-ebs-csi-driver/1.17.json
 3dbe277f52ca8e7cb461595a8324c4a932191536d951d57ad9ab8758f09533bc  k8s-rules/aws-ebs-csi-driver/1.19.json
 b1929dab02490d0a34d60b09aee03348815cd5e42e42f7156dc5fcd9ee78a5ca  k8s-rules/aws-ebs-csi-driver/1.23.json

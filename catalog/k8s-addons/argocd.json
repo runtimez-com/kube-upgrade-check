@@ -8,8 +8,8 @@
  },
  "source": {
   "url": "https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/#tested-versions",
-  "ref": "argo-cd; matrix @ origin/release-3.5 (e258ee23c) + release-3.2/2.14/2.11/2.8 committed blobs; upgrade guides @ origin/release-<target> for every minor 2.6..3.5 (release-2.6 ... release-3.5, one branch per guide, commits recorded in kb/argocd/manifest.json)",
-  "lastVerified": "2026-09-04",
+  "ref": "argo-cd; matrix @ origin/release-3.6 (b7e3f52c2; 3.6.0 was at rc3 when transcribed) + release-3.2/2.14/2.11/2.8 committed blobs; upgrade guides @ origin/release-<target> for every minor 2.6..3.6 (release-2.6 ... release-3.6, one branch per guide, commits recorded in kb/argocd/manifest.json)",
+  "lastVerified": "2026-10-20",
   "note": "supportWindows transcribed from docs/operator-manual/tested-kubernetes-versions.md. That file is a PLACEHOLDER on master — it is populated only on release branches, each listing its own version plus the two prior — so the matrix was assembled from release-3.5/3.2/2.14/2.11/2.8 and the overlapping rows cross-checked for contradictions (none). Each cell is a contiguous descending k8s list, which is what makes a min/max window a faithful representation rather than a widening; the generator asserts contiguity and refuses to transcribe a gapped cell. Floor is 2.6: release-2.5 and older ship no such table, so an older install reports VERSION_NOT_IN_CATALOG (honest 'no vendor data') rather than a guessed window. 2026-09-04: this entry carries NO hand-written rules or upgradeNotes any more — the upgrade guides (docs/operator-manual/upgrading/<a.b>-<c.d>.md) are transcribed mechanically into kb/argocd/notes-<minor>.md by scripts/readiness-agent/extract-argocd-notes.py and evaluated as the hop-scoped generated-rule source `argocd` (src/main/resources/k8s-rules/argocd/). Each guide is read at origin/release-<target>, never master: origin/release-3.3 carries the client-side-apply CRD section that release-3.4+ dropped, release-2.11 carries the sanitized-project-API note that 3.x branches replaced, and master holds empty placeholder sections where 'no entry' means 'not yet written', never 'no change'."
  },
  "supportWindows": [
@@ -87,6 +87,11 @@
    "version": "3.5",
    "minK8s": "1.33",
    "maxK8s": "1.36"
+  },
+  {
+   "version": "3.6",
+   "minK8s": "1.34",
+   "maxK8s": "1.37"
   }
  ],
  "upgradeNotes": [],

@@ -1,0 +1,100 @@
+[
+  {
+    "ruleId": "rtz-argocd-3.6-repo-server-otlp-headers-env-renamed",
+    "severity": "MEDIUM",
+    "title": "repo-server stops reading `ARGOCD_REPO_OTLP_HEADERS` — rename it to `ARGOCD_REPO_SERVER_OTLP_HEADERS`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "repo-server$",
+      "target": "containers[].env[].name",
+      "value": "^ARGOCD_REPO_OTLP_HEADERS$",
+      "reason": "checked on the repo-server Deployment's container env NAMES only — the default manifests set the new name, so the old one is present only when a patch or Helm values added it by hand"
+    },
+    "quote": "If you set `ARGOCD_REPO_OTLP_HEADERS` directly (for example via a custom Deployment patch or Helm values), rename it to `ARGOCD_REPO_SERVER_OTLP_HEADERS`. The old variable is no longer read.",
+    "remediation": "Rename the env var to `ARGOCD_REPO_SERVER_OTLP_HEADERS` in the patch or Helm values that sets it (or move the value to the `otlp.headers` key of argocd-cmd-params-cm, which the shipped Deployment already maps) before upgrading; otherwise repo-server exports traces without the collector headers (typically its auth token).",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"repo-server$\")) | select([.spec.template.spec.containers[].env[]?.name] | index(\"ARGOCD_REPO_OTLP_HEADERS\")) | .metadata.namespace + \"/\" + .metadata.name' # Deployments printed still set the old name"
+  },
+  {
+    "ruleId": "rtz-argocd-3.6-server-side-apply-apps-switch-to-server-side-diff",
+    "severity": "MEDIUM",
+    "title": "Applications with `ServerSideApply=true` switch to Server-Side Diff — validating webhooks now run at diff time",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "syncOptions[]",
+      "value": "^ServerSideApply=true$",
+      "reason": "presence-only projection of the Application's sync options, as the agent emits it; an Application that already opts in or out through the `argocd.argoproj.io/compare-options` annotation, or a controller already running with `controller.diff.server.side`, is still named, and a resource-level `argocd.argoproj.io/sync-options` annotation is not scanned"
+    },
+    "quote": "Applications that enable the `ServerSideApply=true` sync option now calculate diffs using Server-Side Diff, which performs a Server-Side Apply dry-run against the kube-apiserver.",
+    "remediation": "No change is required. Expect extra kube-apiserver dry-run load and diff errors (instead of sync errors) from resources a validating webhook rejects; fix those resources, or keep the legacy diff for an Application by annotating it `argocd.argoproj.io/compare-options: ServerSideDiff=false`.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.spec.syncPolicy.syncOptions // [] | index(\"ServerSideApply=true\")) | select((.metadata.annotations[\"argocd.argoproj.io/compare-options\"] // \"\") | test(\"ServerSideDiff=(true|false)\") | not) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed change diff strategy in 3.6"
+  },
+  {
+    "ruleId": "rtz-argocd-3.6-progressive-sync-waits-for-every-app-to-refresh",
+    "severity": "LOW",
+    "title": "RollingSync ApplicationSets wait for every owned Application to refresh before progressing a step",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ApplicationSet",
+      "target": "strategyType",
+      "value": "^RollingSync$",
+      "reason": "strategyType is projected on every ApplicationSet (`spec.strategy.type`, \"\" when unset); the strategy only takes effect when the applicationset controller runs with progressive syncs enabled, which is not checked"
+    },
+    "quote": "If you're using ApplicationSets with progressive sync, and are managing many applications, you might see some delays in applications progressing through steps.",
+    "remediation": "No change is required; expect slower step progression for large RollingSync ApplicationSets because every owned Application is refreshed and reconciled before a step starts. Revisit rollout timeouts or alerts that assume the old pace.",
+    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.spec.strategy.type == \"RollingSync\") | .metadata.namespace + \"/\" + .metadata.name + \" steps=\" + ((.spec.strategy.rollingSync.steps // []) | length | tostring)'"
+  },
+  {
+    "ruleId": "rtz-argocd-3.6-tracing-sampler-and-span-attributes-change",
+    "severity": "LOW",
+    "title": "Argo CD traces: parent-based sampling honours inbound \"not sampled\", and span attribute names change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether tracing is on (flag, env var or argocd-cmd-params-cm `otlp.address`), whether an upstream proxy propagates `traceparent`, and which dashboards key on span attributes are not projected facts"
+    },
+    "quote": "Because the sampler is parent-based, a request that already carries a W3C `traceparent` marked *not sampled* is no longer recorded, even with `--otlp-sample-ratio=1.0`.",
+    "remediation": "If Argo CD exports traces: set the same `--otlp-sample-ratio` on every component, expect requests that arrive marked not-sampled to be dropped, and update dashboards/alerts for the semantic-convention v1.42/v1.43 attribute renames (`server.address`/`server.port` now carry the gRPC dial target, not the peer IP).",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name | test(\"argocd-cmd-params-cm$\")) | .metadata.namespace + \" otlp.address=\" + (.data[\"otlp.address\"] // \"(unset)\")' # unset everywhere = tracing off, nothing to do",
+    "coversNotes": [
+      "Tracing sampler is now parent-based and configurable",
+      "Open Telemetry Upgraded"
+    ]
+  },
+  {
+    "ruleId": "rtz-argocd-3.6-gitops-promoter-health-healthy-during-promotion",
+    "severity": "LOW",
+    "title": "GitOps Promoter PromotionStrategy/ChangeTransferPolicy report Healthy (not Progressing) during a promotion",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Promoter custom resources and the alerting that reads their health are not collected; the hint names the Promoter CRDs when they are installed"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^promoter\\.argoproj\\.io$"
+    },
+    "quote": "Argo CD's built-in health checks for `promoter.argoproj.io/PromotionStrategy` and `promoter.argoproj.io/ChangeTransferPolicy` now report `Healthy` instead of `Progressing` when a promotion is in progress.",
+    "remediation": "Change alerting or automation that treats `Progressing` on these resources as \"a promotion is running\" to read the health message or the Promoter status fields instead; nothing to do without GitOps Promoter.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"promoter.argoproj.io\") | .metadata.name' # empty = GitOps Promoter not installed, rule does not apply"
+  },
+  {
+    "ruleId": "rtz-argocd-3.6-cnpg-database-health-blocks-sync-waves",
+    "severity": "LOW",
+    "title": "CloudNativePG `Database` is Healthy only once applied — sync waves now wait for it",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CloudNativePG Database objects and the sync waves that order around them are not collected; the hint names the CloudNativePG CRDs when they are installed"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^postgresql\\.cnpg\\.io$"
+    },
+    "quote": "It reports `Healthy` only once the operator has applied the current generation (`status.applied` with a matching `status.observedGeneration`), so a sync wave acts as a real dependency barrier for it instead of treating the not-yet-applied Database as healthy.",
+    "remediation": "No change is required; Applications that ship a `postgresql.cnpg.io/Database` before later sync waves now wait until the operator applies it, so a Database the operator never applies leaves the sync Progressing — check its status if a sync stalls after the upgrade.",
+    "verifyCommand": "kubectl get databases.postgresql.cnpg.io -A -o json 2>/dev/null | jq -r '.items[] | select(.status.applied != true or .status.observedGeneration != .metadata.generation) | .metadata.namespace + \"/\" + .metadata.name' # Databases printed would block their sync wave today"
+  }
+]
