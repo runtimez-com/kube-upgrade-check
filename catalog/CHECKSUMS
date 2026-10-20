@@ -27,7 +27,7 @@ db5d7e06864bc8919ca7d7914d045dd67ff1c3ac39830ac5d6c9159f2c52fcc0  k8s-rules/argo
 ff4a2d8323c514830af0484ba1a90c1a5e414837ce4c1d46edef8c7ecf13beba  k8s-rules/argocd/3.0.json
 4c1d351cb8006788127046725bdf0580613bfdab0b52180464eac030b5c020fa  k8s-rules/argocd/3.1.json
 eb20e054602e97464a9c68e77c51ffe51382a74f1c820b358bd59148a0d540b1  k8s-rules/argocd/3.2.json
-000207cc843f514d5d4b4aca010ab0ec3c8b5dae71d24ffe11bc2c66ab211def  k8s-rules/argocd/3.3.json
+2b926949e4132353dd49c0614348b7a49fcc22139e9bf551ecd61a523576af19  k8s-rules/argocd/3.3.json
 faaa682b472a7dbf176aab8dd9195997ada0cd12cde32f2f7de7022766effcf7  k8s-rules/argocd/3.4.json
 6abaae6afefab3d667ddb11952ade37edc176862681e4c634a562d7b7ad82bb9  k8s-rules/argocd/3.5.json
 154a44ddf55829f38d22f015420def256bb492dbe98fbf55dbd8433886c816ad  k8s-rules/argocd/3.6.json
