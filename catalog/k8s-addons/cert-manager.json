@@ -8,140 +8,166 @@
  },
  "source": {
   "url": "https://cert-manager.io/docs/releases/",
-  "ref": "cert-manager/website @ 24f9fe33cbd73ba7170a5e339709cde83027f132 (origin/master, committed blobs)",
-  "lastVerified": "2026-08-29",
-  "note": "supportWindows transcribed from content/docs/releases/README.md at the pinned ref: the 'Currently supported releases' table's Supported Kubernetes column (1.20, 1.21) plus the 'Old cert-manager releases' table's Compatible Kubernetes column (0.11 through 1.19). SUPPORTED was chosen over the narrower TESTED column deliberately: supported is the vendor's own commitment ('we will still respond to and fix any bug reports for that version'), tested only what their kind-based e2e matrix happens to cover. The matrix lives in the cert-manager/website repo, NOT cert-manager/cert-manager — the code repo publishes no compatibility table. Floor is 0.11, the oldest row upstream publishes; anything older reports VERSION_NOT_IN_CATALOG (honest 'no vendor data'). The 1.12 row (1.22-1.32) is WIDER than 1.13's (1.21-1.27): 1.12 was a two-year commercial LTS whose window kept growing after 1.13 shipped — transcribed faithfully, ceilings are not monotonic across versions. upgradeNotes is EMPTY BY DESIGN since 2026-09-09: cert-manager's breaking changes moved out of this catalog and into the generated-rule pipeline (kb/cert-manager -> k8s-rules/cert-manager), the same move Argo CD, Karpenter and Traefik made. The catalog now carries the support matrix ONLY, and the hop it produces (K8S_SUPPORT) is what selects those rules; AddonCompatAnalyzer.forcedHop is deliberately independent of upgradeNotes so emptying this list does not silence the add-on. The knowledge base is extracted from content/docs/releases/upgrading/upgrading-<a.b>-<c.d>.md at THIS SAME REF, filed under the TARGET minor <c.d>; upgrading-1.12.md (the LTS guide) is filed under 1.13. The versioned doc snapshots (content/v1.1X-docs/) were compared against content/docs/ at this ref: only v1.15-docs differs, in upgrading-1.3-1.4.md and upgrading-1.7-1.8.md, neither of which carries a rule — so the single master copy is read for every minor."
+  "ref": "cert-manager/website @ 2e32a5efc7a4ef284e271f54ac1b15e800e66fcc (origin/master, committed blobs)",
+  "lastVerified": "2026-10-19",
+  "note": "supportWindows transcribed from content/docs/releases/README.md at the pinned ref: the 'Currently supported releases' table's Supported Kubernetes column (1.20, 1.21) plus the 'Old cert-manager releases' table's Compatible Kubernetes column (0.11 through 1.19). SUPPORTED was chosen over the narrower TESTED column deliberately: supported is the vendor's own commitment ('we will still respond to and fix any bug reports for that version'), tested only what their kind-based e2e matrix happens to cover. The matrix lives in the cert-manager/website repo, NOT cert-manager/cert-manager — the code repo publishes no compatibility table. Floor is 0.11, the oldest row upstream publishes; anything older reports VERSION_NOT_IN_CATALOG (honest 'no vendor data'). The 1.12 row (1.22-1.32) is WIDER than 1.13's (1.21-1.27): 1.12 was a two-year commercial LTS whose window kept growing after 1.13 shipped — transcribed faithfully, ceilings are not monotonic across versions. upgradeNotes is EMPTY BY DESIGN since 2026-09-09: cert-manager's breaking changes moved out of this catalog and into the generated-rule pipeline (kb/cert-manager -> k8s-rules/cert-manager), the same move Argo CD, Karpenter and Traefik made. The catalog now carries the support matrix ONLY, and the hop it produces (K8S_SUPPORT) is what selects those rules; AddonCompatAnalyzer.forcedHop is deliberately independent of upgradeNotes so emptying this list does not silence the add-on. The knowledge base is extracted from content/docs/releases/upgrading/upgrading-<a.b>-<c.d>.md at THIS SAME REF, filed under the TARGET minor <c.d>; upgrading-1.12.md (the LTS guide) is filed under 1.13. The versioned doc snapshots (content/v1.1X-docs/) were compared against content/docs/ at this ref: only v1.15-docs differs, in upgrading-1.3-1.4.md and upgrading-1.7-1.8.md, neither of which carries a rule — so the single master copy is read for every minor. eol (2026-10-19): each 'Old cert-manager releases' row's EOL column at this ref, transcribed verbatim (the date of the second subsequent release; the 1.12 LTS row's own May 19, 2025). The two currently supported lines (1.20, 1.21) publish 'Release of 1.22 / 1.23', not a date, and carry none: an expected date is never transcribed. A row past its eol yields rtz-addon-cert-manager-vendor-eol and a VENDOR_EOL hop, and is never offered as an upgrade destination while a supported row covers the target. The commercial 1.17 LTS (Palo Alto Networks, EOL Feb 03 2027) is not modelled: its builds are not told apart from upstream 1.17, so a 1.17 install reads as upstream (end-of-life since 2025-10-07)."
  },
  "supportWindows": [
   {
    "version": "0.11",
    "minK8s": "1.9",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-01-21"
   },
   {
    "version": "0.12",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-03-11"
   },
   {
    "version": "0.13",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-05-06"
   },
   {
    "version": "0.14",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-07-23"
   },
   {
    "version": "0.15",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-09-02"
   },
   {
    "version": "0.16",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2020-11-24"
   },
   {
    "version": "1.0",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2021-02-10"
   },
   {
    "version": "1.1",
    "minK8s": "1.11",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2021-04-08"
   },
   {
    "version": "1.2",
    "minK8s": "1.16",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2021-06-15"
   },
   {
    "version": "1.3",
    "minK8s": "1.16",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2021-08-11"
   },
   {
    "version": "1.4",
    "minK8s": "1.16",
-   "maxK8s": "1.21"
+   "maxK8s": "1.21",
+   "eol": "2021-10-26"
   },
   {
    "version": "1.5",
    "minK8s": "1.16",
-   "maxK8s": "1.22"
+   "maxK8s": "1.22",
+   "eol": "2022-01-26"
   },
   {
    "version": "1.6",
    "minK8s": "1.17",
-   "maxK8s": "1.22"
+   "maxK8s": "1.22",
+   "eol": "2022-04-05"
   },
   {
    "version": "1.7",
    "minK8s": "1.18",
-   "maxK8s": "1.23"
+   "maxK8s": "1.23",
+   "eol": "2022-07-22"
   },
   {
    "version": "1.8",
    "minK8s": "1.19",
-   "maxK8s": "1.24"
+   "maxK8s": "1.24",
+   "eol": "2022-10-17"
   },
   {
    "version": "1.9",
    "minK8s": "1.20",
-   "maxK8s": "1.24"
+   "maxK8s": "1.24",
+   "eol": "2023-01-11"
   },
   {
    "version": "1.10",
    "minK8s": "1.20",
-   "maxK8s": "1.26"
+   "maxK8s": "1.26",
+   "eol": "2023-05-19"
   },
   {
    "version": "1.11",
    "minK8s": "1.21",
-   "maxK8s": "1.27"
+   "maxK8s": "1.27",
+   "eol": "2023-09-12"
   },
   {
    "version": "1.12",
    "minK8s": "1.22",
-   "maxK8s": "1.32"
+   "maxK8s": "1.32",
+   "eol": "2025-05-19"
   },
   {
    "version": "1.13",
    "minK8s": "1.21",
-   "maxK8s": "1.27"
+   "maxK8s": "1.27",
+   "eol": "2024-06-05"
   },
   {
    "version": "1.14",
    "minK8s": "1.24",
-   "maxK8s": "1.31"
+   "maxK8s": "1.31",
+   "eol": "2024-10-03"
   },
   {
    "version": "1.15",
    "minK8s": "1.25",
-   "maxK8s": "1.32"
+   "maxK8s": "1.32",
+   "eol": "2025-02-03"
   },
   {
    "version": "1.16",
    "minK8s": "1.25",
-   "maxK8s": "1.32"
+   "maxK8s": "1.32",
+   "eol": "2025-06-10"
   },
   {
    "version": "1.17",
    "minK8s": "1.29",
-   "maxK8s": "1.33"
+   "maxK8s": "1.33",
+   "eol": "2025-10-07"
   },
   {
    "version": "1.18",
    "minK8s": "1.29",
-   "maxK8s": "1.33"
+   "maxK8s": "1.33",
+   "eol": "2026-03-10"
   },
   {
    "version": "1.19",
    "minK8s": "1.31",
-   "maxK8s": "1.35"
+   "maxK8s": "1.35",
+   "eol": "2026-07-08"
   },
   {
    "version": "1.20",
@@ -160,5 +186,178 @@
   "Issuer",
   "ClusterIssuer"
  ],
- "rules": []
+ "rules": [],
+ "securityBulletins": {
+  "source": {
+   "url": "https://github.com/cert-manager/cert-manager/security/advisories",
+   "ref": "cert-manager/cert-manager repository security advisories (published, withdrawn excluded) + GA release tags",
+   "note": "Generated by scripts/readiness-agent/extract-github-advisories.py — do not hand-edit. Advisories published on or after 2024-01-01, one bulletin each. Affected = from <= version < fixedIn on the line; fixedIn = the advisory's patched version on that line, never inferred; fixedIn null = the advisory covers every release of the line from `from` on and names no patch there (upgrade to a newer minor). cvssSource: v3 | v4 | legacy | severity (a band's lower bound, not a score).",
+   "lastVerified": "2026-10-19"
+  },
+  "bulletins": [
+   {
+    "id": "GHSA-8rvj-mm4h-c258",
+    "published": "2026-06-25",
+    "cvss": 7.3,
+    "url": "https://github.com/cert-manager/cert-manager/security/advisories/GHSA-8rvj-mm4h-c258",
+    "affected": [
+     {
+      "line": "1.20",
+      "from": "1.20.0",
+      "fixedIn": "1.20.3"
+     },
+     {
+      "line": "1.19",
+      "from": "1.19.0",
+      "fixedIn": "1.19.6"
+     },
+     {
+      "line": "1.18",
+      "from": "1.18.0",
+      "fixedIn": null
+     }
+    ],
+    "advisories": [
+     {
+      "id": "GHSA-8rvj-mm4h-c258",
+      "cvss": 7.3,
+      "cvssSource": "v3",
+      "severity": "high",
+      "title": "Direct ACME Challenge resources can bypass Issuer DNS01 solver policy and use ClusterIssuer DNS credentials",
+      "cve": "CVE-2026-62290"
+     }
+    ]
+   },
+   {
+    "id": "GHSA-gx3x-vq4p-mhhv",
+    "published": "2026-02-02",
+    "cvss": 5.9,
+    "url": "https://github.com/cert-manager/cert-manager/security/advisories/GHSA-gx3x-vq4p-mhhv",
+    "affected": [
+     {
+      "line": "1.19",
+      "from": "1.19.0",
+      "fixedIn": "1.19.3"
+     },
+     {
+      "line": "1.18",
+      "from": "1.18.0",
+      "fixedIn": "1.18.5"
+     }
+    ],
+    "advisories": [
+     {
+      "id": "GHSA-gx3x-vq4p-mhhv",
+      "cvss": 5.9,
+      "cvssSource": "v3",
+      "severity": "medium",
+      "title": "cert-manager-controller DoS via Specially Crafted DNS Response",
+      "cve": "CVE-2026-25518"
+     }
+    ]
+   },
+   {
+    "id": "GHSA-r4pg-vg54-wxx4",
+    "published": "2024-11-20",
+    "cvss": 0,
+    "url": "https://github.com/cert-manager/cert-manager/security/advisories/GHSA-r4pg-vg54-wxx4",
+    "affected": [
+     {
+      "line": "1.16",
+      "from": "1.16.0",
+      "fixedIn": "1.16.2"
+     },
+     {
+      "line": "1.15",
+      "from": "1.15.0",
+      "fixedIn": "1.15.4"
+     },
+     {
+      "line": "1.14",
+      "from": "1.14.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.13",
+      "from": "1.13.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.12",
+      "from": "1.12.0",
+      "fixedIn": "1.12.14"
+     },
+     {
+      "line": "1.11",
+      "from": "1.11.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.10",
+      "from": "1.10.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.9",
+      "from": "1.9.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.8",
+      "from": "1.8.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.7",
+      "from": "1.7.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.6",
+      "from": "1.6.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.5",
+      "from": "1.5.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.4",
+      "from": "1.4.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.3",
+      "from": "1.3.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.2",
+      "from": "1.2.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.1",
+      "from": "1.1.0",
+      "fixedIn": null
+     },
+     {
+      "line": "1.0",
+      "from": "1.0.0",
+      "fixedIn": null
+     }
+    ],
+    "advisories": [
+     {
+      "id": "GHSA-r4pg-vg54-wxx4",
+      "cvss": 0.1,
+      "cvssSource": "severity",
+      "severity": "low",
+      "title": "Potential slowdown / DoS when parsing specially crafted PEM inputs"
+     }
+    ]
+   }
+  ]
+ }
 }

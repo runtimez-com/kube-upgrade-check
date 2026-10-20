@@ -17,6 +17,11 @@
   "verifyCommand": "kubectl get clusterrole cert-manager-edit -o json 2>/dev/null | jq -r '.rules[] | select(.apiGroups[]? | test(\"acme.cert-manager.io\")) | \"\\(.resources | join(\",\")): \\(.verbs | join(\",\"))\"'  # create on challenges, and create/patch/update on orders, are what the upgrade removes",
   "coversNotes": [
    "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole"
+  ],
+  "introducedIn": [
+   "1.19.6",
+   "1.20.3",
+   "1.21.0"
   ]
  },
  {

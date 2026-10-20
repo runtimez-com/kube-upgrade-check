@@ -73,5 +73,25 @@
   "version": "1.16",
   "note": "OperatorHub Packages Discontinued",
   "reason": "an OLM PACKAGING change, like the 1.4 Red Hat Marketplace one: the OperatorHub package stops at v1.16.5, and the move to Helm or static manifests is done through OLM, not through any object this product collects."
+ },
+ {
+  "version": "1.19",
+  "note": "Potentially Breaking: Challenge and Order RBAC restricted in `cert-manager-edit` ClusterRole",
+  "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
+ },
+ {
+  "version": "1.19",
+  "note": "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole",
+  "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
+ },
+ {
+  "version": "1.20",
+  "note": "Potentially Breaking: Challenge and Order RBAC restricted in `cert-manager-edit` ClusterRole",
+  "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
+ },
+ {
+  "version": "1.20",
+  "note": "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole",
+  "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
  }
 ]
