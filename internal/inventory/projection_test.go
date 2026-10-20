@@ -529,8 +529,13 @@ func TestArgoCDPerAppProjection(t *testing.T) {
 	if _, ok := s["resourceTrackingMethod"]; ok {
 		t.Errorf("an unknown tracking method is omitted, never shipped: %+v", s)
 	}
-	if _, ok := s["inClusterEnabled"]; ok {
-		t.Errorf("a non-boolean inClusterEnabled is omitted, never read as off: %+v", s)
+	if s["inClusterEnabled"] != true {
+		t.Errorf("anything but the exact string false leaves in-cluster enabled: %+v", s)
+	}
+	for _, v := range []string{"False", "0", " false", "f"} {
+		if got := cm(argo, map[string]any{argocdInClusterKey: v, argocdTrackingKey: ""})["argocdSettings"].(map[string]any); got["inClusterEnabled"] != true || got["resourceTrackingMethod"] != "" {
+			t.Errorf("%q: %+v", v, got)
+		}
 	}
 	if _, ok := cm(map[string]any{}, map[string]any{argocdInClusterKey: "false"})["argocdSettings"]; ok {
 		t.Error("an argocd-cm without part-of=argocd is not Argo CD's")
@@ -584,8 +589,12 @@ func TestArgoCDPerAppProjection(t *testing.T) {
 		}},
 		map[string]any{"controllerName": "c", "parentRef": map[string]any{"name": "gw2"}, "conditions": []any{
 			map[string]any{"type": "Accepted", "status": "Unknown"},
+			map[string]any{"type": "Programmed", "status": "Unknown"},
 		}},
 	}}}), nil)
+	if route["statusParentsConditioned"] != true {
+		t.Errorf("statusParentsConditioned = %v", route["statusParentsConditioned"])
+	}
 	parents := leaves(t, route, "statusParents")
 	if len(parents) != 2 {
 		t.Fatalf("statusParents = %+v", parents)
@@ -593,7 +602,20 @@ func TestArgoCDPerAppProjection(t *testing.T) {
 	if p := parents[0].(map[string]any); p["accepted"] != true || p["resolvedRefs"] != false || p["name"] != "gw" || p["namespace"] != "infra" {
 		t.Errorf("parent 0 = %+v", p)
 	}
-	if p := parents[1].(map[string]any); p["accepted"] != nil {
-		t.Errorf("Unknown stays absent: %+v", p)
+	if p := parents[1].(map[string]any); p["accepted"] != nil || p["programmed"] != false {
+		t.Errorf("Accepted Unknown stays absent, Programmed Unknown is false: %+v", p)
+	}
+	if p := parents[0].(map[string]any); p["programmed"] != nil {
+		t.Errorf("no Programmed condition stays absent: %+v", p)
+	}
+	for name, status := range map[string]map[string]any{
+		"no status":     {},
+		"empty parents": {"parents": []any{}},
+		"no conditions": {"parents": []any{map[string]any{"parentRef": map[string]any{"name": "gw"}}, map[string]any{"conditions": []any{}}}},
+	} {
+		r := projectSpec("GRPCRoute", obj("GRPCRoute", "web", "r", map[string]any{"spec": map[string]any{}, "status": status}), nil)
+		if r["statusParentsConditioned"] != false {
+			t.Errorf("%s: statusParentsConditioned = %v", name, r["statusParentsConditioned"])
+		}
 	}
 }

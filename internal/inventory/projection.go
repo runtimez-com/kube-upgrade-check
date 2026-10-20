@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -500,16 +499,15 @@ var argocdTrackingMethods = map[string]bool{"label": true, "annotation": true, "
 // so an unreadable value is never "off". Same reading as the agent's ResourceMapper.
 func argocdSettings(data map[string]any) map[string]any {
 	out := map[string]any{}
-	if v, ok := data[argocdTrackingKey]; !ok || v == nil {
+	if v, ok := data[argocdTrackingKey]; !ok || v == nil || v == "" {
 		out["resourceTrackingMethod"] = ""
 	} else if t := strings.TrimSpace(fmt.Sprint(v)); argocdTrackingMethods[t] {
 		out["resourceTrackingMethod"] = t
 	}
-	if v, ok := data[argocdInClusterKey]; !ok || v == nil {
-		out["inClusterEnabled"] = true
-	} else if b, err := strconv.ParseBool(strings.TrimSpace(fmt.Sprint(v))); err == nil {
-		out["inClusterEnabled"] = b
-	}
+	// Argo's own exact compare (settings.go: Data["cluster.inClusterEnabled"] != "false"), untrimmed and
+	// case-sensitive: "False", "0" or " false" leave in-cluster enabled.
+	v, _ := data[argocdInClusterKey].(string)
+	out["inClusterEnabled"] = v != "false"
 	return out
 }
 
@@ -818,7 +816,9 @@ func pdbConditionPart(v any) string {
 
 // projectRouteStatusParents is an HTTPRoute's or GRPCRoute's status parents: which controller
 // and parent each entry is about, and its Accepted / ResolvedRefs conditions as booleans. An
-// Unknown condition is left absent, as Argo CD's health check ignores it.
+// Unknown condition is left absent, as Argo CD's health check ignores it. Programmed is false for
+// any status but True (Unknown too), as that check reads it. statusParentsConditioned says whether
+// any parent (all of them, past the cap) reports a non-empty conditions list.
 func projectRouteStatusParents(obj map[string]any, base map[string]any) map[string]any {
 	out := map[string]any{}
 	for k, v := range base {
@@ -862,9 +862,22 @@ func projectRouteStatusParents(obj map[string]any, base map[string]any) map[stri
 				parent["resolvedRefs"] = st == "True"
 			}
 		}
+		for _, c := range listAt(pm, "conditions") {
+			if cm, ok := c.(map[string]any); ok && cm["type"] == "Programmed" && cm["status"] != nil {
+				parent["programmed"] = fmt.Sprint(cm["status"]) == "True"
+				break
+			}
+		}
 		parents = append(parents, parent)
 	}
 	out["statusParents"] = parents
+	conditioned := false
+	for _, p := range listAt(status, "parents") {
+		if pm, ok := p.(map[string]any); ok && len(listAt(pm, "conditions")) > 0 {
+			conditioned = true
+		}
+	}
+	out["statusParentsConditioned"] = conditioned
 	return out
 }
 
