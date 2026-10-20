@@ -148,12 +148,12 @@
       "objectKind": "ConfigMap",
       "objectName": "^argocd-cm$",
       "target": "argocdSettings.resourceTrackingMethod",
-      "value": "^(label)?$",
-      "reason": "reads `application.resourceTrackingMethod` from the argocd-cm agent 0.4.144+ projects: absent or `label` means the 3.0 switch to annotation tracking applies; `annotation` or `annotation+label` is already on it. An older agent does not project the setting, so the rule stays unsettled there"
+      "value": "^$",
+      "reason": "reads `application.resourceTrackingMethod` from the argocd-cm agent 0.4.144+ projects: only an absent or empty value follows the default, which 3.0 switches to annotation (util/settings GetTrackingMethod falls back only on \"\"). An explicit `label` is kept as label by 3.0 and `annotation` / `annotation+label` are already on it, so those clear. An older agent does not project the setting, so the rule stays unsettled there"
     },
     "quote": "The default behavior for tracking resources has changed to use annotation-based tracking instead of label-based tracking.",
-    "remediation": "Either set `application.resourceTrackingMethod: annotation` deliberately before upgrading, or opt out with `label`. After switching, sync every Application once (even if in sync) so orphan detection works on the next sync; resources you track by label outside Argo CD need the tracking annotation instead.",
-    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.application\\.resourceTrackingMethod}' # empty or label = the default switch to annotation tracking applies at 3.0"
+    "remediation": "Either set `application.resourceTrackingMethod: annotation` deliberately before upgrading, or set `label` explicitly to keep label tracking (3.0 honours an explicit value, and this finding then clears). After switching, sync every Application once (even if in sync) so orphan detection works on the next sync; resources you track by label outside Argo CD need the tracking annotation instead.",
+    "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.application\\.resourceTrackingMethod}' # empty = the default switch to annotation tracking applies at 3.0; label = kept as label; annotation* = already on it"
   },
   {
     "ruleId": "rtz-argocd-3.0-apply-out-of-sync-only-apps-need-explicit-sync",
@@ -171,8 +171,8 @@
       "objectKind": "ConfigMap",
       "objectName": "^argocd-cm$",
       "target": "argocdSettings.resourceTrackingMethod",
-      "value": "^(label)?$",
-      "reason": "upstream conditions this on label-based tracking (absent or `label` in argocd-cm, the 2.x default); an Argo CD already on annotation tracking has nothing to re-sync. An agent older than 0.4.144 does not project the setting, so the rule stays unsettled there"
+      "value": "^$",
+      "reason": "the orphans follow the actual switch to annotation tracking, which 3.0 makes only where argocd-cm leaves the method at its default (absent or empty); an explicit `label` stays label and an Argo CD already on annotation tracking has nothing to re-sync. An agent older than 0.4.144 does not project the setting, so the rule stays unsettled there"
     },
     "quote": "If you are using label-based tracking, it is also important to detect whether you have Applications that use `ApplyOutOfSyncOnly=true` syncOptions, as such Applications are likely to have orphan resources after switching to `annotation` tracking method and need to be synced explicitly right after the upgrade.",
     "remediation": "Right after upgrading, run an explicit sync WITHOUT `ApplyOutOfSyncOnly` on each Application named here (UI, or the API with the option cleared) so their resources receive the tracking annotation; otherwise they read as orphans.",
@@ -246,10 +246,10 @@
       "objectKind": "Application",
       "target": "pluginEnvEmpty",
       "value": "^true$",
-      "reason": "names Applications whose config management plugin source sets an env entry with an empty value, as agent 0.4.144+ projects it (presence only, never the names or values); what the plugin script does with it is not inspected"
+      "reason": "names Applications whose config management plugin source sets an env entry with an empty value, as agent 0.4.144+ projects it (presence only, never the names or values). Only `plugin.env` is checked: 3.0 also passes other empty variables to the plugin — a `plugin.parameters` entry with an empty string (`PARAM_<NAME>`), build variables such as `ARGOCD_APP_SOURCE_TARGET_REVISION` when targetRevision is unset, and values that substitute to empty — so a cleared result covers `plugin.env` alone. What the plugin script does with any of them is not inspected"
     },
     "quote": "In Argo CD 3.0, empty environment variables are now passed to config management plugins.",
-    "remediation": "Each Application named here passes an env entry with an empty value to its config management plugin. From 3.0 the plugin receives it as an empty variable where it used to be absent: check that the plugin script treats an empty variable the way it treated an unset one, or drop the empty entry.",
+    "remediation": "Each Application named here passes an env entry with an empty value to its config management plugin. From 3.0 the plugin receives it as an empty variable where it used to be absent: check that the plugin script treats an empty variable the way it treated an unset one, or drop the empty entry. Plugins that read `PARAM_*` or `ARGOCD_APP_*` variables need the same check even when no Application is named, because those can arrive empty too.",
     "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select([.spec.source.plugin.env[]?, .spec.sources[]?.plugin.env[]?] | any((.value // \"\") == \"\")) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed pass an empty env value to their plugin"
   },
   {
