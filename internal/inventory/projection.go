@@ -48,7 +48,11 @@ var projectors = map[string]projector{
 
 	"Application":    projectApplication,
 	"ApplicationSet": projectApplicationSet,
-	"AppProject":     projectAppProject,
+
+	// Gateway API routes: the spec the rules read is their STATUS parents (Argo CD 3.1 health).
+	"HTTPRoute":  projectRouteStatusParents,
+	"GRPCRoute":  projectRouteStatusParents,
+	"AppProject": projectAppProject,
 
 	"NodePool":     projectNodePool,
 	"NodeClaim":    projectNodeClaim,
@@ -61,6 +65,22 @@ var projectors = map[string]projector{
 	// StorageClass has no spec: provisioner and the binding fields are top-level. Same four keys
 	// the agent's ResourceMapper writes (parameters are not collected by either).
 	"StorageClass": projectStorageClass,
+}
+
+// statusProjectors derive the status a rule reads, for kinds whose raw status is not the shape
+// the hosted product's agent ships. raw is the whole status, kept the caller's projected keys.
+var statusProjectors = map[string]func(raw map[string]any, kept map[string]any) map[string]any{
+	"Application":         projectApplicationStatus,
+	"PodDisruptionBudget": projectPDBStatus,
+}
+
+// projectStatus is the status recorded for one listed object.
+func projectStatus(kind string, raw map[string]any, projection *Projection) map[string]any {
+	kept := project(raw, projection)
+	if p, ok := statusProjectors[kind]; ok {
+		return p(raw, kept)
+	}
+	return kept
 }
 
 // HasProjector reports whether a kind's rows are derived rather than raw.
@@ -384,6 +404,9 @@ func projectConfigMap(obj map[string]any, base map[string]any) map[string]any {
 	meta, _ := obj["metadata"].(map[string]any)
 	ns, _ := meta["namespace"].(string)
 	name, _ := meta["name"].(string)
+	if labels, _ := meta["labels"].(map[string]any); name == "argocd-cm" && fmt.Sprint(labels["app.kubernetes.io/part-of"]) == "argocd" {
+		out["argocdSettings"] = argocdSettings(data)
+	}
 	if ns != "kube-system" || data == nil {
 		return out
 	}
@@ -459,6 +482,33 @@ func corefilePluginOptions(values []string) map[string]any {
 		}
 	}
 	return options
+}
+
+// argocd-cm keys whose DEFAULT the Argo CD 3.0 upgrade note changes.
+const (
+	argocdTrackingKey  = "application.resourceTrackingMethod"
+	argocdInClusterKey = "cluster.inClusterEnabled"
+)
+
+var argocdTrackingMethods = map[string]bool{"label": true, "annotation": true, "annotation+label": true}
+
+// argocdSettings is the two argocd-cm settings the 3.0 rules read, each shipped only as one of
+// Argo's own tokens (nothing else in argocd-cm is read). resourceTrackingMethod is "" when the
+// key is absent and omitted when it is not label / annotation / annotation+label;
+// inClusterEnabled is true when absent (Argo's default) and omitted when not a strict boolean,
+// so an unreadable value is never "off". Same reading as the agent's ResourceMapper.
+func argocdSettings(data map[string]any) map[string]any {
+	out := map[string]any{}
+	if v, ok := data[argocdTrackingKey]; !ok || v == nil || v == "" {
+		out["resourceTrackingMethod"] = ""
+	} else if t := strings.TrimSpace(fmt.Sprint(v)); argocdTrackingMethods[t] {
+		out["resourceTrackingMethod"] = t
+	}
+	// Argo's own exact compare (settings.go: Data["cluster.inClusterEnabled"] != "false"), untrimmed and
+	// case-sensitive: "False", "0" or " false" leave in-cluster enabled.
+	v, _ := data[argocdInClusterKey].(string)
+	out["inClusterEnabled"] = v != "false"
+	return out
 }
 
 // projectSecret is key names and the type. data and stringData never leave here.
@@ -649,6 +699,30 @@ func projectApplication(obj map[string]any, base map[string]any) map[string]any 
 		}
 	}
 	out["helm"], out["helmVersion"] = helm, helmVersion
+	// The cluster Argo CD runs in, as Argo names it (3.0: with cluster.inClusterEnabled false these
+	// Applications go Unknown). The server URL never leaves here, only this boolean.
+	server, name := "", ""
+	if dest, ok := spec["destination"].(map[string]any); ok {
+		if dest["server"] != nil {
+			server = fmt.Sprint(dest["server"])
+		}
+		if dest["name"] != nil {
+			name = fmt.Sprint(dest["name"])
+		}
+	}
+	out["destinationInCluster"] = inClusterServer.MatchString(server) || name == "in-cluster"
+	// Any config-management-plugin env entry with an empty value (3.0: plugins now receive empty
+	// env vars). A presence bit: env names and values are application content.
+	pluginEnvEmpty := false
+	for _, src := range sources {
+		plugin, _ := src["plugin"].(map[string]any)
+		for _, e := range listAt(plugin, "env") {
+			if em, ok := e.(map[string]any); ok && (em["value"] == nil || em["value"] == "") {
+				pluginEnvEmpty = true
+			}
+		}
+	}
+	out["pluginEnvEmpty"] = pluginEnvEmpty
 	automated, managedNamespaceMetadata := false, false
 	syncOptions := []any{}
 	if policy, ok := spec["syncPolicy"].(map[string]any); ok {
@@ -672,6 +746,143 @@ func projectApplication(obj map[string]any, base map[string]any) map[string]any 
 	}
 	return out
 }
+
+// inClusterServer is Argo CD's in-cluster API address, trailing slash tolerated.
+var inClusterServer = regexp.MustCompile(`^https://kubernetes\.default\.svc/?$`)
+
+// argocdSourceTypes is Argo CD's ApplicationSourceType enum.
+var argocdSourceTypes = map[string]bool{"Helm": true, "Kustomize": true, "Directory": true, "Plugin": true}
+
+// projectApplicationStatus adds sourceTypes: how the repo-server rendered each source
+// (status.sourceType, or status.sourceTypes[] for a multi-source app), Argo's enum only,
+// [] when the controller set none. Lets a Helm or Kustomize note name an auto-detected chart or
+// kustomization that has no helm/kustomize block in its spec.
+func projectApplicationStatus(raw map[string]any, kept map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range kept {
+		out[k] = v
+	}
+	types := []string{}
+	add := func(v any) {
+		if s := fmt.Sprint(v); v != nil && argocdSourceTypes[s] && !containsString(types, s) {
+			types = append(types, s)
+		}
+	}
+	add(raw["sourceType"])
+	for _, v := range listAt(raw, "sourceTypes") {
+		add(v)
+	}
+	out["sourceTypes"] = toAny(types)
+	return out
+}
+
+// maxPDBConditions bounds the conditions kept per budget, as the agent does.
+const maxPDBConditions = 5
+
+// projectPDBStatus writes conditions as "type:status:reason" strings (reason "" when unset), so a
+// rule can test the combination Argo CD's 2.13 PDB health check reads: any False condition whose
+// reason is not InsufficientPods is Degraded. [] when there are none. Each part is stripped of
+// ":" and capped at 64, so a reason can never forge a different split.
+func projectPDBStatus(raw map[string]any, kept map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range kept {
+		out[k] = v
+	}
+	conditions := []string{}
+	for _, c := range listAt(raw, "conditions") {
+		cm, ok := c.(map[string]any)
+		if !ok || cm["type"] == nil {
+			continue
+		}
+		if len(conditions) >= maxPDBConditions {
+			break
+		}
+		conditions = append(conditions, pdbConditionPart(cm["type"])+":"+pdbConditionPart(cm["status"])+":"+pdbConditionPart(cm["reason"]))
+	}
+	out["conditions"] = toAny(conditions)
+	return out
+}
+
+func pdbConditionPart(v any) string {
+	if v == nil {
+		return ""
+	}
+	s := strings.NewReplacer(":", "", "\r", "", "\n", " ").Replace(fmt.Sprint(v))
+	if r := []rune(s); len(r) > 64 {
+		s = string(r[:64])
+	}
+	return s
+}
+
+// projectRouteStatusParents is an HTTPRoute's or GRPCRoute's status parents: which controller
+// and parent each entry is about, and its Accepted / ResolvedRefs conditions as booleans. An
+// Unknown condition is left absent, as Argo CD's health check ignores it. Programmed is false for
+// any status but True (Unknown too), as that check reads it. statusParentsConditioned says whether
+// any parent (all of them, past the cap) reports a non-empty conditions list.
+func projectRouteStatusParents(obj map[string]any, base map[string]any) map[string]any {
+	out := map[string]any{}
+	for k, v := range base {
+		out[k] = v
+	}
+	parents := []any{}
+	status, _ := obj["status"].(map[string]any)
+	for i, p := range listAt(status, "parents") {
+		if i >= maxRouteParents {
+			out["statusParentsTruncated"] = true
+			break
+		}
+		pm, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		parent := map[string]any{}
+		if pm["controllerName"] != nil {
+			parent["controllerName"] = fmt.Sprint(pm["controllerName"])
+		}
+		if ref, ok := pm["parentRef"].(map[string]any); ok {
+			for _, k := range []string{"namespace", "name", "sectionName"} {
+				if ref[k] != nil {
+					parent[k] = fmt.Sprint(ref[k])
+				}
+			}
+		}
+		for _, c := range listAt(pm, "conditions") {
+			cm, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			st := fmt.Sprint(cm["status"])
+			if st != "True" && st != "False" {
+				continue
+			}
+			switch fmt.Sprint(cm["type"]) {
+			case "Accepted":
+				parent["accepted"] = st == "True"
+			case "ResolvedRefs":
+				parent["resolvedRefs"] = st == "True"
+			}
+		}
+		for _, c := range listAt(pm, "conditions") {
+			if cm, ok := c.(map[string]any); ok && cm["type"] == "Programmed" && cm["status"] != nil {
+				parent["programmed"] = fmt.Sprint(cm["status"]) == "True"
+				break
+			}
+		}
+		parents = append(parents, parent)
+	}
+	out["statusParents"] = parents
+	conditioned := false
+	for _, p := range listAt(status, "parents") {
+		if pm, ok := p.(map[string]any); ok && len(listAt(pm, "conditions")) > 0 {
+			conditioned = true
+		}
+	}
+	out["statusParentsConditioned"] = conditioned
+	return out
+}
+
+// maxRouteParents bounds the status parents kept per route, as the agent does.
+const maxRouteParents = 32
 
 const clusterVersionLabel = "argocd.argoproj.io/kubernetes-version"
 
@@ -894,6 +1105,15 @@ func orderedValues(m map[string]any) []string {
 		}
 	}
 	return out
+}
+
+func containsString(items []string, s string) bool {
+	for _, item := range items {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }
 
 func toAny(items []string) []any {

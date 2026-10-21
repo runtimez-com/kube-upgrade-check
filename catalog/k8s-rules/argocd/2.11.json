@@ -24,5 +24,24 @@
     "quote": "Starting with Argo CD 2.11.2, the NetworkPolicy for the `argocd-redis` and `argocd-redis-ha-haproxy` dropped Egress restrictions. This change was made to allow access to the Kubernetes API to create a secret to secure Redis access.",
     "remediation": "If your policy required Redis to be egress-locked, add back an Egress rule that allows the Kubernetes API plus the traffic Redis itself needs (the note's example), instead of the unrestricted egress the new manifests ship.",
     "verifyCommand": "kubectl -n argocd get networkpolicy -o json | jq -r '.items[] | select(.metadata.name | test(\"redis\")) | .metadata.name + \": egress=\" + (.spec.egress | tostring | .[0:120])' # a redis policy printed with egress=null or [] restricts nothing after the upgrade"
+  },
+  {
+    "ruleId": "rtz-argocd-2.11-added-health-checks-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 2 resource kinds — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs whose group and kind are on the list (group and kind are matched separately, so a CRD pairing a listed group with another listed group's kind is named too)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^[^.]+\\.(beat\\.k8s\\.elastic\\.co|cloudfront\\.aws\\.crossplane\\.io)$",
+      "target": "kind",
+      "value": "^(Beat|Distribution)$"
+    },
+    "quote": "* cloudfront.aws.crossplane.io/Distribution * beat.k8s.elastic.co/Beat",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(IN(.spec.group + \"/\" + .spec.names.kind; \"cloudfront.aws.crossplane.io/Distribution\", \"beat.k8s.elastic.co/Beat\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 2.11 — check the status of their objects in your Applications"
   }
 ]

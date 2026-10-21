@@ -93,5 +93,24 @@
     },
     "quote": "Please see semantic conventions release notes for a list of changed metric names and dropped attributes, which may require changes in your Argo CD Grafana dashboards/alerts based on OTEL.",
     "remediation": "Review dashboards and alerts that query Argo CD's OTel-exported metrics against the semantic-conventions 1.40 rename list before upgrading."
+  },
+  {
+    "ruleId": "rtz-argocd-3.4-custom-health-checks-added-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 1 resource kind — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs whose group and kind are on the list (group and kind are matched separately, so a CRD pairing a listed group with another listed group's kind is named too)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^[^.]+\\.(nmstate\\.io)$",
+      "target": "kind",
+      "value": "^(NodeNetworkConfigurationPolicy)$"
+    },
+    "quote": "* nmstate.io/NodeNetworkConfigurationPolicy",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(IN(.spec.group + \"/\" + .spec.names.kind; \"nmstate.io/NodeNetworkConfigurationPolicy\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 3.4 — check the status of their objects in your Applications"
   }
 ]

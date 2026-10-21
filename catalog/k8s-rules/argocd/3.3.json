@@ -133,9 +133,35 @@
     "title": "Bundled Kustomize 5.8.1: exec-plugin argument parsing and Helm namespace propagation change",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "which Applications render through Kustomize exec plugins or Helm charts inside kustomizations lives in Git, not in the inventory"
+      "reason": "which Applications render through Kustomize exec plugins or Helm charts inside kustomizations lives in Git, not in the inventory. The hint names every Application Argo CD renders through Kustomize (its status source type)."
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "sourceTypes[]",
+      "value": "^Kustomize$"
     },
     "quote": "However, note that Kustomize 5.7.1 introduces code to replace the `shlex` library used for parsing arguments in exec plugins. If any existing manifests become corrupted, please follow the instructions in the 5.7.1 release notes.",
-    "remediation": "Render kustomizations that use exec plugins or Helm charts with Kustomize 5.8.x before upgrading; argument quoting for exec plugins and namespace propagation into Helm charts both changed."
+    "remediation": "Render kustomizations that use exec plugins or Helm charts with Kustomize 5.8.x before upgrading; argument quoting for exec plugins and namespace propagation into Helm charts both changed.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.status.sourceType == \"Kustomize\" or ([.status.sourceTypes[]?] | index(\"Kustomize\"))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Kustomize — build each kustomization with kustomize 5.8.1 before upgrading"
+  },
+  {
+    "ruleId": "rtz-argocd-3.3-added-health-checks-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 8 resource kinds — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs for the listed kinds, every Config Connector (`*.cnrm.cloud.google.com`) CRD and every grafana-org-operator (`grafana-org-operator.kubitus-project.gitlab.io`) CRD, which the two wildcard entries cover"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(cephclusters\\.ceph\\.rook\\.io|cephobjectstores\\.ceph\\.rook\\.io|objectbucketclaims\\.objectbucket\\.io|scaledjobs\\.keda\\.sh|servicebindings\\.services\\.cloud\\.sap\\.com|serviceinstances\\.services\\.cloud\\.sap\\.com)$|^[^.]+\\.[a-z0-9-]+\\.cnrm\\.cloud\\.google\\.com$|^[^.]+\\.grafana-org-operator\\.kubitus-project\\.gitlab\\.io$",
+      "target": "group",
+      "value": "."
+    },
+    "quote": "* ceph.rook.io/CephCluster * ceph.rook.io/CephObjectStore * objectbucket.io/ObjectBucketClaim * keda.sh/ScaledJob * services.cloud.sap.com/ServiceBinding * services.cloud.sap.com/ServiceInstance * \\_.cnrm.cloud.google.com/\\_ * grafana-org-operator.kubitus-project.gitlab.io/\\_",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select((IN(.metadata.name; \"cephclusters.ceph.rook.io\", \"cephobjectstores.ceph.rook.io\", \"objectbucketclaims.objectbucket.io\", \"scaledjobs.keda.sh\", \"servicebindings.services.cloud.sap.com\", \"serviceinstances.services.cloud.sap.com\") or (.spec.group | test(\"\\\\.cnrm\\\\.cloud\\\\.google\\\\.com$\")) or .spec.group == \"grafana-org-operator.kubitus-project.gitlab.io\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 3.3 — check the status of their objects in your Applications"
   }
 ]

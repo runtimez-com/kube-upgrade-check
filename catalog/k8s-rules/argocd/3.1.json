@@ -47,5 +47,76 @@
     "quote": "The server now always handles this flow, PKCE being enabled or not.",
     "remediation": "If `oidc.config` sets `enablePKCEAuthentication: true`, add `<argocd-url>/auth/callback` to the OIDC client's redirect URIs at your identity provider before upgrading, or logins fail.",
     "verifyCommand": "kubectl -n argocd get cm argocd-cm -o jsonpath='{.data.oidc\\.config}' | grep enablePKCEAuthentication # printed true = register /auth/callback as a redirect URI"
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-added-health-checks-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 19 resource kinds — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs whose group and kind are on the list (group and kind are matched separately, so a CRD pairing a listed group with another listed group's kind is named too) (HTTPRoute and GRPCRoute have their own rule)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^[^.]+\\.(core\\.spinkube\\.dev|gateway\\.networking\\.k8s\\.io|grafana\\.integreatly\\.org|kyverno\\.io|logstash\\.k8s\\.elastic\\.co|opentelemetry\\.io|postgresql\\.cnpg\\.io|projectcontour\\.io|rabbitmq\\.com)$",
+      "target": "kind",
+      "value": "^(Binding|Cluster|Exchange|Gateway|GrafanaDashboard|GrafanaFolder|HTTPProxy|Logstash|OpenTelemetryCollector|Permission|Policy|Queue|Shovel|SpinApp|User|Vhost)$"
+    },
+    "quote": "* core.spinkube.dev/SpinApp * opentelemetry.io/OpenTelemetryCollector * logstash.k8s.elastic.co/Logstash * kyverno.io/Policy * projectcontour.io/HTTPProxy * grafana.integreatly.org/GrafanaDashboard * grafana.integreatly.org/GrafanaFolder * postgresql.cnpg.io/Cluster * gateway.networking.k8s.io/GRPCRoute * gateway.networking.k8s.io/Gateway * gateway.networking.k8s.io/HTTPRoute * rabbitmq.com/Binding * rabbitmq.com/Exchange * rabbitmq.com/Permission * rabbitmq.com/Policy * rabbitmq.com/Queue * rabbitmq.com/Shovel * rabbitmq.com/User * rabbitmq.com/Vhost",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(IN(.spec.group + \"/\" + .spec.names.kind; \"core.spinkube.dev/SpinApp\", \"opentelemetry.io/OpenTelemetryCollector\", \"logstash.k8s.elastic.co/Logstash\", \"kyverno.io/Policy\", \"projectcontour.io/HTTPProxy\", \"grafana.integreatly.org/GrafanaDashboard\", \"grafana.integreatly.org/GrafanaFolder\", \"postgresql.cnpg.io/Cluster\", \"gateway.networking.k8s.io/Gateway\", \"rabbitmq.com/Binding\", \"rabbitmq.com/Exchange\", \"rabbitmq.com/Permission\", \"rabbitmq.com/Policy\", \"rabbitmq.com/Queue\", \"rabbitmq.com/Shovel\", \"rabbitmq.com/User\", \"rabbitmq.com/Vhost\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 3.1 — check the status of their objects in your Applications"
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-gateway-route-health-degraded",
+    "severity": "MEDIUM",
+    "title": "HTTPRoutes and GRPCRoutes now carry health — a route its parent rejected turns its Application Degraded",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute|GRPCRoute",
+      "target": "statusParents[]",
+      "value": "^(accepted|resolvedRefs)=false$",
+      "reason": "names routes whose status reports Accepted=False or ResolvedRefs=False for a parent, which is what the 3.1 route health checks read as Degraded; the check skips a parent whose conditions are from an older generation, and such a route may still be named"
+    },
+    "quote": "* gateway.networking.k8s.io/GRPCRoute * gateway.networking.k8s.io/Gateway * gateway.networking.k8s.io/HTTPRoute",
+    "remediation": "Each route named here reads Degraded from 3.1, and so does the Application that deploys it: a parent Gateway did not accept it, or a backendRef or other reference does not resolve. Fix the parentRefs, the listener's allowedRoutes, or the backendRefs before upgrading, or override `resource.customizations.health.gateway.networking.k8s.io_HTTPRoute` (or `_GRPCRoute`) in argocd-cm.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,grpcroutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(any(.status.parents[]?.conditions[]?; (.type == \"Accepted\" or .type == \"ResolvedRefs\") and .status == \"False\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # routes printed read Degraded under the 3.1 health checks"
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-gateway-route-health-not-programmed",
+    "severity": "MEDIUM",
+    "title": "HTTPRoutes and GRPCRoutes now carry health — a route whose parent has not programmed it turns its Application Progressing",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute|GRPCRoute",
+      "target": "statusParents[]",
+      "value": "^programmed=false$",
+      "reason": "names routes whose status reports a parent's Programmed condition as anything but True (Unknown included), which the 3.1 route health checks read as Progressing unless another parent is Degraded first; the HTTPRoute check skips a parent whose conditions are from an older generation, and such a route may still be named"
+    },
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute|GRPCRoute",
+      "target": "statusParentsConditioned",
+      "value": "^(true|false)$",
+      "reason": "the route projection carries Programmed only from the agent that also ships statusParentsConditioned; An agent older than 0.4.145 does not project it, so the rule stays unsettled there"
+    },
+    "quote": "* gateway.networking.k8s.io/GRPCRoute * gateway.networking.k8s.io/Gateway * gateway.networking.k8s.io/HTTPRoute",
+    "remediation": "Each route named here reads Progressing from 3.1, and so does the Application that deploys it, which also holds the sync waves after it: a parent Gateway reports the route as not yet programmed into its data plane. Find out why the controller has not programmed it (the condition's reason and message) before upgrading, or override `resource.customizations.health.gateway.networking.k8s.io_HTTPRoute` (or `_GRPCRoute`) in argocd-cm.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,grpcroutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(any(.status.parents[]?.conditions[]?; .type == \"Programmed\" and .status != \"True\")) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # routes printed read Progressing under the 3.1 health checks"
+  },
+  {
+    "ruleId": "rtz-argocd-3.1-gateway-route-health-awaiting-status",
+    "severity": "MEDIUM",
+    "title": "HTTPRoutes and GRPCRoutes now carry health — a route no parent has reported on stays Progressing",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute|GRPCRoute",
+      "target": "statusParentsConditioned",
+      "value": "^false$",
+      "reason": "names routes with no status, no status parents, or only parents without conditions, which the 3.1 route health checks read as Progressing (\"Waiting for status\") for as long as that lasts; the HTTPRoute check also waits when every parent's conditions are from an older generation, which is not detected. An agent older than 0.4.145 does not project it, so the rule stays unsettled there"
+    },
+    "quote": "* gateway.networking.k8s.io/GRPCRoute * gateway.networking.k8s.io/Gateway * gateway.networking.k8s.io/HTTPRoute",
+    "remediation": "Each route named here reads Progressing from 3.1, and so does the Application that deploys it, which also holds the sync waves after it: no Gateway controller has written a status for it, usually because its parentRefs name no Gateway a running controller owns. Fix or remove the parentRefs, or the route, before upgrading, or override `resource.customizations.health.gateway.networking.k8s.io_HTTPRoute` (or `_GRPCRoute`) in argocd-cm.",
+    "verifyCommand": "kubectl get httproutes.gateway.networking.k8s.io,grpcroutes.gateway.networking.k8s.io -A -o json | jq -r '.items[] | select(all(.status.parents[]?; (.conditions // []) | length == 0)) | .kind + \" \" + .metadata.namespace + \"/\" + .metadata.name' # routes printed wait for status under the 3.1 health checks"
   }
 ]
