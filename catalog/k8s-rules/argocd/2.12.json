@@ -52,5 +52,24 @@
     "quote": "If you are using server-side apply with multiple field managers to manage a single `selector` or `labelSelector` field in an ApplicationSet, that field management must be changed to be atomic starting with 2.12.",
     "remediation": "Where more than one tool server-side-applies parts of an ApplicationSet's generator selectors, make one of them own the whole selector (`matchLabels` and `matchExpressions` together) before upgrading the CRD.",
     "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.metadata.managedFields[1] != null) | .metadata.namespace + \"/\" + .metadata.name + \": \" + ([.metadata.managedFields[].manager] | unique | join(\",\"))' # ApplicationSets printed have several field managers — check whether two of them touch one selector"
+  },
+  {
+    "ruleId": "rtz-argocd-2.12-added-health-checks-crds",
+    "severity": "LOW",
+    "title": "Built-in health checks added for 18 resource kinds — Applications that deploy them can turn Degraded or Progressing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "objects of these custom resource kinds, and their current health, are not collected; the hint names the installed CRDs whose group and kind are on the list (group and kind are matched separately, so a CRD pairing a listed group with another listed group's kind is named too)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^[^.]+\\.(camel\\.apache\\.org|core\\.humio\\.com|k8s\\.mariadb\\.com|kafka\\.strimzi\\.io|keda\\.sh|openfaas\\.com)$",
+      "target": "kind",
+      "value": "^(Backup|Database|Function|Grant|HumioAction|HumioAlert|HumioCluster|HumioIngestToken|HumioParser|HumioRepository|HumioView|Integration|KafkaBridge|KafkaConnector|MariaDB|ScaledObject|SqlJob|User)$"
+    },
+    "quote": "* core.humio.com/HumioAction * core.humio.com/HumioAlert * core.humio.com/HumioCluster * core.humio.com/HumioIngestToken * core.humio.com/HumioParser * core.humio.com/HumioRepository * core.humio.com/HumioView * k8s.mariadb.com/Backup * k8s.mariadb.com/Database * k8s.mariadb.com/Grant * k8s.mariadb.com/MariaDB * k8s.mariadb.com/SqlJob * k8s.mariadb.com/User * kafka.strimzi.io/KafkaBridge * kafka.strimzi.io/KafkaConnector * keda.sh/ScaledObject * openfaas.com/Function * camel.apache.org/Integration",
+    "remediation": "Objects of these kinds start counting toward their Application's health at this version: one the new check reads as Degraded or Progressing turns its Application Degraded or Progressing and holds later sync waves. Check the status of these objects in the Applications that deploy them before upgrading, or override a kind with `resource.customizations.health.<group>_<Kind>` in argocd-cm.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(IN(.spec.group + \"/\" + .spec.names.kind; \"core.humio.com/HumioAction\", \"core.humio.com/HumioAlert\", \"core.humio.com/HumioCluster\", \"core.humio.com/HumioIngestToken\", \"core.humio.com/HumioParser\", \"core.humio.com/HumioRepository\", \"core.humio.com/HumioView\", \"k8s.mariadb.com/Backup\", \"k8s.mariadb.com/Database\", \"k8s.mariadb.com/Grant\", \"k8s.mariadb.com/MariaDB\", \"k8s.mariadb.com/SqlJob\", \"k8s.mariadb.com/User\", \"kafka.strimzi.io/KafkaBridge\", \"kafka.strimzi.io/KafkaConnector\", \"keda.sh/ScaledObject\", \"openfaas.com/Function\", \"camel.apache.org/Integration\")) | .metadata.name' # CRDs printed gain an Argo CD health check at 2.12 — check the status of their objects in your Applications"
   }
 ]

@@ -199,7 +199,7 @@ func listCustomResources(ctx context.Context, c *cluster.Client, kind string, gv
 			// hosted product's agent projects them; the rest keep the raw keys asked for.
 			cr.Spec = projectSpec(kind, item.Object, projection)
 			if status, ok := item.Object["status"].(map[string]any); ok {
-				cr.Status = project(status, projection)
+				cr.Status = projectStatus(kind, status, projection)
 			}
 			out = append(out, cr)
 		}

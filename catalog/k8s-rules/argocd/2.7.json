@@ -24,10 +24,17 @@
     "title": "Bundled Kustomize jumps a major version (4.5.7 to 5.0.1)",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "which Applications render through Kustomize, and what their kustomizations contain, is not collected — a major-version bump of the bundled binary can only be checked by rendering"
+      "reason": "what each kustomization contains lives in Git, not in the inventory — a major-version bump of the bundled binary can only be checked by rendering. The hint names every Application Argo CD renders through Kustomize (its status source type)."
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Application",
+      "target": "sourceTypes[]",
+      "value": "^Kustomize$"
     },
     "quote": "Note that bundled Kustomize version has been upgraded from 4.5.7 to 5.0.1.",
-    "remediation": "Render your Kustomize-based Applications with kustomize 5.0.x before upgrading; Kustomize 5 removed fields deprecated in 4.x, so a kustomization that still relies on them fails to build in the repo-server."
+    "remediation": "Render your Kustomize-based Applications with kustomize 5.0.x before upgrading; Kustomize 5 removed fields deprecated in 4.x, so a kustomization that still relies on them fails to build in the repo-server.",
+    "verifyCommand": "kubectl get applications -A -o json | jq -r '.items[] | select(.status.sourceType == \"Kustomize\" or ([.status.sourceTypes[]?] | index(\"Kustomize\"))) | .metadata.namespace + \"/\" + .metadata.name' # Applications printed render through Kustomize — build each kustomization with kustomize 5.0 before upgrading"
   },
   {
     "ruleId": "rtz-argocd-2.7-notifications-sprig-semver-caret",
