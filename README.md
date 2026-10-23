@@ -7,6 +7,10 @@
 
 **Find what breaks before you upgrade Kubernetes.**
 
+An open-source kubectl plugin by [Runtimez](https://runtimez.io/kube-upgrade-check).
+How it compares with Pluto, kubent and KubePug:
+[Pluto vs kubent vs KubePug vs kube-upgrade-check](https://runtimez.io/guides/kubernetes-upgrade-check-tools).
+
 Point it at a cluster and it tells you what an upgrade to a given version would break: removed
 APIs still in use, control-plane and kubelet settings the new version refuses to start with,
 in-tree volume plugins that stop mounting, node-level changes, and whether the add-ons you run
