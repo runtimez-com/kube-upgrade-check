@@ -1,0 +1,52 @@
+[
+  {
+    "ruleId": "rtz-keda-2.13-podidentity-azure-aad-pod-identity-deprecated",
+    "severity": "MEDIUM",
+    "title": "`podIdentity.provider: azure` (AAD Pod Identity) is deprecated — removed in 2.15",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentity.provider",
+      "value": "^azure$"
+    },
+    "quote": "Remove support for Azure AD Pod Identity-based authentication (#5035)",
+    "remediation": "AAD Pod Identity is retired by Microsoft and KEDA announces its removal here (it lands in 2.15, where the provider is rejected). On each TriggerAuthentication / ClusterTriggerAuthentication named, switch `spec.podIdentity.provider` to `azure-workload` (Azure AD Workload Identity) and annotate the keda-operator ServiceAccount with the workload identity client ID.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.provider == \"azure\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row still uses AAD Pod Identity",
+    "introducedIn": [
+      "2.13.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.13-azure-data-explorer-clientsecret-metadata-removed",
+    "severity": "HIGH",
+    "title": "Azure Data Explorer no longer reads `clientSecret` from trigger metadata",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^azure-data-explorer/clientSecret$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**General**: Clean up previously deprecated code in Azure Data Explorer Scaler about clientSecret for 2.13 release (#5051)",
+    "remediation": "pkg/scalers/azure_data_explorer_scaler.go at v2.13.0 resolves the client secret from a TriggerAuthentication (`authParams.clientSecret`) or `clientSecretFromEnv` only; a secret left in `metadata.clientSecret` is ignored and the trigger fails to authenticate after the hop. Move it on each azure-data-explorer trigger named before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"azure-data-explorer\") and (.metadata // {} | has(\"clientSecret\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row stops authenticating on the hop"
+  },
+  {
+    "ruleId": "rtz-keda-2.13-admission-webhook-podidentity-rolearn-requires-identityowner",
+    "severity": "LOW",
+    "title": "Admission webhook rejects `podIdentity.roleArn` unless KEDA is the identity owner",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the rejection joins roleArn with identityOwner (and with the referencing trigger's identityOwner metadata); the projection records roleArn as set, not that pairing"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentity.roleArnSet",
+      "value": "^true$"
+    },
+    "quote": "roleArn of PodIdentity can't be set if KEDA isn't identityOwner",
+    "remediation": "With `podIdentity.provider: aws`, a `roleArn` only makes sense when KEDA's own identity assumes it (`identityOwner: keda`, the default). Each TriggerAuthentication named sets `roleArn` and is rejected by the 2.13 webhook on its next update if `identityOwner: workload` is also set — drop one of the two.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.roleArn != null and .spec.podIdentity.identityOwner == \"workload\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is rejected by the 2.13 webhook on its next update"
+  }
+]

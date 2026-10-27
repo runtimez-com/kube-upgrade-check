@@ -1,0 +1,34 @@
+[
+  {
+    "ruleId": "rtz-keda-2.15-podidentity-azure-and-aws-kiam-removed",
+    "severity": "HIGH",
+    "title": "`podIdentity.provider: azure` (AAD Pod Identity) and `aws-kiam` are removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentity.provider",
+      "value": "^(azure|aws-kiam)$"
+    },
+    "quote": "**Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed (#5035|#5085)",
+    "remediation": "Every TriggerAuthentication / ClusterTriggerAuthentication named stops authenticating after the hop: the providers are gone from the API. Switch `spec.podIdentity.provider` to `azure-workload` (Azure AD Workload Identity) or `aws` (IRSA / Pod Identity) and re-point the identity annotations before upgrading.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.provider == \"azure\" or .spec.podIdentity.provider == \"aws-kiam\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) provider=\\(.spec.podIdentity.provider)\"'  # each row uses a provider 2.15 no longer has",
+    "introducedIn": [
+      "2.15.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.15-prometheus-cortexorgid-field-removed",
+    "severity": "LOW",
+    "title": "Prometheus: the `cortexOrgID` field is removed from the scaler",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "(?i)^prometheus/cortexorgid$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler (#5538)",
+    "remediation": "2.15 deletes the field and the error branch that refused it since 2.10; from here the key is silently ignored. Any prometheus trigger still carrying `cortexOrgID` has not scaled since 2.10 — replace it with `customHeaders: X-Scope-OrgID=<tenant>`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"prometheus\") and (.metadata // {} | has(\"cortexOrgID\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still carries the removed key"
+  }
+]

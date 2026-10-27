@@ -1,0 +1,66 @@
+[
+  {
+    "ruleId": "rtz-keda-2.9-metrics-server-prometheus-metrics-deprecated",
+    "severity": "LOW",
+    "title": "Prometheus metrics on the KEDA Metrics Server are deprecated in favour of the Operator's",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which endpoint a Prometheus scrape config, ServiceMonitor or dashboard reads is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda-metrics-apiserver([:@]|$)"
+    },
+    "quote": "Prometheus metrics on KEDA Metric Server are deprecated in favor of Prometheus metrics on KEDA Operator (#3972 | Discussion)",
+    "remediation": "Point every scrape job and dashboard that reads the keda-metrics-apiserver /metrics endpoint at the keda-operator metrics port (chart `prometheus.operator.enabled`) instead. Nothing stops working on this hop; 2.11 removes the metrics-server endpoint.",
+    "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target to re-point at the operator"
+  },
+  {
+    "ruleId": "rtz-keda-2.9-azure-eventhub-default-checkpoint-strategy-deprecated",
+    "severity": "LOW",
+    "title": "Azure Event Hubs: the default `azureFunctions` checkpoint strategy is deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^azure-eventhub$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "Default checkpointing strategy for Azure Event Hubs scaler `azureFunctions` is deprecated in favor of `blobMetadata` (#XXX | Discussion)",
+    "remediation": "On each azure-eventhub trigger named, set `checkpointStrategy` explicitly (`blobMetadata` for non-Functions consumers, or the one your consumer actually writes) instead of relying on the default. A trigger that already sets it is listed too and needs no edit.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-eventhub\") | select((.metadata // {}) | has(\"checkpointStrategy\") | not) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is an azure-eventhub trigger; checkpointStrategy=null relies on the deprecated default"
+  },
+  {
+    "ruleId": "rtz-keda-2.9-metadata-type-deprecated-for-metrictype",
+    "severity": "LOW",
+    "title": "`metadata.type` on cpu / memory / datadog triggers is deprecated in favour of `metricType`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^(cpu|memory|datadog)/type$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "`metadata.type` is deprecated in favor of the global `metricType` for CPU, Memory, Datadog scalers (#2844 | Discussion)",
+    "remediation": "On each trigger named, delete `metadata.type` and set the trigger-level `metricType` (Utilization | AverageValue | Value) instead. The key keeps working on this hop; KEDA 2.18 removes it for cpu and memory and the scaler then refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"cpu\" or .type == \"memory\" or .type == \"datadog\") and (.metadata // {} | has(\"type\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still sets metadata.type",
+    "introducedIn": [
+      "2.9.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.9-scaledjob-rolloutstrategy-deprecated",
+    "severity": "LOW",
+    "title": "ScaledJob `rolloutStrategy` is deprecated in favour of `rollout.strategy`",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "ScaledJob",
+      "target": "rolloutStrategy"
+    },
+    "quote": "`rolloutStrategy` is deprecated in favor of `rollout.strategy` in ScaledJobs (#3596 | Discussion)",
+    "remediation": "Move the value of `spec.rolloutStrategy` (gradual | immediate) to `spec.rollout.strategy` on each ScaledJob named. The old field still works on every 2.x release and has never been removed, so nothing breaks on the hop — this is the cleanup to schedule before it is.",
+    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.rolloutStrategy != null) | \"\\(.metadata.namespace)/\\(.metadata.name) rolloutStrategy=\\(.spec.rolloutStrategy)\"'  # each row still sets the deprecated field"
+  }
+]

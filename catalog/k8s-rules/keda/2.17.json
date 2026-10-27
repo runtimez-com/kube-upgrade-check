@@ -1,0 +1,89 @@
+[
+  {
+    "ruleId": "rtz-keda-2.17-nats-streaming-stan-deprecated",
+    "severity": "MEDIUM",
+    "title": "NATS Streaming (`stan`) trigger is deprecated — removed in 2.19",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^stan$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**NATS Streaming scaler**: Deprecate NATS Streaming Server (aka Stan) (#6362)",
+    "remediation": "NATS Streaming Server itself reached end-of-life in June 2023. Migrate each ScaledObject / ScaledJob named to the `nats-jetstream` trigger (JetStream consumer lag) before 2.19, where the `stan` trigger type no longer exists and the object fails to build its scalers.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"stan\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is a trigger type 2.19 removes",
+    "introducedIn": [
+      "2.17.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.17-operator-prometheus-metric-deprecations-removed",
+    "severity": "MEDIUM",
+    "title": "KEDA operator: the pre-2.14 Prometheus metric names are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which metric names a dashboard, alert or recording rule reads is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda([:@]|$)"
+    },
+    "quote": "**General**: Remove Prometheus metric deprecations (#6339)",
+    "remediation": "Dashboards, alerts and recording rules that still use the pre-2.14 names (`keda_metrics_adapter_*`, `keda_scaler_errors_total` without the renamed labels) stop matching after this hop. Move them to the `keda_*` names 2.14 introduced.",
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file whose expressions go dark on the hop"
+  },
+  {
+    "ruleId": "rtz-keda-2.17-external-scaler-tlscertfile-removed",
+    "severity": "HIGH",
+    "title": "External scalers: `tlsCertFile` is removed from trigger metadata",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^(external|external-push)/tlsCertFile$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**External Scaler**: Remove deprecated tlsCertFile from External scaler (#4549)",
+    "remediation": "Each external / external-push trigger named points at a client certificate file through `tlsCertFile`; from 2.17 the key is not read and the connection to the external scaler is made without it (or fails). Supply the certificate through a TriggerAuthentication (`caCert`, `tlsClientCert`, `tlsClientKey`) instead.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"external\" or .type == \"external-push\") and (.metadata // {} | has(\"tlsCertFile\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row loses its client certificate on the hop"
+  },
+  {
+    "ruleId": "rtz-keda-2.17-cpu-memory-type-removal-announced",
+    "severity": "LOW",
+    "title": "cpu / memory triggers: `type` is announced for removal in 2.18 — use `metricType`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^(cpu|memory)/type$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "name=type, order=triggerMetadata, enum=Utilization;AverageValue, optional, deprecatedAnnounce=The 'type' setting is DEPRECATED and will be removed in v2.18 - Use 'metricType' instead.",
+    "remediation": "From 2.17 the operator emits a KEDAScalerInfo event on every ScaledObject / ScaledJob named (\"The 'type' setting is DEPRECATED and will be removed in v2.18\"). Replace `metadata.type` with the trigger-level `metricType` now; 2.18 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"cpu\" or .type == \"memory\") and (.metadata // {} | has(\"type\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.18 scaler",
+    "introducedIn": [
+      "2.17.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.17-ibmmq-tls-removal-announced",
+    "severity": "LOW",
+    "title": "IBM MQ: `tls` is announced for removal in 2.18 — use `unsafeSsl`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/tls$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "name=tls, order=triggerMetadata, default=false, deprecatedAnnounce=The 'tls' setting is DEPRECATED and will be removed in v2.18 - Use 'unsafeSsl' instead",
+    "remediation": "From 2.17 the operator emits a KEDAScalerInfo event on every ibmmq trigger named. Replace `tls` with `unsafeSsl` (same meaning: skip certificate verification) now; 2.18 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tls\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.18 scaler",
+    "introducedIn": [
+      "2.17.0"
+    ]
+  }
+]

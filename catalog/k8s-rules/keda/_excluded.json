@@ -1,0 +1,132 @@
+[
+  {
+    "version": "2.9",
+    "note": "General: Change API version of HPA from `autoscaling/v2beta2` to `autoscaling/v2` (#2462)",
+    "reason": "the operator creates and owns its HorizontalPodAutoscalers and re-issues them under autoscaling/v2 itself; no ScaledObject, HPA or app manifest is edited by hand, and a cluster that still serves only v2beta2 is below the Kubernetes 1.23 floor the catalog matrix already enforces as the hop"
+  },
+  {
+    "version": "2.9",
+    "note": "General: As per our support policy, Kubernetes v1.23 or above is required and support for…",
+    "reason": "a Kubernetes VERSION FLOOR. k8s-addons/keda.json carries the tested matrix (2.9 → 1.23-1.25) and the add-on tier evaluates it as the hop; a rule here would report the same fact through a second engine"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error ScalingModifiers.Formula is mandatory",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error converting target for scalingModifiers (string->float) to valid target: %w",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error validating formula in ScalingModifiers",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error validating target in ScalingModifiers",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: formula is given but target is empty",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.14",
+    "note": "ScaledObject webhook: the scaledobject has a %v trigger but the container %s doesn't have the %v request defined",
+    "reason": "the same cpu/memory resource-request check the webhook has run since 2.10 (rtz-keda-2.10-admission-webhook-cpu-memory-requests-required), rewritten with a format parameter; no new object is rejected"
+  },
+  {
+    "version": "2.14",
+    "note": "ScaledObject webhook: unknown scalable object type %v",
+    "reason": "an internal guard for a scaleTargetRef kind the webhook's own switch does not list; a workload kind KEDA cannot scale was never accepted"
+  },
+  {
+    "version": "2.16",
+    "note": "ScaledObject webhook: failed to initialize direct client: %w",
+    "reason": "an internal error path of the webhook's own Kubernetes client construction; not a property of any object"
+  },
+  {
+    "version": "2.17",
+    "note": "General: Change `InitialCooldownPeriod` from `int32` to `*int32` (#6423)",
+    "reason": "a Go API type change (apis/keda/v1alpha1 ScaledObjectSpec.InitialCooldownPeriod becomes a pointer) that only affects programs compiled against the KEDA Go module; the YAML field, its default and the operator's behaviour are unchanged"
+  },
+  {
+    "version": "2.18",
+    "note": "ScaledObject webhook: failed to setup kubernetes clients: %w",
+    "reason": "an internal error path of the webhook's own Kubernetes client construction; not a property of any object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.clientId is required when oauth2 is configured",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.tokenUrl is required when oauth2 is configured",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.tokenUrl must be a valid http or https URL",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.type must be 'clientCredentials', got '%s'",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "ScaledObject webhook: scalingModifiers fallback behavior requires scalingModifiers.formula to be defined",
+    "reason": "validation of the `fallback.behavior` + `scalingModifiers` combination added in 2.20 (#7254); an object that existed before the hop cannot set a 2.20 enum value"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal requires either clientSecret or clientCertificate",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.activeDirectoryEndpoint can only be set when cloud is Private",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.activeDirectoryEndpoint is required when cloud is Private",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientCertificatePassword requires clientCertificate",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientId is required when azureServicePrincipal is configured",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientSecret and azureServicePrincipal.clientCertificate are mutu…",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.tenantId is required when azureServicePrincipal is configured",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "ScaledObject webhook: failed to register HPA index %q: %w",
+    "reason": "an internal error path of the webhook's controller-runtime index registration at startup; not a property of any object"
+  },
+  {
+    "version": "2.21",
+    "note": "ScaledObject webhook: failed to register ScaledObject index %q: %w",
+    "reason": "an internal error path of the webhook's controller-runtime index registration at startup; not a property of any object"
+  }
+]

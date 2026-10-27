@@ -1,0 +1,42 @@
+[
+  {
+    "ruleId": "rtz-keda-2.14-operator-prometheus-metrics-renamed",
+    "severity": "LOW",
+    "title": "KEDA operator Prometheus metrics renamed; the old names are still exposed for now",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which metric names a dashboard, alert or recording rule reads is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda([:@]|$)"
+    },
+    "quote": "Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future (#4854).",
+    "remediation": "Move dashboards and alerts to the new `keda_*` names (for example `keda_scaler_metrics_value` for `keda_metrics_adapter_scaler_metrics_value`); both are served on this hop. 2.17 removes the old names.",
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file still using a pre-2.14 metric name"
+  },
+  {
+    "ruleId": "rtz-keda-2.14-admission-webhook-azure-workload-identity-fields",
+    "severity": "LOW",
+    "title": "Admission webhook validates `identityId`, `identityTenantId` and `identityAuthorityHost` on azure-workload pod identity",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection records which podIdentity fields are set, not whether their values are empty or paired"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentity.provider",
+      "value": "^azure-workload$"
+    },
+    "quote": "identityId of PodIdentity should not be empty. If it's set, identityId has to be different than \\\"\\\"",
+    "remediation": "On each TriggerAuthentication / ClusterTriggerAuthentication named: an `identityId` or `identityTenantId` that is set must be non-empty, and `identityAuthorityHost` requires `identityTenantId`. Objects that violate this keep working until their next update, which the 2.14 webhook rejects.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.identityId == \"\" or .spec.podIdentity.identityTenantId == \"\" or (.spec.podIdentity.identityAuthorityHost != null and (.spec.podIdentity.identityTenantId // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is rejected by the 2.14 webhook on its next update",
+    "coversNotes": [
+      "TriggerAuthentication webhook: identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost o…",
+      "TriggerAuthentication webhook: identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has…"
+    ]
+  }
+]

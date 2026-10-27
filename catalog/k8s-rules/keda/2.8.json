@@ -1,0 +1,18 @@
+[
+  {
+    "ruleId": "rtz-keda-2.8-scaledjob-rolloutstrategy-deprecated",
+    "severity": "LOW",
+    "title": "ScaledJob `rolloutStrategy` is deprecated in favour of `rollout.strategy`",
+    "detection": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "ScaledJob",
+      "target": "rolloutStrategy"
+    },
+    "quote": "**ScaledJob**: `rolloutStrategy` is deprecated in favor of `rollout.strategy` (#2910)",
+    "remediation": "Move the value of `spec.rolloutStrategy` (gradual | immediate) to `spec.rollout.strategy` on each ScaledJob named. The old field still works on every 2.x release and has never been removed, so nothing breaks on the hop — this is the cleanup to schedule before it is.",
+    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.rolloutStrategy != null) | \"\\(.metadata.namespace)/\\(.metadata.name) rolloutStrategy=\\(.spec.rolloutStrategy)\"'  # each row still sets the deprecated field",
+    "introducedIn": [
+      "2.8.0"
+    ]
+  }
+]

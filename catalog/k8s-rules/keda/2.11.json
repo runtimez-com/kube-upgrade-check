@@ -1,0 +1,71 @@
+[
+  {
+    "ruleId": "rtz-keda-2.11-pulsar-msgbacklog-renamed-msgbacklogthreshold",
+    "severity": "LOW",
+    "title": "Pulsar: `msgBacklog` was the wrong name for `msgBacklogThreshold`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^pulsar/msgBacklog$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` (#4681)",
+    "remediation": "Rename `msgBacklog` to `msgBacklogThreshold` on each pulsar trigger named. 2.11.2 accepts both; 2.16 drops `msgBacklog` and the trigger silently falls back to the default threshold of 10.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"pulsar\") and (.metadata // {} | has(\"msgBacklog\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the old key",
+    "introducedIn": [
+      "2.11.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.11-metrics-server-prometheus-metrics-removed",
+    "severity": "MEDIUM",
+    "title": "The Metrics Server's Prometheus metrics endpoint is removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which endpoint a Prometheus scrape config, ServiceMonitor or dashboard reads is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda-metrics-apiserver([:@]|$)"
+    },
+    "quote": "**General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code (#3930)",
+    "remediation": "Scrape jobs, ServiceMonitors and dashboards that read keda-metrics-apiserver's /metrics go dark after this hop. Re-point them at the keda-operator metrics endpoint (chart `prometheus.operator.enabled`), where the same series have been exposed since 2.9. (This bullet was back-filled into CHANGELOG.md after v2.11.2 was tagged — see kb/keda/manifest.json ownTagDrift.)",
+    "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target; one aimed at the metrics server stops returning data"
+  },
+  {
+    "ruleId": "rtz-keda-2.11-azure-data-explorer-clientsecret-metadata-deprecated",
+    "severity": "LOW",
+    "title": "Azure Data Explorer: `clientSecret` in trigger metadata is deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^azure-data-explorer/clientSecret$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Azure Data Explorer**: Deprecate `metadata.clientSecret` (#4514)",
+    "remediation": "Move the secret out of the trigger metadata on each azure-data-explorer trigger named: use `clientSecretFromEnv` or a TriggerAuthentication `secretTargetRef` for `clientSecret`. 2.13 stops reading the metadata key and the trigger then fails to authenticate.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"azure-data-explorer\") and (.metadata // {} | has(\"clientSecret\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still carries the secret in metadata"
+  },
+  {
+    "ruleId": "rtz-keda-2.11-admission-webhook-rejects-resource-only-scale-to-zero",
+    "severity": "MEDIUM",
+    "title": "Admission webhook rejects a ScaledObject with only cpu/memory triggers and `minReplicaCount: 0`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the condition is a conjunction — every trigger is cpu or memory AND minReplicaCount is 0 — that no single rule predicate expresses"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject",
+      "target": "triggers[].type",
+      "value": "^(cpu|memory)$"
+    },
+    "quote": "scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)",
+    "remediation": "A ScaledObject whose triggers are all cpu/memory cannot scale to zero (there is no pod to measure), and from 2.11 the webhook rejects such an object on its next update. For each candidate named, either set `minReplicaCount` to 1 or more, or add a non-resource trigger that can activate from zero.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.minReplicaCount // 0) == 0 and ([.spec.triggers[]? | .type] | length) != 0 and ([.spec.triggers[]? | .type] | all(. == \"cpu\" or . == \"memory\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is rejected by the 2.11 webhook on its next update"
+  }
+]

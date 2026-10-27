@@ -1,0 +1,147 @@
+[
+  {
+    "ruleId": "rtz-keda-2.20-gcp-pubsub-subscriptionsize-removed",
+    "severity": "HIGH",
+    "title": "GCP Pub/Sub: `subscriptionSize` is removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^gcp-pubsub/subscriptionSize$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**GCP PubSub Scaler**: The `subscriptionSize` setting is DEPRECATED and is removed in v2.20 - Use `mode` and `value` instead (#7720)",
+    "remediation": "The tag flips to `deprecated=` at v2.20.0 and the parser rejects a trigger that still sets `subscriptionSize` — every gcp-pubsub trigger named stops scaling after the hop. Replace it with `mode: SubscriptionSize` + `value` before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"gcp-pubsub\") and (.metadata // {} | has(\"subscriptionSize\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "coversNotes": [
+      "gcp-pubsub 'subscriptionSize' deprecated (pkg/scalers/gcp_pubsub_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.20.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.20-huawei-cloudeye-minmetricvalue-removed",
+    "severity": "HIGH",
+    "title": "Huawei Cloudeye: `minMetricValue` is removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^huawei-cloudeye/minMetricValue$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and is removed - Use `activationTargetMetricValue` instead (#7436)",
+    "remediation": "The tag flips to `deprecated=` at v2.20.0 and the parser rejects a trigger that still sets `minMetricValue` — every huawei-cloudeye trigger named stops scaling after the hop. Rename it to `activationTargetMetricValue` before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"huawei-cloudeye\") and (.metadata // {} | has(\"minMetricValue\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "coversNotes": [
+      "huawei-cloudeye 'minMetricValue' deprecated (pkg/scalers/huawei_cloudeye_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.20.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.20-ibmmq-tls-removed",
+    "severity": "HIGH",
+    "title": "IBM MQ: the `tls` setting's code is deleted",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/tls$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**IBM MQ Scaler**: The `tls` setting code is removed (#6094)",
+    "remediation": "2.18 already refused an ibmmq trigger that sets `tls` (deprecated= tag); 2.20 deletes the field itself, after which the key is silently ignored. Any ibmmq trigger named has not scaled since 2.18 — replace `tls` with `unsafeSsl`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tls\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still sets the removed key"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-influxdb-authtoken-metadata-removed",
+    "severity": "HIGH",
+    "title": "InfluxDB: `authToken` in trigger metadata is removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^influxdb/authToken$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**InfluxDB Scaler**: The `authToken` setting from `triggerMetadata` is DEPRECATED and is removed in v2.20 - Use `authToken` from `resolvedEnv` or `authParams` instead (#7722)",
+    "remediation": "The tag flips to `deprecated=` at v2.20.0 and the parser rejects a trigger whose metadata still carries `authToken` — every influxdb trigger named stops scaling after the hop. Move the token to `authTokenFromEnv` or a TriggerAuthentication before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"influxdb\") and (.metadata // {} | has(\"authToken\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "coversNotes": [
+      "influxdb 'authToken' deprecated (pkg/scalers/influxdb_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.20.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.20-temporal-rules-based-versioning-removal-announced",
+    "severity": "LOW",
+    "title": "Temporal: `buildId`, `selectAllActive` and `selectUnversioned` are announced for removal in 2.21",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^temporal/(buildId|selectAllActive|selectUnversioned)$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "name=buildId, order=triggerMetadata;resolvedEnv, optional, deprecatedAnnounce=The 'buildId' setting is DEPRECATED and will be removed in v2.21 because Temporal Server is dropping support for the Rules-Based Versioning APIs - Use 'workerDeploymentName' and 'workerDeploymentBuildId' instead",
+    "remediation": "Temporal Server is dropping the Rules-Based Versioning APIs. On each temporal trigger named, remove the three settings for unversioned workers, or move versioned workers to `workerDeploymentName` + `workerDeploymentBuildId`. 2.20 logs a KEDAScalerInfo event; 2.21 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"temporal\" and ((.metadata // {}) | has(\"buildId\") or has(\"selectAllActive\") or has(\"selectUnversioned\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.21 scaler",
+    "coversNotes": [
+      "temporal 'selectAllActive' deprecatedAnnounce (pkg/scalers/temporal_scaler.go)",
+      "temporal 'selectUnversioned' deprecatedAnnounce (pkg/scalers/temporal_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.20.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.20-admission-webhook-hpa-name-too-long",
+    "severity": "MEDIUM",
+    "title": "Admission webhook rejects a ScaledObject whose derived HPA name `keda-hpa-<name>` exceeds 63 characters",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ScaledObject",
+      "objectName": "^.{55,}$",
+      "reason": "the name filter runs over every ScaledObject in the snapshot; one that sets a custom HPA name is listed too and needs no change"
+    },
+    "quote": "HPA name %q derived from scaledobject is %d characters long; must be no more than %d characters; set spec.advanced.horizontalPodAutoscalerConfig.name to a shorter name or shorten the scaledobject name",
+    "remediation": "Each ScaledObject named is 55+ characters long, so its default HPA name `keda-hpa-<name>` breaks the 63-character DNS label limit and the 2.20 webhook rejects the object on its next update. Set `spec.advanced.horizontalPodAutoscalerConfig.name` to a shorter name (an object that already sets one is unaffected) or rename the ScaledObject.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.advanced.horizontalPodAutoscalerConfig.name == null and (.metadata.name | test(\"^.{55,}$\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) (\\(.metadata.name | length) chars)\"'  # each row is rejected by the 2.20 webhook on its next update"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-admission-webhook-scaledobject-name-too-long",
+    "severity": "MEDIUM",
+    "title": "Admission webhook rejects a ScaledObject whose name exceeds 63 characters (used as a label value)",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ScaledObject",
+      "objectName": "^.{64,}$"
+    },
+    "quote": "scaledobject name %q is %d characters long; must be no more than %d characters because it is used as the %q label value",
+    "remediation": "KEDA labels the ScaledObject and its HPA with `scaledobject.keda.sh/name=<name>`, and a label value is capped at 63 characters. Each ScaledObject named is longer and is rejected by the 2.20 webhook on its next update — recreate it under a shorter name.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"^.{64,}$\")) | \"\\(.metadata.namespace)/\\(.metadata.name) (\\(.metadata.name | length) chars)\"'  # each row is rejected by the 2.20 webhook on its next update"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-admission-webhook-podidentity-externalid-requires-rolearn",
+    "severity": "LOW",
+    "title": "Admission webhook rejects `podIdentity.externalId` without `roleArn`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the rejection pairs externalId with roleArn; the projection records each as set, not the pairing"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentity.externalIdSet",
+      "value": "^true$"
+    },
+    "quote": "externalID of PodIdentity requires roleArn to be set",
+    "remediation": "An AWS `externalId` is only meaningful on an assumed role. Each TriggerAuthentication named sets `spec.podIdentity.externalId` and is rejected by the 2.20 webhook on its next update unless `roleArn` is set too.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.externalId != null and .spec.podIdentity.roleArn == null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is rejected by the 2.20 webhook on its next update"
+  }
+]
