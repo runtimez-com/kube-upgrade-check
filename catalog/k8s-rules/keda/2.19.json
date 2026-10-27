@@ -1,0 +1,23 @@
+[
+  {
+    "ruleId": "rtz-keda-2.19-nats-streaming-stan-removed",
+    "severity": "HIGH",
+    "title": "NATS Streaming (`stan`) trigger type is removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^stan$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "NATS Streaming scaler: Remove NATS Streaming Server (aka Stan) (#6366)",
+    "remediation": "pkg/scaling/scalers_builder.go at v2.19.0 has no `case \"stan\"` any more: every ScaledObject / ScaledJob named fails to build its scalers after the hop and stops scaling. Migrate the trigger to `nats-jetstream` before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"stan\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row stops scaling on the hop",
+    "coversNotes": [
+      "trigger type \"stan\" removed (pkg/scaling/scalers_builder.go)"
+    ],
+    "introducedIn": [
+      "2.19.0"
+    ]
+  }
+]

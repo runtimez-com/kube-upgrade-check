@@ -1,0 +1,159 @@
+[
+  {
+    "ruleId": "rtz-keda-2.21-service-account-token-audience-enforced-bsat",
+    "severity": "HIGH",
+    "title": "Service-account token audiences are enforced — every `boundServiceAccountToken` authentication must map an audience (CVE-2026-77524)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "authTypes[]",
+      "value": "^boundServiceAccountToken$"
+    },
+    "quote": "KEDA 2.21 defaults to `operator.serviceAccountTokens.mode: enforce-audience`. This is a breaking change for Vault Kubernetes authentication and **all** `boundServiceAccountToken` (BSAT) authentication, not just Vault. Missing approvals or service-account audience mappings fail the affected authentication. The operator can remain healthy while individual scalers fail.",
+    "remediation": "Each TriggerAuthentication / ClusterTriggerAuthentication named mints a bound service-account token. After the hop the operator (chart default `operator.serviceAccountTokens.mode: enforce-audience`) refuses to mint one without an exact namespace/name → audience mapping in `permissions.operator.restrict.serviceAccountTokenCreationRoles`, and the receiving scaler (metrics-api, Prometheus, Loki, Datadog Cluster Agent, …) fails to authenticate while the operator stays healthy. Before upgrading: map each service account to a non-API audience the receiver accepts (kube-rbac-proxy `--auth-token-audiences`), and verify readiness on every ScaledObject that references the authentication. `mode: legacy` is an operator-wide, insecure escape hatch, not a per-object fix. Datadog Cluster Agent 7.83.2 cannot accept a custom audience — use API/app-key auth there.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.boundServiceAccountToken != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) serviceAccounts=\\([.spec.boundServiceAccountToken[].serviceAccountName] | unique | join(\",\"))\"'  # each row needs an audience mapping for every service account listed before the hop",
+    "coversNotes": [
+      "Service account token audience enforcement (CVE-2026-77524)",
+      "`1e21cc7`: Security: Enforce explicit service account token audiences to prevent…"
+    ],
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-service-account-token-audience-enforced-vault-kubernetes",
+    "severity": "HIGH",
+    "title": "Service-account token audiences are enforced — Vault Kubernetes authentication must log in with a dedicated projected token (CVE-2026-77524)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "hashiCorpVault.authentication",
+      "value": "^kubernetes$"
+    },
+    "quote": "KEDA 2.21 defaults to `operator.serviceAccountTokens.mode: enforce-audience`. This is a breaking change for Vault Kubernetes authentication and **all** `boundServiceAccountToken` (BSAT) authentication, not just Vault. Missing approvals or service-account audience mappings fail the affected authentication. The operator can remain healthy while individual scalers fail.",
+    "remediation": "Each TriggerAuthentication / ClusterTriggerAuthentication named logs in to Vault with a Kubernetes service-account token. After the hop the operator no longer forwards its own API token: the 2.21 chart projects a dedicated token (`hashiCorpVault.kubernetesAuth.audience: vault`, mounted at `/var/run/secrets/keda-vault`), and the Vault role must accept that audience. Per object: omit the whole `credential` block (or set `credential.serviceAccount: /var/run/secrets/keda-vault/token`); a `credential.serviceAccountName` needs an audience mapping for that service account; an existing extra-volume token needs its audience approved via `operator.serviceAccountTokens.additionalAllowedAudiences`. Leaving the old API-token path, or `credential: {}`, fails the login.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.hashiCorpVault.authentication == \"kubernetes\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) credential=\\(.spec.hashiCorpVault.credential // {} | keys | join(\",\"))\"'  # each row logs in to Vault with a service-account token; credential=serviceAccount/serviceAccountName shows which path it selects",
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-operator-service-account-tokens-enforce-audience",
+    "severity": "HIGH",
+    "title": "keda-operator: chart 2.21 defaults to `operator.serviceAccountTokens.mode: enforce-audience` — Helm values must carry the audience mappings",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the operator's Helm values (operator.serviceAccountTokens.*, hashiCorpVault.kubernetesAuth.*, permissions.operator.restrict.serviceAccountTokenCreationRoles) are rendered into args, env and projected volumes the projection does not carry"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda([:@]|$)"
+    },
+    "quote": "Inventory both TriggerAuthentications and ClusterTriggerAuthentications using `spec.hashiCorpVault.authentication: kubernetes` or `spec.boundServiceAccountToken`. Review default and explicit token paths, existing extra volumes, and token-creation RBAC.",
+    "remediation": "Platform side of CVE-2026-77524. Before the chart upgrade: inventory the TA/CTAs that use `hashiCorpVault.authentication: kubernetes` or `boundServiceAccountToken` (the two app-side rules name them); choose audiences the API server does NOT accept and configure each receiver for them; give Vault its own TokenReview credential; write `permissions.operator.restrict.serviceAccountTokenCreationRoles[]` with `name`, `namespace` AND `audience` per service account (an entry without `audience` grants RBAC only; `allowAllServiceAccountTokenCreation: true` still needs exact mappings); upgrade chart and operator together, never with `--reuse-values` alone (older saved values omit the new defaults — pass `hashiCorpVault.kubernetesAuth.audience` and `projectedTokenMountPath` explicitly, or use `--reset-then-reuse-values`). Afterwards verify ScaledObject readiness and failure Events, not just `helm --wait`. `mode: legacy` + `additionalAllowedAudiences: []` + `hashiCorpVault.kubernetesAuth.audience: \"\"` restores the old behaviour cluster-wide and leaves the privilege escalation open — temporary only; legacy mode with any configured audience entry is rejected.",
+    "verifyCommand": "kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.template.spec.containers[].image | test(\"kedacore/keda(:|@|$)\")) | \"\\(.metadata.namespace)/\\(.metadata.name) env=\\([.spec.template.spec.containers[].env[]? | select(.name | test(\"SERVICE_ACCOUNT_TOKEN|VAULT\")) | .name] | join(\",\")) volumes=\\([.spec.template.spec.volumes[]? | select(.projected != null) | .name] | join(\",\"))\"'  # the operator Deployment; after the chart upgrade expect KEDA_SERVICE_ACCOUNT_TOKEN_* env and a keda-vault projected volume (names only, never values)",
+    "coversNotes": [
+      "Vault using the operator service account",
+      "Vault using existing extra volumes",
+      "Named service accounts and BSAT",
+      "Temporary legacy compatibility",
+      "Upgrade verification and rollback"
+    ],
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-temporal-rules-based-versioning-settings-removed",
+    "severity": "HIGH",
+    "title": "Temporal: `buildId`, `selectAllActive` and `selectUnversioned` are removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^temporal/(buildId|buildIdFromEnv|selectAllActive|selectUnversioned)$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "KEDA 2.21 removes the deprecated Temporal scaler settings `buildId`, `selectAllActive`, and `selectUnversioned`. A ScaledObject or ScaledJob containing any of these fields now fails scaler metadata parsing.",
+    "remediation": "Each temporal trigger named still sets one of the three. From 2.21 the tags are `deprecated=` and scaler metadata parsing fails, so the ScaledObject / ScaledJob stops scaling after the hop. For unversioned workers delete the settings; for versioned workers configure `workerDeploymentName` and `workerDeploymentBuildId` (one scaling resource per deployment version that needs its own behaviour). `buildId` is read with order=triggerMetadata;resolvedEnv, so `buildIdFromEnv` sets it too and is named as well.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"temporal\")) | select(((.metadata // {}) | has(\"buildId\") or has(\"buildIdFromEnv\") or has(\"selectAllActive\") or has(\"selectUnversioned\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the Rules-Based Versioning settings — move to workerDeploymentName/workerDeploymentBuildId",
+    "coversNotes": [
+      "Temporal Rules-Based Versioning settings (release notes)",
+      "`54a6651`: Temporal Scaler: Remove deprecated `buildId`, `selectAllActive`, and…",
+      "temporal 'buildId' deprecated (pkg/scalers/temporal_scaler.go)",
+      "temporal 'selectAllActive' deprecated (pkg/scalers/temporal_scaler.go)",
+      "temporal 'selectUnversioned' deprecated (pkg/scalers/temporal_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-azure-pipelines-scaleoninflight-default-true",
+    "severity": "MEDIUM",
+    "title": "Azure Pipelines: new `scaleOnInFlight` defaults to true — the queue length now counts assigned, unfinished jobs",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^azure-pipelines$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "KEDA 2.21 adds the Azure Pipelines scaler metadata field `scaleOnInFlight`, which defaults to `true`. The reported queue length now includes unfinished jobs that have already been assigned to an agent. Finished jobs remain excluded.",
+    "remediation": "Each azure-pipelines trigger named changes its metric on the hop unless `scaleOnInFlight` is set explicitly. Keep the default (`true`) on a ScaledJob using the `default` scaling strategy — it avoids subtracting running jobs twice; set `scaleOnInFlight: false` (with the `accurate` ScaledJob strategy) to count only unassigned jobs as 2.20 did; for a ScaledObject decide whether assigned work belongs in the replica count and test it. A trigger that already sets the key is listed too and needs no edit. Only installs on 2.20.x see the metric change here; from 2.19 or earlier, 2.21's default restores the pre-2.20 counting (the 2.20 rule covers the dip).",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-pipelines\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) scaleOnInFlight=\\(.metadata.scaleOnInFlight // null)\"'  # each row's metric changes on the hop unless scaleOnInFlight is set; scaleOnInFlight=null means the new default applies",
+    "coversNotes": [
+      "Azure Pipelines in-flight jobs (release notes)",
+      "`587d3cd`: Azure Pipelines Scaler: Include assigned, unfinished jobs by default with…"
+    ],
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-liiklus-scaler-deprecated",
+    "severity": "MEDIUM",
+    "title": "Liiklus trigger is deprecated — removal planned for 2.24 (upstream project unmaintained)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^liiklus$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "The Liiklus scaler is deprecated because the upstream project is unmaintained. Its code is planned for removal in a later KEDA release. See #7929.",
+    "remediation": "From v2.21.0 the liiklus scaler carries a deprecatedAnnounce tag (\"will be removed in v2.24\") and the operator emits a KEDAScalerInfo event on each ScaledObject / ScaledJob named. They keep working on this hop; plan the move to the `kafka` trigger (Liiklus fronts Kafka) before 2.24.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"liiklus\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row uses a trigger type planned for removal in 2.24",
+    "coversNotes": [
+      "`5744068`: Liiklus Scaler: Deprecate the scaler because its upstream project is…",
+      "liiklus 'address' deprecatedAnnounce (pkg/scalers/liiklus_scaler.go)",
+      "docs scalers/liiklus-topic.md: The Liiklus scaler is DEPRECATED and will be removed in v2.24 - The…"
+    ],
+    "introducedIn": [
+      "2.21.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-metrics-api-unimplemented-auth-modes-rejected",
+    "severity": "MEDIUM",
+    "title": "Metrics API scaler: `authMode` values the scaler does not implement are now rejected",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the authMode VALUE lives in trigger metadata (or the TriggerAuthentication's authModes parameter) and only key names are projected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^metrics-api$"
+    },
+    "quote": "`778907e` : **Metrics API Scaler**: reject auth modes the scaler does not implement (#8178) (@rickbrouwer)",
+    "remediation": "Filed by upstream under Fixes. From 2.21 pkg/scalers/metrics_api_scaler.go validates `authMode` against the modes it actually applies — `apiKey`, `basic`, `tls`, `bearer` — and a metrics-api trigger whose authentication names any other mode (`custom`, `oauth`, or a combination with one of them) fails to build after the hop, where before the mode was silently ignored. Check each metrics-api trigger named and its TriggerAuthentication for an unsupported mode.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"metrics-api\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) authMode=\\(.metadata.authMode // \"(from TriggerAuthentication: \" + (.authenticationRef.name // \"none\") + \")\")\"'  # each row is a metrics-api trigger; a mode outside apiKey,basic,tls,bearer is rejected on the hop",
+    "introducedIn": [
+      "2.21.0"
+    ]
+  }
+]

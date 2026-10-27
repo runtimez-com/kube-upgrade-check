@@ -1,0 +1,160 @@
+[
+  {
+    "ruleId": "rtz-keda-2.18-gcp-pubsub-subscriptionsize-removal-announced",
+    "severity": "LOW",
+    "title": "GCP Pub/Sub: `subscriptionSize` is announced for removal in 2.20 — use `mode` and `value`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^gcp-pubsub/subscriptionSize$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**GCP Pub/Sub Scaler**: The `subscriptionSize` setting is DEPRECATED and will be removed in v2.20 - Use `mode` and `value` instead (#6866)",
+    "remediation": "On each gcp-pubsub trigger named, replace `subscriptionSize: N` with `mode: SubscriptionSize` and `value: N`. 2.18 only logs a KEDAScalerInfo event; 2.20 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"gcp-pubsub\") and (.metadata // {} | has(\"subscriptionSize\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "coversNotes": [
+      "gcp-pubsub 'subscriptionSize' deprecatedAnnounce (pkg/scalers/gcp_pubsub_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-huawei-cloudeye-minmetricvalue-removal-announced",
+    "severity": "LOW",
+    "title": "Huawei Cloudeye: `minMetricValue` is announced for removal in 2.20 — use `activationTargetMetricValue`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^huawei-cloudeye/minMetricValue$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Huawei Cloudeye Scaler**: The `minMetricValue` setting is DEPRECATED and will be removed in v2.20 - Use `activationTargetMetricValue` instead (#6978)",
+    "remediation": "On each huawei-cloudeye trigger named, rename `minMetricValue` to `activationTargetMetricValue`. 2.18 only logs a KEDAScalerInfo event; 2.20 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"huawei-cloudeye\") and (.metadata // {} | has(\"minMetricValue\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "coversNotes": [
+      "huawei-cloudeye 'minMetricValue' deprecatedAnnounce (pkg/scalers/huawei_cloudeye_scaler.go)",
+      "docs scalers/huawei-cloudeye.md: `minMetricValue` - Minimum value for your metric. If the actual val…"
+    ],
+    "introducedIn": [
+      "2.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-rabbitmq-queuelength-deprecated",
+    "severity": "LOW",
+    "title": "RabbitMQ: `queueLength` is deprecated — use `mode: QueueLength` and `value`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^rabbitmq/queueLength$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "DEPRECATED: please use `mode: QueueLength` and `v…** — `queueLength` - **DEPRECATED: please use `mode: QueueLength` and `value: ##` instead**. Defines a threshold value for the queue length passed to the scaler. For example: if one pod can handle 10 messages, set the queue length target to `10`. If the actual number of messages in the queue is 30, the scaler will scale up to 3 pods. Default is set to `20` unless `publishRate` is specified, in which case `queueLength` is disabled for this trigger.",
+    "remediation": "Docs-only deprecation (no CHANGELOG entry, no struct tag yet): on each rabbitmq trigger named replace `queueLength: N` with `mode: QueueLength` + `value: N`. The old key keeps working on every 2.x release.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"rabbitmq\") and (.metadata // {} | has(\"queueLength\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the deprecated key"
+  },
+  {
+    "ruleId": "rtz-keda-2.18-admission-webhooks-prometheus-metric-deprecations-removed",
+    "severity": "LOW",
+    "title": "keda-admission-webhooks: the deprecated Prometheus metric names are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which metric names a dashboard or alert reads from the webhook's /metrics endpoint is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda-admission-webhooks([:@]|$)"
+    },
+    "quote": "**General**: Remove Prometheus webhook prommetrics deprecations (#6698)",
+    "remediation": "Alerts or dashboards on the admission webhook's old `keda_webhook_*` metric names stop matching after this hop; move them to the current names exposed by keda-admission-webhooks.",
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_webhook_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file that reads a webhook metric; check its name against the 2.18 endpoint"
+  },
+  {
+    "ruleId": "rtz-keda-2.18-cpu-memory-type-removed",
+    "severity": "HIGH",
+    "title": "cpu / memory triggers: `type` is removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^(cpu|memory)/type$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**CPU Memory scaler**: The `type` setting is deprecated and removed, use `metricType` instead (#6698)",
+    "remediation": "pkg/scalers/cpu_memory_scaler.go tags `type` as `deprecated=` at v2.18.0, and the typed-config parser turns a present deprecated parameter into an error — every ScaledObject / ScaledJob named stops scaling after the hop (\"scaler cpu info: The 'type' setting is DEPRECATED and is removed in v2.18\"). Delete `metadata.type` and set the trigger-level `metricType` before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"cpu\" or .type == \"memory\") and (.metadata // {} | has(\"type\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.18 scaler",
+    "coversNotes": [
+      "cpu|memory 'type' deprecated (pkg/scalers/cpu_memory_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-ibmmq-tls-removed",
+    "severity": "HIGH",
+    "title": "IBM MQ: `tls` is removed — the scaler refuses the trigger",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/tls$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**IBM MQ scaler**: The `tls` setting is deprecated and removed, use `unsafeSsl` instead (#6698)",
+    "remediation": "pkg/scalers/ibmmq_scaler.go tags `tls` as `deprecated=` at v2.18.0 and the parser rejects a trigger that still sets it — every ibmmq trigger named stops scaling after the hop. Replace `tls` with `unsafeSsl` before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tls\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.18 scaler",
+    "coversNotes": [
+      "ibmmq 'tls' deprecated (pkg/scalers/ibmmq_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-gcp-mql-scalers-deprecated",
+    "severity": "MEDIUM",
+    "title": "GCP Pub/Sub, Stackdriver and Cloud Tasks triggers are deprecated (Google retired MQL)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^gcp-(pubsub|stackdriver|cloudtasks)$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "name=filter, order=triggerMetadata, deprecatedAnnounce=This scaler is deprecated. More info -> 'https://keda.sh/blog/2025-09-15-gcp-deprecations'",
+    "remediation": "From v2.18.0 these three scalers carry a deprecatedAnnounce tag (keda.sh/blog/2025-09-15-gcp-deprecations): they rely on Google Cloud's Monitoring Query Language, receive no further changes, and will be removed if Google drops MQL. Each ScaledObject / ScaledJob named keeps working on this hop; plan the move to the `prometheus` trigger against Google Cloud Managed Service for Prometheus (`gcp-storage` is unaffected). This deprecation is NOT in CHANGELOG.md — only the struct tags and the blog carry it.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"gcp-pubsub\" or .type == \"gcp-stackdriver\" or .type == \"gcp-cloudtasks\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row uses an MQL-based trigger KEDA no longer develops",
+    "coversNotes": [
+      "gcp-cloudtasks 'projectID' deprecatedAnnounce (pkg/scalers/gcp_cloud_tasks_scaler.go)",
+      "gcp-pubsub 'value' deprecatedAnnounce (pkg/scalers/gcp_pubsub_scaler.go)"
+    ],
+    "introducedIn": [
+      "2.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-influxdb-authtoken-metadata-removal-announced",
+    "severity": "LOW",
+    "title": "InfluxDB: `authToken` in trigger metadata is announced for removal in 2.20",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^influxdb/authToken$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "name=authToken, order=triggerMetadata, optional, deprecatedAnnounce=The 'authToken' setting from triggerMetadata is DEPRECATED and will be removed in v2.20 - Use 'authToken' from resolvedEnv or authParams instead",
+    "remediation": "On each influxdb trigger named, move the token out of metadata: `authTokenFromEnv`, or `authToken` from a TriggerAuthentication. 2.18 logs a KEDAScalerInfo event; 2.20 refuses the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"influxdb\") and (.metadata // {} | has(\"authToken\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
+    "introducedIn": [
+      "2.18.0"
+    ]
+  }
+]

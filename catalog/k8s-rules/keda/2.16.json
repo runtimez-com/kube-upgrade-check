@@ -1,0 +1,65 @@
+[
+  {
+    "ruleId": "rtz-keda-2.16-ibmmq-queuemanager-metadata-ignored",
+    "severity": "LOW",
+    "title": "IBM MQ: `queueManager` in trigger metadata is no longer read",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/queueManager$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "IBM MQ Scaler: Remove and deprecate unused variables in IBM MQ scaler (#6033)",
+    "remediation": "Remove `queueManager` only once the operator runs 2.16 or later: 2.15 still REQUIRES the key (ibmmq_scaler.go v2.15.1:128-131, `no queue manager given`) even though nothing used its value. On 2.16+ the key is simply ignored.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"queueManager\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries a key 2.16 ignores"
+  },
+  {
+    "ruleId": "rtz-keda-2.16-pulsar-msgbacklog-key-removed",
+    "severity": "MEDIUM",
+    "title": "Pulsar: the `msgBacklog` trigger key is removed — the threshold silently falls back to 10",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^pulsar/msgBacklog$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Pulsar Scaler**: remove `msgBacklog` trigger name (#6059)",
+    "remediation": "Each pulsar trigger named still uses `msgBacklog`; from 2.16 only `msgBacklogThreshold` is read and the default of 10 applies, so the workload scales on the wrong backlog without any error. Rename the key before upgrading.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"pulsar\") and (.metadata // {} | has(\"msgBacklog\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row scales on the default threshold after the hop"
+  },
+  {
+    "ruleId": "rtz-keda-2.16-admission-webhook-hpa-already-managed-by-scaledobject",
+    "severity": "LOW",
+    "title": "Admission webhook rejects two ScaledObjects that name the same HorizontalPodAutoscaler",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether two ScaledObjects set the same advanced.horizontalPodAutoscalerConfig.name is a cross-object comparison the projection does not make"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject",
+      "target": "advanced.hpaNameSet",
+      "value": "^true$"
+    },
+    "quote": "the HPA '%s' is already managed by the ScaledObject '%s'",
+    "remediation": "Each ScaledObject named sets a custom HPA name (`advanced.horizontalPodAutoscalerConfig.name`). From 2.16 the webhook refuses an object whose HPA name is already owned by another ScaledObject — give each its own name, or drop the custom name so KEDA derives `keda-hpa-<name>`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items | group_by(.metadata.namespace + \"/\" + (.spec.advanced.horizontalPodAutoscalerConfig.name // (\"keda-hpa-\" + .metadata.name))) | .[] | select(.[1] != null) | \"\\(.[0].metadata.namespace) hpa \\(.[0].spec.advanced.horizontalPodAutoscalerConfig.name // (\"keda-hpa-\" + .[0].metadata.name)) claimed by \\([.[].metadata.name] | join(\",\"))\"'  # each row is an HPA name two ScaledObjects fight over"
+  },
+  {
+    "ruleId": "rtz-keda-2.16-ibmmq-tlsdisabled-deprecated",
+    "severity": "LOW",
+    "title": "IBM MQ: `tlsDisabled` is documented as deprecated — use `unsafeSsl`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/tlsDisabled$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "`tlsDisabled` - Can be set to 'true' to disable TLS. (DEPRECATED: This parameter is deprecated as of KEDA v2.16 in favor of unsafeSsl and will be removed in version v2.18, Values: `true`, `false` , Default: `false`, Optional)",
+    "remediation": "Delete `tlsDisabled`: the scaler never read it (`git log -S '\"tlsDisabled\"'` on the IBM MQ scaler is empty; the code read `tls`), so mirroring it as `unsafeSsl: true` would CHANGE behaviour rather than preserve it.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tlsDisabled\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries the key the 2.16 docs deprecate"
+  }
+]

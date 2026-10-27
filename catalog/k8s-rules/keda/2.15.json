@@ -1,0 +1,83 @@
+[
+  {
+    "ruleId": "rtz-keda-2.15-aws-identityowner-deprecated",
+    "severity": "LOW",
+    "title": "AWS scalers: `identityOwner` is deprecated as of 2.13 — removal announced for KEDA v3",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)/identityOwner$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "`identityOwner` - Receive permissions on the SQS Queue via Pod Identity or from the KEDA operator itself (see below). (DEPRECATED: This parameter is deprecated as of KEDA v2.13 and will be removed in version `3`, Values: `pod`, `operator`, Default: `pod`, Optional, This field only applies for `aws-eks` authentication)",
+    "remediation": "Docs-only deprecation (no CHANGELOG entry). `identityOwner: operator|pod` only applies to the `aws-eks` / `aws-kiam` pod identities; with `podIdentity.provider: aws` the TriggerAuthentication's `identityOwner` decides. Each trigger named keeps working through 2.x; drop the key when its authentication moves to `aws`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | test(\"^aws-\")) and (.metadata // {} | has(\"identityOwner\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) identityOwner=\\(.metadata.identityOwner)\"'  # each row carries the trigger-level key the docs deprecate",
+    "coversNotes": [
+      "docs scalers/aws-cloudwatch.md: `identityOwner` - Receive permissions for CloudWatch via Pod Identi…",
+      "docs scalers/aws-dynamodb.md: `identityOwner` - Receive permissions on the DynamoDB Table via Pod…",
+      "docs scalers/aws-dynamodb-streams.md: `identityOwner` - Receive permissions on the DynamoDB and DynamoDB…",
+      "docs scalers/aws-kinesis.md: `identityOwner` - Receive permissions on the Kinesis Stream via Pod…"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.15-aws-awsrolearn-deprecated",
+    "severity": "LOW",
+    "title": "AWS scalers: the `awsRoleArn` authentication parameter is deprecated — it only applies to `aws-eks` pod identity",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`awsRoleArn` has only ever been read from authParams — a TriggerAuthentication `secretTargetRef[]`/`env[]` entry with `parameter: awsRoleArn` (aws_common.go v2.13.0:93,106) — and the projection carries the authentication block KEY NAMES and counts, not parameter names"
+    },
+    "quote": "`awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS resource. (This field is deprecated and only applies for `aws-eks` authentication, for `aws` is set in the auth)",
+    "remediation": "For each AWS scaler named, read the TriggerAuthentication its trigger references: an entry mapping `parameter: awsRoleArn` is the deprecated path (it only applies to `aws-eks` pod identity, itself deprecated). Switch the TriggerAuthentication to `podIdentity.provider: aws` with `roleArn` set, or to static credentials via `awsAccessKeyID`/`awsSecretAccessKey` parameters; under provider `aws` the authParams value is still honoured for now (v2.13.0:92-94).",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([(.spec.secretTargetRef // [])[], (.spec.env // [])[] | .parameter] | index(\"awsRoleArn\") != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row maps a parameter to awsRoleArn — the deprecated aws-eks path",
+    "coversNotes": [
+      "docs scalers/aws-cloudwatch.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+      "docs scalers/aws-dynamodb.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+      "docs scalers/aws-dynamodb-streams.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+      "docs scalers/aws-kinesis.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…"
+    ],
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)$",
+      "reason": "names the AWS-triggered scalers; which of their TriggerAuthentications map a parameter to awsRoleArn is settled by the command"
+    }
+  },
+  {
+    "ruleId": "rtz-keda-2.15-podidentity-azure-and-aws-kiam-removed",
+    "severity": "HIGH",
+    "title": "`podIdentity.provider: azure` (AAD Pod Identity) and `aws-kiam` are removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
+      "target": "podIdentityProviders[]",
+      "value": "^(azure|aws-kiam)$"
+    },
+    "quote": "**Authentication:** AAD-Pod-Identity and AWS-KIAM auths have been removed (#5035|#5085)",
+    "remediation": "Every TriggerAuthentication / ClusterTriggerAuthentication named stops authenticating after the hop: the 2.15 CRDs drop `azure` and `aws-kiam` from the `podIdentity.provider` enum — at the top level AND inside the `azureKeyVault`, `awsSecretManager` and `gcpSecretManager` blocks — so the object is invalid under the new schema and the operator cannot build its scalers. Switch to `azure-workload` (Azure AD Workload Identity) or `aws` (IRSA / EKS Pod Identity) and re-point the identity annotations before upgrading. Stored objects are not re-validated on read: the scaler fails because the provider code is gone, and the narrowed CRD enum (every podIdentity.provider path) rejects any UPDATE that keeps the old value.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .podIdentity? // empty | .provider] | any(. == \"azure\" or . == \"aws-kiam\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) providers=\\([.. | objects | .podIdentity? // empty | .provider] | unique | join(\",\"))\"'  # each row uses a provider the 2.15 CRD no longer accepts",
+    "introducedIn": [
+      "2.15.0"
+    ],
+    "coversNotes": [
+      "ClusterTriggerAuthentication/TriggerAuthentication CRD podIdentity.provider (8 paths): −aws-kiam −azure"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.15-prometheus-cortexorgid-field-removed",
+    "severity": "LOW",
+    "title": "Prometheus: the `cortexOrgID` field is removed from the scaler",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "(?i)^prometheus/cortexorgid$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Prometheus Scaler**: Remove deprecated field `cortexOrgID` from Prometheus scaler (#5538)",
+    "remediation": "2.15 deletes the field and the error branch that refused it since 2.10; from here the key is silently ignored. Any prometheus trigger still carrying `cortexOrgID` has not scaled since 2.10 — replace it with `customHeaders: X-Scope-OrgID=<tenant>`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"prometheus\") and (.metadata // {} | has(\"cortexOrgID\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still carries the removed key"
+  }
+]

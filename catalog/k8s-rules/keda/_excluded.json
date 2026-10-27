@@ -1,0 +1,267 @@
+[
+  {
+    "version": "2.9",
+    "note": "General: As per our support policy, Kubernetes v1.23 or above is required and support for…",
+    "reason": "a Kubernetes VERSION FLOOR. k8s-addons/keda.json carries the tested matrix (2.9 → 1.23-1.25) and the add-on tier evaluates it as the hop; a rule here would report the same fact through a second engine"
+  },
+  {
+    "version": "2.9",
+    "note": "General: Change API version of HPA from `autoscaling/v2beta2` to `autoscaling/v2` (#2462)",
+    "reason": "the operator creates and owns its HorizontalPodAutoscalers and re-issues them under autoscaling/v2 itself; no ScaledObject, HPA or app manifest is edited by hand, and a cluster that still serves only v2beta2 is below the Kubernetes 1.23 floor the catalog matrix already enforces as the hop"
+  },
+  {
+    "version": "2.9",
+    "note": "General: Introduction deprecation & breaking change policy (#68)",
+    "reason": "a governance document (kedacore/governance#68), not a change to any object or behaviour"
+  },
+  {
+    "version": "2.11",
+    "note": "Azure Monitor: Exclude Azure Monitor scaler from metricName deprecation (#4713)",
+    "reason": "narrows the 2.10 deprecation rather than adding one: on an azure-monitor trigger `metricName` is the Azure Monitor metric to query. rtz-keda-2.10-metricname-metadata-deprecated and rtz-keda-2.12-metricname-metadata-removed say so in their remediation (an azure-monitor row they list needs no change)"
+  },
+  {
+    "version": "2.12",
+    "note": "General: Replace deprecated `set-output` command with environment file in GitHub Actions…",
+    "reason": "a GitHub Actions workflow change in KEDA's own CI; not a property of any cluster object"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error ScalingModifiers.Formula is mandatory",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error converting target for scalingModifiers (string->float) to valid target: %w",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error trigger type is Utilization, but it needs to be AverageValue or Value for externa…",
+    "reason": "the literal checks `so.Spec.Advanced.ScalingModifiers.MetricType` (scaledobject_webhook.go v2.12.0:395), and scalingModifiers first ships in 2.12 (2fb370b72) — no pre-hop object can carry it; trigger-level Utilization on an external metric was already a scaler error at v2.10.0 (ErrScalerUnsupportedUtilizationMetricType, b60b7d1b8), so the rule flagged objects that were already broken (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error validating formula in ScalingModifiers",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: error validating target in ScalingModifiers",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.12",
+    "note": "ScaledObject webhook: formula is given but target is empty",
+    "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
+  },
+  {
+    "version": "2.13",
+    "note": "TriggerAuthentication webhook: roleArn of PodIdentity can't be set if KEDA isn't identityOwner",
+    "reason": "provider `aws`, `roleArn` and `identityOwner` all first ship in v2.13.0 (c13211794; absent in the v2.12.1 types and CRD) — no object from before the hop can carry the combination the webhook checks (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.14",
+    "note": "ClusterTriggerAuthentication/TriggerAuthentication CRD podIdentity.provider (8 paths): +none",
+    "reason": "a WIDENING: v2.14.0 restores `none` to every podIdentity.provider enum (ef1074a4c, #5593) — the fix for the 2.13 rule rtz-keda-2.13-podidentity-provider-none-rejected-by-crd; nothing is rejected that was accepted before"
+  },
+  {
+    "version": "2.14",
+    "note": "General: Log field `ScaledJob` no longer have conflicting types (#5592)",
+    "reason": "a structured-logging field type fix in the operator's own log lines; nothing an object or a consumer configures"
+  },
+  {
+    "version": "2.14",
+    "note": "ScaledObject webhook: the scaledobject has a %v trigger but the container %s doesn't have the %v request defined",
+    "reason": "the same cpu/memory resource-request check the webhook has run since 2.10 (rtz-keda-2.10-admission-webhook-cpu-memory-requests-required), rewritten with a format parameter; no new object is rejected"
+  },
+  {
+    "version": "2.14",
+    "note": "ScaledObject webhook: unknown scalable object type %v",
+    "reason": "the default branch of a Go type switch over *ScaledObject / *ScaledJob in verifyTriggers (scaledobject_webhook.go v2.14.0:181-195) — an internal guard on the object passed to the webhook, not a scaleTargetRef-kind check; no manifest reaches it (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.14",
+    "note": "TriggerAuthentication webhook: identityId of PodIdentity should not be empty. If it's set, identityId has to be differ…",
+    "reason": "`identityTenantId` and `identityAuthorityHost` first ship in 2.14 (610f81219; absent in the v2.13.1 types) and the identityId check is 2.12's (only the message casing changed) — nothing a pre-hop object carries is newly rejected (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.14",
+    "note": "TriggerAuthentication webhook: identityTenantID of PodIdentity should not be nil or empty when identityAuthorityHost o…",
+    "reason": "`identityTenantId` and `identityAuthorityHost` first ship in 2.14 (610f81219; absent in the v2.13.1 types) and the identityId check is 2.12's (only the message casing changed) — nothing a pre-hop object carries is newly rejected (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.14",
+    "note": "TriggerAuthentication webhook: identityTenantId of PodIdentity should not be empty. If it's set, identityTenantId has…",
+    "reason": "`identityTenantId` and `identityAuthorityHost` first ship in 2.14 (610f81219; absent in the v2.13.1 types) and the identityId check is 2.12's (only the message casing changed) — nothing a pre-hop object carries is newly rejected (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.15",
+    "note": "General: Remove deprecated Kustomize commonLabels (#5888)",
+    "reason": "KEDA's own config/ kustomization (the manifests the project builds its release YAML from) stops using the deprecated `commonLabels` field; the rendered labels, selectors and the Helm chart are unchanged, so no installation edits anything"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-cloud-tasks.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-pub-sub.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-stackdriver.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
+  },
+  {
+    "version": "2.16",
+    "note": "ScaledObject webhook: failed to initialize direct client: %w",
+    "reason": "an internal error path of the webhook's own Kubernetes client construction; not a property of any object"
+  },
+  {
+    "version": "2.17",
+    "note": "General: Change `InitialCooldownPeriod` from `int32` to `*int32` (#6423)",
+    "reason": "a Go API type change (apis/keda/v1alpha1 ScaledObjectSpec.InitialCooldownPeriod becomes a pointer) that only affects programs compiled against the KEDA Go module; the YAML field, its default and the operator's behaviour are unchanged"
+  },
+  {
+    "version": "2.17",
+    "note": "ScaledObject CRD scalingModifiers.metricType: enum introduced",
+    "reason": "the enum (AverageValue, Value) matches what the admission webhook has rejected since 2.12 (scaledobject_webhook.go v2.12.0:395 refuses Utilization on scalingModifiers) — no stored object can carry another value"
+  },
+  {
+    "version": "2.18",
+    "note": "General: Replace deprecated `webhook.Validator` with `webhook.CustomValidator` (#6660)",
+    "reason": "a controller-runtime API migration inside the admission webhook's Go code; the webhook's behaviour and every rejection it issues are unchanged"
+  },
+  {
+    "version": "2.18",
+    "note": "ScaledObject webhook: failed to setup kubernetes clients: %w",
+    "reason": "an internal error path of the webhook's own Kubernetes client construction; not a property of any object"
+  },
+  {
+    "version": "2.18",
+    "note": "ScaledObject webhook: the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advan…",
+    "reason": "the literal first ships in v2.18.2 (f42c1f1bc) and fires only with the annotation `scaledobject.keda.sh/transfer-hpa-ownership: \"true\"` (since 2.11.0); a foreign HPA has been rejected since 2.10 regardless, so this is a clearer error for an existing rejection plus a nil-dereference fix, not a new constraint (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.18",
+    "note": "docs operate/schema.md: | deprecated | deprecated is a string that indicates if the field i…",
+    "reason": "documentation of the typed-config `deprecated` / `deprecatedAnnounce` tag mechanism itself (operate/schema.md); the tags that use it are the ledger notes"
+  },
+  {
+    "version": "2.18",
+    "note": "docs operate/schema.md: | deprecatedAnnounce | deprecatedAnnounce is a string that indicate…",
+    "reason": "documentation of the typed-config `deprecated` / `deprecatedAnnounce` tag mechanism itself (operate/schema.md); the tags that use it are the ledger notes"
+  },
+  {
+    "version": "2.18",
+    "note": "docs reference/events.md: | `KEDAScalerInfo` | `Normal` | When a Scaler contains deprecated f…",
+    "reason": "documentation of the KEDAScalerInfo event the operator emits for a deprecatedAnnounce parameter; the parameters that trigger it are the ledger notes"
+  },
+  {
+    "version": "2.19",
+    "note": "General: Replace deprecated `azure autorest` dependency to `azure sdk for go` (#7073)",
+    "reason": "a Go dependency swap (autorest → azure-sdk-for-go) inside the Azure scalers; trigger metadata and authentication parameters are unchanged"
+  },
+  {
+    "version": "2.20",
+    "note": "General: Remove dead code from authentication package and drop unused `authModes` field…",
+    "reason": "NOT a removal: authentication.Config still reads `authModes;authMode` from trigger metadata (order=triggerMetadata;authParams, authentication_types.go v2.20.0:76) and prometheus/loki/arangodb/predictkube embed that Config; commit 5103e7717 (#7726) only deleted a second, unused copy of the field. Telling users to remove `authModes` from metadata would break their authentication (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.20",
+    "note": "PredictKube Scaler: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube…",
+    "reason": "a Go dependency bump inside the PredictKube scaler; trigger metadata and authentication parameters are unchanged"
+  },
+  {
+    "version": "2.20",
+    "note": "ScaledObject CRD fallback.behavior: +scalingModifiers",
+    "reason": "a WIDENING: the enum gains `scalingModifiers` (#7254); the values it already listed stay valid"
+  },
+  {
+    "version": "2.20",
+    "note": "ScaledObject webhook: scalingModifiers fallback behavior requires scalingModifiers.formula to be defined",
+    "reason": "validation of the `fallback.behavior` + `scalingModifiers` combination added in 2.20 (#7254); an object that existed before the hop cannot set a 2.20 enum value"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: externalID of PodIdentity requires roleArn to be set",
+    "reason": "`externalID` (JSON field name; the webhook text says externalId) first ships in 2.20 (CRD diff v2.19.0..v2.20.0, triggerauthentication_types.go :170) — no pre-hop object can carry it (E2 audit 2026-10-27)"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.clientId is required when oauth2 is configured",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.tokenUrl is required when oauth2 is configured",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.tokenUrl must be a valid http or https URL",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "TriggerAuthentication webhook: oauth2.type must be 'clientCredentials', got '%s'",
+    "reason": "validation of `spec.oauth2`, a TriggerAuthentication block that first ships in 2.20: no object that exists before the hop can carry it, so the rejection cannot hit an existing object"
+  },
+  {
+    "version": "2.20",
+    "note": "docs scalers/nats-streaming.md: See also the deprecation notice here.",
+    "reason": "the 2.20 docs reword the stan deprecation notice already filed at 2.17 (rtz-keda-2.17-nats-streaming-stan-deprecated); the trigger type is gone since 2.19 (rtz-keda-2.19-nats-streaming-stan-removed), so by 2.20 nothing new is announced"
+  },
+  {
+    "version": "2.20",
+    "note": "docs scalers/nats-streaming.md: The Stan scaler (NATS Streaming) is DEPRECATED and will be removed…",
+    "reason": "the 2.20 docs reword the stan deprecation notice already filed at 2.17 (rtz-keda-2.17-nats-streaming-stan-deprecated); the trigger type is gone since 2.19 (rtz-keda-2.19-nats-streaming-stan-removed), so by 2.20 nothing new is announced"
+  },
+  {
+    "version": "2.21",
+    "note": "ScaledObject webhook: failed to register HPA index %q: %w",
+    "reason": "an internal error path of the webhook's controller-runtime index registration at startup; not a property of any object"
+  },
+  {
+    "version": "2.21",
+    "note": "ScaledObject webhook: failed to register ScaledObject index %q: %w",
+    "reason": "an internal error path of the webhook's controller-runtime index registration at startup; not a property of any object"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal requires either clientSecret or clientCertificate",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.activeDirectoryEndpoint can only be set when cloud is Private",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.activeDirectoryEndpoint is required when cloud is Private",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientCertificatePassword requires clientCertificate",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientId is required when azureServicePrincipal is configured",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.clientSecret and azureServicePrincipal.clientCertificate are mutu…",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.21",
+    "note": "TriggerAuthentication webhook: azureServicePrincipal.tenantId is required when azureServicePrincipal is configured",
+    "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  }
+]

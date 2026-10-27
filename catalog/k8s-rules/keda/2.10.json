@@ -1,0 +1,86 @@
+[
+  {
+    "ruleId": "rtz-keda-2.10-metricname-metadata-deprecated",
+    "severity": "LOW",
+    "title": "Setting `metricName` in trigger metadata is deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^(activemq|arangodb|artemis-queue|aws-dynamodb|aws-dynamodb-streams|aws-kinesis-stream|aws-sqs-queue|azure-app-insights|azure-blob|azure-data-explorer|azure-eventhub|azure-log-analytics|azure-pipelines|azure-queue|azure-servicebus|cassandra|couchdb|cpu|cron|datadog|elasticsearch|etcd|external|external-push|gcp-pubsub|gcp-stackdriver|gcp-storage|github-runner|graphite|ibmmq|influxdb|kafka|kubernetes-workload|liiklus|loki|memory|metrics-api|mongodb|mssql|mysql|nats-jetstream|new-relic|openstack-metric|openstack-swift|postgresql|predictkube|prometheus|pulsar|rabbitmq|redis|redis-cluster|redis-cluster-streams|redis-sentinel|redis-sentinel-streams|redis-streams|selenium-grid|solace-event-queue|stan)/metricName$",
+      "reason": "checked on the composite <type>/<key> of every projected trigger; aws-cloudwatch, huawei-cloudeye and azure-monitor are NOT listed: there `metricName` is the cloud metric the scaler queries (required), not the HPA metric name — leave it there (E2 audit 2026-10-27)"
+    },
+    "quote": "**General**: Deprecate explicitly setting `metricName` field from `ScaledObject.triggers[*].metadata` (#4220)",
+    "remediation": "Remove `metricName` from the metadata of each trigger named; KEDA generates the HPA metric name itself (`s<index>-<type>-<...>`). Anything that reads the HPA's external metric by its custom name (dashboards, `kubectl get hpa` scripts) must switch to the generated name. The key is ignored from 2.12 on. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query, not the HPA name — 2.11 exempts it from this deprecation; an azure-monitor row listed here needs no change. Exception: aws-cloudwatch and huawei-cloudeye REQUIRE `metricName` (it names the CloudWatch / Cloud Eye metric to query — the scaler errors `metric name not given` without it) and azure-monitor uses it the same way; leave those alone.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | IN(\"azure-monitor\",\"aws-cloudwatch\",\"huawei-cloudeye\") | not)) | select(((.metadata // {}) | has(\"metricName\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row sets metricName as an HPA metric name; the three cloud-metric scalers are skipped on purpose",
+    "coversNotes": [
+      "docs scalers/azure-log-analytics.md: `metricName` - Name to assign to the metric. (Optional, if not set…",
+      "docs scalers/azure-storage-blob.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/cassandra.md: `metricName` - Name to assign to the metric. (DEPRECATED: This para…",
+      "docs scalers/graphite.md: `metricName` - Name to identify the Metric in the external.metrics.…",
+      "docs scalers/influxdb.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/mongodb.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/mssql.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/postgresql.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/rabbitmq-queue.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/prometheus.md: `metricName` - Name to identify the Metric in the external.metrics.…"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.10-prometheus-cortexorgid-refused",
+    "severity": "HIGH",
+    "title": "Prometheus `cortexOrgID` is refused — the scaler errors until it is replaced by `customHeaders`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^prometheus/cortexOrgID$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Prometheus Scaler**: `cortexOrgId` metadata deprecated in favor of custom headers (#4208)",
+    "remediation": "KEDA 2.10 does not merely deprecate `cortexOrgID`: pkg/scalers/prometheus_scaler.go returns the error \"cortexOrgID is deprecated, please use customHeaders instead\" whenever the key is present, so every prometheus trigger named stops producing metrics after the hop. Replace it with `customHeaders: X-Scope-OrgID=<tenant>` before upgrading. The error fires only when the value is non-empty; the key was always read case-sensitively as `cortexOrgID`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"prometheus\") and (.metadata // {} | has(\"cortexOrgID\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is a prometheus trigger the 2.10 scaler refuses outright",
+    "coversNotes": [
+      "docs scalers/prometheus.md: `cortexOrgID` - DEPRECATED: This parameter is deprecated as of KEDA…"
+    ],
+    "introducedIn": [
+      "2.10.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.10-admission-webhook-cpu-memory-requests-required",
+    "severity": "MEDIUM",
+    "title": "New admission webhook rejects cpu/memory triggers whose target containers set no resource request",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the check joins a ScaledObject trigger to the resource requests of the containers in its scaleTargetRef workload; the projection carries both halves but no rule predicate can join two kinds"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject",
+      "target": "triggers[].type",
+      "value": "^(cpu|memory)$"
+    },
+    "quote": "the scaledobject has a cpu trigger but the container %s doesn't have the cpu request defined",
+    "remediation": "KEDA 2.10 introduces the keda-admission-webhooks Deployment (chart `webhooks.enabled`, on by default). On every UPDATE of a ScaledObject with a cpu or memory trigger it now rejects the object unless each container of the scaled workload declares the matching request (`resources.requests.cpu` / `.memory`). Existing objects keep running until someone edits them — add the requests to the workloads behind the ScaledObjects named, or set `metadata.containerName` to the one container that has them.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([.spec.triggers[]? | .type] | any(. == \"cpu\" or . == \"memory\")) | \"\\(.metadata.namespace)/\\(.metadata.name) target=\\(.spec.scaleTargetRef.kind // \"Deployment\")/\\(.spec.scaleTargetRef.name) triggers=\\([.spec.triggers[] | select(.type == \"cpu\" or .type == \"memory\") | .type] | join(\",\"))\"'  # for each row check that every container of the target sets requests for the listed resources",
+    "coversNotes": [
+      "ScaledObject webhook: the scaledobject has a memory trigger but the container %s doesn't have the memory requ…"
+    ]
+  },
+  {
+    "ruleId": "rtz-keda-2.10-admission-webhook-workload-already-managed",
+    "severity": "MEDIUM",
+    "title": "New admission webhook rejects a ScaledObject whose workload is already scaled by another HPA or ScaledObject",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a second HorizontalPodAutoscaler or ScaledObject targets the same workload is a join across objects the projection does not make"
+    },
+    "quote": "the workload '%s' of type '%s' is already managed by the ScaledObject '%s'",
+    "remediation": "From 2.10 the admission webhook refuses to create or update a ScaledObject when a HorizontalPodAutoscaler KEDA does not own, or another ScaledObject, already targets the same workload. Before upgrading, delete the hand-written HPA (KEDA creates and owns its own) or remove the duplicate ScaledObject; otherwise the next edit of the ScaledObject is rejected.",
+    "verifyCommand": "kubectl get hpa -A -o json 2>/dev/null | jq -r '.items[] | select((.metadata.labels // {})[\"scaledobject.keda.sh/name\"] == null) | \"\\(.metadata.namespace)/\\(.metadata.name) -> \\(.spec.scaleTargetRef.kind)/\\(.spec.scaleTargetRef.name)\"'  # each row is an HPA KEDA does not own; a ScaledObject on the same target is rejected by the 2.10 webhook",
+    "coversNotes": [
+      "ScaledObject webhook: the workload '%s' of type '%s' is already managed by the hpa '%s'"
+    ]
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "ruleId": "rtz-keda-2.14-operator-prometheus-metrics-renamed",
+    "severity": "LOW",
+    "title": "KEDA operator Prometheus metrics renamed; the old names are still exposed for now",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which metric names a dashboard, alert or recording rule reads is not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda([:@]|$)"
+    },
+    "quote": "Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future (#4854).",
+    "remediation": "Update dashboards, alerts and recording rules to the new names; both are exposed until 2.17 removes the old ones: `keda_scaler_metrics_latency` → `keda_scaler_metrics_latency_seconds`; `keda_scaler_errors` → `keda_scaler_detail_errors_total`; `keda_scaler_errors_total` → `sum(keda_scaler_detail_errors_total)`; `keda_scaled_object_errors` → `keda_scaled_object_errors_total`; `keda_scaled_job_errors` → `keda_scaled_job_errors_total`; `keda_trigger_totals` → `keda_trigger_registered_total`; `keda_resource_totals` → `keda_resource_registered_total`; `keda_internal_scale_loop_latency` → `keda_internal_scale_loop_latency_seconds`. (`keda_metrics_adapter_*` is not part of this rename — it left with the adapter endpoint in 2.11.)",
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file still using a pre-2.14 metric name",
+    "coversNotes": [
+      "docs integrations/opentelemetry.md: Deprecated metrics",
+      "docs integrations/opentelemetry.md: The following metrics are exposed as well, but are deprecated and w…",
+      "docs integrations/prometheus.md: Deprecated metrics",
+      "docs integrations/prometheus.md: The following metrics are exposed as well, but are deprecated and w…"
+    ]
+  }
+]
