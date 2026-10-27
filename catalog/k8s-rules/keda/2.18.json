@@ -156,17 +156,5 @@
     "introducedIn": [
       "2.18.0"
     ]
-  },
-  {
-    "ruleId": "rtz-keda-2.18-admission-webhook-existing-hpa-ownership-transfer",
-    "severity": "INFO",
-    "title": "Admission webhook: adopting an existing HPA now requires naming it in `advanced.horizontalPodAutoscalerConfig.name`",
-    "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the rejection concerns a ScaledObject being CREATED for a workload that already has a hand-written HPA — a future object, not one in the snapshot"
-    },
-    "quote": "the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advanced settings to enable ownership transfer",
-    "remediation": "From 2.18 a new ScaledObject whose target already has a HorizontalPodAutoscaler is rejected unless `spec.advanced.horizontalPodAutoscalerConfig.name` names that HPA — KEDA then takes ownership of it instead of fighting it. Nothing in place changes; tell app teams migrating HPAs to ScaledObjects after the upgrade.",
-    "verifyCommand": "kubectl get hpa -A -o json 2>/dev/null | jq -r '.items[] | select((.metadata.labels // {})[\"scaledobject.keda.sh/name\"] == null) | \"\\(.metadata.namespace)/\\(.metadata.name) -> \\(.spec.scaleTargetRef.kind)/\\(.spec.scaleTargetRef.name)\"'  # each row is an HPA KEDA does not own; a ScaledObject created for its target must name it"
   }
 ]

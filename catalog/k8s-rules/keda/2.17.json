@@ -33,13 +33,13 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler (#6627)",
-    "remediation": "pkg/scalers/apache_kafka_scaler.go drops the `awsEndpoint` tag at v2.17.0 (the key was never used for a request); from 2.17 it is ignored on each apache-kafka trigger named. Remove it; a custom endpoint for MSK IAM auth is `awsEndpoint` on the TriggerAuthentication, not the trigger.",
+    "remediation": "pkg/scalers/apache_kafka_scaler.go drops the `awsEndpoint` tag at v2.17.0 (the key was never used for a request); from 2.17 it is ignored on each apache-kafka trigger named. Nothing in the apache-kafka scaler reads `awsEndpoint` at 2.17 or later (the field was declared but unused at v2.16.1:73); just delete the key.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"apache-kafka\") and (.metadata // {} | has(\"awsEndpoint\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries a key 2.17 ignores"
   },
   {
     "ruleId": "rtz-keda-2.17-operator-prometheus-metric-deprecations-removed",
     "severity": "MEDIUM",
-    "title": "KEDA operator: the pre-2.14 Prometheus metric names are removed",
+    "title": "KEDA operator: the metric names deprecated in 2.14 are removed",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "which metric names a dashboard, alert or recording rule reads is not in the collected projection"
@@ -51,7 +51,7 @@
       "value": "(^|/)kedacore/keda([:@]|$)"
     },
     "quote": "**General**: Remove Prometheus metric deprecations (#6339)",
-    "remediation": "Dashboards, alerts and recording rules that still use the pre-2.14 names (`keda_metrics_adapter_*`, `keda_scaler_errors_total` without the renamed labels) stop matching after this hop. Move them to the `keda_*` names 2.14 introduced.",
+    "remediation": "Any dashboard, alert or recording rule still reading a 2.14-deprecated name goes blank: `keda_scaler_metrics_latency` → `keda_scaler_metrics_latency_seconds`; `keda_scaler_errors` → `keda_scaler_detail_errors_total`; `keda_scaler_errors_total` → `sum(keda_scaler_detail_errors_total)`; `keda_scaled_object_errors` → `keda_scaled_object_errors_total`; `keda_scaled_job_errors` → `keda_scaled_job_errors_total`; `keda_trigger_totals` → `keda_trigger_registered_total`; `keda_resource_totals` → `keda_resource_registered_total`; `keda_internal_scale_loop_latency` → `keda_internal_scale_loop_latency_seconds`. `keda_scaler_errors_total` has no direct successor — sum `keda_scaler_detail_errors_total`.",
     "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file whose expressions go dark on the hop"
   },
   {
@@ -66,7 +66,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**External Scaler**: Remove deprecated tlsCertFile from External scaler (#4549)",
-    "remediation": "Each external / external-push trigger named points at a client certificate file through `tlsCertFile`; from 2.17 the key is not read and the connection to the external scaler is made without it (or fails). Supply the certificate through a TriggerAuthentication (`caCert`, `tlsClientCert`, `tlsClientKey`) instead.",
+    "remediation": "`tlsCertFile` was a CA trust root (v2.16.1 external_scaler.go:313, `credentials.NewClientTLSFromFile(file, \"\")`), not a client certificate. Put the PEM content into a TriggerAuthentication `caCert` parameter, or set `enableTLS: true` to use the system roots — with neither, 2.17 dials the external scaler in PLAINTEXT (v2.17.0:325).",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"external\" or .type == \"external-push\") and (.metadata // {} | has(\"tlsCertFile\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row loses its client certificate on the hop"
   },
   {

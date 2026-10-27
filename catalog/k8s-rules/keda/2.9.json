@@ -23,7 +23,7 @@
   {
     "ruleId": "rtz-keda-2.9-azure-eventhub-default-checkpoint-strategy-deprecated",
     "severity": "LOW",
-    "title": "Azure Event Hubs: the default `azureFunctions` checkpoint strategy is deprecated",
+    "title": "Azure Event Hubs: the default `azureFunction` checkpoint strategy is deprecated",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
@@ -32,7 +32,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "Default checkpointing strategy for Azure Event Hubs scaler `azureFunctions` is deprecated in favor of `blobMetadata` (#XXX | Discussion)",
-    "remediation": "On each azure-eventhub trigger named, set `checkpointStrategy` explicitly (`blobMetadata` for non-Functions consumers, or the one your consumer actually writes) instead of relying on the default. A trigger that already sets it is listed too and needs no edit.",
+    "remediation": "On each azure-eventhub trigger named, set `checkpointStrategy` explicitly (`blobMetadata` for non-Functions consumers, or the one your consumer actually writes) instead of relying on the default. A trigger that already sets it is listed too and needs no edit. (The code spells the strategy `azureFunction`; the changelog's `azureFunctions` is a typo.)",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-eventhub\") | select((.metadata // {}) | has(\"checkpointStrategy\") | not) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is an azure-eventhub trigger; checkpointStrategy=null relies on the deprecated default"
   },
   {

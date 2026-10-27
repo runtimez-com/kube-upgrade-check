@@ -73,12 +73,12 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
       "target": "triggers[].typedKeys[]",
-      "value": "^temporal/(buildId|selectAllActive|selectUnversioned)$",
+      "value": "^temporal/(buildId|buildIdFromEnv|selectAllActive|selectUnversioned)$",
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "KEDA 2.21 removes the deprecated Temporal scaler settings `buildId`, `selectAllActive`, and `selectUnversioned`. A ScaledObject or ScaledJob containing any of these fields now fails scaler metadata parsing.",
-    "remediation": "Each temporal trigger named still sets one of the three. From 2.21 the tags are `deprecated=` and scaler metadata parsing fails, so the ScaledObject / ScaledJob stops scaling after the hop. For unversioned workers delete the settings; for versioned workers configure `workerDeploymentName` and `workerDeploymentBuildId` (one scaling resource per deployment version that needs its own behaviour).",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"temporal\" and ((.metadata // {}) | has(\"buildId\") or has(\"selectAllActive\") or has(\"selectUnversioned\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) keys=\\(.metadata | keys | map(select(. == \"buildId\" or . == \"selectAllActive\" or . == \"selectUnversioned\")) | join(\",\"))\"'  # each row fails scaler metadata parsing on the hop",
+    "remediation": "Each temporal trigger named still sets one of the three. From 2.21 the tags are `deprecated=` and scaler metadata parsing fails, so the ScaledObject / ScaledJob stops scaling after the hop. For unversioned workers delete the settings; for versioned workers configure `workerDeploymentName` and `workerDeploymentBuildId` (one scaling resource per deployment version that needs its own behaviour). `buildId` is read with order=triggerMetadata;resolvedEnv, so `buildIdFromEnv` sets it too and is named as well.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"temporal\")) | select(((.metadata // {}) | has(\"buildId\") or has(\"buildIdFromEnv\") or has(\"selectAllActive\") or has(\"selectUnversioned\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the Rules-Based Versioning settings — move to workerDeploymentName/workerDeploymentBuildId",
     "coversNotes": [
       "Temporal Rules-Based Versioning settings (release notes)",
       "`54a6651`: Temporal Scaler: Remove deprecated `buildId`, `selectAllActive`, and…",
@@ -102,7 +102,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "KEDA 2.21 adds the Azure Pipelines scaler metadata field `scaleOnInFlight`, which defaults to `true`. The reported queue length now includes unfinished jobs that have already been assigned to an agent. Finished jobs remain excluded.",
-    "remediation": "Each azure-pipelines trigger named changes its metric on the hop unless `scaleOnInFlight` is set explicitly. Keep the default (`true`) on a ScaledJob using the `default` scaling strategy — it avoids subtracting running jobs twice; set `scaleOnInFlight: false` (with the `accurate` ScaledJob strategy) to count only unassigned jobs as 2.20 did; for a ScaledObject decide whether assigned work belongs in the replica count and test it. A trigger that already sets the key is listed too and needs no edit.",
+    "remediation": "Each azure-pipelines trigger named changes its metric on the hop unless `scaleOnInFlight` is set explicitly. Keep the default (`true`) on a ScaledJob using the `default` scaling strategy — it avoids subtracting running jobs twice; set `scaleOnInFlight: false` (with the `accurate` ScaledJob strategy) to count only unassigned jobs as 2.20 did; for a ScaledObject decide whether assigned work belongs in the replica count and test it. A trigger that already sets the key is listed too and needs no edit. Only installs on 2.20.x see the metric change here; from 2.19 or earlier, 2.21's default restores the pre-2.20 counting (the 2.20 rule covers the dip).",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-pipelines\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) scaleOnInFlight=\\(.metadata.scaleOnInFlight // null)\"'  # each row's metric changes on the hop unless scaleOnInFlight is set; scaleOnInFlight=null means the new default applies",
     "coversNotes": [
       "Azure Pipelines in-flight jobs (release notes)",
@@ -151,6 +151,9 @@
     },
     "quote": "`778907e` : **Metrics API Scaler**: reject auth modes the scaler does not implement (#8178) (@rickbrouwer)",
     "remediation": "Filed by upstream under Fixes. From 2.21 pkg/scalers/metrics_api_scaler.go validates `authMode` against the modes it actually applies — `apiKey`, `basic`, `tls`, `bearer` — and a metrics-api trigger whose authentication names any other mode (`custom`, `oauth`, or a combination with one of them) fails to build after the hop, where before the mode was silently ignored. Check each metrics-api trigger named and its TriggerAuthentication for an unsupported mode.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"metrics-api\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) authMode=\\(.metadata.authMode // \"(from TriggerAuthentication: \" + (.authenticationRef.name // \"none\") + \")\")\"'  # each row is a metrics-api trigger; a mode outside apiKey,basic,tls,bearer is rejected on the hop"
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"metrics-api\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) authMode=\\(.metadata.authMode // \"(from TriggerAuthentication: \" + (.authenticationRef.name // \"none\") + \")\")\"'  # each row is a metrics-api trigger; a mode outside apiKey,basic,tls,bearer is rejected on the hop",
+    "introducedIn": [
+      "2.21.0"
+    ]
   }
 ]

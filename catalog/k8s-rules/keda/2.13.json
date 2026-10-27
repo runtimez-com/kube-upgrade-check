@@ -62,55 +62,59 @@
   {
     "ruleId": "rtz-keda-2.13-aws-awsrolearn-deprecated",
     "severity": "LOW",
-    "title": "AWS scalers: trigger-level `awsRoleArn` is deprecated — it only applies to `aws-eks` authentication",
+    "title": "AWS scalers: the `awsRoleArn` authentication parameter is deprecated — it only applies to `aws-eks` pod identity",
     "detection": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ScaledObject|ScaledJob",
-      "target": "triggers[].typedKeys[]",
-      "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)/awsRoleArn$",
-      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+      "kind": "NOT_DETECTABLE",
+      "reason": "`awsRoleArn` has only ever been read from authParams — a TriggerAuthentication `secretTargetRef[]`/`env[]` entry with `parameter: awsRoleArn` (aws_common.go v2.13.0:93,106) — and the projection carries the authentication block KEY NAMES and counts, not parameter names"
     },
     "quote": "`awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS resource. (This field is deprecated only applies for `aws-eks` and `aws-kiam` authentications, for `aws` is set in the auth)",
-    "remediation": "Docs-only deprecation. With `podIdentity.provider: aws` the role is `roleArn` on the TriggerAuthentication; the trigger-level `awsRoleArn` is read only under the deprecated `aws-eks` provider. Each trigger named keeps working through 2.x; move the ARN to the TriggerAuthentication when its authentication moves to `aws`.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | test(\"^aws-\")) and (.metadata // {} | has(\"awsRoleArn\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries the trigger-level ARN the docs deprecate (ARN value not printed)",
+    "remediation": "For each AWS scaler named, read the TriggerAuthentication its trigger references: an entry mapping `parameter: awsRoleArn` is the deprecated path (it only applies to `aws-eks` pod identity, itself deprecated). Switch the TriggerAuthentication to `podIdentity.provider: aws` with `roleArn` set, or to static credentials via `awsAccessKeyID`/`awsSecretAccessKey` parameters; under provider `aws` the authParams value is still honoured for now (v2.13.0:92-94).",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([(.spec.secretTargetRef // [])[], (.spec.env // [])[] | .parameter] | index(\"awsRoleArn\") != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row maps a parameter to awsRoleArn — the deprecated aws-eks path",
     "coversNotes": [
       "docs scalers/aws-cloudwatch.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
       "docs scalers/aws-dynamodb.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
       "docs scalers/aws-dynamodb-streams.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
       "docs scalers/aws-kinesis.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…"
-    ]
+    ],
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)$",
+      "reason": "names the AWS-triggered scalers; which of their TriggerAuthentications map a parameter to awsRoleArn is settled by the command"
+    }
   },
   {
     "ruleId": "rtz-keda-2.13-azure-data-explorer-clientsecret-metadata-removed",
     "severity": "HIGH",
-    "title": "Azure Data Explorer no longer reads `clientSecret` from trigger metadata",
+    "title": "Azure Data Explorer no longer reads `clientSecret` from trigger metadata — and `clientSecretFromEnv` is broken from 2.13.0",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
       "target": "triggers[].typedKeys[]",
-      "value": "^azure-data-explorer/clientSecret$",
+      "value": "^azure-data-explorer/clientSecret(FromEnv)?$",
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**General**: Clean up previously deprecated code in Azure Data Explorer Scaler about clientSecret for 2.13 release (#5051)",
-    "remediation": "pkg/scalers/azure_data_explorer_scaler.go at v2.13.0 resolves the client secret from a TriggerAuthentication (`authParams.clientSecret`) or `clientSecretFromEnv` only; a secret left in `metadata.clientSecret` is ignored and the trigger fails to authenticate after the hop. Move it on each azure-data-explorer trigger named before upgrading.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"azure-data-explorer\") and (.metadata // {} | has(\"clientSecret\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row stops authenticating on the hop"
+    "remediation": "Move the secret to a TriggerAuthentication `clientSecret` parameter. Do NOT switch to `clientSecretFromEnv`: from 2.13.0 the scaler assigns the environment-variable NAME as the secret (azure_data_explorer_scaler.go v2.13.0:166-167, a regression from 2.12.1's getParameterFromConfig), so that path fails authentication too; 2.20 only changes its error text.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"azure-data-explorer\")) | select(((.metadata // {}) | has(\"clientSecret\") or has(\"clientSecretFromEnv\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries the secret in trigger metadata (or the broken FromEnv path) — move it to a TriggerAuthentication"
   },
   {
-    "ruleId": "rtz-keda-2.13-admission-webhook-podidentity-rolearn-requires-identityowner",
-    "severity": "LOW",
-    "title": "Admission webhook rejects `podIdentity.roleArn` unless KEDA is the identity owner",
+    "ruleId": "rtz-keda-2.13-podidentity-provider-none-rejected-by-crd",
+    "severity": "MEDIUM",
+    "title": "The 2.13 CRDs reject `podIdentity.provider: none` — the documented default is missing from the first enum",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "the rejection joins roleArn with identityOwner (and with the referencing trigger's identityOwner metadata); the projection records roleArn as set, not that pairing"
-    },
-    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "TriggerAuthentication|ClusterTriggerAuthentication",
-      "target": "podIdentity.roleArnSet",
-      "value": "^true$"
+      "target": "podIdentityProviders[]",
+      "value": "^none$",
+      "reason": "checked on every podIdentity.provider value the agent projects, at any depth (top level and under the secret-store blocks)"
     },
-    "quote": "roleArn of PodIdentity can't be set if KEDA isn't identityOwner",
-    "remediation": "With `podIdentity.provider: aws`, a `roleArn` only makes sense when KEDA's own identity assumes it (`identityOwner: keda`, the default). Each TriggerAuthentication named sets `roleArn` and is rejected by the 2.13 webhook on its next update if `identityOwner: workload` is also set — drop one of the two.",
-    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.podIdentity.roleArn != null and .spec.podIdentity.identityOwner == \"workload\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is rejected by the 2.13 webhook on its next update"
+    "introducedIn": [
+      "2.13.0"
+    ],
+    "quote": "enum: - azure - azure-workload - gcp - aws - aws-eks - aws-kiam",
+    "remediation": "While the 2.13.0/2.13.1 CRDs are installed, any UPDATE of a TriggerAuthentication or ClusterTriggerAuthentication that keeps `podIdentity.provider: none` (the documented default, keda.sh/docs/2.12/concepts/authentication) is rejected by the schema — the first enum omits it; v2.14.0 restores it (ef1074a4c, #5593). Remove the `podIdentity` block (equivalent to `none`) before the hop, or upgrade straight through to 2.14.0 or later. Existing objects keep working until edited.",
+    "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .podIdentity? | objects | .provider] | index(\"none\") != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row sets provider: none somewhere — its next edit is rejected by the 2.13 CRDs"
   }
 ]

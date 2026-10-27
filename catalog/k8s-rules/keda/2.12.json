@@ -6,28 +6,13 @@
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
-      "target": "triggers[].metadataKeys[]",
-      "value": "^metricName$",
-      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+      "target": "triggers[].typedKeys[]",
+      "value": "^(activemq|apache-kafka|arangodb|artemis-queue|aws-dynamodb|aws-dynamodb-streams|aws-kinesis-stream|aws-sqs-queue|azure-app-insights|azure-blob|azure-data-explorer|azure-eventhub|azure-log-analytics|azure-pipelines|azure-queue|azure-servicebus|cassandra|couchdb|cpu|cron|datadog|elasticsearch|etcd|external|external-push|gcp-cloudtasks|gcp-pubsub|gcp-stackdriver|gcp-storage|github-runner|graphite|ibmmq|influxdb|kafka|kubernetes-workload|liiklus|loki|memory|metrics-api|mongodb|mssql|mysql|nats-jetstream|new-relic|openstack-metric|openstack-swift|postgresql|predictkube|prometheus|pulsar|rabbitmq|redis|redis-cluster|redis-cluster-streams|redis-sentinel|redis-sentinel-streams|redis-streams|selenium-grid|solace-event-queue|solr|stan)/metricName$",
+      "reason": "checked on the composite <type>/<key> of every projected trigger; aws-cloudwatch, huawei-cloudeye and azure-monitor are NOT listed: there `metricName` is the cloud metric the scaler queries (required), not the HPA metric name — leave it there (E2 audit 2026-10-27)"
     },
     "quote": "**General**: Remove deprecated `metricName` from trigger metadata section (#4899)",
-    "remediation": "From 2.12 a `metricName` key in trigger metadata is ignored and KEDA names the HPA's external metric itself. On each trigger named, remove the key and update anything that reads the HPA metric by its old custom name (dashboards, alerts on `kube_horizontalpodautoscaler_*` metric labels, scripts). Scaling itself continues. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query and stays — an azure-monitor row listed here needs no change.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.metadata // {}) | has(\"metricName\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) metricName=\\(.metadata.metricName)\"'  # each row loses its custom HPA metric name on the hop"
-  },
-  {
-    "ruleId": "rtz-keda-2.12-admission-webhook-utilization-on-external-metric",
-    "severity": "MEDIUM",
-    "title": "Admission webhook rejects `metricType: Utilization` on a non-resource trigger",
-    "detection": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ScaledObject|ScaledJob",
-      "target": "triggers[].metricTypeClass",
-      "value": "^external/Utilization$",
-      "reason": "checked on the trigger's own metricType and type as projected (metricTypeClass = resource|external / metricType)"
-    },
-    "quote": "error trigger type is Utilization, but it needs to be AverageValue or Value for external metrics",
-    "remediation": "`Utilization` only exists for the cpu and memory resource metrics. Each trigger named sets it on an external metric and is rejected by the 2.12 webhook on its next update: change `metricType` to `AverageValue` (per-pod) or `Value` (whole-workload).",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.metricType == \"Utilization\" and .type != \"cpu\" and .type != \"memory\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is rejected by the 2.12 webhook on its next update"
+    "remediation": "From 2.12 a `metricName` key in trigger metadata is ignored and KEDA names the HPA's external metric itself. On each trigger named, remove the key and update anything that reads the HPA metric by its old custom name (dashboards, alerts on `kube_horizontalpodautoscaler_*` metric labels, scripts). Scaling itself continues. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query and stays — an azure-monitor row listed here needs no change. Exception: aws-cloudwatch and huawei-cloudeye REQUIRE `metricName` (it names the CloudWatch / Cloud Eye metric to query — the scaler errors `metric name not given` without it) and azure-monitor uses it the same way; leave those alone.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | IN(\"azure-monitor\",\"aws-cloudwatch\",\"huawei-cloudeye\") | not)) | select(((.metadata // {}) | has(\"metricName\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row sets metricName as an HPA metric name; the three cloud-metric scalers are skipped on purpose"
   },
   {
     "ruleId": "rtz-keda-2.12-admission-webhook-podidentity-identityid-empty",

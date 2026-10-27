@@ -11,7 +11,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**Pulsar Scaler**: Fix `msgBacklogThreshold` field being named wrongly as `msgBacklog` (#4681)",
-    "remediation": "Rename `msgBacklog` to `msgBacklogThreshold` on each pulsar trigger named. 2.11.2 accepts both; 2.16 drops `msgBacklog` and the trigger silently falls back to the default threshold of 10.",
+    "remediation": "Rename `msgBacklog` to `msgBacklogThreshold` on each pulsar trigger named. 2.11.2 accepts both; 2.16 drops `msgBacklog` and the trigger silently falls back to the default threshold of 10. Rename only once the operator runs 2.11.2 or later: 2.11.0 and 2.11.1 read `msgBacklog` only and ignore `msgBacklogThreshold`.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"pulsar\") and (.metadata // {} | has(\"msgBacklog\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the old key",
     "introducedIn": [
       "2.11.2"
@@ -32,7 +32,7 @@
       "value": "(^|/)kedacore/keda-metrics-apiserver([:@]|$)"
     },
     "quote": "**General**: Metrics Adapter: remove deprecated Prometheus Metrics and non-gRPC code (#3930)",
-    "remediation": "Scrape jobs, ServiceMonitors and dashboards that read keda-metrics-apiserver's /metrics go dark after this hop. Re-point them at the keda-operator metrics endpoint (chart `prometheus.operator.enabled`), where the same series have been exposed since 2.9. (This bullet was back-filled into CHANGELOG.md after v2.11.2 was tagged — see kb/keda/manifest.json ownTagDrift.)",
+    "remediation": "Point every scrape config, ServiceMonitor and dashboard at the operator's metrics endpoint (keda-operator, port 8080, `/metrics`). The adapter's `keda_metrics_adapter_*` series were RENAMED to `keda_*` on the operator, not moved as-is, so alerts and recording rules need the new names. v2.11.0 shipped this removal (4ae8975af); the changelog bullet was filed under Improvements first and under Breaking Changes later.",
     "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target; one aimed at the metrics server stops returning data"
   },
   {
@@ -56,7 +56,7 @@
   {
     "ruleId": "rtz-keda-2.11-admission-webhook-rejects-resource-only-scale-to-zero",
     "severity": "MEDIUM",
-    "title": "Admission webhook rejects a ScaledObject with only cpu/memory triggers and `minReplicaCount: 0`",
+    "title": "Admission webhook rejects a ScaledObject with only cpu/memory triggers and `minReplicaCount` unset or 0",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "the condition is a conjunction — every trigger is cpu or memory AND minReplicaCount is 0 — that no single rule predicate expresses"
@@ -68,7 +68,7 @@
       "value": "^(cpu|memory)$"
     },
     "quote": "scaledobject has only cpu/memory triggers AND minReplica is 0 (scale to zero doesn't work in this case)",
-    "remediation": "A ScaledObject whose triggers are all cpu/memory cannot scale to zero (there is no pod to measure), and from 2.11 the webhook rejects such an object on its next update. For each candidate named, either set `minReplicaCount` to 1 or more, or add a non-resource trigger that can activate from zero.",
+    "remediation": "On each ScaledObject named, either set `minReplicaCount` to 1 or more, or add a non-resource trigger: the webhook (scaledobject_webhook.go v2.11.0:290) rejects `minReplicaCount == nil` as well as 0 when every trigger is cpu or memory — a resource-only object with no minReplicaCount at all is the common case. A ScaledObject whose triggers are all cpu/memory cannot scale to zero (there is no pod to measure), and from 2.11 the webhook rejects such an object on its next update. For each candidate named, either set `minReplicaCount` to 1 or more, or add a non-resource trigger that can activate from zero.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.minReplicaCount // 0) == 0 and ([.spec.triggers[]? | .type] | length) != 0 and ([.spec.triggers[]? | .type] | all(. == \"cpu\" or . == \"memory\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is rejected by the 2.11 webhook on its next update"
   }
 ]
