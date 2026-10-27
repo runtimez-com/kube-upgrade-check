@@ -10,6 +10,21 @@
     "reason": "a Kubernetes VERSION FLOOR. k8s-addons/keda.json carries the tested matrix (2.9 → 1.23-1.25) and the add-on tier evaluates it as the hop; a rule here would report the same fact through a second engine"
   },
   {
+    "version": "2.9",
+    "note": "General: Introduction deprecation & breaking change policy (#68)",
+    "reason": "a governance document (kedacore/governance#68), not a change to any object or behaviour"
+  },
+  {
+    "version": "2.11",
+    "note": "Azure Monitor: Exclude Azure Monitor scaler from metricName deprecation (#4713)",
+    "reason": "narrows the 2.10 deprecation rather than adding one: on an azure-monitor trigger `metricName` is the Azure Monitor metric to query. rtz-keda-2.10-metricname-metadata-deprecated and rtz-keda-2.12-metricname-metadata-removed say so in their remediation (an azure-monitor row they list needs no change)"
+  },
+  {
+    "version": "2.12",
+    "note": "General: Replace deprecated `set-output` command with environment file in GitHub Actions…",
+    "reason": "a GitHub Actions workflow change in KEDA's own CI; not a property of any cluster object"
+  },
+  {
     "version": "2.12",
     "note": "ScaledObject webhook: error ScalingModifiers.Formula is mandatory",
     "reason": "validation of `advanced.scalingModifiers`, a feature that first ships in 2.12 (#4821): no object that exists before the hop can carry it, so the rejection cannot hit an existing ScaledObject"
@@ -36,6 +51,11 @@
   },
   {
     "version": "2.14",
+    "note": "General: Log field `ScaledJob` no longer have conflicting types (#5592)",
+    "reason": "a structured-logging field type fix in the operator's own log lines; nothing an object or a consumer configures"
+  },
+  {
+    "version": "2.14",
     "note": "ScaledObject webhook: the scaledobject has a %v trigger but the container %s doesn't have the %v request defined",
     "reason": "the same cpu/memory resource-request check the webhook has run since 2.10 (rtz-keda-2.10-admission-webhook-cpu-memory-requests-required), rewritten with a format parameter; no new object is rejected"
   },
@@ -43,6 +63,26 @@
     "version": "2.14",
     "note": "ScaledObject webhook: unknown scalable object type %v",
     "reason": "an internal guard for a scaleTargetRef kind the webhook's own switch does not list; a workload kind KEDA cannot scale was never accepted"
+  },
+  {
+    "version": "2.15",
+    "note": "General: Remove deprecated Kustomize commonLabels (#5888)",
+    "reason": "KEDA's own config/ kustomization (the manifests the project builds its release YAML from) stops using the deprecated `commonLabels` field; the rendered labels, selectors and the Helm chart are unchanged, so no installation edits anything"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-cloud-tasks.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-pub-sub.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/gcp-stackdriver.md: 💡 ",
+    "reason": "the GCP MQL-scaler deprecation warning was back-filled into the 2.15 docs when the blog (2025-09-15) was published; the code announces it at v2.18.0 (struct tags) and rtz-keda-2.18-gcp-mql-scalers-deprecated is filed there, where the hop crosses the operator that emits the event"
   },
   {
     "version": "2.16",
@@ -56,8 +96,48 @@
   },
   {
     "version": "2.18",
+    "note": "docs operate/schema.md: | deprecated | deprecated is a string that indicates if the field i…",
+    "reason": "documentation of the typed-config `deprecated` / `deprecatedAnnounce` tag mechanism itself (operate/schema.md); the tags that use it are the ledger notes"
+  },
+  {
+    "version": "2.18",
+    "note": "docs operate/schema.md: | deprecatedAnnounce | deprecatedAnnounce is a string that indicate…",
+    "reason": "documentation of the typed-config `deprecated` / `deprecatedAnnounce` tag mechanism itself (operate/schema.md); the tags that use it are the ledger notes"
+  },
+  {
+    "version": "2.18",
+    "note": "docs reference/events.md: | `KEDAScalerInfo` | `Normal` | When a Scaler contains deprecated f…",
+    "reason": "documentation of the KEDAScalerInfo event the operator emits for a deprecatedAnnounce parameter; the parameters that trigger it are the ledger notes"
+  },
+  {
+    "version": "2.18",
+    "note": "General: Replace deprecated `webhook.Validator` with `webhook.CustomValidator` (#6660)",
+    "reason": "a controller-runtime API migration inside the admission webhook's Go code; the webhook's behaviour and every rejection it issues are unchanged"
+  },
+  {
+    "version": "2.18",
     "note": "ScaledObject webhook: failed to setup kubernetes clients: %w",
     "reason": "an internal error path of the webhook's own Kubernetes client construction; not a property of any object"
+  },
+  {
+    "version": "2.19",
+    "note": "General: Replace deprecated `azure autorest` dependency to `azure sdk for go` (#7073)",
+    "reason": "a Go dependency swap (autorest → azure-sdk-for-go) inside the Azure scalers; trigger metadata and authentication parameters are unchanged"
+  },
+  {
+    "version": "2.20",
+    "note": "PredictKube Scaler: Bump `dysnix/predictkube-libs` to `v0.1.0` (drops the predictkube…",
+    "reason": "a Go dependency bump inside the PredictKube scaler; trigger metadata and authentication parameters are unchanged"
+  },
+  {
+    "version": "2.20",
+    "note": "docs scalers/nats-streaming.md: See also the deprecation notice here.",
+    "reason": "the 2.20 docs reword the stan deprecation notice already filed at 2.17 (rtz-keda-2.17-nats-streaming-stan-deprecated); the trigger type is gone since 2.19 (rtz-keda-2.19-nats-streaming-stan-removed), so by 2.20 nothing new is announced"
+  },
+  {
+    "version": "2.20",
+    "note": "docs scalers/nats-streaming.md: The Stan scaler (NATS Streaming) is DEPRECATED and will be removed…",
+    "reason": "the 2.20 docs reword the stan deprecation notice already filed at 2.17 (rtz-keda-2.17-nats-streaming-stan-deprecated); the trigger type is gone since 2.19 (rtz-keda-2.19-nats-streaming-stan-removed), so by 2.20 nothing new is announced"
   },
   {
     "version": "2.20",

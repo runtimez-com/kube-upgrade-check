@@ -35,11 +35,27 @@
     "remediation": "On each huawei-cloudeye trigger named, rename `minMetricValue` to `activationTargetMetricValue`. 2.18 only logs a KEDAScalerInfo event; 2.20 refuses the trigger.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"huawei-cloudeye\") and (.metadata // {} | has(\"minMetricValue\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is refused by the 2.20 scaler",
     "coversNotes": [
-      "huawei-cloudeye 'minMetricValue' deprecatedAnnounce (pkg/scalers/huawei_cloudeye_scaler.go)"
+      "huawei-cloudeye 'minMetricValue' deprecatedAnnounce (pkg/scalers/huawei_cloudeye_scaler.go)",
+      "docs scalers/huawei-cloudeye.md: `minMetricValue` - Minimum value for your metric. If the actual val…"
     ],
     "introducedIn": [
       "2.18.0"
     ]
+  },
+  {
+    "ruleId": "rtz-keda-2.18-rabbitmq-queuelength-deprecated",
+    "severity": "LOW",
+    "title": "RabbitMQ: `queueLength` is deprecated — use `mode: QueueLength` and `value`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^rabbitmq/queueLength$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "DEPRECATED: please use `mode: QueueLength` and `v…** — `queueLength` - **DEPRECATED: please use `mode: QueueLength` and `value: ##` instead**. Defines a threshold value for the queue length passed to the scaler. For example: if one pod can handle 10 messages, set the queue length target to `10`. If the actual number of messages in the queue is 30, the scaler will scale up to 3 pods. Default is set to `20` unless `publishRate` is specified, in which case `queueLength` is disabled for this trigger.",
+    "remediation": "Docs-only deprecation (no CHANGELOG entry, no struct tag yet): on each rabbitmq trigger named replace `queueLength: N` with `mode: QueueLength` + `value: N`. The old key keeps working on every 2.x release.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"rabbitmq\") and (.metadata // {} | has(\"queueLength\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the deprecated key"
   },
   {
     "ruleId": "rtz-keda-2.18-admission-webhooks-prometheus-metric-deprecations-removed",

@@ -11,7 +11,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**General**: Remove deprecated `metricName` from trigger metadata section (#4899)",
-    "remediation": "From 2.12 a `metricName` key in trigger metadata is ignored and KEDA names the HPA's external metric itself. On each trigger named, remove the key and update anything that reads the HPA metric by its old custom name (dashboards, alerts on `kube_horizontalpodautoscaler_*` metric labels, scripts). Scaling itself continues.",
+    "remediation": "From 2.12 a `metricName` key in trigger metadata is ignored and KEDA names the HPA's external metric itself. On each trigger named, remove the key and update anything that reads the HPA metric by its old custom name (dashboards, alerts on `kube_horizontalpodautoscaler_*` metric labels, scripts). Scaling itself continues. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query and stays — an azure-monitor row listed here needs no change.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.metadata // {}) | has(\"metricName\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) metricName=\\(.metadata.metricName)\"'  # each row loses its custom HPA metric name on the hop"
   },
   {

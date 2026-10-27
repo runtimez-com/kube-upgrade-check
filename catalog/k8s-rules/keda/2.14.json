@@ -15,7 +15,13 @@
     },
     "quote": "Various Prometheus metrics have been renamed to follow the preferred naming conventions. The old ones are still available, but will be removed in the future (#4854).",
     "remediation": "Move dashboards and alerts to the new `keda_*` names (for example `keda_scaler_metrics_value` for `keda_metrics_adapter_scaler_metrics_value`); both are served on this hop. 2.17 removes the old names.",
-    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file still using a pre-2.14 metric name"
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.groups[]?.rules[]?.expr | test(\"keda_metrics_adapter_\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a rule file still using a pre-2.14 metric name",
+    "coversNotes": [
+      "docs integrations/opentelemetry.md: Deprecated metrics",
+      "docs integrations/opentelemetry.md: The following metrics are exposed as well, but are deprecated and w…",
+      "docs integrations/prometheus.md: Deprecated metrics",
+      "docs integrations/prometheus.md: The following metrics are exposed as well, but are deprecated and w…"
+    ]
   },
   {
     "ruleId": "rtz-keda-2.14-admission-webhook-azure-workload-identity-fields",

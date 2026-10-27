@@ -13,9 +13,28 @@
     "quote": "**NATS Streaming scaler**: Deprecate NATS Streaming Server (aka Stan) (#6362)",
     "remediation": "NATS Streaming Server itself reached end-of-life in June 2023. Migrate each ScaledObject / ScaledJob named to the `nats-jetstream` trigger (JetStream consumer lag) before 2.19, where the `stan` trigger type no longer exists and the object fails to build its scalers.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"stan\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is a trigger type 2.19 removes",
+    "coversNotes": [
+      "docs scalers/nats-streaming.md: The Stan scaler (NATS Streaming) is DEPRECATED and will be removed…",
+      "docs scalers/nats-streaming.md: See also the deprecation notice here."
+    ],
     "introducedIn": [
       "2.17.0"
     ]
+  },
+  {
+    "ruleId": "rtz-keda-2.17-apache-kafka-awsendpoint-removed",
+    "severity": "LOW",
+    "title": "Apache Kafka scaler: unused `awsEndpoint` metadata key removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^apache-kafka/awsEndpoint$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+    },
+    "quote": "**Apache Kafka Scaler**: Remove unused awsEndpoint in Apache Kafka scaler (#6627)",
+    "remediation": "pkg/scalers/apache_kafka_scaler.go drops the `awsEndpoint` tag at v2.17.0 (the key was never used for a request); from 2.17 it is ignored on each apache-kafka trigger named. Remove it; a custom endpoint for MSK IAM auth is `awsEndpoint` on the TriggerAuthentication, not the trigger.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"apache-kafka\") and (.metadata // {} | has(\"awsEndpoint\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries a key 2.17 ignores"
   },
   {
     "ruleId": "rtz-keda-2.17-operator-prometheus-metric-deprecations-removed",

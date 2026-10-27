@@ -128,10 +128,29 @@
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"liiklus\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row uses a trigger type planned for removal in 2.24",
     "coversNotes": [
       "`5744068`: Liiklus Scaler: Deprecate the scaler because its upstream project is…",
-      "liiklus 'address' deprecatedAnnounce (pkg/scalers/liiklus_scaler.go)"
+      "liiklus 'address' deprecatedAnnounce (pkg/scalers/liiklus_scaler.go)",
+      "docs scalers/liiklus-topic.md: The Liiklus scaler is DEPRECATED and will be removed in v2.24 - The…"
     ],
     "introducedIn": [
       "2.21.0"
     ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-metrics-api-unimplemented-auth-modes-rejected",
+    "severity": "MEDIUM",
+    "title": "Metrics API scaler: `authMode` values the scaler does not implement are now rejected",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the authMode VALUE lives in trigger metadata (or the TriggerAuthentication's authModes parameter) and only key names are projected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^metrics-api$"
+    },
+    "quote": "`778907e` : **Metrics API Scaler**: reject auth modes the scaler does not implement (#8178) (@rickbrouwer)",
+    "remediation": "Filed by upstream under Fixes. From 2.21 pkg/scalers/metrics_api_scaler.go validates `authMode` against the modes it actually applies — `apiKey`, `basic`, `tls`, `bearer` — and a metrics-api trigger whose authentication names any other mode (`custom`, `oauth`, or a combination with one of them) fails to build after the hop, where before the mode was silently ignored. Check each metrics-api trigger named and its TriggerAuthentication for an unsupported mode.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"metrics-api\") | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) authMode=\\(.metadata.authMode // \"(from TriggerAuthentication: \" + (.authenticationRef.name // \"none\") + \")\")\"'  # each row is a metrics-api trigger; a mode outside apiKey,basic,tls,bearer is rejected on the hop"
   }
 ]

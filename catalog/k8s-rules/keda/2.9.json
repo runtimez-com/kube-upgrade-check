@@ -15,7 +15,10 @@
     },
     "quote": "Prometheus metrics on KEDA Metric Server are deprecated in favor of Prometheus metrics on KEDA Operator (#3972 | Discussion)",
     "remediation": "Point every scrape job and dashboard that reads the keda-metrics-apiserver /metrics endpoint at the keda-operator metrics port (chart `prometheus.operator.enabled`) instead. Nothing stops working on this hop; 2.11 removes the metrics-server endpoint.",
-    "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target to re-point at the operator"
+    "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target to re-point at the operator",
+    "coversNotes": [
+      "docs integrations/prometheus.md: 💡 "
+    ]
   },
   {
     "ruleId": "rtz-keda-2.9-azure-eventhub-default-checkpoint-strategy-deprecated",

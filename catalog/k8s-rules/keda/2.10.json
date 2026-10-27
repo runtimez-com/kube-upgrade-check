@@ -11,8 +11,20 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "**General**: Deprecate explicitly setting `metricName` field from `ScaledObject.triggers[*].metadata` (#4220)",
-    "remediation": "Remove `metricName` from the metadata of each trigger named; KEDA generates the HPA metric name itself (`s<index>-<type>-<...>`). Anything that reads the HPA's external metric by its custom name (dashboards, `kubectl get hpa` scripts) must switch to the generated name. The key is ignored from 2.12 on.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.metadata // {}) | has(\"metricName\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) metricName=\\(.metadata.metricName)\"'  # each row still names its own HPA metric"
+    "remediation": "Remove `metricName` from the metadata of each trigger named; KEDA generates the HPA metric name itself (`s<index>-<type>-<...>`). Anything that reads the HPA's external metric by its custom name (dashboards, `kubectl get hpa` scripts) must switch to the generated name. The key is ignored from 2.12 on. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query, not the HPA name — 2.11 exempts it from this deprecation; an azure-monitor row listed here needs no change.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.metadata // {}) | has(\"metricName\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) metricName=\\(.metadata.metricName)\"'  # each row still names its own HPA metric (azure-monitor rows are exempt)",
+    "coversNotes": [
+      "docs scalers/azure-log-analytics.md: `metricName` - Name to assign to the metric. (Optional, if not set…",
+      "docs scalers/azure-storage-blob.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/cassandra.md: `metricName` - Name to assign to the metric. (DEPRECATED: This para…",
+      "docs scalers/graphite.md: `metricName` - Name to identify the Metric in the external.metrics.…",
+      "docs scalers/influxdb.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/mongodb.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/mssql.md: You can also optionally assign a name to the metric using the `metr…",
+      "docs scalers/postgresql.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/rabbitmq-queue.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
+      "docs scalers/prometheus.md: `metricName` - Name to identify the Metric in the external.metrics.…"
+    ]
   },
   {
     "ruleId": "rtz-keda-2.10-prometheus-cortexorgid-refused",
@@ -28,6 +40,9 @@
     "quote": "**Prometheus Scaler**: `cortexOrgId` metadata deprecated in favor of custom headers (#4208)",
     "remediation": "KEDA 2.10 does not merely deprecate `cortexOrgID`: pkg/scalers/prometheus_scaler.go returns the error \"cortexOrgID is deprecated, please use customHeaders instead\" whenever the key is present, so every prometheus trigger named stops producing metrics after the hop. Replace it with `customHeaders: X-Scope-OrgID=<tenant>` before upgrading.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"prometheus\") and (.metadata // {} | has(\"cortexOrgID\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is a prometheus trigger the 2.10 scaler refuses outright",
+    "coversNotes": [
+      "docs scalers/prometheus.md: `cortexOrgID` - DEPRECATED: This parameter is deprecated as of KEDA…"
+    ],
     "introducedIn": [
       "2.10.0"
     ]
