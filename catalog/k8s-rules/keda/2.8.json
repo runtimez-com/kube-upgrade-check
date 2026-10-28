@@ -13,7 +13,8 @@
     "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.rolloutStrategy != null) | \"\\(.metadata.namespace)/\\(.metadata.name) rolloutStrategy=\\(.spec.rolloutStrategy)\"'  # each row still sets the deprecated field",
     "introducedIn": [
       "2.8.0"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.8-huawei-cloudeye-minmetricvalue-deprecated",
@@ -28,6 +29,7 @@
     },
     "quote": "Deprecated if favor of `activationTargetMetric…** — `minMetricValue` - **Deprecated if favor of `activationTargetMetricValue`** Minimum value for your metric. If the actual value of the metric you get from cloudeye is less than the minimum value, then the scaler is not active. (This value can be a float)",
     "remediation": "The 2.8 docs already mark `minMetricValue` deprecated (2.8 introduced `activationTargetMetricValue` for every scaler); the code only starts announcing it in 2.18 and refuses it in 2.20. Rename the key on each huawei-cloudeye trigger named when convenient — nothing breaks on this hop.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"huawei-cloudeye\") and (.metadata // {} | has(\"minMetricValue\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the key the docs deprecate (refused from 2.20)"
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"huawei-cloudeye\") and (.metadata // {} | has(\"minMetricValue\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still uses the key the docs deprecate (refused from 2.20)",
+    "deprecationOnly": true
   }
 ]

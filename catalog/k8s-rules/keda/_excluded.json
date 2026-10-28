@@ -142,7 +142,7 @@
   {
     "version": "2.18",
     "note": "ScaledObject webhook: the existing hpa '%s' for workload '%s' of type '%s' must be specified by name in advan…",
-    "reason": "the literal first ships in v2.18.2 (f42c1f1bc) and fires only with the annotation `scaledobject.keda.sh/transfer-hpa-ownership: \"true\"` (since 2.11.0); a foreign HPA has been rejected since 2.10 regardless, so this is a clearer error for an existing rejection plus a nil-dereference fix, not a new constraint (E2 audit 2026-10-27)"
+    "reason": "the literal first ships in v2.18.2 (cherry-picked; f42c1f1bc itself is first in v2.19.0) and fires only with the annotation `scaledobject.keda.sh/transfer-hpa-ownership: \"true\"` (since 2.11.0); a foreign HPA has been rejected since 2.10 regardless, so this is a clearer error for an existing rejection plus a nil-dereference fix, not a new constraint (E2 audit 2026-10-27)"
   },
   {
     "version": "2.18",
@@ -263,5 +263,40 @@
     "version": "2.21",
     "note": "TriggerAuthentication webhook: azureServicePrincipal.tenantId is required when azureServicePrincipal is configured",
     "reason": "validation of `spec.azureServicePrincipal`, a TriggerAuthentication block that first ships in 2.21 (Azure Pipelines service-principal authentication): no object that exists before the hop can carry it"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/aws-cloudwatch.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+    "reason": "docs rewording of the 2.13 `awsRoleArn` deprecation (rtz-keda-2.13-aws-awsrolearn-deprecated carries it with the same check); a second not-detectable card on a hop crossing both would repeat it (audit 2026-10-27)"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/aws-dynamodb-streams.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+    "reason": "docs rewording of the 2.13 `awsRoleArn` deprecation (rtz-keda-2.13-aws-awsrolearn-deprecated carries it with the same check); a second not-detectable card on a hop crossing both would repeat it (audit 2026-10-27)"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/aws-dynamodb.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+    "reason": "docs rewording of the 2.13 `awsRoleArn` deprecation (rtz-keda-2.13-aws-awsrolearn-deprecated carries it with the same check); a second not-detectable card on a hop crossing both would repeat it (audit 2026-10-27)"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/aws-kinesis.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+    "reason": "docs rewording of the 2.13 `awsRoleArn` deprecation (rtz-keda-2.13-aws-awsrolearn-deprecated carries it with the same check); a second not-detectable card on a hop crossing both would repeat it (audit 2026-10-27)"
+  },
+  {
+    "version": "2.15",
+    "note": "docs scalers/aws-sqs.md: `awsRoleArn` - Amazon Resource Names (ARNs) uniquely identify AWS r…",
+    "reason": "docs rewording of the 2.13 `awsRoleArn` deprecation (rtz-keda-2.13-aws-awsrolearn-deprecated carries it with the same check); a second not-detectable card on a hop crossing both would repeat it (audit 2026-10-27)"
+  },
+  {
+    "version": "2.18",
+    "note": "General: Remove `klogr` dependency and replace with `zap` (#5732)",
+    "reason": "logging-library swap: keda-metrics-apiserver's `-v`, `--logtostderr` and `--stderrthreshold` keep parsing (2.19 prints a DEPRECATION WARNING, cmd/adapter/main.go v2.21.0:292-300) and the KEDA chart itself passes all three (keda/templates/metrics-server/deployment.yaml v2.18.0:125-133), so there is nothing an operator must change on any 2.x hop (audit 2026-10-27)"
+  },
+  {
+    "version": "2.17",
+    "note": "Selenium Grid: Selenium Grid: Trigger param enableManagedDownloads set as true by default…",
+    "reason": "no behaviour change for an existing trigger: 2.16 has no managed-downloads logic (every Node counts), and with the 2.17 default `true` managedDownloadsEnabled (selenium_grid_scaler.go v2.17.0:316-327) passes every Node and request that does not ask for `se:downloadsEnabled` — so 2.16 counting is kept; `false` is an opt-in filter, and #6570 + #6684 both first ship in v2.17.0, so no release ever defaulted to false (validator, audit 2 2026-10-27)"
   }
 ]

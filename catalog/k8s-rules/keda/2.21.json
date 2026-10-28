@@ -10,7 +10,7 @@
       "value": "^boundServiceAccountToken$"
     },
     "quote": "KEDA 2.21 defaults to `operator.serviceAccountTokens.mode: enforce-audience`. This is a breaking change for Vault Kubernetes authentication and **all** `boundServiceAccountToken` (BSAT) authentication, not just Vault. Missing approvals or service-account audience mappings fail the affected authentication. The operator can remain healthy while individual scalers fail.",
-    "remediation": "Each TriggerAuthentication / ClusterTriggerAuthentication named mints a bound service-account token. After the hop the operator (chart default `operator.serviceAccountTokens.mode: enforce-audience`) refuses to mint one without an exact namespace/name → audience mapping in `permissions.operator.restrict.serviceAccountTokenCreationRoles`, and the receiving scaler (metrics-api, Prometheus, Loki, Datadog Cluster Agent, …) fails to authenticate while the operator stays healthy. Before upgrading: map each service account to a non-API audience the receiver accepts (kube-rbac-proxy `--auth-token-audiences`), and verify readiness on every ScaledObject that references the authentication. `mode: legacy` is an operator-wide, insecure escape hatch, not a per-object fix. Datadog Cluster Agent 7.83.2 cannot accept a custom audience — use API/app-key auth there.",
+    "remediation": "Each TriggerAuthentication / ClusterTriggerAuthentication named mints a bound service-account token. After the hop the operator (chart default `operator.serviceAccountTokens.mode: enforce-audience`) refuses to mint one without an exact namespace/name → audience mapping, and the scaler fails to authenticate while the operator stays healthy. The 2.21 `boundServiceAccountToken` block has no audience field (`parameter`, `serviceAccountName` only), so the fix is split. PLATFORM: add an entry with `name`, `namespace` and `audience` for each service account named here to `permissions.operator.restrict.serviceAccountTokenCreationRoles` (or set `KEDA_SERVICE_ACCOUNT_TOKEN_AUDIENCES`), using an audience the kube-apiserver does not accept. APP TEAM: make the receiving service accept that audience (kube-rbac-proxy `--auth-token-audiences`, a Prometheus or Loki gateway's token review) and check readiness on every ScaledObject that references the authentication. `mode: legacy` is an operator-wide, insecure escape hatch, not a per-object fix. Datadog Cluster Agent 7.83.2 cannot accept a custom audience; use API/app-key auth there.",
     "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.boundServiceAccountToken != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) serviceAccounts=\\([.spec.boundServiceAccountToken[].serviceAccountName] | unique | join(\",\"))\"'  # each row needs an audience mapping for every service account listed before the hop",
     "coversNotes": [
       "Service account token audience enforcement (CVE-2026-77524)",
@@ -114,7 +114,7 @@
   },
   {
     "ruleId": "rtz-keda-2.21-liiklus-scaler-deprecated",
-    "severity": "MEDIUM",
+    "severity": "LOW",
     "title": "Liiklus trigger is deprecated — removal planned for 2.24 (upstream project unmaintained)",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
@@ -133,7 +133,8 @@
     ],
     "introducedIn": [
       "2.21.0"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.21-metrics-api-unimplemented-auth-modes-rejected",
@@ -155,5 +156,35 @@
     "introducedIn": [
       "2.21.0"
     ]
+  },
+  {
+    "ruleId": "rtz-keda-2.21-auth-modes-validated-datadog-github-runner-rabbitmq",
+    "severity": "MEDIUM",
+    "title": "datadog, github-runner and rabbitmq reject an `authModes` value they do not implement",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "`authModes`/`authMode` may sit in trigger metadata or in the referenced TriggerAuthentication's parameters; the projection carries no TriggerAuthentication parameter names, so the triggers of the three types are named as candidates"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].type",
+      "value": "^(datadog|github-runner|rabbitmq)$"
+    },
+    "quote": "**General**: migrate datadog, graphite and github_runner, rabbitmq to authentication.Config (#7767)",
+    "remediation": "From 2.21 these scalers read `authModes` through authentication.Config and check it against what they implement (ValidateAllowed, v2.21.0): datadog and github-runner accept only `bearer`, rabbitmq only `basic`, `tls` and `oauth`; graphite already accepted only `basic`. datadog already refused a non-bearer `authMode` in 2.20 (datadog_scaler.go v2.20.0:560-570) — what is new for it is reading `authModes` (plural) and trigger metadata. rabbitmq now also validates the mode's inputs: `tls` needs a cert and key, `basic` a username (authentication_types.go v2.21.0:113-139). On each trigger named, remove a mode the scaler does not implement and supply what the remaining mode needs, in the trigger metadata or in the TriggerAuthentication it references.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type | IN(\"datadog\",\"github-runner\",\"rabbitmq\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\" + \" authModes=\\((.metadata // {}).authModes // (.metadata // {}).authMode // \"-\") authRef=\\(.authenticationRef.name // \"-\")\"'  # also read the referenced TriggerAuthentication for an authModes parameter"
+  },
+  {
+    "ruleId": "rtz-keda-2.21-crd-permissions-aggregated-to-default-roles",
+    "severity": "LOW",
+    "title": "Release manifests aggregate KEDA CRD permissions into the built-in admin / edit / view roles",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ClusterRole aggregation is cluster RBAC, not a property of any collected KEDA object"
+    },
+    "quote": "**General**: Aggregate KEDA CRD permissions into default roles (#7872)",
+    "remediation": "KEDA's release YAML (config/rbac/aggregate_cluster_roles.yaml, 88b08447f) now ships `keda:edit` and `keda:view` ClusterRoles labelled to aggregate into `admin`, `edit` and `view`: anyone bound to `edit` in a namespace can create and change ScaledObjects, ScaledJobs and TriggerAuthentications there. Helm installs are unchanged (`rbac.aggregateToDefaultRoles` stays false by default). If you install from the release YAML and rely on KEDA objects being platform-only, remove the aggregation labels or add an admission policy before the hop.",
+    "verifyCommand": "kubectl get clusterroles -o json 2>/dev/null | jq -r '.items[] | select([.rules[]?.apiGroups[]?] | index(\"keda.sh\") != null) | select(.metadata.labels // {} | to_entries | map(select(.key | test(\"aggregate-to-(admin|edit|view)\"))) | length != 0) | .metadata.name'  # each row is a KEDA role aggregated into a built-in role"
   }
 ]

@@ -60,6 +60,25 @@
     },
     "quote": "`tlsDisabled` - Can be set to 'true' to disable TLS. (DEPRECATED: This parameter is deprecated as of KEDA v2.16 in favor of unsafeSsl and will be removed in version v2.18, Values: `true`, `false` , Default: `false`, Optional)",
     "remediation": "Delete `tlsDisabled`: the scaler never read it (`git log -S '\"tlsDisabled\"'` on the IBM MQ scaler is empty; the code read `tls`), so mirroring it as `unsafeSsl: true` would CHANGE behaviour rather than preserve it.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tlsDisabled\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries the key the 2.16 docs deprecate"
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and (.metadata // {} | has(\"tlsDisabled\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row carries the key the 2.16 docs deprecate",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-keda-2.16-ibmmq-tls-with-unsafessl-rejected",
+    "severity": "MEDIUM",
+    "title": "IBM MQ: a trigger that sets both `tls` and `unsafeSsl` is refused",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the refusal needs both VALUES true; the projection carries the trigger's metadata KEY names only"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^ibmmq/unsafeSsl$"
+    },
+    "quote": "IBM MQ Scaler: Remove and deprecate unused variables in IBM MQ scaler (#6033)",
+    "remediation": "From 2.16 an ibmmq trigger with `tls: \"true\"` and `unsafeSsl: \"true\"` is refused (ibmmq_scaler.go v2.16.0:72-75: \"'tls' and 'unsafeSsl' are both specified. Please use only 'unsafeSsl'\"); 2.15 accepted it. On each trigger named that also sets `tls`, delete `tls` and keep `unsafeSsl`.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"ibmmq\") and ((.metadata // {}) | has(\"tls\") and has(\"unsafeSsl\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\" + \" tls=\\(.metadata.tls) unsafeSsl=\\(.metadata.unsafeSsl)\"'  # a row with both true is refused from 2.16"
   }
 ]
