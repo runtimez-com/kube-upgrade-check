@@ -107,20 +107,5 @@
       "2.17.0"
     ],
     "deprecationOnly": true
-  },
-  {
-    "ruleId": "rtz-keda-2.17-selenium-grid-managed-downloads-default-true",
-    "severity": "MEDIUM",
-    "title": "Selenium Grid: `enableManagedDownloads` defaults to true — only Nodes that enable managed downloads count",
-    "detection": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ScaledObject|ScaledJob",
-      "target": "triggers[].type",
-      "value": "^selenium-grid$",
-      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned; a trigger that already sets enableManagedDownloads is listed too and needs no change"
-    },
-    "quote": "**Selenium Grid**: Selenium Grid: Trigger param enableManagedDownloads set as true by default (#6684)",
-    "remediation": "`enableManagedDownloads` now defaults to true (selenium_grid_scaler.go v2.17.0:43), which adds the `se:downloadsEnabled` capability to what the scaler matches (:420): only Nodes whose stereotype enables managed downloads count for the trigger. On each trigger named that does not set the key, set `enableManagedDownloads: \"false\"` if your Node images do not enable managed downloads, to keep the 2.16 count; otherwise no change.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"selenium-grid\") and ((.metadata // {}) | has(\"enableManagedDownloads\") | not)) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row takes the new default"
   }
 ]

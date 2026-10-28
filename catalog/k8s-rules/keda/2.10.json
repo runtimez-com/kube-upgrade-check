@@ -86,7 +86,7 @@
   },
   {
     "ruleId": "rtz-keda-2.10-scaler-tls-minimum-1-2",
-    "severity": "LOW",
+    "severity": "INFO",
     "title": "Scaler connections require TLS 1.2 or newer",
     "detection": {
       "kind": "NOT_DETECTABLE",
@@ -99,7 +99,7 @@
       "value": "(^|/)kedacore/keda([:@]|$)"
     },
     "quote": "**General**: Use TLS1.2 as minimum TLS version (#4193)",
-    "remediation": "From 2.10 KEDA's scaler clients refuse TLS 1.0 and 1.1 (tls_config.go v2.10.0: minimum `tls.VersionTLS12`). A scaler whose source (a self-hosted Prometheus, a RabbitMQ management API, …) still offers only TLS 1.0/1.1 fails after the hop. Upgrade that endpoint, or as a stop-gap set `KEDA_HTTP_MIN_TLS_VERSION` to `TLS11` or `TLS10` on the keda-operator (Helm `env`).",
+    "remediation": "Nothing changes on a 2.9 → 2.10 hop: KEDA 2.9 is already built with Go 1.18 (Dockerfile v2.9.0 `build-tools:1.18.8`), whose TLS clients refuse TLS 1.0/1.1 by default; KEDA 2.8 used Go 1.17, which did not. 2.10 makes TLS 1.2 the explicit minimum (tls_config.go v2.10.0) and adds `KEDA_HTTP_MIN_TLS_VERSION` (TLS13/TLS12/TLS11/TLS10) on the keda-operator to change it. On a hop from 2.8 or earlier, a scaler whose source (a self-hosted Prometheus, a RabbitMQ management API, …) offers only TLS 1.0/1.1 fails: upgrade that endpoint, or as a stop-gap set `KEDA_HTTP_MIN_TLS_VERSION` (Helm `env`).",
     "verifyCommand": "kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.template.spec.containers[].image | test(\"kedacore/keda(:|@|$)\")) | \"\\(.metadata.namespace)/\\(.metadata.name) KEDA_HTTP_MIN_TLS_VERSION=\\([.spec.template.spec.containers[].env[]? | select(.name == \"KEDA_HTTP_MIN_TLS_VERSION\") | .value] | join(\",\"))\"'  # the operator; an empty value means TLS 1.2 is the floor"
   }
 ]

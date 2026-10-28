@@ -243,8 +243,8 @@
   },
   {
     "ruleId": "rtz-keda-2.20-crd-maxreplicacount-zero-rejected",
-    "severity": "MEDIUM",
-    "title": "CRD validation: `maxReplicaCount: 0` is rejected on the next write",
+    "severity": "LOW",
+    "title": "CRD validation: `maxReplicaCount: 0` is rejected on create and on an edit that touches it",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
@@ -253,13 +253,13 @@
       "reason": "the number is projected when set (an unset field reads as unset on agent projection 2 or later); the other 2.20 bounds and enums stay in the not-detectable sibling rule"
     },
     "quote": "**General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types (#7533)",
-    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0, so every write to it (Argo CD, Helm, kubectl) is rejected after the hop while the stored object keeps running. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead) and remove `pollingInterval: 0` (default 30).",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on its next write"
+    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0. Kubernetes 1.30+ ratchets CRD validation: an update that leaves an already-invalid field unchanged is accepted, so the stored object keeps running and an unrelated edit still applies. What is rejected is creating it with 0 (a new environment, a delete and re-create, Argo CD `Replace=true`, a backup restore) and any edit that changes the field. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead; a ScaledObject with `maxReplicaCount: 0` could not build its HPA before 2.20 either, so this mostly concerns ScaledJobs) and remove `pollingInterval: 0` (default 30).",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on re-create or on an edit that touches the field"
   },
   {
     "ruleId": "rtz-keda-2.20-crd-pollinginterval-zero-rejected",
-    "severity": "MEDIUM",
-    "title": "CRD validation: `pollingInterval: 0` is rejected on the next write",
+    "severity": "LOW",
+    "title": "CRD validation: `pollingInterval: 0` is rejected on create and on an edit that touches it",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
@@ -268,8 +268,8 @@
       "reason": "the number is projected when set (an unset field reads as unset on agent projection 2 or later); the other 2.20 bounds and enums stay in the not-detectable sibling rule"
     },
     "quote": "**General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types (#7533)",
-    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0, so every write to it (Argo CD, Helm, kubectl) is rejected after the hop while the stored object keeps running. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead) and remove `pollingInterval: 0` (default 30).",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on its next write"
+    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0. Kubernetes 1.30+ ratchets CRD validation: an update that leaves an already-invalid field unchanged is accepted, so the stored object keeps running and an unrelated edit still applies. What is rejected is creating it with 0 (a new environment, a delete and re-create, Argo CD `Replace=true`, a backup restore) and any edit that changes the field. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead; a ScaledObject with `maxReplicaCount: 0` could not build its HPA before 2.20 either, so this mostly concerns ScaledJobs) and remove `pollingInterval: 0` (default 30).",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on re-create or on an edit that touches the field"
   },
   {
     "ruleId": "rtz-keda-2.20-scaledjob-scalingstrategy-default-rejected",
@@ -286,8 +286,8 @@
       "value": "^default$"
     },
     "quote": "**General**: Fix `ScaledJob` CRD validation to include \"default\" as a valid value for `scalingStrategy.strategy` (#7855)",
-    "remediation": "The ScaledJob CRD in KEDA 2.20.0 and 2.20.1 limits `scalingStrategy.strategy` to `custom`, `accurate` and `eager` (keda.sh_scaledjobs.yaml v2.20.1:9061-9064), leaving out the documented default, so any write to a ScaledJob that sets `default` is rejected. 2.20.2 and 2.21 restore it. Upgrade straight to 2.20.2 or later; if you must run 2.20.0 or 2.20.1, delete the field from each ScaledJob named (leaving it out means `default`).",
-    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.scalingStrategy.strategy == \"default\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is rejected on its next write by the 2.20.0 / 2.20.1 CRD only"
+    "remediation": "The ScaledJob CRD in KEDA 2.20.0 and 2.20.1 limits `scalingStrategy.strategy` to `custom`, `accurate` and `eager` (keda.sh_scaledjobs.yaml v2.20.1:9061-9064), leaving out the documented default, so creating a ScaledJob that sets `default` (a new environment, a re-create, a restore) or an edit that touches the field is rejected; Kubernetes 1.30+ ratchets, so an unrelated edit to an existing one still applies. 2.20.2 and 2.21 restore it. Upgrade straight to 2.20.2 or later; if you must run 2.20.0 or 2.20.1, delete the field from each ScaledJob named (leaving it out means `default`).",
+    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.scalingStrategy.strategy == \"default\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is rejected on re-create, or on an edit that touches the field, by the 2.20.0 / 2.20.1 CRD only"
   },
   {
     "ruleId": "rtz-keda-2.20-metrics-api-kube-service-endpoints-aggregation-scoped",

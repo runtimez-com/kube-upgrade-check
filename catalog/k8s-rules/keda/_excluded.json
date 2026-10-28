@@ -293,5 +293,10 @@
     "version": "2.18",
     "note": "General: Remove `klogr` dependency and replace with `zap` (#5732)",
     "reason": "logging-library swap: keda-metrics-apiserver's `-v`, `--logtostderr` and `--stderrthreshold` keep parsing (2.19 prints a DEPRECATION WARNING, cmd/adapter/main.go v2.21.0:292-300) and the KEDA chart itself passes all three (keda/templates/metrics-server/deployment.yaml v2.18.0:125-133), so there is nothing an operator must change on any 2.x hop (audit 2026-10-27)"
+  },
+  {
+    "version": "2.17",
+    "note": "Selenium Grid: Selenium Grid: Trigger param enableManagedDownloads set as true by default…",
+    "reason": "no behaviour change for an existing trigger: 2.16 has no managed-downloads logic (every Node counts), and with the 2.17 default `true` managedDownloadsEnabled (selenium_grid_scaler.go v2.17.0:316-327) passes every Node and request that does not ask for `se:downloadsEnabled` — so 2.16 counting is kept; `false` is an opt-in filter, and #6570 + #6684 both first ship in v2.17.0, so no release ever defaulted to false (validator, audit 2 2026-10-27)"
   }
 ]
