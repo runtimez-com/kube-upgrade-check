@@ -51,7 +51,8 @@
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"azure-data-explorer\") and (.metadata // {} | has(\"clientSecret\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still carries the secret in metadata",
     "coversNotes": [
       "docs scalers/azure-data-explorer.md: `clientSecret` - Password of the Azure AD application. (DEPRECATED:…"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.11-admission-webhook-rejects-resource-only-scale-to-zero",

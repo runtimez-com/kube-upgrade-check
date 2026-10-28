@@ -156,7 +156,8 @@
     ],
     "introducedIn": [
       "2.20.0"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.20-admission-webhook-hpa-name-too-long",
@@ -165,12 +166,12 @@
     "detection": {
       "kind": "KIND_PRESENT",
       "objectKind": "ScaledObject",
-      "objectName": "^.{55,}$",
-      "reason": "the name filter runs over every ScaledObject in the snapshot; one that sets a custom HPA name is listed too and needs no change"
+      "objectName": "^.{55,63}$",
+      "reason": "names every ScaledObject of 55–63 characters (the SQL name filter); the projection's advanced.hpaNameSet cannot narrow a KIND_PRESENT, so an object that already sets a custom HPA name is named too — the verify command excludes it. 64 characters or more is the sibling rule (the label-value limit)"
     },
     "quote": "HPA name %q derived from scaledobject is %d characters long; must be no more than %d characters; set spec.advanced.horizontalPodAutoscalerConfig.name to a shorter name or shorten the scaledobject name",
-    "remediation": "Each ScaledObject named is 55+ characters long, so its default HPA name `keda-hpa-<name>` breaks the 63-character DNS label limit and the 2.20 webhook rejects the object on its next update. Set `spec.advanced.horizontalPodAutoscalerConfig.name` to a shorter name (an object that already sets one is unaffected) or rename the ScaledObject.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.advanced.horizontalPodAutoscalerConfig.name == null and (.metadata.name | test(\"^.{55,}$\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) (\\(.metadata.name | length) chars)\"'  # each row is rejected by the 2.20 webhook on its next update"
+    "remediation": "Each ScaledObject named is 55 to 63 characters long, so its default HPA name `keda-hpa-<name>` breaks the 63-character DNS label limit and the 2.20 webhook rejects the object on its next update — unless it already sets `spec.advanced.horizontalPodAutoscalerConfig.name` (then nothing to do; the verify command lists only the ones that do not). Set `spec.advanced.horizontalPodAutoscalerConfig.name` to a shorter name or rename the ScaledObject.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.advanced.horizontalPodAutoscalerConfig.name == null and (.metadata.name | test(\"^.{55,63}$\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) (\\(.metadata.name | length) chars)\"'  # each row is rejected by the 2.20 webhook on its next update"
   },
   {
     "ruleId": "rtz-keda-2.20-admission-webhook-scaledobject-name-too-long",
@@ -237,7 +238,70 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned; the serverAddress VALUE is not projected, so every loki trigger is named"
     },
     "quote": "**Loki Scaler**: `serverAddress` now appends `/loki/api/v1/query` to the end of existing path instead of overriding (#7648)",
-    "remediation": "Check the `serverAddress` of each loki trigger named: a gateway prefix or tenant route in its path now stays in the queried URL with `/loki/api/v1/query` appended (#7648) — a serverAddress that already ended in the query path queries `/loki/api/v1/query/loki/api/v1/query` and fails. Drop the explicit query path; keep a real prefix.",
+    "remediation": "From 2.20 a path in `serverAddress` is kept. A path that is empty, `/`, a prefix of `/loki/api/v1/query` (such as `/loki`) or already ends in it resolves to the same query URL as before (loki_scaler.go v2.20.0:222-240). Only a different path changes: 2.19 replaced a gateway prefix or tenant route such as `/tenant-x` with `/loki/api/v1/query`, 2.20 appends to it (`/tenant-x/loki/api/v1/query`). For each loki trigger named whose serverAddress carries such a path, check the gateway serves the query under it, or remove the path if it was never meant to be part of the query URL.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"loki\")) | select(true) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is a loki trigger; inspect its serverAddress path"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-crd-maxreplicacount-zero-rejected",
+    "severity": "MEDIUM",
+    "title": "CRD validation: `maxReplicaCount: 0` is rejected on the next write",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "maxReplicaCount",
+      "value": "^0$",
+      "reason": "the number is projected when set (an unset field reads as unset on agent projection 2 or later); the other 2.20 bounds and enums stay in the not-detectable sibling rule"
+    },
+    "quote": "**General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types (#7533)",
+    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0, so every write to it (Argo CD, Helm, kubectl) is rejected after the hop while the stored object keeps running. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead) and remove `pollingInterval: 0` (default 30).",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on its next write"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-crd-pollinginterval-zero-rejected",
+    "severity": "MEDIUM",
+    "title": "CRD validation: `pollingInterval: 0` is rejected on the next write",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "pollingInterval",
+      "value": "^0$",
+      "reason": "the number is projected when set (an unset field reads as unset on agent projection 2 or later); the other 2.20 bounds and enums stay in the not-detectable sibling rule"
+    },
+    "quote": "**General**: Add CRD-level validation markers (Minimum, MinLength, MinItems, Enum) for ScaledObject, ScaledJob, ScaleTriggers, and TriggerAuthentication API types (#7533)",
+    "remediation": "From 2.20 the ScaledObject and ScaledJob CRDs require `maxReplicaCount` and `pollingInterval` to be at least 1 (keda.sh_scaledobjects.yaml / keda.sh_scaledjobs.yaml v2.20.0 `minimum: 1`). Each object named sets one of them to 0, so every write to it (Argo CD, Helm, kubectl) is rejected after the hop while the stored object keeps running. Raise `maxReplicaCount` to at least 1 (to stop scaling, pause the object with the `autoscaling.keda.sh/paused: \"true\"` annotation instead) and remove `pollingInterval: 0` (default 30).",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.maxReplicaCount == 0 or .spec.pollingInterval == 0) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) maxReplicaCount=\\(.spec.maxReplicaCount) pollingInterval=\\(.spec.pollingInterval)\"'  # each row is rejected by the 2.20 CRD on its next write"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-scaledjob-scalingstrategy-default-rejected",
+    "severity": "MEDIUM",
+    "title": "KEDA 2.20.0 and 2.20.1 reject a ScaledJob that spells out `scalingStrategy.strategy: default`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only the 2.20.0 and 2.20.1 CRDs leave `default` out of the enum (2.20.2 restores it); the hop does not say which 2.20 patch will be installed, so the ScaledJobs are named as candidates, never claimed broken"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledJob",
+      "target": "scalingStrategy.strategy",
+      "value": "^default$"
+    },
+    "quote": "**General**: Fix `ScaledJob` CRD validation to include \"default\" as a valid value for `scalingStrategy.strategy` (#7855)",
+    "remediation": "The ScaledJob CRD in KEDA 2.20.0 and 2.20.1 limits `scalingStrategy.strategy` to `custom`, `accurate` and `eager` (keda.sh_scaledjobs.yaml v2.20.1:9061-9064), leaving out the documented default, so any write to a ScaledJob that sets `default` is rejected. 2.20.2 and 2.21 restore it. Upgrade straight to 2.20.2 or later; if you must run 2.20.0 or 2.20.1, delete the field from each ScaledJob named (leaving it out means `default`).",
+    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.scalingStrategy.strategy == \"default\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is rejected on its next write by the 2.20.0 / 2.20.1 CRD only"
+  },
+  {
+    "ruleId": "rtz-keda-2.20-metrics-api-kube-service-endpoints-aggregation-scoped",
+    "severity": "MEDIUM",
+    "title": "Metrics API: `aggregateFromKubeServiceEndpoints` now reads only the target Service — the aggregated metric changes",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^metrics-api/aggregateFromKubeServiceEndpoints$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned; the VALUE is not projected, so a trigger that sets it to false is listed too"
+    },
+    "quote": "**Metrics API Scaler**: Fix `aggregateFromKubeServiceEndpoints` using empty label selector that matched all EndpointSlices in the namespace instead of only the target service's (#7641)",
+    "remediation": "Before 2.20 the selector KEDA built for `aggregateFromKubeServiceEndpoints: \"true\"` was empty (metrics_api_scaler.go v2.19.0 discarded the result of `Matches`), so the value was aggregated over every Service's endpoints in the namespace. From 2.20 only the target Service's EndpointSlices are read. On each trigger named that enables it in a namespace with other Services, the aggregated value drops to the target's own endpoints: re-check `targetValue` and `activationTargetValue` before the hop.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"metrics-api\") and ((.metadata // {}).aggregateFromKubeServiceEndpoints == \"true\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row aggregates differently from 2.20"
   }
 ]

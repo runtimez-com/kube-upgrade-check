@@ -1,7 +1,7 @@
 [
   {
     "ruleId": "rtz-keda-2.13-podidentity-azure-and-aws-kiam-deprecated",
-    "severity": "MEDIUM",
+    "severity": "LOW",
     "title": "`podIdentity.provider: azure` (AAD Pod Identity) and `aws-kiam` are deprecated — removed in 2.15",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
@@ -19,7 +19,8 @@
     ],
     "introducedIn": [
       "2.13.0"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.13-podidentity-aws-eks-deprecated",
@@ -36,7 +37,8 @@
     "verifyCommand": "kubectl get triggerauthentications.keda.sh,clustertriggerauthentications.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .podIdentity? // empty | .provider] | any(. == \"aws-eks\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row uses the aws-eks provider slated for removal in v3",
     "coversNotes": [
       "docs concepts/authentication.md: DEPRECATED: This will be removed in KEDA v3"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.13-aws-identityowner-deprecated",
@@ -46,18 +48,19 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ScaledObject|ScaledJob",
       "target": "triggers[].typedKeys[]",
-      "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)/identityOwner$",
-      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
+      "value": "^(aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)|apache-kafka|prometheus)/identityOwner$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned; apache-kafka, prometheus (AWS SigV4) and, from 2.15, kafka read it through the same GetAwsAuthorization"
     },
     "quote": "`identityOwner` - Receive permissions on the SQS Queue via Pod Identity or from the KEDA operator itself (see below). (DEPRECATED: This parameter is deprecated as of KEDA v2.13 and will be removed in version `3`, Values: `pod`, `operator`, Default: `pod`, Optional, This field only applies for `aws-eks` and `aws-kiam` authentications)",
     "remediation": "Docs-only deprecation (no CHANGELOG entry). `identityOwner: operator|pod` only applies to the `aws-eks` / `aws-kiam` pod identities; with `podIdentity.provider: aws` the TriggerAuthentication's `identityOwner` decides. Each trigger named keeps working through 2.x; drop the key when its authentication moves to `aws`.",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | test(\"^aws-\")) and (.metadata // {} | has(\"identityOwner\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) identityOwner=\\(.metadata.identityOwner)\"'  # each row carries the trigger-level key the docs deprecate",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | test(\"^(aws-|apache-kafka$|kafka$|prometheus$)\")) and (.metadata // {} | has(\"identityOwner\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type) identityOwner=\\(.metadata.identityOwner)\"'  # each row carries the trigger-level key the docs deprecate",
     "coversNotes": [
       "docs scalers/aws-cloudwatch.md: `identityOwner` - Receive permissions for CloudWatch via Pod Identi…",
       "docs scalers/aws-dynamodb.md: `identityOwner` - Receive permissions on the DynamoDB Table via Pod…",
       "docs scalers/aws-dynamodb-streams.md: `identityOwner` - Receive permissions on the DynamoDB and DynamoDB…",
       "docs scalers/aws-kinesis.md: `identityOwner` - Receive permissions on the Kinesis Stream via Pod…"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.13-aws-awsrolearn-deprecated",
@@ -82,7 +85,8 @@
       "target": "triggers[].type",
       "value": "^aws-(cloudwatch|dynamodb|dynamodb-streams|kinesis-stream|sqs-queue)$",
       "reason": "names the AWS-triggered scalers; which of their TriggerAuthentications map a parameter to awsRoleArn is settled by the command"
-    }
+    },
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.13-azure-data-explorer-clientsecret-metadata-removed",

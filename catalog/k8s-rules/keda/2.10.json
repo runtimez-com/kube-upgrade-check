@@ -11,7 +11,7 @@
       "reason": "checked on the composite <type>/<key> of every projected trigger; aws-cloudwatch, huawei-cloudeye and azure-monitor are NOT listed: there `metricName` is the cloud metric the scaler queries (required), not the HPA metric name — leave it there (E2 audit 2026-10-27)"
     },
     "quote": "**General**: Deprecate explicitly setting `metricName` field from `ScaledObject.triggers[*].metadata` (#4220)",
-    "remediation": "Remove `metricName` from the metadata of each trigger named; KEDA generates the HPA metric name itself (`s<index>-<type>-<...>`). Anything that reads the HPA's external metric by its custom name (dashboards, `kubectl get hpa` scripts) must switch to the generated name. The key is ignored from 2.12 on. EXCEPTION: on an `azure-monitor` trigger `metricName` is the Azure Monitor metric to query, not the HPA name — 2.11 exempts it from this deprecation; an azure-monitor row listed here needs no change. Exception: aws-cloudwatch and huawei-cloudeye REQUIRE `metricName` (it names the CloudWatch / Cloud Eye metric to query — the scaler errors `metric name not given` without it) and azure-monitor uses it the same way; leave those alone.",
+    "remediation": "Remove `metricName` from the metadata of each trigger named; KEDA generates the HPA metric name itself (`s<index>-<type>-<...>`). Anything that reads the HPA's external metric by its custom name (dashboards, `kubectl get hpa` scripts) must switch to the generated name. The key is ignored from 2.12 on. Exception: aws-cloudwatch and huawei-cloudeye REQUIRE `metricName` (it names the CloudWatch / Cloud Eye metric to query — the scaler errors `metric name not given` without it) and azure-monitor uses it the same way; leave those alone.",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | IN(\"azure-monitor\",\"aws-cloudwatch\",\"huawei-cloudeye\") | not)) | select(((.metadata // {}) | has(\"metricName\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row sets metricName as an HPA metric name; the three cloud-metric scalers are skipped on purpose",
     "coversNotes": [
       "docs scalers/azure-log-analytics.md: `metricName` - Name to assign to the metric. (Optional, if not set…",
@@ -24,7 +24,8 @@
       "docs scalers/postgresql.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
       "docs scalers/rabbitmq-queue.md: `metricName` - Name to assign to the metric. If not set KEDA will g…",
       "docs scalers/prometheus.md: `metricName` - Name to identify the Metric in the external.metrics.…"
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.10-prometheus-cortexorgid-refused",
@@ -82,5 +83,23 @@
     "coversNotes": [
       "ScaledObject webhook: the workload '%s' of type '%s' is already managed by the hpa '%s'"
     ]
+  },
+  {
+    "ruleId": "rtz-keda-2.10-scaler-tls-minimum-1-2",
+    "severity": "LOW",
+    "title": "Scaler connections require TLS 1.2 or newer",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which endpoints the scalers talk to, and the TLS versions those endpoints offer, are not in the collected projection"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kedacore/keda([:@]|$)"
+    },
+    "quote": "**General**: Use TLS1.2 as minimum TLS version (#4193)",
+    "remediation": "From 2.10 KEDA's scaler clients refuse TLS 1.0 and 1.1 (tls_config.go v2.10.0: minimum `tls.VersionTLS12`). A scaler whose source (a self-hosted Prometheus, a RabbitMQ management API, …) still offers only TLS 1.0/1.1 fails after the hop. Upgrade that endpoint, or as a stop-gap set `KEDA_HTTP_MIN_TLS_VERSION` to `TLS11` or `TLS10` on the keda-operator (Helm `env`).",
+    "verifyCommand": "kubectl get deploy -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.template.spec.containers[].image | test(\"kedacore/keda(:|@|$)\")) | \"\\(.metadata.namespace)/\\(.metadata.name) KEDA_HTTP_MIN_TLS_VERSION=\\([.spec.template.spec.containers[].env[]? | select(.name == \"KEDA_HTTP_MIN_TLS_VERSION\") | .value] | join(\",\"))\"'  # the operator; an empty value means TLS 1.2 is the floor"
   }
 ]

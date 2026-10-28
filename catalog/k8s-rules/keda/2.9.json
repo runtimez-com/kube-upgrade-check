@@ -18,7 +18,8 @@
     "verifyCommand": "kubectl get servicemonitors.monitoring.coreos.com,podmonitors.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"keda\")) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a KEDA scrape target to re-point at the operator",
     "coversNotes": [
       "docs integrations/prometheus.md: 💡 "
-    ]
+    ],
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.9-azure-eventhub-default-checkpoint-strategy-deprecated",
@@ -33,7 +34,8 @@
     },
     "quote": "Default checkpointing strategy for Azure Event Hubs scaler `azureFunctions` is deprecated in favor of `blobMetadata` (#XXX | Discussion)",
     "remediation": "On each azure-eventhub trigger named, set `checkpointStrategy` explicitly (`blobMetadata` for non-Functions consumers, or the one your consumer actually writes) instead of relying on the default. A trigger that already sets it is listed too and needs no edit. (The code spells the strategy `azureFunction`; the changelog's `azureFunctions` is a typo.)",
-    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-eventhub\") | select((.metadata // {}) | has(\"checkpointStrategy\") | not) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is an azure-eventhub trigger; checkpointStrategy=null relies on the deprecated default"
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select(.type == \"azure-eventhub\") | select((.metadata // {}) | has(\"checkpointStrategy\") | not) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row is an azure-eventhub trigger; checkpointStrategy=null relies on the deprecated default",
+    "deprecationOnly": true
   },
   {
     "ruleId": "rtz-keda-2.9-metadata-type-deprecated-for-metrictype",
@@ -47,7 +49,7 @@
       "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned"
     },
     "quote": "`metadata.type` is deprecated in favor of the global `metricType` for CPU, Memory, Datadog scalers (#2844 | Discussion)",
-    "remediation": "On each trigger named, delete `metadata.type` and set the trigger-level `metricType` (Utilization | AverageValue | Value) instead. The key keeps working on this hop; KEDA 2.18 removes it for cpu and memory and the scaler then refuses the trigger.",
+    "remediation": "On each trigger named, delete `metadata.type` and set the trigger-level `metricType` (Utilization | AverageValue | Value) instead. The key keeps working on this hop; KEDA 2.18 removes it for cpu and memory and the scaler then refuses the trigger. (First announced in 2.7.0; 2.9 lists it again.)",
     "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type == \"cpu\" or .type == \"memory\" or .type == \"datadog\") and (.metadata // {} | has(\"type\"))) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row still sets metadata.type",
     "introducedIn": [
       "2.9.0"
@@ -64,6 +66,25 @@
     },
     "quote": "`rolloutStrategy` is deprecated in favor of `rollout.strategy` in ScaledJobs (#3596 | Discussion)",
     "remediation": "Move the value of `spec.rolloutStrategy` (gradual | immediate) to `spec.rollout.strategy` on each ScaledJob named. The old field still works on every 2.x release and has never been removed, so nothing breaks on the hop — this is the cleanup to schedule before it is.",
-    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.rolloutStrategy != null) | \"\\(.metadata.namespace)/\\(.metadata.name) rolloutStrategy=\\(.spec.rolloutStrategy)\"'  # each row still sets the deprecated field"
+    "verifyCommand": "kubectl get scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.rolloutStrategy != null) | \"\\(.metadata.namespace)/\\(.metadata.name) rolloutStrategy=\\(.spec.rolloutStrategy)\"'  # each row still sets the deprecated field",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-keda-2.9-redis-tls-certificate-verification-default",
+    "severity": "HIGH",
+    "title": "Redis scalers verify the server certificate when `enableTLS` is set — a self-signed or private-CA Redis stops scaling",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ScaledObject|ScaledJob",
+      "target": "triggers[].typedKeys[]",
+      "value": "^redis(-cluster|-sentinel)?(-streams)?/enableTLS$",
+      "reason": "checked on the ScaledObject/ScaledJob triggers the agent projects (trigger type + metadata KEY names, never values) — a key supplied through a TriggerAuthentication or an environment variable is not a metadata key and is not scanned; the enableTLS VALUE and an unsafeSsl key are not subtracted, so a trigger with `enableTLS: \"false\"` or one that already sets `unsafeSsl` is listed too"
+    },
+    "quote": "**Redis Scalers**: Support `unsafeSsl` and enable ssl verification as default (#4005)",
+    "remediation": "Before 2.9.1 `enableTLS: \"true\"` also switched certificate verification OFF (the client was built with `InsecureSkipVerify: enableTLS`, redis_scaler.go v2.9.0:462,486,507). From 2.9.1 the server certificate is verified. On each trigger named that enables TLS against a Redis whose certificate is self-signed or from a private CA, set `unsafeSsl: \"true\"` on the trigger to keep the old behaviour, or (from 2.12) supply the CA through the TriggerAuthentication's `ca` parameter. A trigger with TLS off, or a Redis with a publicly trusted certificate, needs no change.",
+    "verifyCommand": "kubectl get scaledobjects.keda.sh,scaledjobs.keda.sh -A -o json 2>/dev/null | jq -r '.items[] | . as $o | .spec.triggers[]? | select((.type | test(\"^redis\")) and ((.metadata // {}).enableTLS == \"true\") and ((.metadata // {}).unsafeSsl != \"true\")) | \"\\($o.kind) \\($o.metadata.namespace // \"-\")/\\($o.metadata.name) trigger=\\(.type)\"'  # each row verifies the Redis certificate from 2.9.1 on; it needs a publicly trusted cert, a CA, or unsafeSsl",
+    "introducedIn": [
+      "2.9.1"
+    ]
   }
 ]
