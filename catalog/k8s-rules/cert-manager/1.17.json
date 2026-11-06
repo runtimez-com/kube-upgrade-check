@@ -1,18 +1,24 @@
 [
  {
   "ruleId": "rtz-cert-manager-1.17-rsa-3072-4096-hash-change",
-  "severity": "MEDIUM",
-  "title": "RSA 3072/4096 certificates start signing with SHA-384/SHA-512 as they rotate",
+  "severity": "LOW",
+  "title": "CA and SelfSigned issuers with an RSA 3072+ key sign with SHA-384/512",
   "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the hash follows the SIGNING key, not the leaf's: a leaf issued by a CA or SelfSigned issuer whose own key is RSA 3072 or larger changes, whatever its own size; the CA key behind an issuer is a Secret, which is never read. The command lists the CA Certificates whose issued leaves change"
+  },
+  "scope": {
    "kind": "SPEC_PATH_MATCHES",
-   "objectKind": "Certificate",
-   "target": "privateKeySize",
-   "value": "^(3072|4096)$",
-   "reason": "the key size is projected; whether the RELYING party accepts the new signature hash is not a cluster fact"
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^(ca|selfSigned)$"
   },
   "quote": "RSA certificates with keys of length 3072 or 4096 will now use SHA-384 or SHA-512 respectively as hash algorithms. These hash algorithms are widely supported, and we don't expect this to be an issue, but it's worth bearing in mind if you start to see errors as your larger RSA keys rotate.",
-  "remediation": "Check anything that pins the signature algorithm for these certificates (hardware, older TLS libraries, pinned fingerprints) before their keys rotate.",
-  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.size == 3072 or .spec.privateKey.size == 4096) | \"\\(.metadata.namespace)/\\(.metadata.name) size=\\(.spec.privateKey.size)\"'  # each row changes signature hash the next time it is re-issued"
+  "remediation": "Leaves signed by these issuers get a SHA-384 (RSA 3072+) or SHA-512 (RSA 4096+) signature at their next issuance. Check that relying parties — older TLS stacks, hardware, anything pinning the signature algorithm — accept it.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.isCA == true and ((.spec.privateKey.algorithm // \"RSA\") == \"RSA\") and (([(.spec.privateKey.size // 2048), 3071] | max) != 3071)) | \"\\(.metadata.namespace)/\\(.metadata.name) size=\\(.spec.privateKey.size)\"'  # each row is a CA whose issued leaves change signature hash; NO rows = no cert-manager-managed RSA 3072+ CA",
+  "coversNotes": [
+   "Potentially BREAKING: The CA and SelfSigned issuers now use SHA-512 when signing with RSA…"
+  ]
  },
  {
   "ruleId": "rtz-cert-manager-1.17-validatecaa-feature-gate-deprecated",
@@ -26,7 +32,7 @@
    "reason": "checked in the cert-manager workload's container args only — a gate set through a config file or an environment variable is not scanned"
   },
   "quote": "The `ValidateCAA` feature gate has been deprecated and will be removed in cert-manager v1.18. If you're manually enabling this feature gate, it's advisable to stop.",
-  "remediation": "Stop setting the `ValidateCAA` feature gate: it is removed in 1.18 and an unknown gate stops the controller starting.",
+  "remediation": "Stop setting the `ValidateCAA` feature gate. From 1.18 it is a no-op (CAA records are no longer checked) and the controller logs that it was removed; nothing crashes.",
   "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].args[]? | select(test(\"ValidateCAA\"))'  # any row here must be removed before upgrading to 1.18",
   "coversNotes": [
    "Feature Flag Promotions / Deprecations"

@@ -11,8 +11,8 @@
       "reason": "checked in the Traefik workload's container args only (Deployment or DaemonSet) — an option set through a static configuration file or environment variables is not scanned"
     },
     "quote": "From version `v3.7.12` onwards, a new `aliasHeadersStrategy` entry point option deprecates and replaces the `underscoreHeadersStrategy` option introduced in `v3.6.20`.",
-    "remediation": "Move the entry point from `underscoreHeadersStrategy` to `aliasHeadersStrategy` (the first release carrying it is v3.6.22 on the changelog, not the v3.6.20 the guide names, and no 3.6 release has `aliasHeadersStrategy`). The default `keep` changes nothing for traffic. The break to avoid is setting BOTH options on one entry point with different values: Traefik then rejects the install configuration (`cannot have both underscoreHeadersStrategy and aliasHeadersStrategy options configured with different values`) and does not start. The replacement also covers every aliasing character, not only the underscore — re-check the header names you accept before choosing `delete` or `reject`.",
-    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"underscoreHeadersStrategy\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set the deprecated option; also check Helm values and any static config ConfigMap",
+    "remediation": "Move the entry point from `underscoreHeadersStrategy` to `aliasHeadersStrategy`. Release facts at the tags (108a52644): `underscoreHeadersStrategy` first shipped in v3.6.22 / v3.7.6 / v2.11.51 (the guide names v3.6.20 — a real release that simply lacks the option), and `aliasHeadersStrategy` from v3.7.12 / v2.11.56 — no 3.6 release has it, so a 3.6 install keeps the old option until it moves to 3.7. The default `keep` changes nothing for traffic. The break to avoid is setting BOTH options on one entry point with different values: Traefik then rejects the install configuration (`cannot have both underscoreHeadersStrategy and aliasHeadersStrategy options configured with different values`) and does not start. The replacement also covers every aliasing character, not only the underscore — re-check the header names you accept before choosing `delete` or `reject`.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.args[]? | tostring | test(\"underscoreHeadersStrategy\")) | .metadata.namespace + \"/\" + .metadata.name' # names printed still set the deprecated option; also check Helm values and any static config ConfigMap",
     "coversNotes": [
       "UnderscoreHeadersStrategy"
     ],
@@ -23,21 +23,20 @@
   },
   {
     "ruleId": "rtz-traefik-3.7-basicauth-requires-non-empty-users",
-    "severity": "HIGH",
-    "title": "BasicAuth middleware without users unmounts its routers",
+    "severity": "MEDIUM",
+    "title": "BasicAuth without users unmounts its routers — Ingress NGINX auth-file, File, label and KV providers; CRD Middlewares already failed to build",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "the Middleware projection names each Middleware's TYPE (`types[]`), so the Middlewares of this type are named as candidates — but whether one is affected depends on its configuration body, which the projection does not carry, so the item cannot be settled"
     },
     "scope": {
-      "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "Middleware",
-      "target": "types[]",
-      "value": "^basicAuth$"
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "nginx.ingress.kubernetes.io/auth-type"
     },
     "quote": "From version `v3.7.3` onwards, the BasicAuth middleware requires a non-empty users configuration in order to be built successfully. Previously, the middleware would be built successfully but always return a 401 status code for any request. Now, an error occurs and any routers using it will be unmounted. For the same request, a 404 status code is served instead of a 401 status code.",
-    "remediation": "Give every BasicAuth middleware a non-empty `users` list (or a `secret` reference that resolves to users) before upgrading. This is a behaviour change with real blast radius: a middleware that previously just returned 401 now fails to build, and every router referencing it is unmounted — those routes return 404 rather than prompting for credentials.",
-    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.basicAuth != null) | select(((.spec.basicAuth.users // []) | length) == 0 and (.spec.basicAuth.secret // \"\") == \"\") | .metadata.namespace + \"/\" + .metadata.name' # names printed have no users and will unmount their routers",
+    "remediation": "A Kubernetes CRD BasicAuth Middleware takes a `secret`, not a `users` list (`v1alpha1/middleware.go` at v3.7.16), and an empty or missing `secret` has made the Middleware fail to build on every release (`createBasicAuthMiddleware`: `basicAuth.Secret == \"\"` → error at v2.11.47, v3.6.18 and v3.7.2 alike) — so for CRD objects nothing changes with this release. The change bites where empty users used to build a middleware answering 401: the Ingress NGINX provider — an Ingress with `nginx.ingress.kubernetes.io/auth-type: basic` whose `auth-secret` Secret's `auth` key is empty or holds only comments gives empty users with no error (`ingress-nginx/build.go` basicAuthUsers at v3.7.16) and its routers are unmounted (404) from 3.7.3 — and dynamic configuration from the File, Docker/label and KV providers. Check every Ingress the command names has at least one user line in its auth Secret; File / label / KV BasicAuth definitions are checked in the provider's own configuration.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations[\"nginx.ingress.kubernetes.io/auth-type\"] // \"\") == \"basic\") | .metadata.namespace + \"/\" + .metadata.name + \"  auth-secret=\" + (.metadata.annotations[\"nginx.ingress.kubernetes.io/auth-secret\"] // \"-\")' # Ingresses printed use the NGINX provider's basic auth: each named Secret's auth key must hold at least one user line, or the Ingress's routers are unmounted (404) from 3.7.3; CRD BasicAuth Middlewares are unaffected (an empty secret already failed to build)",
     "introducedIn": [
       "2.11.48",
       "3.6.19",
@@ -101,7 +100,7 @@
       "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
     },
     "quote": "In `v3.7.1`, a new `crossProviderNamespaces` option is available on the Kubernetes CRD, Ingress, and Gateway providers.",
-    "remediation": "Decide this deliberately rather than inheriting the default. The option governs whether resources in one provider may reference resources in another; enabling it widens what a namespace owner can reach across provider boundaries.",
+    "remediation": "Decide this deliberately rather than inheriting the default — and read it the right way round: unset (nil) keeps today's behaviour, every namespace may reference another provider's resources; setting the option RESTRICTS cross-provider references to the namespaces listed, and an empty list `[]` rejects them all (`crd/kubernetes.go:1708-1710` and `ingress/kubernetes.go` at v3.7.16). Enabling it is the hardening; a reference from a namespace left off the list is dropped — the Ingress is skipped or its backend fails to build (see `wrs-addon-traefik-ingress-cross-provider-namespace-blocked`). Decide the list before setting it.",
     "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |crossProviderNamespaces' # rows show whether crossProviderNamespaces is set on the providers; nothing printed means the default applies, decide it explicitly; a static configuration file mounted from a ConfigMap is not listed, read it too",
     "introducedIn": [
       "2.11.46",
@@ -230,8 +229,8 @@
       "reason": "whether a backend relied on an h2c upgrade negotiated past Traefik is runtime protocol behaviour, not a property of any collected object"
     },
     "quote": "Starting with `v3.7.13`, Traefik does not forward the `Upgrade: h2c` and `HTTP2-Settings` request headers to the backends anymore.",
-    "remediation": "A backend that accepted such an upgrade now serves those requests over HTTP/1.1. To keep cleartext HTTP/2 to a backend, declare it with the h2c scheme (`scheme: h2c` on the IngressRoute service, or the `traefik.ingress.kubernetes.io/service.serversscheme: h2c` Ingress annotation).",
-    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.scheme == \"h2c\") | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .name' # services printed already use h2c with prior knowledge and are unaffected",
+    "remediation": "A backend that accepted such an upgrade now serves those requests over HTTP/1.1. To keep cleartext HTTP/2 to a backend, declare it with the h2c scheme: `scheme: h2c` on the IngressRoute service, or the `traefik.ingress.kubernetes.io/service.serversscheme: h2c` annotation on the backend SERVICE — Traefik reads every `service.*` annotation from the Service object (`ingress/kubernetes.go:604`), and ignores it on the Ingress.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $o | .spec.routes[]?.services[]? | select(.scheme == \"h2c\") | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  \" + .name'; kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.annotations[\"traefik.ingress.kubernetes.io/service.serversscheme\"] == \"h2c\") | \"svc \" + .metadata.namespace + \"/\" + .metadata.name' # services printed already use h2c with prior knowledge and are unaffected; every other backend that relied on the Upgrade header now gets HTTP/1.1",
     "introducedIn": [
       "2.11.57",
       "3.7.13"
@@ -255,8 +254,8 @@
   },
   {
     "ruleId": "rtz-traefik-3.7-ingress-nginx-custom-headers-rbac",
-    "severity": "MEDIUM",
-    "title": "Ingress NGINX provider needs a configmaps RBAC grant",
+    "severity": "HIGH",
+    "title": "Ingress NGINX provider needs a configmaps RBAC grant or it never starts",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "this is a grant on Traefik's own ClusterRole, which is not among the collected kinds"
@@ -268,8 +267,8 @@
       "value": "(?i)kubernetesingressnginx"
     },
     "quote": "Starting with `v3.7.0`, the Ingress NGINX provider now supports the `nginx.ingress.kubernetes.io/custom-headers` annotation to add custom headers to the response forwarded to the client.",
-    "remediation": "Add the `configmaps` permission to the KubernetesIngressNGINX provider's RBAC. The annotation reads its header values from a ConfigMap, so without the grant the annotation is accepted and silently has no effect.",
-    "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select(.rules[]?.resources[]? == \"ingresses\") | .metadata.name as $n | .rules[] | select(.resources[]? == \"configmaps\") | $n' # a name confirms the configmaps grant is present",
+    "remediation": "Grant `list` and `watch` on `configmaps` to the Traefik ServiceAccount before upgrading to 3.7. From 3.7.0 the Ingress NGINX provider starts a ConfigMap informer unconditionally and waits for its cache to sync (`pkg/provider/kubernetes/ingress-nginx/client.go` WatchAll); without the grant that wait never returns, the provider never produces a configuration and NO Ingress it owns is served — not only the ones using `custom-headers`. (The annotation itself reads its header values from a ConfigMap.)",
+    "verifyCommand": "kubectl auth can-i list configmaps --as=system:serviceaccount:traefik:traefik -A # replace traefik:traefik with the provider's namespace:serviceaccount; a printed no means the Ingress NGINX provider hangs at startup on 3.7 and serves nothing",
     "introducedIn": [
       "3.7.0"
     ]
@@ -304,8 +303,8 @@
       "value": "(^|/)(mirrored-library-|library-)?traefik([:@]|$)"
     },
     "quote": "Starting with `v3.7.11`, the new `safeNaming` provider option enables collision-safe naming for the routers, middlewares and services generated by the Kubernetes CRD provider, instead of the current naming scheme, under which names can collide across namespaces or resources.",
-    "remediation": "Enabling `safeNaming` is the safer configuration, but it renames the generated routers, middlewares and services. Anything that references those generated names — dashboards, metrics queries, alerting rules, API scripts — has to be updated in the same change. Leaving it off keeps a real collision risk across namespaces.",
-    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |safeNaming' # nothing printed means safeNaming is unset; enabling it renames every generated router, middleware and service; a static configuration file mounted from a ConfigMap is not listed, read it too",
+    "remediation": "Enabling `safeNaming` is the safer configuration, but it renames the generated routers, middlewares and services. Anything that references those generated names — dashboards, metrics queries, alerting rules, API scripts — has to be updated in the same change. So does every cross-provider reference: with `safeNaming` on, a namespaced `@kubernetescrd` reference such as the `traefik.ingress.kubernetes.io/router.middlewares` annotation on an Ingress must read `namespace_name@kubernetescrd`; one left in the legacy `namespace-name@kubernetescrd` form is not resolved and the routers using it are not created (guide at v3.7.16). Leaving it off keeps a real collision risk across namespaces.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |safeNaming'; kubectl get ingress -A -o json | jq -r '.items[] | select(.metadata.annotations[\"traefik.ingress.kubernetes.io/router.middlewares\"] != null) | \"ingress \" + .metadata.namespace + \"/\" + .metadata.name + \"  \" + .metadata.annotations[\"traefik.ingress.kubernetes.io/router.middlewares\"]' # nothing in the first block means safeNaming is unset; enabling it renames every generated router, middleware and service, and every Ingress printed in the second block must move its references to namespace_name@kubernetescrd (underscore) or lose its routers; a static configuration file mounted from a ConfigMap is not listed, read it too",
     "introducedIn": [
       "2.11.55",
       "3.7.11"
@@ -339,7 +338,7 @@
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Middleware",
       "target": "types[]",
-      "value": "^stripPrefix$"
+      "value": "^stripPrefix(Regex)?$"
     },
     "quote": "From version `v3.7.3` onwards, the StripPrefix middleware and the StripPrefixRegex middleware reject requests (`400 Bad Request`) when stripping the configured prefix produces a path that differs from its normalised form (i.e. a path containing `.` or `..` segments that would be collapsed by normalisation).",
     "remediation": "Check any client or upstream that relies on `.`/`..` segments surviving a StripPrefix. Those requests now get a 400 instead of being forwarded. This is a hardening change, so the right fix is normally to fix the caller's path rather than to work around it.",
@@ -561,7 +560,7 @@
   {
     "ruleId": "rtz-traefik-3.7-sni-host-mismatch-421",
     "severity": "MEDIUM",
-    "title": "Routes with their own TLS options answer 421 more often when SNI and Host differ",
+    "title": "TLS routes answer 421 more often when SNI and Host differ",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "whether a client sends no SNI, or an SNI that differs from its Host header, is decided per request; the routes it can affect are named"
@@ -573,8 +572,8 @@
       "value": "^name="
     },
     "quote": "**[server]** Move snicheck to ctx instead of simulated routing ([#13214](https://github.com/traefik/traefik/pull/13214) @juliens)",
-    "remediation": "For routes that use a non-default TLSOption, Traefik now checks the SNI against the Host header on the request itself, so clients that send no SNI or reuse one connection for several hosts (HTTP/2 connection coalescing, some health checkers and proxies) get `421 Misdirected Request`. Test those clients against the upgraded controller, and make them send an SNI that matches the Host.",
-    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | select(.spec.tls.options != null) | .metadata.namespace + \"/\" + .metadata.name + \"  options=\" + .spec.tls.options.name' # routes printed enforce SNI = Host for their TLS options",
+    "remediation": "Every TLS router is wrapped in the SNI check (`pkg/server/router/router.go:384-388`, `snicheck.go:33` at v3.7.16), and from this release the check reads the connection's SNI from the request context instead of a simulated routing: a connection whose SNI selected one router's TLS options answers `421 Misdirected Request` to a request whose Host maps to a router with DIFFERENT options — a default-option router on a connection that negotiated a custom TLSOption included, not only routes with their own TLSOption. Clients that send no SNI or reuse one connection for several hosts (HTTP/2 connection coalescing, some health checkers and proxies) are the ones that hit it. Test those clients against the upgraded controller, and make them send an SNI that matches the Host.",
+    "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | select(.spec.tls != null) | .metadata.namespace + \"/\" + .metadata.name + \"  options=\" + (.spec.tls.options.name // \"default\")' # every TLS route printed enforces SNI = Host; the ones naming a non-default option are where a coalesced connection changes options between hosts",
     "introducedIn": [
       "2.11.48",
       "3.6.19",
@@ -596,7 +595,7 @@
       "value": "\\b(?i:Host|HostSNI)\\s*\\(\\s*(`\\*\\.[^`]+`|\"\\*\\.[^\"]+\")\\s*\\)"
     },
     "quote": "Since `v3.7.0`, TLSOptions can now be associated with routers using wildcard `Host` and `HostSNI` matchers (e.g., `Host(`*.example.com`)`).",
-    "remediation": "Before v3.7 such a router fell back to the default TLS options with a warning. From v3.7 the route's own TLSOption applies, so a stricter minVersion, cipher list or client-certificate requirement (mTLS) starts being enforced on the wildcard hosts. Check the clients of these routes against the TLSOption they name.",
+    "remediation": "Before v3.7 such a router silently fell back to the default TLS options — the \"no domain\" warning fires only when no domain parses at all, and `*.example.com` parses (`router/tcp/manager.go` at v3.6.25). From v3.7 the route's own TLSOption applies, so a stricter minVersion, cipher list or client-certificate requirement (mTLS) starts being enforced on the wildcard hosts. Check the clients of these routes against the TLSOption they name.",
     "verifyCommand": "kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | select(.spec.tls.options != null) | . as $o | .spec.routes[]? | select(.match | test(\"Host\\\\(\\\\s*[`\\\"]\\\\*\\\\.\")) | $o.metadata.namespace + \"/\" + $o.metadata.name + \"  options=\" + $o.spec.tls.options.name' # routes printed start enforcing their TLSOption on wildcard hosts",
     "introducedIn": [
       "3.7.0"
@@ -617,11 +616,71 @@
       "value": "^accessControlAllowOriginWildcard="
     },
     "quote": "**[middleware]** Fix CORS Max-Age set to 0 by default ([#13371](https://github.com/traefik/traefik/pull/13371) @AnatoleLucet)",
-    "remediation": "Two CORS fixes land together. Traefik no longer sends `Access-Control-Max-Age: 0` when `accessControlMaxAge` is unset, so browsers start caching preflights for their own default. And a wildcard origin list combined with `accessControlAllowCredentials: true` now answers with the requesting origin, which browsers accept, instead of `*`, which they reject, so cross-origin credentialed calls that used to fail start succeeding. Review both for the Middlewares named.",
+    "remediation": "Three CORS fixes land in v3.6.22 / v3.7.6. Traefik no longer sends `Access-Control-Max-Age: 0` when `accessControlMaxAge` is unset (9badb31b7), so browsers start caching preflights for their own default. A wildcard origin list combined with `accessControlAllowCredentials: true` now answers with the requesting origin, which browsers accept, instead of `*`, which they reject, so cross-origin credentialed calls that used to fail start succeeding (f9d79007a). And with credentials on, the WHOLE `Access-Control-Expose-Headers` header is dropped whenever its list contains `*` (same commit) — a client that read a custom response header through it has to have `*` REPLACED by the explicit header names in `accessControlExposeHeaders`; adding names beside the `*` does not help. Review all three for the Middlewares named.",
     "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.headers.accessControlAllowOriginList != null) | .metadata.namespace + \"/\" + .metadata.name + \"  credentials=\" + ((.spec.headers.accessControlAllowCredentials // false) | tostring) + \" maxAge=\" + ((.spec.headers.accessControlMaxAge // \"unset\") | tostring)' # Middlewares printed send different CORS headers",
     "introducedIn": [
       "3.6.22",
       "3.7.6"
+    ]
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-connect-rejected-all-http-versions",
+    "severity": "LOW",
+    "introducedIn": [
+      "2.11.59",
+      "3.7.15"
+    ],
+    "title": "Every CONNECT request, over any HTTP version, now gets 501 before routing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "request-time behaviour of the proxy, not a property of any collected object"
+    },
+    "scope": null,
+    "quote": "Starting with `v3.7.15`, Traefik rejects every `CONNECT` request with a `501 Not Implemented` response, whatever the HTTP version used by the client, and never forwards it to the backend.",
+    "remediation": "No action for almost every deployment: HTTP/1 CONNECT was already rejected since v3.7.9 / v2.11.53, and CONNECT over HTTP/2 or HTTP/3 was never handled as a tunnel — it only seemed to work in some cases. From this release every CONNECT is answered 501 before routing and never forwarded; the rejection is not in the access log (DEBUG only), so a client that tunnelled through Traefik this way fails quietly. Only investigate if a client genuinely issues CONNECT to Traefik; to expose a forward proxy, route it with a TCP router instead.",
+    "verifyCommand": null,
+    "enabled": true
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-gateway-backend-protocol-https-by-port-removed",
+    "severity": "HIGH",
+    "introducedIn": [
+      "3.7.15"
+    ],
+    "title": "Gateway API: a backend on port 443 or an https* port is now reached over plain HTTP unless appProtocol says https",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the Service projection carries port names and numbers but not appProtocol, and the HTTPRoute backendRef has to be joined to the Service port — a two-object join the evaluator cannot express; the app-impact check rtz-traefik-gateway-backend-https-by-port-removed names the port-443 backends"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "HTTPRoute"
+    },
+    "quote": "Starting with `v3.7.15`, the port number and the port name do not select HTTPS anymore, and such a backend is reached with plain HTTP. This follows the Gateway API specification, where only the `appProtocol` of the Service port or a `BackendTLSPolicy` selects the protocol used to reach the backend. To keep using HTTPS, set the Service port `appProtocol` to `https`, or attach a `BackendTLSPolicy` to the Service.",
+    "remediation": "Until v3.7.14 the Gateway API provider spoke HTTPS to an HTTPRoute backend whose Service port was 443 or named `https*` and had no `appProtocol` (51b663a6e). From v3.7.15 only the Service port's `appProtocol` — or a BackendTLSPolicy attached to the Service — selects HTTPS, and such a backend is reached with plain HTTP: a backend that only speaks TLS then fails every request through the Gateway. Before upgrading, set `appProtocol: https` on every such Service port (or attach a BackendTLSPolicy); the command lists the candidate ports.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | . as $s | .spec.ports[]? | select(.appProtocol == null and (.port == 443 or ((.name // \"\") | startswith(\"https\")))) | $s.metadata.namespace + \"/\" + $s.metadata.name + \":\" + (.port | tostring) + \"  name=\" + (.name // \"-\")' # Service ports printed are reached over plain HTTP from v3.7.15 when an HTTPRoute backendRef names them (kubectl get httproutes -A -o json | jq -r '.items[] | .spec.rules[]?.backendRefs[]? | .name + \":\" + (.port|tostring)' lists the referenced ports); set appProtocol: https on the ones that must stay HTTPS",
+    "enabled": true
+  },
+  {
+    "ruleId": "rtz-traefik-3.7-gateway-client-qps-burst-increased",
+    "severity": "LOW",
+    "title": "Gateway API provider Kubernetes client QPS and Burst raised 10x",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "this is Traefik static/provider configuration, not a field on any collected Kubernetes object"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].args[]",
+      "value": "(?i)providers\\.kubernetesgateway"
+    },
+    "quote": "Starting with `v3.7.3`, the QPS and Burst values of the Kubernetes client used by the Kubernetes Gateway API provider have been increased to `50` and `100` respectively (10x the default values of the Kubernetes client).",
+    "remediation": "No action in most clusters. Note it only if your API server is rate-limit sensitive or you run many Traefik replicas, since each one may now issue ten times the previous request rate against the API server during reconciliation.",
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |kubernetesgateway' # rows show whether the Gateway provider is on and how many replicas share the API server; each replica may now issue 10x the previous request rate; a static configuration file mounted from a ConfigMap is not listed, read it too",
+    "introducedIn": [
+      "3.6.19",
+      "3.7.3"
     ]
   }
 ]

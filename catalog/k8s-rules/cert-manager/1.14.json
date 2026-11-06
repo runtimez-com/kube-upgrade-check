@@ -14,7 +14,7 @@
   },
   "quote": "The following bugs were found in `v1.14.1` and have been fixed in `v1.14.2`:",
   "remediation": "Pin at least v1.14.2: 1.14.0 shipped the wrong cainjector image and 1.14.1 copied the CSR's critical flag instead of recalculating it.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image'  # any 1.14.0 or 1.14.1 tag here is one of the two buggy patches",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image'  # lists, does not judge: any 1.14.0 or 1.14.1 tag here is one of the two buggy patches",
   "coversNotes": [
    "During the release of `v1.14.0`, the Helm chart for this version was found to use the…",
    "A bug in cmctl namespace detection prevents it being used as a `startupapicheck` image in…",
@@ -36,27 +36,9 @@
   },
   "quote": "The startupapicheck job uses a new OCI image called startupapicheck, instead of the ctl image. If you run in an environment in which images cannot be pulled, be sure to include the new image.",
   "remediation": "If images are mirrored or restricted, add the `startupapicheck` image to the allow-list/mirror before upgrading — the `ctl` image is no longer used.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image' | sed 's#/[^/]*$##' | sort -u  # the registry prefix printed is the one that must also carry startupapicheck"
- },
- {
-  "ruleId": "rtz-cert-manager-1.14-acme-preferred-chain-selects-wrong-chain",
-  "severity": "LOW",
-  "title": "Known issue in 1.12–1.14: preferredChain may pick the wrong Let's Encrypt chain",
-  "detection": {
-   "kind": "NOT_DETECTABLE",
-   "reason": "`preferredChain` is not in the issuer projection"
-  },
-  "scope": {
-   "kind": "SPEC_PATH_MATCHES",
-   "objectKind": "Issuer|ClusterIssuer",
-   "target": "types[]",
-   "value": "^acme$"
-  },
-  "quote": "The problem is that the `preferredChain` feature matches the issuer CN of **any** certificate in the chain.",
-  "remediation": "If the target is one of these minors and an ACME issuer sets `preferredChain: ISRG Root X1`, either remove the field and renew, or accept the longer cross-signed chain while `DST Root CA X3` is trusted.",
-  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row is an issuer the known issue can affect; NO rows = clean",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image' | sed 's#/[^/]*$##' | sort -u  # lists, does not judge: the registry prefix printed is the one that must also carry startupapicheck",
   "coversNotes": [
-   "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is…"
+   "MAYBE BREAKING: The startupapicheck job is now handled by an entirely new container…"
   ]
  },
  {
@@ -75,6 +57,9 @@
   },
   "quote": "The KeyUsage and BasicConstraints extensions will now be encoded as critical in the CertificateRequest's CSR blob.",
   "remediation": "Issue one test Certificate through each Vault and Venafi issuer after the upgrade and confirm the CA accepts the critical extensions.",
-  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.vault or .spec.venafi) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name)\"'  # each row signs CSRs the upgrade changes the encoding of"
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.vault or .spec.venafi) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name)\"'  # each row signs CSRs the upgrade changes the encoding of",
+  "coversNotes": [
+   "⚠️ potentially breaking ⚠️: The KeyUsage and BasicConstraints extensions will now be…"
+  ]
  }
 ]

@@ -1,1 +1,17 @@
-[]
+[
+ {
+  "ruleId": "rtz-cert-manager-1.20-rotation-policy-opt-out-gate-ignored",
+  "severity": "HIGH",
+  "title": "DefaultPrivateKeyRotationPolicyAlways=false is ignored from 1.20 — Certificates start re-keying",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "(?i)DefaultPrivateKeyRotationPolicyAlways=false",
+   "reason": "checked in the cert-manager workload's container args only — the gate set through a config file is not scanned"
+  },
+  "quote": "The feature-gate `DefaultPrivateKeyRotationPolicyAlways` moved from Beta to GA and can no longer be disabled.",
+  "remediation": "This controller opts out of the 1.18 rotation default, and 1.20 ignores the opt-out: every Certificate without an explicit `privateKey.rotationPolicy` gets a new private key at each renewal. Before upgrading, set `rotationPolicy: Never` on the Certificates that must keep their key, then remove the gate.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"(?i)DefaultPrivateKeyRotationPolicyAlways=false\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller relying on the opt-out 1.20 removes; NO rows = clean"
+ }
+]

@@ -99,9 +99,9 @@ An unknown `--fail-on` value is rejected rather than ignored. A typo that quietl
 | Config breakers | Control-plane flags and kubelet settings the target refuses to start with, including feature gates locked to their default | 449 |
 | Volume plugins | In-tree volume plugins that stop mounting | 17 |
 | Node runtime | Container runtime, cgroup version, kubelet and kube-proxy version skew | 9 |
-| Add-on compatibility | Whether Karpenter, ingress-nginx, cert-manager, Argo CD, CoreDNS, Istio, Traefik and kube-proxy support the target | 8 catalogs |
-| Release-note rules | Rules extracted from each Kubernetes changelog with the sentence they rest on: a deprecated Service field still set, a label or annotation the release stops honouring, an object still written at a retiring apiVersion | 143 |
-| Add-on release-note rules | The same, from each add-on's own release notes and migration guides, selected by the add-on's own version range: a Corefile still using `federation`, an Issuer still on a Venafi zone syntax, a Traefik Middleware type that changed shape | 422 across Argo CD, cert-manager, CoreDNS, Istio, Karpenter, kube-proxy and Traefik, plus 5 version-skew rules |
+| Add-on compatibility | Whether your add-ons support the target, from the vendor's own compatibility table where one is published (Argo CD, cert-manager, ingress-nginx, Istio, Karpenter, KEDA, kube-proxy) | 12 catalogs, 7 with a vendor table |
+| Release-note rules | Rules extracted from each Kubernetes changelog, 1.30 to 1.37, with the sentence they rest on: a deprecated Service field still set, a label or annotation the release stops honouring, an object still written at a retiring apiVersion | 72 |
+| Add-on release-note rules | The same, from each add-on's own release notes and migration guides, selected by the add-on's own version range: a Corefile still using `federation`, an Issuer still on a Venafi zone syntax, a Traefik Middleware type that changed shape | 647 across Argo CD, AWS EBS CSI driver, AWS VPC CNI, cert-manager, CoreDNS, Istio, Karpenter, KEDA, kube-proxy and Traefik, plus 5 version-skew rules |
 | Node runtime, from the kubelet | cgroup v1 hosts and container runtimes the kubelet itself reports as losing support, read from each kubelet's `/metrics` | 2 |
 | Upgrade preflight | What stops the upgrade rather than breaks after it: a skipped minor, nodes not Ready, disruption budgets that block a drain, bare pods, Fail-policy admission and CRD conversion webhooks with no ready backend, unavailable aggregated APIs | 8 checks |
 | Advisories | Behaviour changes on the path that no API call can settle | 36 |
@@ -127,8 +127,8 @@ families it checks.
 | Feature gates locked to a new default | no | no | **yes** |
 | In-tree volume plugins that stop mounting | no | no | **17 rules** |
 | Node runtime and version skew | no | no | **yes** |
-| Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **8 catalogs** |
-| Add-on release notes settled against your objects | no | no | **422 rules** |
+| Add-on compatibility (Karpenter, ingress-nginx, …) | no | no | **12 catalogs** |
+| Add-on release notes settled against your objects | no | no | **647 rules** |
 | Vendor support dates and extended-support cost | no | no | **yes** |
 | Drain, webhook and aggregated-API preflight | no | no | **yes** |
 | Reports what it could **not** check | no | no | **yes** |
@@ -248,7 +248,7 @@ extras above; nothing in it can write.
 ## Going further
 
 - **What your EKS clusters cost on extended support:** the free [EKS extended support calculator](https://runtimez.io/eks-extended-support-calculator?utm_source=github&utm_medium=readme) shows today's bill, the Dec 2 change for 1.34, and the next 12 months.
-- **Watching a whole fleet:** [Runtimez](https://runtimez.io/?utm_source=github&utm_medium=readme) runs the same rules continuously across clusters, adds the add-on and runtime end-of-life dates, and keeps a history of every finding.
+- **Watching a whole fleet:** [Runtimez](https://runtimez.io/?utm_source=github&utm_medium=readme) runs the same rules continuously across clusters, adds an AWS Load Balancer Controller catalog and the add-on and runtime end-of-life dates, and keeps a history of every finding.
 - **Want a second pair of eyes?** [Book a 30-minute readiness check](https://calendly.com/silpa-runtimez/30min) on one of your clusters.
 
 ## Licence

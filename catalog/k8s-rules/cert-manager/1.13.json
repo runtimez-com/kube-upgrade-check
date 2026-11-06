@@ -14,7 +14,7 @@
   },
   "quote": "**IMPORTANT:** Before upgrading to any newer version, ensure you're running the latest v1.12 release. Otherwise, some certificates may be unexpectedly re-issued (see this comment).",
   "remediation": "Upgrade to the newest v1.12 patch release FIRST, then upgrade away from 1.12.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager-controller\")) | .image'  # the patch component of this tag is what must be the newest 1.12 before upgrading"
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager-controller\")) | .image'  # lists, does not judge: the patch component of this tag is what must be the newest 1.12 before upgrading"
  },
  {
   "ruleId": "rtz-cert-manager-1.13-webhook-feature-gates-split",
@@ -23,32 +23,17 @@
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment",
-   "objectName": "webhook",
+   "objectName": "^cert-manager.*webhook",
    "target": "containers[].args[]",
    "value": "(?i)--feature-gates",
    "reason": "checked in the webhook workload's container args only — a gate set through a config file or an environment variable is not scanned"
   },
   "quote": "1. If you deploy cert-manager using helm and have `.featureGates` value set, the features defined there will no longer be passed to cert-manager webhook, only to cert-manager controller. Use `webhook.featureGates` field instead to define features to be enabled on webhook. (https://github.com/cert-manager/cert-manager/pull/6093, https://github.com/irbekrm)",
   "remediation": "Move webhook feature gates to the `webhook.featureGates` Helm value. A controller-only gate passed to the webhook now fails startup unless the webhook has a feature by that name.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"webhook\")) | .spec.template.spec.containers[].args[]? | select(test(\"feature-gates\"))'  # each row is a gate list the 1.13 webhook validates against its OWN features"
- },
- {
-  "ruleId": "rtz-cert-manager-1.13-acme-preferred-chain-selects-wrong-chain",
-  "severity": "LOW",
-  "title": "Known issue in 1.12–1.14: preferredChain may pick the wrong Let's Encrypt chain",
-  "detection": {
-   "kind": "NOT_DETECTABLE",
-   "reason": "`preferredChain` is not in the issuer projection"
-  },
-  "scope": {
-   "kind": "SPEC_PATH_MATCHES",
-   "objectKind": "Issuer|ClusterIssuer",
-   "target": "types[]",
-   "value": "^acme$"
-  },
-  "quote": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is configured: see 1.14 release notes for more information.",
-  "remediation": "If the target is one of these minors and an ACME issuer sets `preferredChain: ISRG Root X1`, either remove the field and renew, or accept the longer cross-signed chain while `DST Root CA X3` is trusted.",
-  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row is an issuer the known issue can affect; NO rows = clean"
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^cert-manager.*webhook\")) | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"feature-gates\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a gate list the 1.13 webhook validates against its OWN features",
+  "coversNotes": [
+   "Fixes a bug where webhook was pulling in controller's feature gates."
+  ]
  },
  {
   "ruleId": "rtz-cert-manager-1.13-certificaterequest-keyusages-validated",
@@ -64,6 +49,9 @@
   },
   "quote": "3. Webhook validation of CertificateRequest resources is stricter now: all `KeyUsages` and `ExtendedKeyUsages` must be defined directly in the CertificateRequest resource, the encoded CSR can never contain more usages than defined in the Kubernetes resource. See `#6182` for more information.",
   "remediation": "Anything that creates CertificateRequests directly must list every KeyUsage and ExtendedKeyUsage of its CSR in `spec.usages`.",
-  "verifyCommand": "kubectl get certificaterequests -A -o json --show-managed-fields | jq -r '.items[] | select([.metadata.managedFields[]?.manager] | map(select(test(\"cert-manager|cainjector\") | not)) | .[0] != null) | \"\\(.metadata.namespace)/\\(.metadata.name) managers=\\([.metadata.managedFields[].manager] | unique | join(\",\"))\"'  # each row was created by something other than cert-manager, whose CSRs the stricter check now applies to"
+  "verifyCommand": "kubectl get certificaterequests -A -o json --show-managed-fields | jq -r '.items[] | select([.metadata.managedFields[]?.manager] | map(select(test(\"cert-manager|cainjector\") | not)) | .[0] != null) | \"\\(.metadata.namespace)/\\(.metadata.name) managers=\\([.metadata.managedFields[].manager] | unique | join(\",\"))\"'  # each row was created by something other than cert-manager, whose CSRs the stricter check now applies to",
+  "coversNotes": [
+   "⚠️ possibly breaking: Webhook validation of CertificateRequest resources is stricter now:…"
+  ]
  }
 ]

@@ -29,7 +29,10 @@
     },
     "quote": "In v3.3.5, the default compression algorithms have been reordered to favor gzip compression.",
     "remediation": "Only affects clients that send no `Accept-Encoding` preference or express no order. The new default is `gzip, br, zstd`, chosen for compatibility with older clients. If you deliberately preferred brotli or zstd for bandwidth, set the encodings explicitly rather than relying on the default.",
-    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.compress != null) | .metadata.namespace + \"/\" + .metadata.name + \"  encodings=\" + ((.spec.compress.encodings // []) | if length == 0 then \"unset (new default order gzip, br, zstd applies)\" else join(\",\") end)' # rows with encodings unset change preference on upgrade; set the list explicitly to keep brotli or zstd first"
+    "verifyCommand": "kubectl get middlewares.traefik.io -A -o json | jq -r '.items[] | select(.spec.compress != null) | .metadata.namespace + \"/\" + .metadata.name + \"  encodings=\" + ((.spec.compress.encodings // []) | if length == 0 then \"unset (new default order gzip, br, zstd applies)\" else join(\",\") end)' # rows with encodings unset change preference on upgrade; set the list explicitly to keep brotli or zstd first",
+    "introducedIn": [
+      "3.3.5"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.3-otel-request-duration-metric-unit",
@@ -40,7 +43,10 @@
       "reason": "this concerns Traefik's own metrics output, which this platform does not scrape"
     },
     "quote": "In v3.3.4, the OpenTelemetry Request Duration metric unit has been standardized to match other providers and naming conventions.",
-    "remediation": "Update dashboards and alert rules built on the OpenTelemetry request-duration metric. A unit change is the kind that does not break a query outright — the panel keeps rendering, with values off by a constant factor."
+    "remediation": "Update dashboards and alert rules built on the OpenTelemetry request-duration metric. A unit change is the kind that does not break a query outright — the panel keeps rendering, with values off by a constant factor.",
+    "introducedIn": [
+      "3.3.4"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.3-request-path-sanitization",
@@ -54,7 +60,7 @@
     "remediation": "Routing and backend paths both change for requests containing `/../`, `/./` or duplicate slashes. Rules written against the uncleaned form may stop matching, and backends that saw the raw path now see the collapsed one. Test representative URLs rather than reasoning from the rules alone.",
     "verifyCommand": "( kubectl get ingressroutes.traefik.io -A -o json | jq -r '.items[] | . as $r | .spec.routes[]? | \"\\($r.metadata.namespace)/\\($r.metadata.name)  \\(.match)\"'; kubectl get ingress -A -o json | jq -r '.items[] | . as $i | .spec.rules[]?.http.paths[]? | \"\\($i.metadata.namespace)/\\($i.metadata.name)  \\(.path // \"\")\"' ) | grep -E '//|/\\.\\.?(/|$)' # rules printed match on a path with ./ ../ or doubled slashes, which are now collapsed before matching",
     "introducedIn": [
-      "2.11.23",
+      "2.11.24",
       "3.3.6"
     ]
   },
