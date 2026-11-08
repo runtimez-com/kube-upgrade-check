@@ -60,6 +60,9 @@ func collectCRDs(ctx context.Context, c *cluster.Client) ([]CRD, error) {
 			if annotations, ok := meta["annotations"].(map[string]any); ok {
 				_, present := annotations["kubectl.kubernetes.io/last-applied-configuration"]
 				crd.LastAppliedConfigurationPresent = present
+				if bv, _ := annotations["gateway.networking.k8s.io/bundle-version"].(string); len(bv) <= 64 {
+					crd.BundleVersion = bv
+				}
 			}
 			if managed, ok := meta["managedFields"].([]any); ok {
 				for _, entry := range managed {

@@ -1,0 +1,70 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.5-gateway-api-v1-6-crds-before-controller",
+    "severity": "HIGH",
+    "title": "v3.5.0 requires Gateway API v1.6.0 CRDs installed BEFORE the controller — otherwise NLB Gateway (TCPRoute/UDPRoute/TLSRoute) is disabled",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "bundleVersion",
+      "value": "^v(0\\.|1\\.[0-5]\\.)",
+      "objectName": "gateway\\.networking\\.k8s\\.io$",
+      "reason": "checked the Gateway API CRDs' bundle-version annotation — a bundle below v1.6.0 must be replaced before the controller moves to 3.5"
+    },
+    "quote": "**Important:** Update CRDs before upgrading the controller. If you upgrade the controller first, NLB Gateway (TCPRoute/UDPRoute/TLSRoute) will be automatically disabled until the CRDs are updated. Since the standard install no longer serves v1alpha2, you must update any existing v1alpha2 route manifests to `gateway.networking.k8s.io/v1`",
+    "remediation": "Apply https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0/standard-install.yaml (TCPRoute and UDPRoute are in the standard channel from v1.6) and config/crd/gateway/gateway-crds.yaml FIRST, then upgrade the controller. Upgrading the controller first switches NLB Gateway support off until the CRDs catch up.",
+    "gate": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "HTTPRoute|GRPCRoute|TCPRoute|TLSRoute|UDPRoute",
+      "reason": "the Gateway API CRD requirement only bites clusters that run Gateway API routes under this controller — with no route of any kind in the snapshot the controller has nothing to serve"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"-\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # the installed Gateway API CRD bundle version and the API versions each route CRD still serves",
+    "coversNotes": [
+      "v3.5.0: Who: All users running Gateway API resources (Gateway, HTTPRoute, GRPCRoute, TCPRoute, U",
+      "v3.5.0: Why: This release requires Gateway API CRDs v1.6.0. The controller is built against this",
+      "v3.5.0: Action: Apply v1.6 Gateway CRDs",
+      "v3.5.0: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0",
+      "Gateway API dependency: sigs.k8s.io/gateway-api v1.5.0 -> v1.6.0",
+      "Gateway API CRDs to install (v1.6.0): Standard Gateway API CRDs: kubectl apply --server-side=true",
+      "gateway.md › Upgrading Gateway API CRDs › v1.6 brings TCPRoute and UDPRoute out of experimental"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.5-gateway-api-v1alpha2-routes-no-longer-served",
+    "severity": "HIGH",
+    "title": "The Gateway API v1.6 standard install no longer serves v1alpha2 — TCPRoute/UDPRoute/TLSRoute manifests must move to gateway.networking.k8s.io/v1",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "tcproutes.gateway.networking.k8s.io",
+      "target": "v1alpha2",
+      "reason": "checked whether the installed TCPRoute CRD still serves v1alpha2 — the sign the old bundle is in place and alpha manifests are still being applied; UDPRoute and TLSRoute follow the same bundle"
+    },
+    "quote": "If you upgrade the controller first, NLB Gateway (TCPRoute/UDPRoute/TLSRoute) will be automatically disabled until the CRDs are updated. Since the standard install no longer serves v1alpha2, you must update any existing v1alpha2 route manifests to `gateway.networking.k8s.io/v1`",
+    "remediation": "Rewrite every TCPRoute, UDPRoute and TLSRoute manifest (Git, Helm charts, Kustomize overlays) from gateway.networking.k8s.io/v1alpha2 to /v1 before applying the v1.6 CRDs; the API server converts stored objects, but a GitOps apply of a v1alpha2 manifest fails once the version is not served.",
+    "verifyCommand": "kubectl get crd tcproutes.gateway.networking.k8s.io udproutes.gateway.networking.k8s.io tlsroutes.gateway.networking.k8s.io -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) storage=\\(.spec.versions[] | select(.storage) | .name)\"'; kubectl get tcproutes,udproutes,tlsroutes -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) last-applied=\\(.metadata.annotations[\"kubectl.kubernetes.io/last-applied-configuration\"] // \"\" | fromjson? | .apiVersion // \"?\")\"'  # last-applied=…/v1alpha2 names the manifests still written against the alpha API",
+    "coversNotes": [
+      "v3.5.0 (Gateway API v1 Graduatio): This release graduates Gateway API support to v1 for L4 route"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.5-lbc-gateway-crds-v1-storage-v1beta1-deprecated",
+    "severity": "MEDIUM",
+    "title": "LoadBalancerConfiguration / TargetGroupConfiguration / ListenerRuleConfiguration move to gateway.k8s.aws/v1 storage; v1beta1 is deprecated and will stop being served",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "loadbalancerconfigurations.gateway.k8s.aws",
+      "target": "v1beta1",
+      "reason": "checked whether the installed LoadBalancerConfiguration CRD serves v1beta1 — true on every bundle, before and after the 3.5 CRD apply (3.5 keeps serving it as deprecated), so this names every cluster with the LBC gateway CRDs rather than the ones still on the old bundle; the command's storage= column tells the two apart. The two sibling CRDs ship in the same file"
+    },
+    "quote": "**Why:** This release adds v1 as the storage version for LBC-specific Gateway CRDs (LoadBalancerConfiguration, TargetGroupConfiguration, ListenerRuleConfiguration), with v1beta1 marked as deprecated. The controller reads v1 only, but existing v1beta1 resources are transparently converted to v1 by the API server — no immediate manifest changes required. However, v1beta1 will stop being served in a future release. We recommend updating your manifests to use `gateway.k8s.aws/v1` at your earliest convenience.",
+    "remediation": "Apply config/crd/gateway/gateway-crds.yaml (adds v1 as storage) and move every LoadBalancerConfiguration, TargetGroupConfiguration and ListenerRuleConfiguration manifest to gateway.k8s.aws/v1 at your earliest convenience — the API server converts stored v1beta1 objects today, but a later release stops serving v1beta1 and GitOps applies of the old manifests then fail.",
+    "verifyCommand": "kubectl get crd loadbalancerconfigurations.gateway.k8s.aws targetgroupconfigurations.gateway.k8s.aws listenerruleconfigurations.gateway.k8s.aws -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) storage=\\(.spec.versions[] | select(.storage) | .name)\"'; kubectl get loadbalancerconfigurations,targetgroupconfigurations,listenerruleconfigurations -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) last-applied=\\(.metadata.annotations[\"kubectl.kubernetes.io/last-applied-configuration\"] // \"\" | fromjson? | .apiVersion // \"?\")\"'  # storage must read v1 after the CRD apply; last-applied=…/v1beta1 names the manifests to migrate",
+    "coversNotes": [
+      "v3.5.0: Who: All users running Gateway API resources (Gateway, HTTPRoute, GRPCRoute, TCPRoute, U (2)",
+      "v3.5.0: Action: Apply the updated LBC Gateway CRDs:",
+      "CRD versions changed: gateway.k8s.aws/ListenerRuleConfiguration (v1beta1 storage v1beta1 -> v1/v1beta1 storage v1) — nam",
+      "CRD versions changed: gateway.k8s.aws/LoadBalancerConfiguration (v1beta1 storage v1beta1 -> v1/v1beta1 storage v1) — nam",
+      "CRD versions changed: gateway.k8s.aws/TargetGroupConfiguration (v1beta1 storage v1beta1 -> v1/v1beta1 storage v1) — name"
+    ]
+  }
+]

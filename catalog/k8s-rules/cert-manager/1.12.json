@@ -1,23 +1,5 @@
 [
  {
-  "ruleId": "rtz-cert-manager-1.12-acme-preferred-chain-selects-wrong-chain",
-  "severity": "LOW",
-  "title": "Known issue in 1.12–1.14: preferredChain may pick the wrong Let's Encrypt chain",
-  "detection": {
-   "kind": "NOT_DETECTABLE",
-   "reason": "`preferredChain` is not in the issuer projection"
-  },
-  "scope": {
-   "kind": "SPEC_PATH_MATCHES",
-   "objectKind": "Issuer|ClusterIssuer",
-   "target": "types[]",
-   "value": "^acme$"
-  },
-  "quote": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is configured: see 1.14 release notes for more information.",
-  "remediation": "If the target is one of these minors and an ACME issuer sets `preferredChain: ISRG Root X1`, either remove the field and renew, or accept the longer cross-signed chain while `DST Root CA X3` is trusted.",
-  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row is an issuer the known issue can affect; NO rows = clean"
- },
- {
   "ruleId": "rtz-cert-manager-1.12-duplicate-secret-name-certificaterequest-storm",
   "severity": "HIGH",
   "title": "Known issue in 1.12: two Certificates sharing a secretName spawn endless CertificateRequests",
@@ -48,9 +30,27 @@
   },
   "quote": "cainjector contains a memory leak due to re-assignment of a log variable (see https://github.com/cert-manager/cert-manager/issues/6217). The fix will be released in v1.12.3. See https://github.com/cert-manager/cert-manager/pull/6232 for context.",
   "remediation": "Install the latest 1.12 patch (1.12.3 or later), not 1.12.0–1.12.2.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # after the upgrade every tag should be v1.12.3 or later",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # lists, does not judge: after the upgrade every tag should be v1.12.3 or later",
   "coversNotes": [
    "`cmctl` API check is broken in v1.12.1."
   ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.12-challenge-names-change",
+  "severity": "LOW",
+  "title": "Challenge names are calculated differently — upgrade with no ACME issuance in flight",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "Challenge objects are not collected, and whether an issuance is in flight is a fact of the moment you upgrade; ACME issuers are the only ones that create Challenges"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^acme$"
+  },
+  "quote": "this PR slightly changes how the name of the Challenge resources are calculated. To avoid duplicate issuances due to the Challenge resource being recreated, ensure that there is no in-progress ACME certificate issuance when you upgrade to this version of cert-manager.",
+  "remediation": "Upgrade when no Challenge is pending: wait for in-flight ACME issuances to finish (or delete stuck Challenges). A Challenge in flight during the upgrade is recreated under its new name, which can issue a duplicate certificate.",
+  "verifyCommand": "kubectl get challenges.acme.cert-manager.io -A -o json 2>/dev/null | jq -r '.items[] | select(.status.state != \"valid\") | \"\\(.metadata.namespace)/\\(.metadata.name) state=\\(.status.state // \"pending\")\"'  # each row is an issuance in flight; upgrade when NO rows print"
  }
 ]

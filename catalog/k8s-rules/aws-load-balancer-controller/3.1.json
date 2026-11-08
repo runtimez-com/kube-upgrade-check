@@ -1,0 +1,60 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.1-crd-updates-3-1",
+    "severity": "INFO",
+    "title": "v3.1.0 repeats the vendor's apply-the-latest-CRDs note — no CRD schema changed between v3.0.0 and v3.1.0",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "nothing in the CRD files changed for this release (git diff v3.0.0..v3.1.0 over config/crd and helm crds is empty); recorded so the vendor's boilerplate is visibly accounted for, the hint names the LBC CRDs"
+    },
+    "quote": "Action : Please apply the latest CRD definitions",
+    "remediation": "No CRD change ships in 3.1.0 (the Global Accelerator cross-namespace feature is code-only). Re-applying the CRDs is harmless; the 3.2 and 3.5 rules carry the real schema changes.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^(elbv2|gateway)\\.k8s\\.aws$"
+    },
+    "verifyCommand": "kubectl get crd targetgroupbindings.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; nothing new absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "v3.1.0 (If using Gateway API fea): Standard Gateway API CRDs: kubectl apply -f https://github.co",
+      "chart value added: keepTLSSecret = false — keepTLSSecret: false"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.1-gateway-redirect-port-defaults-to-scheme",
+    "severity": "LOW",
+    "title": "HTTPRequestRedirect without a port now defaults to 80/443 from the scheme (Gateway API conformance) — redirects that relied on the listener port change",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only a RequestRedirect on a route an LBC ALB Gateway serves changes, and the projection cannot tie one route's filter to its parent's controller in one predicate; the hint names the HTTPRoutes whose Gateway class is the ALB controller's (a redirect on a Traefik or other Gateway is not the LBC's)"
+    },
+    "quote": "[ALB Gateway] Port defaulting for scheme - Fixed redirect port handling to comply with Gateway API spec. When port is not specified in HTTPRequestRedirectFilter, the controller correctly defaults to well-known ports (80 for http, 443 for https) based on the redirect scheme.",
+    "remediation": "Review HTTPRoute RequestRedirect filters that set scheme but no port on a non-standard listener port: the Location header now carries the well-known port of the scheme. Set filters[].requestRedirect.port explicitly to keep the old target.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute",
+      "target": "parents[].controllerName",
+      "value": "^gateway\\.k8s\\.aws/alb$"
+    },
+    "verifyCommand": "kubectl get gatewayclasses,gateways,httproutes -A -o json 2>/dev/null | jq -r '.items as $i | [$i[] | select(.kind == \"GatewayClass\" and .spec.controllerName == \"gateway.k8s.aws/alb\") | .metadata.name] as $c | [$i[] | select(.kind == \"Gateway\" and (.spec.gatewayClassName | IN($c[]))) | .metadata.namespace + \"/\" + .metadata.name] as $g | $i[] | select(.kind == \"HTTPRoute\") | .metadata.namespace as $ns | select(any(.spec.parentRefs[]?; ((.namespace // $ns) + \"/\" + .name) | IN($g[]))) | . as $r | .spec.rules[]?.filters[]? | select(.type == \"RequestRedirect\") | \"\\($r.metadata.namespace)/\\($r.metadata.name) scheme=\\(.requestRedirect.scheme // \"-\") port=\\(.requestRedirect.port // \"default\")\"'  # redirects on an LBC ALB Gateway; port=default now follows the scheme (80/443), no longer the listener"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.1-regex-listener-rules-dropped-before-3-1",
+    "severity": "MEDIUM",
+    "title": "The rule optimizer in v2.15.0 through v3.0.0 removed regex-based listener rules — land on v3.1.0 or newer when Ingresses use regexValues or use-regex-path-match",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "alb.ingress.kubernetes.io/use-regex-path-match",
+      "value": "^(?i)true$",
+      "reason": "checked Ingresses for use-regex-path-match=true — the rules the optimizer dropped on every release from v2.15.0 to v3.0.0; conditions.* annotations with regexValues are a second, unchecked form"
+    },
+    "quote": "[Ingress] Rule optimizer - Fixed incorrect removal of regex-based listener rules that could cause routing failures",
+    "remediation": "Never land on v2.15.0–v3.0.0 with regex path rules: the optimizer (introduced in 2.15.0, fixed by #4484 in 3.1.0) removed them from the listener and requests fell through to the default action. Upgrade to v3.1.0+.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select((.metadata.annotations[\"alb.ingress.kubernetes.io/use-regex-path-match\"] // \"\" | test(\"true\"; \"i\")) or ([.metadata.annotations | to_entries[] | select(.key | startswith(\"alb.ingress.kubernetes.io/conditions.\")) | .value | test(\"regexValues\")] | any)) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # Ingresses with regex listener rules; affected on v2.15.0 through v3.0.0",
+    "coversNotes": [
+      "v3.1.0 (Documentation Updates): Fix rule optimizer incorrectly removing regex-based listener rul"
+    ]
+  }
+]

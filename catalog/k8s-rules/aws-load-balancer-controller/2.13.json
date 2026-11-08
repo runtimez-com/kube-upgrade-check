@@ -1,0 +1,69 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.13-gateway-api-v1-2-crds-required",
+    "severity": "MEDIUM",
+    "title": "v2.13 adds Gateway API support (ALBGatewayAPI / NLBGatewayAPI feature gates) built against Gateway API v1.2.0 CRDs",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "bundleVersion",
+      "value": "^v(0\\.|1\\.[01]\\.)",
+      "objectName": "gateway\\.networking\\.k8s\\.io$",
+      "reason": "checked the Gateway API CRDs' gateway.networking.k8s.io/bundle-version annotation (projected as bundleVersion) — a bundle below v1.2.0 is older than what v2.13 was built against"
+    },
+    "quote": "sigs.k8s.io/gateway-api v1.2.0",
+    "remediation": "Only when turning the Gateway API feature gates on: install the Gateway API v1.2.0 standard CRDs (experimental for TCP/UDP routes) and the LBC gateway CRDs (config/crd/gateway/gateway-crds.yaml) first. The gates are off by default in 2.13, so nothing changes for Ingress-only clusters.",
+    "gate": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "HTTPRoute|GRPCRoute|TCPRoute|TLSRoute|UDPRoute",
+      "reason": "the Gateway API CRD requirement only bites clusters that run Gateway API routes under this controller — with no route of any kind in the snapshot the controller has nothing to serve"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"-\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # the installed Gateway API CRD bundle version and the API versions each route CRD still serves",
+    "coversNotes": [
+      "Gateway API CRDs to install (v1.2.0): Standard Gateway API CRDs: kubectl apply -f https://github.c",
+      "gateway.md › Prerequisites › Experimental Gateway API CRDs: kubectl apply -f https://github.com/",
+      "gateway.md › Configuration › By default, the LBC will _not_ listen to Gateway API CRDs. To enabl",
+      "CRD added: gateway.k8s.aws/ListenerRuleConfiguration — kind: ListenerRuleConfiguration",
+      "CRD added: gateway.k8s.aws/LoadBalancerConfiguration — kind: LoadBalancerConfiguration",
+      "CRD added: gateway.k8s.aws/TargetGroupConfiguration — kind: TargetGroupConfiguration",
+      "v2.13.3: We’ve updated the Gateway API relevant LBC CRDs LoadBalancerConfigurations and TargetGr",
+      "v2.13.4: For user who is trying out our gateway api features, we’ve created a new CRD ListenerRu"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.13-crd-fields-frontend-nlb",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams gains prefixListsIDs and targetType, and the gateway.k8s.aws CRDs arrive — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(PrefixListsIDs)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); IngressClassParams PrefixListsIDs (with targetType) is v2.13.0's addition; the new gateway.k8s.aws CRDs are not checked — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "We’ve added new fields to the IngressClassParams CRD. Please apply the latest CRD definitions: kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" before upgrading when installed with helm.",
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; prefixListsIDs/targetType absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "ingress_class.md › spec.targetType › If the field is specified, LBC will ignore the alb.ingress."
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.13-iam-describe-route-tables",
+    "severity": "LOW",
+    "title": "Reference IAM policy gains ec2:DescribeRouteTables (subnet discovery by reachability)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the hint names the controller Deployment whose role to simulate"
+    },
+    "quote": "\"ec2:DescribeRouteTables\"",
+    "remediation": "Apply the v2.13.0 reference IAM policy before upgrading: the SubnetDiscoveryByReachability gate is ON by default in 2.13, and when no subnet in the VPC carries a kubernetes.io/role/elb or internal-elb tag the controller now reads route tables to tell public from private subnets — AccessDenied there fails the reconcile of every load balancer that relies on untagged-subnet discovery. Clusters with role-tagged subnets never reach the call.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names ec2:DescribeRouteTables --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)"
+  }
+]

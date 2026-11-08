@@ -206,7 +206,10 @@ type CRD struct {
 	// this particular signal is absent, which is why rules may only fire on true.
 	LastAppliedConfigurationPresent bool
 	ClientSideApplyManager          bool
-	Spec                            map[string]any
+	// BundleVersion is the gateway.networking.k8s.io/bundle-version annotation, for the Gateway
+	// API group's CRDs; empty when absent.
+	BundleVersion string
+	Spec          map[string]any
 }
 
 // CustomResource is one instance of a custom kind.

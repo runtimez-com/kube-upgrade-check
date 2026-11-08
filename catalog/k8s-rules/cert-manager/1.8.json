@@ -4,32 +4,32 @@
   "severity": "MEDIUM",
   "title": "Certificates that set rotationPolicy are validated from 1.8 — invalid values are rejected",
   "detection": {
-   "kind": "NOT_DETECTABLE",
-   "reason": "the projection carries WHETHER rotationPolicy is set and its value when the value is enum-shaped, but an invalid value (the vendor's own example is `Foo`) is dropped rather than forwarded, so a rule cannot tell an invalid value from an absent one. The vendor publishes the exact check"
-  },
-  "scope": {
-   "kind": "SPEC_FIELD_EQUALS",
+   "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Certificate",
-   "target": "rotationPolicySet",
-   "value": "true"
+   "target": "rotationPolicy",
+   "value": "^(?!(Never|Always)$).+",
+   "reason": "the agent forwards rotationPolicy when it is enum-shaped ([A-Za-z0-9._-], at most 32 characters), so the vendor's own example `Foo` is caught; a value outside that shape, or an explicit empty string, is projected as empty and is NOT caught here — the command catches both"
   },
   "quote": "The field `spec.privateKey.rotationPolicy` on Certificate resources is now validated. Valid options are Never and Always.",
-  "remediation": "Run the vendor's command below against the cluster AND against the manifests in Git; set every rotationPolicy to exactly `Never` or `Always` before upgrading.",
-  "verifyCommand": "kubectl get cert -A -o json | jq -r '.items[] | select(.spec.privateKey) | select(.spec.privateKey.rotationPolicy | . != \"Always\" and . != \"Never\") | \"\\(.metadata.name) in namespace \\(.metadata.namespace) has rotationPolicy=\\(.spec.privateKey.rotationPolicy)\"'  # each row is a Certificate the 1.8 webhook will reject"
+  "remediation": "Run the command below against the cluster AND against the manifests in Git; set every rotationPolicy to exactly `Never` or `Always` (or remove it) before upgrading. An unset rotationPolicy is valid.",
+  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.privateKey.rotationPolicy != null and ((.spec.privateKey.rotationPolicy | IN(\"Always\", \"Never\")) | not)) | \"\\(.metadata.namespace)/\\(.metadata.name) rotationPolicy=\\(.spec.privateKey.rotationPolicy)\"'  # each row is a Certificate the 1.8 webhook rejects; NO rows = clean"
  },
  {
   "ruleId": "rtz-cert-manager-1.8-server-side-apply-challenges-must-be-drained",
-  "severity": "HIGH",
-  "title": "Server-Side Apply is enabled — Challenge resources must be drained before 1.8",
+  "severity": "LOW",
+  "title": "Turning on ServerSideApply after 1.8 needs every Challenge drained first",
   "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the `ServerSideApply` feature gate first exists in 1.8, so no controller below 1.8 carries it to detect, and Challenge objects are not collected; ACME issuers are the only ones that create Challenges"
+  },
+  "scope": {
    "kind": "SPEC_PATH_MATCHES",
-   "objectKind": "Deployment|DaemonSet",
-   "target": "containers[].args[]",
-   "value": "(?i)ServerSideApply=true",
-   "reason": "checked in the cert-manager workload's container args only — the feature gate set through a config file or an environment variable is not scanned"
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^acme$"
   },
   "quote": "Then you need to take action before upgrading to cert-manager 1.8. You will have to make sure that there are no Challenge resources currently in the cluster. If there are some, you will need to manually delete them once they are in a 'valid' state.",
-  "remediation": "Before upgrading, make sure no Challenge resources exist (delete them once they reach a valid state): cert-manager after 1.8 cannot clean up Challenges created before it.",
+  "remediation": "Only if you will enable the `ServerSideApply` feature gate once on 1.8: first make sure no Challenge resources exist (delete them once they reach a valid state). A controller with the gate on cannot clean up Challenges created without it.",
   "verifyCommand": "kubectl get challenges.acme.cert-manager.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.status.state)\"'  # every row is a Challenge that must be gone before the upgrade"
  },
  {

@@ -14,7 +14,7 @@
   },
   "quote": "When upgrading to cert-manager `1.19`, use the latest patch version of cert-manager `1.19`. Do not install `v1.19.0`, because it has a bug which may cause certificates to be re-issued unnecessarily. We fixed the bug in `v1.19.1`.",
   "remediation": "Upgrade to the newest 1.19 patch. Never to v1.19.0: it re-issues certificates unnecessarily, which for an ACME issuer can mean hitting rate limits.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager-controller\")) | .image'  # the tag printed must not be v1.19.0"
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager-controller\")) | .image'  # lists, does not judge: the tag printed must not be v1.19.0"
  },
  {
   "ruleId": "rtz-cert-manager-1.19-acme-metrics-path-label-removed",
@@ -26,6 +26,9 @@
   },
   "quote": "A high cardinality label, called `path`, was removed from the `certmanager_acme_client_request_count` and `certmanager_acme_client_request_duration_seconds` metrics. It is replaced with a new bounded cardinality label called `action`. If you are using these metrics, you may need to update your dashboards and alerts.",
   "remediation": "Update any dashboard or alert selecting on the `path` label of `certmanager_acme_client_request_count` or `certmanager_acme_client_request_duration_seconds` to the bounded `action` label before upgrading.",
-  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"certmanager_acme_client_request\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row references these metrics; anything selecting on `path` matches nothing after 1.19"
+  "verifyCommand": "kubectl get prometheusrules -A -o json 2>/dev/null | jq -r '.items[] | select(.spec | tostring | test(\"certmanager_acme_client_request\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row references these metrics; anything selecting on `path` matches nothing after 1.19",
+  "coversNotes": [
+   "POTENTIALLY BREAKING: A high cardinality label, called `path`, was removed from the…"
+  ]
  }
 ]

@@ -24,7 +24,10 @@
    "reason": "the container name is projected; whether any script, log query or sidecar config keys on it is not a cluster fact"
   },
   "quote": "The names are changed to better reflect what they do; for example, the container in the controller pod had its name changed from `cert-manager` to `cert-manager-controller`, and the webhook pod had its container name changed from `cert-manager` to `cert-manager-webhook`.",
-  "remediation": "Update anything that addresses the container by name (kubectl logs -c, log pipelines, monitoring selectors) to `cert-manager-controller` and `cert-manager-webhook`.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | \"\\(.metadata.namespace)/\\(.metadata.name): \\([.spec.template.spec.containers[].name] | join(\",\"))\"'  # a container still named plain cert-manager is renamed by 1.10"
+  "remediation": "Update anything that addresses the container by name (kubectl logs -c, log pipelines, monitoring selectors) to `cert-manager-controller`, `cert-manager-webhook` and `cert-manager-cainjector`.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | \"\\(.metadata.namespace)/\\(.metadata.name): \\([.spec.template.spec.containers[].name] | join(\",\"))\"'  # a container still named plain cert-manager is renamed by 1.10",
+  "coversNotes": [
+   "To help troubleshooting, make the container names unique."
+  ]
  }
 ]

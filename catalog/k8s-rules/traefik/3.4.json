@@ -27,7 +27,10 @@
     },
     "quote": "Since `v3.4.5`, the MultiPath TCP support introduced with `v3.4.2` has been removed.",
     "remediation": "Only relevant if MPTCP was enabled during the 3.4.2–3.4.4 window; remove that configuration. It was withdrawn because enabling it on some platforms could stop Traefik outright.",
-    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |multipath|mptcp' # nothing printed means MPTCP was never enabled and the removal is a no-op; a static configuration file mounted from a ConfigMap is not listed, read it too"
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |multipath|mptcp' # nothing printed means MPTCP was never enabled and the removal is a no-op; a static configuration file mounted from a ConfigMap is not listed, read it too",
+    "introducedIn": [
+      "3.4.5"
+    ]
   },
   {
     "ruleId": "rtz-traefik-3.4-request-path-normalization",

@@ -1,0 +1,23 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.16-alb-target-control-config-crd-and-rbac",
+    "severity": "LOW",
+    "title": "v2.16 adds the ALBTargetControlConfig CRD and two pod webhooks for the ALB Target Optimizer agent — CRD and RBAC must be applied by hand",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace",
+      "target": "elbv2.k8s.aws/alb-target-control-agent-injection",
+      "value": "^enabled$",
+      "reason": "checked namespaces for the label elbv2.k8s.aws/alb-target-control-agent-injection=enabled — the webhooks' namespaceSelector (pods opt in with the label elbv2.k8s.aws/alb-target-control-agent-inject); labels, not annotations"
+    },
+    "quote": "🚨 🚨 🚨 For ALB Target Optimizer Users who want to use auto-injection for ALB target control agent: New CRD ALBTargetControlConfig has been added. Update your CRDs and RBAC. If you're upgrading the charts using helm upgrade, you need to update CRDs manually: `kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/config/crd/bases/elbv2.k8s.aws_albtargetcontrolconfigs.yaml` also update rbac policy by applying the latest changes `kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/refs/heads/main/config/rbac/role.yaml`",
+    "remediation": "Only for ALB Target Optimizer users: apply config/crd/bases/elbv2.k8s.aws_albtargetcontrolconfigs.yaml and the latest config/rbac/role.yaml before enabling injection; everyone else is unaffected (the gate ALBTargetControlAgent is off by default).",
+    "verifyCommand": "kubectl get crd albtargetcontrolconfigs.elbv2.k8s.aws -o name 2>/dev/null; kubectl get ns -l elbv2.k8s.aws/alb-target-control-agent-injection=enabled -o name; kubectl get pods -A -l elbv2.k8s.aws/alb-target-control-agent-inject=enabled -o name | head -20  # the CRD must exist wherever a namespace or pod carries the injection label",
+    "coversNotes": [
+      "v2.16.0 (We're excited to announc): Introduced Target Optimizer for Application Load Balancers (",
+      "CRD added: elbv2.k8s.aws/ALBTargetControlConfig — kind: ALBTargetControlConfig",
+      "admission webhook added: alb-target-control.namespace.elbv2.k8s.aws (failurePolicy Fail) — name: alb-target-control.name",
+      "admission webhook added: alb-target-control.object.elbv2.k8s.aws (failurePolicy Fail) — name: alb-target-control.object."
+    ]
+  }
+]

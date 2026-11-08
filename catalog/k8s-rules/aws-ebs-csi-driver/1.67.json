@@ -1,0 +1,42 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.67-cve-2026-111943-upgrade-immediately",
+  "severity": "HIGH",
+  "title": "CVE-2026-111943 (compromised intermediate CA) — upstream says upgrade immediately to v1.67.1 or v1.66.2",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
+   "target": "containers[].image",
+   "value": "aws-ebs-csi-driver:v(0\\.[0-9]+|1\\.([0-9]|[1-5][0-9]|6[0-5]))\\.[0-9]+([^0-9]|$)|aws-ebs-csi-driver:v1\\.66\\.[01]([^0-9]|$)|aws-ebs-csi-driver:v1\\.67\\.0([^0-9]|$)",
+   "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
+  },
+  "quote": "**We recommend users upgrade immediately to `v1.67.1` or `v1.66.2` of the EBS CSI Driver.**",
+  "remediation": "Upgrade to v1.67.1 or later (or v1.66.2 on the 1.66 line): every earlier build trusts the compromised intermediate CA (CVE-2026-111943), so an attacker holding those keys could impersonate the AWS API to the controller and node plugin. Pick a target of at least v1.67.1 — v1.67.0 is not fixed.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($n)/\\($w): \\(.image)\"'  # a tag below v1.66.2, or v1.67.0, is a build without the CVE-2026-111943 fix",
+  "coversNotes": [
+   "URGENT (1.67.1): This release fixes CVE-2026-111943 which resulted from the compromise of a trusted"
+  ],
+  "introducedIn": [
+   "1.67.1"
+  ]
+ },
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.67-storageclass-topology-without-zone-rejected",
+  "severity": "HIGH",
+  "title": "StorageClasses whose allowedTopologies carry no AZ or AZ-ID key at all are rejected from v1.67.0 — their PVCs stop provisioning",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "StorageClass allowedTopologies are not collected (the agent projects provisioner, binding mode, expansion and parameter keys only); the hint names the EBS CSI StorageClasses"
+  },
+  "scope": {
+   "kind": "SPEC_FIELD_EQUALS",
+   "objectKind": "StorageClass",
+   "target": "provisioner",
+   "value": "ebs.csi.aws.com"
+  },
+  "quote": "**Invalid `StorageClass` topologies that do not contain an AZ or AZ ID that were previously accepted by the EBS CSI Driver will now be rejected.**",
+  "remediation": "Before upgrading, give the allowedTopologies of an EBS StorageClass a zone key — topology.kubernetes.io/zone (works with WaitForFirstConsumer and Immediate binding), topology.ebs.csi.aws.com/zone, or topology.k8s.aws/zone-id (Immediate binding only: the node plugin does not publish it, so a WaitForFirstConsumer claim cannot match it) — or remove allowedTopologies. From v1.67.0 CreateVolume skips a term without one; when no term is usable it fails (\"Cannot provision volume with the specified topology constraints\") instead of picking an AZ at random, so every new PVC on that class stays Pending. StorageClasses are immutable: delete and recreate the class under the same name; existing volumes are not affected.",
+  "verifyCommand": "kubectl get storageclass -o json | jq -r '.items[] | select(.provisioner == \"ebs.csi.aws.com\") | select(.allowedTopologies[0] != null) | select(.allowedTopologies | map((.matchLabelExpressions // []) | map(.key) | any(. == \"topology.kubernetes.io/zone\" or . == \"topology.ebs.csi.aws.com/zone\" or . == \"topology.k8s.aws/zone-id\") | not) | all) | .metadata.name'  # each printed StorageClass has allowedTopologies with no AZ or AZ-ID key in any entry: its new PVCs fail to provision from v1.67.0"
+ }
+]

@@ -23,22 +23,43 @@
    "reason": "the issuer TYPE is projected; the Venafi CA's own minimum/maximum policy lives in Venafi, not on the cluster, so these issuers are the population to check rather than a confirmed failure"
   },
   "quote": "Venafi Issuer may fail to renew certificates if the requested duration conflicts with the CA’s minimum or maximum policy settings in Venafi. For more details, refer to the Venafi Issuer section in the release notes.",
-  "remediation": "For each Venafi issuer, compare the durations its Certificates request against the CA's minimum and maximum policy in Venafi before upgrading.",
-  "verifyCommand": "kubectl get certificates -A -o json | jq -r '.items[] | select(.spec.duration) | \"\\(.metadata.namespace)/\\(.metadata.name) duration=\\(.spec.duration) issuer=\\(.spec.issuerRef.name)\"'  # each duration must sit inside the issuing CA's policy window in Venafi"
+  "remediation": "1.16 sends each Certificate's duration to Venafi — `spec.duration`, or 90 days when unset. For each Venafi issuer, compare those durations against the issuing template's minimum and maximum before upgrading (a template that ignores the requested From/To changes nothing).",
+  "verifyCommand": "kubectl get issuers,clusterissuers,certificates -A -o json | jq -r '[.items[] | select(.spec.venafi) | {k: .kind, ns: (.metadata.namespace // \"\"), n: .metadata.name}] as $v | .items[] | select(.kind == \"Certificate\") | . as $c | select(any($v[]; .n == $c.spec.issuerRef.name and ((.k == \"ClusterIssuer\" and $c.spec.issuerRef.kind == \"ClusterIssuer\") or (.k == \"Issuer\" and ($c.spec.issuerRef.kind // \"Issuer\") == \"Issuer\" and .ns == $c.metadata.namespace)))) | \"\\(.metadata.namespace)/\\(.metadata.name) duration=\\(.spec.duration // \"2160h (default)\") issuer=\\(.spec.issuerRef.name)\"'  # each duration must sit inside the Venafi template's window; NO rows = no Venafi-issued Certificates"
  },
  {
   "ruleId": "rtz-cert-manager-1.16-venafi-tpp-username-password",
   "severity": "MEDIUM",
   "title": "Venafi TPP issuers using username/password authentication may fail renewals",
   "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the projected issuer type is `venafi` for TPP and Cloud alike, and the credential FORM a TPP issuer uses lives in the Secret it references, which is never read; the command below narrows to `.spec.venafi.tpp`"
+  },
+  "scope": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Issuer|ClusterIssuer",
    "target": "types[]",
-   "value": "^venafi$",
-   "reason": "the issuer TYPE is projected; which credential FORM a TPP issuer uses lives in the Secret it references, which is never read"
+   "value": "^venafi$"
   },
   "quote": "Venafi Issuer may fail to renew Certificates if the issuer has been configured for TPP with username-password authentication. For more details, refer to the Venafi Issuer section in the release notes.",
-  "remediation": "Move Venafi TPP issuers to access-token authentication rather than username and password before upgrading.",
-  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.venafi.tpp) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) credentialsRef=\\(.spec.venafi.tpp.credentialsRef.name)\"'  # check each named Secret for username/password rather than access-token"
+  "remediation": "1.16 authenticates TPP username/password through OAuth instead of the API-key method TPP removed in 24.1: enable OAuth on the TPP server and reconfigure the cert-manager service accounts in TPP to work with OAuth before upgrading, or switch the issuer to an access-token Secret.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select(.spec.venafi.tpp) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) credentialsRef=\\(.spec.venafi.tpp.credentialsRef.name)\"'  # check each named Secret for username/password rather than access-token",
+  "coversNotes": [
+   "Venafi TPP issuer can now be used with a username & password combination with OAuth."
+  ]
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.16-operatorhub-packages-discontinued",
+  "severity": "MEDIUM",
+  "title": "cert-manager is installed by OLM — OperatorHub stops at v1.16.5",
+  "detection": {
+   "kind": "LABEL_KEY_PRESENT",
+   "objectKind": "Deployment",
+   "objectName": "^cert-manager",
+   "target": "olm.owner",
+   "reason": "OLM labels every Deployment it installs with `olm.owner`; a Helm or static-manifest install has no such label"
+  },
+  "quote": "We no longer publish OperatorHub packages for cert-manager. Why? Because the cert-manager maintainers no longer have the time or resources to maintain and test those packages. cert-manager `v1.16.5` is the last release on OperatorHub.",
+  "remediation": "OLM will never offer cert-manager 1.17 or later. Move this install to the Helm chart or the static manifests (keep the CRDs and the cert-manager resources in place) before planning an upgrade past 1.16.",
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^cert-manager\")) | select(.metadata.labels[\"olm.owner\"]) | \"\\(.metadata.namespace)/\\(.metadata.name) olm.owner=\\(.metadata.labels[\"olm.owner\"])\"'  # each row is managed by OLM; NO rows = not an OLM install"
  }
 ]

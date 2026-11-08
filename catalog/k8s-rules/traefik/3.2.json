@@ -72,6 +72,9 @@
     },
     "quote": "In v3.2.1, the `X-Forwarded-Prefix` header is now handled like other `X-Forwarded-*` headers - Traefik removes it when sent from untrusted sources.",
     "remediation": "If a backend reads `X-Forwarded-Prefix` to build absolute URLs, add the sender to the entryPoint's `forwardedHeaders.trustedIPs` (or `insecure`). Otherwise the header silently disappears and the backend generates links against the wrong prefix — a redirect loop or 404, not a Traefik error.",
-    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |forwardedHeaders' # rows show the entry points' trusted IPs; X-Forwarded-Prefix now only survives from senders listed there; a static configuration file mounted from a ConfigMap is not listed, read it too"
+    "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(mirrored-library-|library-)?traefik([:@]|$)\"))) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) replicas=\\(.spec.replicas // \"per-node\")\", (.spec.template.spec.containers[] | (.args // [])[]), (.spec.template.spec.containers[] | (.env // [])[] | \"env \\(.name)\")' | grep -iE '^(Deployment|DaemonSet) |forwardedHeaders' # rows show the entry points' trusted IPs; X-Forwarded-Prefix now only survives from senders listed there; a static configuration file mounted from a ConfigMap is not listed, read it too",
+    "introducedIn": [
+      "3.2.1"
+    ]
   }
 ]

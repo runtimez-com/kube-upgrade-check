@@ -60,11 +60,21 @@ func Wants(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hops
 			p.Keep = []string{}
 		}
 		switch d.Kind {
-		case catalog.DetectSpecFieldPresent, catalog.DetectSpecFieldEquals, catalog.DetectSpecPathMatches:
-			key, _, _ := strings.Cut(strings.TrimSuffix(d.Target, "[]"), ".")
-			key = strings.TrimSuffix(key, "[]")
-			if key != "" && !contains(p.Keep, key) {
-				p.Keep = append(p.Keep, key)
+		case catalog.DetectSpecFieldPresent, catalog.DetectSpecFieldEquals, catalog.DetectSpecPathMatches,
+			catalog.DetectSpecPathNoneMatches:
+			for _, target := range targets(d.Target) {
+				key, _, _ := strings.Cut(strings.TrimSuffix(target, "[]"), ".")
+				key = strings.TrimSuffix(key, "[]")
+				if key != "" && !contains(p.Keep, key) {
+					p.Keep = append(p.Keep, key)
+				}
+			}
+			if d.ObjectImage != "" {
+				for _, key := range []string{"containers", "initContainers"} {
+					if !contains(p.Keep, key) {
+						p.Keep = append(p.Keep, key)
+					}
+				}
 			}
 		case catalog.DetectImageRepositoryPresent:
 			for _, key := range []string{"containers", "initContainers"} {
@@ -134,6 +144,10 @@ func Analyze(inv *inventory.Inventory, served map[string]bool, currentVersion, t
 			out = crdServedVersion(inv, d)
 		case catalog.DetectVersionSkewExceeds:
 			out = versionSkew(inv, d, targetVersion)
+		case catalog.DetectSpecPathNoneMatches:
+			out = noneMatches(inv, d)
+		case catalog.DetectCodedCheck:
+			out = codedCheck(inv, d)
 		default:
 			out = rowRule(inv, d)
 		}
@@ -260,7 +274,10 @@ func onPath(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hop
 				}
 				continue
 			}
-			if !inAddonHop(rule, hop.InstalledVersion, hop.RequiredVersion) {
+			// Per rule as well as per source: the AWS LBC's pre-2.4 deprecations are filed under
+			// 2.4 and still supported at 3.6, so the hop window alone could never reach them on a
+			// 2.4+ install. The add-on must still have resolved a hop (above).
+			if !rule.AlwaysOn && !inAddonHop(rule, hop.InstalledVersion, hop.RequiredVersion) {
 				continue
 			}
 		}
@@ -296,6 +313,23 @@ func inAddonHop(rule catalog.GeneratedRule, installed, required string) bool {
 		line := catalog.AddonMinor(installed)
 		for _, s := range rule.IntroducedIn {
 			if catalog.AddonMinor(s) == line && catalog.CompareVersions(s, installed) <= 0 {
+				return false
+			}
+		}
+		// RequiresInstalledSince: the change only matters to an install that already carries what
+		// it reverts or builds on — the installed line needs a floor entry and the installed patch
+		// must be at or above it (a line with no floor never had it). An unreadable installed
+		// version keeps the rule, as above.
+		if len(rule.RequiresInstalledSince) > 0 {
+			onLine, meets := false, false
+			for _, f := range rule.RequiresInstalledSince {
+				if catalog.AddonMinor(f) != line {
+					continue
+				}
+				onLine = true
+				meets = meets || catalog.CompareVersions(installed, f) >= 0
+			}
+			if !onLine || !meets {
 				return false
 			}
 		}
@@ -613,13 +647,16 @@ func (m matcher) matches(r row) (bool, string) {
 			return true, ""
 		}
 	case catalog.DetectSpecFieldPresent, catalog.DetectSpecFieldEquals:
-		for _, section := range []map[string]any{r.spec, r.status} {
-			v, ok := section[d.Target]
-			if !ok || v == nil {
-				continue
-			}
-			if d.Kind == catalog.DetectSpecFieldPresent || valueMatches(v, d.Value) {
-				return true, ""
+		// `a|b`: either field answers (Karpenter's family sits in amiFamily or an alias).
+		for _, target := range targets(d.Target) {
+			for _, section := range []map[string]any{r.spec, r.status} {
+				v, ok := section[target]
+				if !ok || v == nil {
+					continue
+				}
+				if d.Kind == catalog.DetectSpecFieldPresent || valueMatches(v, d.Value) {
+					return true, ""
+				}
 			}
 		}
 	case catalog.DetectSpecPathMatches:
@@ -1051,7 +1088,7 @@ func rowScanning(kind string) bool {
 	switch kind {
 	case catalog.DetectKindPresent, catalog.DetectAnnotationKeyPresent, catalog.DetectLabelKeyPresent,
 		catalog.DetectSpecFieldPresent, catalog.DetectSpecFieldEquals, catalog.DetectSpecPathMatches,
-		catalog.DetectImageRepositoryPresent:
+		catalog.DetectImageRepositoryPresent, catalog.DetectSpecPathNoneMatches, catalog.DetectCodedCheck:
 		return true
 	}
 	return false

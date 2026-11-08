@@ -23,7 +23,16 @@ type GeneratedRule struct {
 	// IntroducedIn names the PATCH release(s) that ship the change, one per release line carrying it
 	// (["3.6.24", "3.7.9"] for a fix the vendor backported to 3.6). Empty = the change lands at
 	// AppliesAtVersion and the minor-granular hop window applies. See generated.inAddonHop.
-	IntroducedIn  []string   `json:"introducedIn,omitempty"`
+	IntroducedIn []string `json:"introducedIn,omitempty"`
+	// RequiresInstalledSince (with IntroducedIn) is a floor per release line: the change only
+	// matters to an install that already carries what it reverts or builds on, so the rule is out
+	// unless the installed line has a floor entry and the installed patch is at or above it.
+	// Mirrors the backend's GeneratedRuleEvaluator.inHop.
+	RequiresInstalledSince []string `json:"requiresInstalledSince,omitempty"`
+	// AlwaysOn keeps an add-on rule on every hop of its add-on, whatever its version: the AWS Load
+	// Balancer Controller's pre-2.4 deprecations are filed under 2.4 and still supported at 3.6, so
+	// the hop window alone could never reach them on a 2.4+ install. The add-on must still resolve.
+	AlwaysOn      bool       `json:"alwaysOn,omitempty"`
 	Severity      Severity   `json:"severity"`
 	Title         string     `json:"title"`
 	Quote         string     `json:"quote"`
@@ -82,9 +91,12 @@ type Detection struct {
 	ObjectKind string `json:"objectKind"` // "Deployment|DaemonSet" fans out to both
 	Namespace  string `json:"namespace"`
 	ObjectName string `json:"objectName"` // regex over metadata.name
-	Target     string `json:"target"`
-	Value      string `json:"value"`
-	Reason     string `json:"reason"` // NOT_DETECTABLE: why no predicate can settle it
+	// ObjectImage narrows a SPEC_PATH_NONE_MATCHES subject to the workloads running an image whose
+	// reference contains it (the controller's own Deployment), so "no flag set" is asked of it alone.
+	ObjectImage string `json:"objectImage"`
+	Target      string `json:"target"`
+	Value       string `json:"value"`
+	Reason      string `json:"reason"` // NOT_DETECTABLE: why no predicate can settle it
 }
 
 // ScopeHint is the weaker predicate attached to a NOT_DETECTABLE rule. It names the objects
@@ -112,7 +124,20 @@ const (
 	DetectCRDServedVersion       = "CRD_SERVED_VERSION"
 	DetectImageRepositoryPresent = "IMAGE_REPOSITORY_PRESENT"
 	DetectVersionSkewExceeds     = "VERSION_SKEW_EXCEEDS"
+	// DetectSpecPathNoneMatches is the absence form of SPEC_PATH_MATCHES: an object is hit when
+	// its path resolves and no value there matches (a flag missing from the controller's args, a
+	// field missing from an installed CRD's schema). An unresolved path is a projection gap.
+	DetectSpecPathNoneMatches = "SPEC_PATH_NONE_MATCHES"
+	// DetectCodedCheck names, by Target, a check across several fields of one object that the
+	// regex vocabulary cannot state (see CodedCheckIDs).
+	DetectCodedCheck = "CODED_CHECK"
 )
+
+// CodedCheckIDs is every CODED_CHECK target the evaluator implements. Mirrors the backend's
+// CodedChecks registry; a rule naming anything else is a catalog defect.
+var CodedCheckIDs = map[string]bool{
+	"karpenter-kubelet-fields-unsupported": true,
+}
 
 // KnownDetectionKinds is every kind the pipeline can emit. A rule naming anything else is a
 // catalog defect, caught by `catalog validate` rather than by an evaluator's default branch.
@@ -121,6 +146,7 @@ var KnownDetectionKinds = map[string]bool{
 	DetectAnnotationKeyPresent: true, DetectLabelKeyPresent: true, DetectSpecFieldPresent: true,
 	DetectSpecFieldEquals: true, DetectSpecPathMatches: true, DetectCRDServedVersion: true,
 	DetectImageRepositoryPresent: true, DetectVersionSkewExceeds: true,
+	DetectSpecPathNoneMatches: true, DetectCodedCheck: true,
 }
 
 // ObjectKinds splits a "Deployment|DaemonSet" object kind into its members.
@@ -165,7 +191,10 @@ func (r GeneratedRule) Validate() error {
 		if d.ObjectKind == "" || d.Target == "" {
 			return fmt.Errorf("%s: %s needs objectKind and target", r.RuleID, d.Kind)
 		}
-		if (d.Kind == DetectSpecFieldEquals || d.Kind == DetectSpecPathMatches) && d.Value == "" {
+		if d.Kind == DetectCodedCheck && !CodedCheckIDs[d.Target] {
+			return fmt.Errorf("%s: no coded check named %q", r.RuleID, d.Target)
+		}
+		if (d.Kind == DetectSpecFieldEquals || d.Kind == DetectSpecPathMatches || d.Kind == DetectSpecPathNoneMatches) && d.Value == "" {
 			return fmt.Errorf("%s: %s needs a value", r.RuleID, d.Kind)
 		}
 	}
@@ -206,6 +235,9 @@ func loadGeneratedRules(fsys fs.FS, root string) ([]GeneratedRule, error) {
 			rules[i].SourceID = source
 			rules[i].AppliesAtVersion = version
 			if err := validateIntroducedIn(rules[i], version); err != nil {
+				return nil, fmt.Errorf("%s: %w", name, err)
+			}
+			if err := validateRequiresInstalledSince(rules[i]); err != nil {
 				return nil, fmt.Errorf("%s: %w", name, err)
 			}
 			if err := rules[i].Validate(); err != nil {
@@ -262,6 +294,45 @@ func validateIntroducedIn(r GeneratedRule, fileVersion string) error {
 	}
 	if !onOwnLine {
 		return fmt.Errorf("%s: introducedIn names no patch on the file's own line %s", r.RuleID, fileVersion)
+	}
+	return nil
+}
+
+// validateRequiresInstalledSince: patch versions, one per release line at most, each on a line
+// IntroducedIn names and below that line's entry — a floor at or above the change would never
+// admit anything. Needs IntroducedIn. Mirrors the backend's StaticRuleSource.requiresInstalledSince.
+func validateRequiresInstalledSince(r GeneratedRule) error {
+	if r.RequiresInstalledSince == nil {
+		return nil
+	}
+	if r.IntroducedIn == nil {
+		return fmt.Errorf("%s: requiresInstalledSince needs introducedIn", r.RuleID)
+	}
+	if len(r.RequiresInstalledSince) == 0 {
+		return fmt.Errorf("%s: requiresInstalledSince must be a non-empty list of patch versions", r.RuleID)
+	}
+	lines := map[string]bool{}
+	for _, v := range r.RequiresInstalledSince {
+		if len(Components(v)) < 3 {
+			return fmt.Errorf("%s: requiresInstalledSince entry %q is not a patch version", r.RuleID, v)
+		}
+		line := AddonMinor(v)
+		entry := ""
+		for _, i := range r.IntroducedIn {
+			if AddonMinor(i) == line {
+				entry = i
+			}
+		}
+		if entry == "" {
+			return fmt.Errorf("%s: requiresInstalledSince entry %q is on a line introducedIn does not name", r.RuleID, v)
+		}
+		if CompareVersions(v, entry) >= 0 {
+			return fmt.Errorf("%s: requiresInstalledSince entry %q is not below the change's %s", r.RuleID, v, entry)
+		}
+		if lines[line] {
+			return fmt.Errorf("%s: requiresInstalledSince names two floors on the %s line", r.RuleID, line)
+		}
+		lines[line] = true
 	}
 	return nil
 }

@@ -1,0 +1,24 @@
+[
+ {
+  "ruleId": "rtz-aws-ebs-csi-driver-1.66-cve-2026-111943-upgrade-immediately",
+  "severity": "HIGH",
+  "title": "CVE-2026-111943 (compromised intermediate CA) — upstream says upgrade immediately to v1.67.1 or v1.66.2",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "objectName": "^ebs-csi-(controller|node(-.+)?)$",
+   "target": "containers[].image",
+   "value": "aws-ebs-csi-driver:v(0\\.[0-9]+|1\\.([0-9]|[1-5][0-9]|6[0-5]))\\.[0-9]+([^0-9]|$)|aws-ebs-csi-driver:v1\\.66\\.[01]([^0-9]|$)|aws-ebs-csi-driver:v1\\.67\\.0([^0-9]|$)",
+   "reason": "read from the image TAG of the ebs-csi-controller / ebs-csi-node workloads — a digest-pinned image (@sha256:…) or a mirror that renames the tag is not resolved and reads clean"
+  },
+  "quote": "**We recommend users upgrade immediately to `v1.67.1` or `v1.66.2` of the EBS CSI Driver.**",
+  "remediation": "Upgrade to v1.67.1 or later (or v1.66.2 on the 1.66 line): every earlier build trusts the compromised intermediate CA (CVE-2026-111943), so an attacker holding those keys could impersonate the AWS API to the controller and node plugin. Pick a target of at least v1.67.1 — v1.67.0 is not fixed.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | select(.metadata.name | test(\"^ebs-csi-(controller|node(-.+)?)$\")) | .metadata.namespace as $n | .metadata.name as $w | .spec.template.spec.containers[] | select(.name == \"ebs-plugin\") | \"\\($n)/\\($w): \\(.image)\"'  # a tag below v1.66.2, or v1.67.0, is a build without the CVE-2026-111943 fix",
+  "coversNotes": [
+   "URGENT (1.66.2): This release fixes CVE-2026-111943 which resulted from the compromise of a trusted"
+  ],
+  "introducedIn": [
+   "1.66.2"
+  ]
+ }
+]

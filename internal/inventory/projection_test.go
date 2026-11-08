@@ -619,3 +619,81 @@ func TestArgoCDPerAppProjection(t *testing.T) {
 		}
 	}
 }
+
+// The EC2NodeClass keys the Karpenter 1.15 kubelet check reads: the alias family, the kubelet
+// KEY names (never a value) and the clusterDNS count (never an address).
+func TestEC2NodeClassProjectsKubeletKeysAndAliasFamily(t *testing.T) {
+	spec := projectSpec("EC2NodeClass", obj("EC2NodeClass", "", "br", map[string]any{"spec": map[string]any{
+		"amiSelectorTerms": []any{map[string]any{"id": "ami-123"}, map[string]any{"alias": "Bottlerocket@v1.20.0"}},
+		"kubelet": map[string]any{"maxPods": 110, "clusterDNS": []any{"10.0.0.10", "10.0.0.11"},
+			"systemReserved": map[string]any{"cpu": "100m"}, "unset": nil},
+	}}), nil)
+	if spec["amiAliasFamily"] != "bottlerocket" || spec["amiFamily"] != "" {
+		t.Errorf("family: %+v", spec)
+	}
+	if got := fmt.Sprint(spec["kubeletKeys"]); got != "[clusterDNS maxPods systemReserved]" {
+		t.Errorf("kubelet keys, sorted, null values dropped: %s", got)
+	}
+	if spec["kubeletClusterDnsCount"] != 2 {
+		t.Errorf("clusterDNS count: %v", spec["kubeletClusterDnsCount"])
+	}
+	if strings.Contains(fmt.Sprint(spec), "10.0.0.10") || strings.Contains(fmt.Sprint(spec), "100m") {
+		t.Errorf("a kubelet value leaked into the projection: %+v", spec)
+	}
+	none := projectSpec("EC2NodeClass", obj("EC2NodeClass", "", "plain", map[string]any{"spec": map[string]any{"amiFamily": "AL2023"}}), nil)
+	if fmt.Sprint(none["kubeletKeys"]) != "[]" || none["kubeletClusterDnsCount"] != 0 || none["amiAliasFamily"] != "" {
+		t.Errorf("no kubelet block still writes the keys, empty: %+v", none)
+	}
+}
+
+func TestServiceProjectsLoadBalancerClass(t *testing.T) {
+	keep := &Projection{Keep: []string{"loadBalancerClass", "loadBalancerClassDefault"}}
+	nlb := projectSpec("Service", obj("Service", "a", "nlb", map[string]any{"spec": map[string]any{
+		"type": "LoadBalancer", "loadBalancerClass": "service.k8s.aws/nlb"}}), keep)
+	if nlb["loadBalancerClass"] != "service.k8s.aws/nlb" || nlb["loadBalancerClassDefault"] != false {
+		t.Errorf("classed LoadBalancer: %+v", nlb)
+	}
+	def := projectSpec("Service", obj("Service", "a", "elb", map[string]any{"spec": map[string]any{"type": "LoadBalancer"}}), keep)
+	if _, ok := def["loadBalancerClass"]; ok || def["loadBalancerClassDefault"] != true {
+		t.Errorf("unclassed LoadBalancer: %+v", def)
+	}
+	ip := projectSpec("Service", obj("Service", "a", "ip", map[string]any{"spec": map[string]any{"type": "ClusterIP"}}), keep)
+	if _, ok := ip["loadBalancerClassDefault"]; ok {
+		t.Errorf("only LoadBalancer Services carry the default flag: %+v", ip)
+	}
+}
+
+func TestWebhookConfigurationProjectsHookNames(t *testing.T) {
+	spec := projectSpec("MutatingWebhookConfiguration", obj("MutatingWebhookConfiguration", "", "aws-load-balancer-webhook", map[string]any{
+		"webhooks": []any{
+			map[string]any{"name": "mpod.elbv2.k8s.aws", "clientConfig": map[string]any{"caBundle": "c2VjcmV0"}},
+			map[string]any{"name": "mservice.elbv2.k8s.aws"},
+		}}), &Projection{Keep: []string{"webhooks"}})
+	if fmt.Sprint(spec["webhooks"]) != "[map[name:mpod.elbv2.k8s.aws] map[name:mservice.elbv2.k8s.aws]]" || spec["webhookCount"] != 2 {
+		t.Errorf("webhook names only: %+v", spec)
+	}
+}
+
+func TestCRDSpecCarriesSchemaFieldNamesAndBundleVersion(t *testing.T) {
+	versions := []any{
+		map[string]any{"name": "v1alpha1", "served": true, "storage": false, "schema": map[string]any{"openAPIV3Schema": map[string]any{
+			"properties": map[string]any{"spec": map[string]any{"properties": map[string]any{"old": map[string]any{}}}}}}},
+		map[string]any{"name": "v1beta1", "served": true, "storage": true, "schema": map[string]any{"openAPIV3Schema": map[string]any{
+			"properties": map[string]any{"spec": map[string]any{"properties": map[string]any{"serviceRef": map[string]any{}, "targetType": map[string]any{}}}}}}},
+	}
+	spec := CRDSpec(CRD{Name: "targetgroupbindings.elbv2.k8s.aws", Spec: map[string]any{"group": "elbv2.k8s.aws", "versions": versions}})
+	if fmt.Sprint(spec["crdSpecFields"]) != "[serviceRef targetType]" {
+		t.Errorf("storage version's spec field names: %v", spec["crdSpecFields"])
+	}
+	if _, ok := spec["bundleVersion"]; ok {
+		t.Errorf("bundleVersion is for the Gateway API group only: %+v", spec)
+	}
+	gw := CRDSpec(CRD{Name: "httproutes.gateway.networking.k8s.io", BundleVersion: "v1.3.0",
+		Spec: map[string]any{"group": "gateway.networking.k8s.io", "versions": []any{}}})
+	if gw["bundleVersion"] != "v1.3.0" {
+		t.Errorf("gateway bundle version: %+v", gw)
+	}
+	if _, ok := gw["crdSpecFields"]; ok {
+		t.Errorf("no storage schema: no field list (not projected, never clean): %+v", gw)
+	}
+}

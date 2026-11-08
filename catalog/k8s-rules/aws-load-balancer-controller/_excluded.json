@@ -1,0 +1,697 @@
+[
+  {
+    "version": "2.12",
+    "note": "v2.12.0 (Enhancement and Fixes): SG ingress and egress rule modifications are re-ordered to prev",
+    "reason": "fix that prevents an outage; nothing to prepare"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent-spec.md › ALBTargetControlConfigSpec › | tlsCertPath _string_ | TLSCertPath spe",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent-spec.md › ALBTargetControlConfigSpec › | tlsKeyPath _string_ | TLSKeyPath speci",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Prerequisites › Create ALBTargetControlConfig resource - Configure agent s",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Pod-Level Control (Highest Priority) › Override namespace settings per pod",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Pod-Specific Configuration › Override sidecar settings per pod:",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (2)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (3)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (4)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (5)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (6)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (7)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (8)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (9)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (10)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (11)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (12)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (13)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "alb-target-agent.md › Labels and Annotations Reference › | Pod Annotation | elbv2.k8s.aws/alb-ta (14)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.16",
+    "note": "annotations.md › Traffic Routing › For TLS listeners, target group stickiness is not supported.",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.17",
+    "note": "gateway.md › QUIC Protocol Support › IP target type (instance target type not supported)",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.17",
+    "note": "gateway.md › Prerequisites › Experimental Gateway API CRDs: kubectl apply -f https://github.com/",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.17",
+    "note": "admission webhook added: vglobalaccelerator.aga.k8s.aws (failurePolicy Fail) — name: vglobalaccelerator.aga.k8s.aws",
+    "reason": "AWS Global Accelerator controller objects: opt-in behind --enable-global-accelerator (2.17 rule); the CRD alone changes nothing"
+  },
+  {
+    "version": "2.13",
+    "note": "v2.13.0 (What’s new): Checkout the new Prometheus metrics. Their documentation can be found here",
+    "reason": "additive metrics; no object changes meaning"
+  },
+  {
+    "version": "2.13",
+    "note": "v2.13.4 (Enhancement and Fixes): Added Patch permission to loadbalancerconfigurations in helm ch",
+    "reason": "chart RBAC addition / CI note; nothing to prepare beyond the 2.13 Gateway API rule"
+  },
+  {
+    "version": "2.13",
+    "note": "v2.13.4 (Enhancement and Fixes): CI now runs on K8s 1.32 instead of 1.25",
+    "reason": "chart RBAC addition / CI note; nothing to prepare beyond the 2.13 Gateway API rule"
+  },
+  {
+    "version": "2.13",
+    "note": "configurations.md › Feature Gates › | EnableTCPUDPListenerType | string | false | Enable or disa",
+    "reason": "documentation table / header line restated on this branch; no behaviour change"
+  },
+  {
+    "version": "2.13",
+    "note": "installation.md › Supported Kubernetes versions › AWS Load Balancer Controller v2.0.0~v2.1.3 req",
+    "reason": "a floor for lines older than 2.4, below this catalog; the 2.4 and 2.5 floor rules carry the ones that apply"
+  },
+  {
+    "version": "2.13",
+    "note": "security_groups.md › Enable Autogeneration of Backend Securit › individual annotation takes prec",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.13",
+    "note": "security_groups.md › Enable Autogeneration of Backend Securit › when set to false (default value",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.13",
+    "note": "subnet_discovery.md › Minimum Subnet Requirements › ALBs: Require at least two subnets across di",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.13",
+    "note": "customization.md › Conflict Resolution for `LoadBalancerCon › It is possible for a LoadBalancerC",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.13",
+    "note": "customization.md › How Default and Route-Specific Configura › When both defaultConfiguration and",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.13",
+    "note": "gateway.md › Gateway API › Mixing protocol layers, e.g. TCPRoute and HTTPRoute on the same Gatew",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.13",
+    "note": "gateway.md › Security group › The AWS LBC creates and attaches frontend and backend security gro",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.13",
+    "note": "annotations.md › Enable frontend NLB › The port defaults to match the ALB listener port, based o",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.13",
+    "note": "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-proxy-protocol-per",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.1",
+    "note": "v3.1.0 (AWS Global Accelerator C): [NLB Gateway] TLS passthrough listener - Fixed TLS listener c",
+    "reason": "fix: TLS passthrough / termination now follow the Gateway listener's tls mode; routes that worked keep working"
+  },
+  {
+    "version": "2.4",
+    "note": "v2.4.0 (What's new): Helm chart keepTLSSecret is true by default",
+    "reason": "chart default added in 2.4.0 with nothing to act on; the 3.0 keeptlssecret rule carries the action (cert-manager Certificate removed / restored)"
+  },
+  {
+    "version": "2.4",
+    "note": "v2.4.1 (What's new): Introduce a new featureGate named EndpointsFailOpen: Once enabled, when all",
+    "reason": "additive feature gate, off by default in 2.4; its 2.5 default flip is the rule"
+  },
+  {
+    "version": "2.4",
+    "note": "v2.4.3 (What's new): This release introduces a new feature gate SubnetsClusterTagCheck, if set t",
+    "reason": "additive opt-out feature gate (default keeps the cluster-tag check); nothing changes without setting it"
+  },
+  {
+    "version": "2.4",
+    "note": "v2.4.6 (Whats new): Controller doesn't delete existing NLB target group to reconfigure health ch",
+    "reason": "bug fix: the controller stops re-creating target groups on health-check changes; nothing to prepare"
+  },
+  {
+    "version": "2.4",
+    "note": "configurations.md › Controller configuration options › The v2.0.0+ version of AWSLoadBalancerCon",
+    "reason": "documentation table / header line restated on this branch; no behaviour change"
+  },
+  {
+    "version": "2.4",
+    "note": "configurations.md › Feature Gates › |Features-gate Supported Key | Type | Default Value | Descri",
+    "reason": "documentation table / header line restated on this branch; no behaviour change"
+  },
+  {
+    "version": "2.4",
+    "note": "installation.md › Supported Kubernetes versions › AWS Load Balancer Controller v2.2.0~v2.3.1 req",
+    "reason": "a floor for lines older than 2.4, below this catalog; the 2.4 and 2.5 floor rules carry the ones that apply"
+  },
+  {
+    "version": "2.4",
+    "note": "subnet_discovery.md › Common tag › Starting from v2.4.2 release, you can disable the cluster tag",
+    "reason": "documents the additive SubnetsClusterTagCheck opt-out"
+  },
+  {
+    "version": "2.4",
+    "note": "migrate_v1_v2.md › Upgrade steps › Install AWSLoadBalancerController(v2.4.1) by following the in",
+    "reason": "the v1 AWSALBIngressController -> v2 migration guide: below this catalog (v2.4 is the floor), restated per branch only to bump its version example"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › IngressGroup › By default, Ingresses don't belong to any IngressGroup, and we t",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Traffic Listening › defaults to '[{\"HTTP\": 80}]' or '[{\"HTTPS\": 443}]' dependin",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Traffic Listening › Once enabled SSLRedirect, every HTTP listener will be confi",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Resource Tags › In case of target group, the controller will merge the tags fro",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Traffic Routing › If you configure spec.loadBalancerClass, the controller defau",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Resource attributes › Custom attributes set in this annotation's config map wil",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › AWS Resource Tags › you cannot override the default controller tags mentioned a",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.4",
+    "note": "annotations.md › Health Check › if you do not specify the health check port, the default value w",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Network Load Balancer › Since :octicons-tag-24: v2.2.0 release, the AWS Load balancer c",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Configuration › By default, Kubernetes Service resources of type LoadBalancer gets reco",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Configuration › If the spec.loadBalancerClass is set to a loadBalancerClass that is not",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Configuration › By default, the NLB will use instance target-type, you can customize it",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Configuration › When you specify the service.beta.kubernetes.io/aws-load-balancer-type",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "nlb.md › Security group › AWS currently does not support attaching security groups to NLB. To al",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.4",
+    "note": "IAM policy: new action — \"ec2:DescribeVpcPeeringConnections\"",
+    "reason": "2.4 reference-policy addition for the 2.4 subnet/peering lookup; the 2.4.7 AddTags rule is the IAM action the release called out, and every later IAM addition is a rule"
+  },
+  {
+    "version": "2.4",
+    "note": "chart value added: keepTLSSecret = true — keepTLSSecret: true",
+    "reason": "chart default added in 2.4.0 with nothing to act on; the 3.0 keeptlssecret rule carries the action"
+  },
+  {
+    "version": "3.5",
+    "note": "v3.5.0 (Certificate Management): Fix ACM certificate creation for Ingresses with wildcard hosts",
+    "reason": "fix for wildcard hosts; nothing to prepare"
+  },
+  {
+    "version": "3.5",
+    "note": "v3.5.0 (Documentation Updates): Remove CloudFormation link",
+    "reason": "documentation"
+  },
+  {
+    "version": "2.5",
+    "note": "v2.5.2 (Enhancement): Refactor backend SG provider, controller deletes backend SG when not requi",
+    "reason": "fix: the backend security group is deleted sooner when unused; nothing to prepare"
+  },
+  {
+    "version": "2.5",
+    "note": "configurations.md › waf-addons › By default, the controller assumes sole ownership of the WAF ad",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.5",
+    "note": "security_groups.md › Management of Backend Security Group Rul › When the frontend security group",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.5",
+    "note": "security_groups.md › Port Range Restrictions for Backend Secu › As of version v2.3.0, the contro",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.5",
+    "note": "subnet_discovery.md › Subnet auto-discovery › By default, the AWS Load Balancer Controller (LBC)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.5",
+    "note": "migrate_v1_v2.md › Upgrade steps › Install AWSLoadBalancerController(v2.5.0) by following the in",
+    "reason": "the v1 AWSALBIngressController -> v2 migration guide: below this catalog (v2.4 is the floor), restated per branch only to bump its version example"
+  },
+  {
+    "version": "2.5",
+    "note": "nlb.md › Security group › AWS doesn't support attaching security groups to NLBs. To allow inboun",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.4",
+    "note": "v3.4.0 (Enhancements and Fixes): Unit-test workflow permissions: Declare contents: read on the u",
+    "reason": "CI change"
+  },
+  {
+    "version": "3.4",
+    "note": "configurations.md › waf-addons › By default, the controller manages the WAF addons associated to",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.0",
+    "note": "v3.0.0 (Enhancements and Fixes): Gateway Deletion: Removed route count check when deleting gatew",
+    "reason": "behaviour relaxed (gateways with routes can be deleted); nothing to prepare"
+  },
+  {
+    "version": "2.6",
+    "note": "installation.md › AWS Load Balancer Controller installatio › You will no longer be able to provi",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.6",
+    "note": "annotations.md › IngressGroup › If an IngressGroup no longer contains any Ingresses, the ALB for",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.3",
+    "note": "v3.3.0 (Documentation Updates): ACM Certificate Management guide with ingress group behavior, se",
+    "reason": "documentation; the 3.3 ACM rule carries the feature"
+  },
+  {
+    "version": "3.3",
+    "note": "certificate_management.md › Disable TLS certificates › This reconciliation might fail if there a",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.3",
+    "note": "certificate_management.md › Certificate Validation › E-Mail validation is not supported due to s",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "3.2",
+    "note": "v3.2.0 (Documentation Updates): Add cert expiry best practices",
+    "reason": "documentation; the 3.0 keeptlssecret and 3.2 argocd rules carry the certificate guidance"
+  },
+  {
+    "version": "3.2",
+    "note": "installation.md › ArgoCD users › This causes the webhook to stop responding because the certific",
+    "reason": "docs-only standing advisory (commit 502482fff touches only installation.md; Helm has rendered the webhook CA at install time since 2.4) — not a 3.2 change, so a hop-scoped rule would fire on the wrong hop; candidate for the always-on rule mode (eac #563)"
+  },
+  {
+    "version": "3.2",
+    "note": "installation.md › ArgoCD users › certificate mounted in the controller pod, breaking the webhook",
+    "reason": "docs-only standing advisory (commit 502482fff touches only installation.md; Helm has rendered the webhook CA at install time since 2.4) — not a 3.2 change, so a hop-scoped rule would fire on the wrong hop; candidate for the always-on rule mode (eac #563)"
+  },
+  {
+    "version": "3.2",
+    "note": "installation.md › ArgoCD users › Alternative solution: If Cert Manager cannot be used, configure",
+    "reason": "docs-only standing advisory (commit 502482fff touches only installation.md; Helm has rendered the webhook CA at install time since 2.4) — not a 3.2 change, so a hop-scoped rule would fire on the wrong hop; candidate for the always-on rule mode (eac #563)"
+  },
+  {
+    "version": "3.2",
+    "note": "customization.md › Customizing Services (Target Groups) usi › Service-level — Configuration targ",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.2",
+    "note": "customization.md › GatewayClass and Gateway Level Default T › Service-level TGCs only need to sp",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.2",
+    "note": "targetgroupbinding.md › Choosing the Target Group › If you provide both targetGroupARN and targe",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.2",
+    "note": "targetgroupbinding.md › Default Node Selector › selector are added to the TargetGroup by default",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "3.2",
+    "note": "targetgroupbinding.md › MultiCluster TargetGroup › The default value is false, meaning that the",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.7",
+    "note": "security_groups.md › Coordination of Frontend and Backend Sec › If the frontend security groups",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.7",
+    "note": "security_groups.md › Enable Autogeneration of Backend Securit › These annotations are ignored wh",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.7",
+    "note": "security_groups.md › Port Range Restrictions › From version v2.3.0 onwards, the controller restr",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.7",
+    "note": "subnet_discovery.md › Subnet auto-discovery › By default, the AWS Load Balancer Controller (LBC)",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.7",
+    "note": "annotations.md › Legacy Cloud Provider › For users on v2.5.0+, The AWS LBC provides a mutating w",
+    "reason": "the branch-2.7 docs restate the 2.5 Service mutating webhook and the create-time-only nature of aws-load-balancer-type; the 2.5 service-mutator rule carries both"
+  },
+  {
+    "version": "2.7",
+    "note": "annotations.md › Legacy Cloud Provider › recent versions of the legacy cloud provider ignore the",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.7",
+    "note": "annotations.md › Legacy Cloud Provider › Note that this annotation should be specified during se",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.7",
+    "note": "nlb.md › Security group › From v2.6.0, the AWS LBC creates and attaches frontend and backend sec",
+    "reason": "the branch-2.7 docs restate the 2.6.0 managed security-group change; the 2.6 nlb-managed-security-groups-by-default rule carries it (a 2.7 rule would fire on the wrong hop)"
+  },
+  {
+    "version": "2.7",
+    "note": "nlb.md › Security group › In older versions, the controller by default adds inbound rules to the",
+    "reason": "the branch-2.7 docs restate the 2.6.0 managed security-group change; the 2.6 nlb-managed-security-groups-by-default rule carries it (a 2.7 rule would fire on the wrong hop)"
+  },
+  {
+    "version": "2.7",
+    "note": "IAM policy: new action — \"elasticloadbalancing:DescribeTrustStores\"",
+    "reason": "the 2.7 iam-describe-trust-stores rule cites the release note for this action"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.0 (What's New): Cross-account TargetGroupBinding -- AZ-aware IP registration (opt-in) Cross",
+    "reason": "additive opt-in (AZ-aware cross-account registration); nothing changes without the new field"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.0 (Gateway): Ignore unpermitted cross-namespace TCPRoutes in the Gateway TGC deletion guard",
+    "reason": "fix / documentation / informer internals; no object changes meaning"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.0 (Controller / Informer ro): Make the pod informer transform idempotent so WatchList strea",
+    "reason": "fix / documentation / informer internals; no object changes meaning"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.0 (Misc): Clearer OIDC permission messaging (#4912)",
+    "reason": "fix / documentation / informer internals; no object changes meaning"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.0 (Documentation Updates): Remove unsupported vpcId field from LoadBalancerConfiguration do",
+    "reason": "fix / documentation / informer internals; no object changes meaning"
+  },
+  {
+    "version": "3.6",
+    "note": "v3.6.1 (Networking): Treat InvalidGroup.NotFound as success when releasing the auto-generated ba",
+    "reason": "fix: InvalidGroup.NotFound tolerated on cleanup; nothing to prepare"
+  },
+  {
+    "version": "3.6",
+    "note": "annotations.md › Enable frontend NLB › By default, when a frontend NLB is enabled, both the ALB",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.6",
+    "note": "certificate_management.md › Certificate Validation › E-Mail validation is not supported due to s",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "3.6",
+    "note": "targetgroupbinding.md › TargetGroupBinding › The controller watches the Ingress, Service, and Ga",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "3.6",
+    "note": "targetgroupbinding.md › Availability zones for cross-account tar › By default, cross-account IP",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "configurations.md › Controller command line flags › | max-targets-per-target-group | int | 0 | M",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "configurations.md › Feature Gates › | EnableDefaultTagsLowPriority | string | false | If enabled",
+    "reason": "documentation table / header line restated on this branch; no behaviour change"
+  },
+  {
+    "version": "2.14",
+    "note": "scaling.md › Resource Allocation › By default, the provided installation bundle sets the CPU and",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "scaling.md › Clientside throttling › The LBC implements clientside throttling by default, to pre",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.14",
+    "note": "scaling.md › Clientside throttling › may need to communicate with AWS. By default, this is the c",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "customization.md › Conflict Resolution for `LoadBalancerCon › It is possible for a LoadBalancerC",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Traffic Routing › By default, additional path-pattern conditions must use value",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Traffic Routing › When alb.ingress.kubernetes.io/use-regex-path-match is \"false",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Traffic Routing › A leading / must precede the regex. The leading / will be rem",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Traffic Routing › With this configuration, the rule condition regex value will",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "ingress_class.md › Resource Cleanup Order › If you delete the IngressClass before the Ingresses",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Resource attributes › Target Group Attributes to be configured. You can specify",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Resource attributes › Note: When a port-specific attribute value is empty, it w",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "annotations.md › Resource attributes › <a name=\"nlb-sg-disable\">service.beta.kubernetes.io/aws-l",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.14",
+    "note": "CRD added: aga.k8s.aws/GlobalAccelerator — kind: GlobalAccelerator",
+    "reason": "AWS Global Accelerator controller objects: opt-in behind --enable-global-accelerator (2.17 rule); the CRD alone changes nothing"
+  },
+  {
+    "version": "2.8",
+    "note": "v2.8.1 (Bug fixes): Fix the bug with mTLS feature, by having the controller return nil for Mutua",
+    "reason": "fix in a patch release; the 2.7 mTLS IAM rule carries the feature's prerequisite"
+  },
+  {
+    "version": "2.8",
+    "note": "annotations.md › Access control › This annotation will be ignored if alb.ingress.kubernetes.io/s",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.8",
+    "note": "annotations.md › Access control › If you only use this annotation without inbound-cidrs, the con",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.8",
+    "note": "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-manage-backend-sec",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.8",
+    "note": "annotations.md › Access control › If you only use this annotation without load-balancer-source-r",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.8",
+    "note": "chart value added: serviceMutatorWebhookConfig.failurePolicy = Fail — failurePolicy: Fail",
+    "reason": "chart value for an option the 2.5 service-mutator rule already names; additive"
+  },
+  {
+    "version": "2.10",
+    "note": "v2.10.1 (Enhancement and Fixes): Remove sort by ID so that EIP allocations and subnet ID order i",
+    "reason": "fix: EIP / subnet order now follows the annotation; nothing to prepare"
+  },
+  {
+    "version": "2.9",
+    "note": "configurations.md › Controller command line flags › | aws-vpc-tag-key | string | Name | Optional",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.11",
+    "note": "configurations.md › lb-stabilization-monitor-interval › --lb-stabilization-monitor-interval defi",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.15",
+    "note": "cert-manager.md › Certificate Renewal › Valid for 5 years by default",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.15",
+    "note": "cert-manager.md › Certificate Renewal › Valid for 1 year by default",
+    "reason": "documentation of an existing default / precedence rule / limitation restated or reworded on this branch; it describes how a feature behaves, not a change an upgrade introduces (the version-specific lines are rules)"
+  },
+  {
+    "version": "2.15",
+    "note": "annotations.md › Token Validation › ALB supports validating JSON Web Tokens (JWTs) for secure se",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.15",
+    "note": "annotations.md › Resource attributes › This annotation only applies to UDP ports. The annotation",
+    "reason": "documentation line new on this branch that describes a feature or its options (additive); no object changes meaning on the upgrade"
+  },
+  {
+    "version": "2.15",
+    "note": "feature gate default flipped: AGAController (true -> false) — AGAController: false,",
+    "reason": "the 2.14 AGA gate shipped on by mistake and was flipped off in 2.15 before the feature existed in docs; the 2.17 opt-in rule carries the AGA controller"
+  }
+]

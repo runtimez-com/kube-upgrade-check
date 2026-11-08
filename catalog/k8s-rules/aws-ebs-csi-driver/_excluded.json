@@ -1013,5 +1013,60 @@
   "version": "1.66",
   "note": "Support new encrypted EBS clones",
   "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using"
+ },
+ {
+  "version": "1.66",
+  "note": "This is a security patch release. It refreshes the AL2023 base image of the driver",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.66",
+  "note": "It also updates the six Kubernetes CSI sidecar containers to versions rebuilt with patched",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
+ },
+ {
+  "version": "1.66",
+  "note": "This release also includes a fix for the FIPS certified module build.",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (FIPS build)"
+ },
+ {
+  "version": "1.66",
+  "note": "Use correct images in Kustomize ecr and gcr overlays.",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (Kustomize ecr/gcr overlays pointed at the wrong images)"
+ },
+ {
+  "version": "1.67",
+  "note": "Enable FIPS on sidecars when Helm fips parameter is true",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (FIPS sidecars only when the Helm fips parameter is true)"
+ },
+ {
+  "version": "1.67",
+  "note": "Add r9g types to volume limits",
+  "reason": "per-instance-type attachment-limit table refresh: the node plugin reports a corrected CSINode allocatable count after the upgrade; nothing to change"
+ },
+ {
+  "version": "1.67",
+  "note": "Properly cap volume iops when the requested iops are below the volume type's minimum",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (when the size's per-GiB IOPS cap is below the type's minimum, the request is now capped at that minimum instead of being sent uncapped and refused by EC2 — requests that failed now succeed; cloud.go capIOPS, #3021)"
+ },
+ {
+  "version": "1.67",
+  "note": "Fixed additionalDaemonSets ignoring false and 0 values.",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (chart 2.67.1: false / 0 overrides in additionalDaemonSets — e.g. enableWindows: false, logLevel: 0 — were silently replaced by the base node values and now take effect; the rendered DaemonSets follow the values the user set)"
+ },
+ {
+  "version": "1.67",
+  "note": "Allow mult-attach for io1 volumes.",
+  "reason": "additive: a new option/feature/metric/StorageClass parameter that nothing breaks by not using (multi-attach was io2-only in the driver before v1.67.0)"
+ },
+ {
+  "version": "1.67",
+  "note": "Use correct images in Kustomize ecr and gcr overlays.",
+  "reason": "Helm chart / Kustomize default change; an install that sets its own values keeps them (Kustomize ecr/gcr overlays pointed at the wrong images)"
+ },
+ {
+  "version": "1.67",
+  "note": "Upgrade base images and sidecar images.",
+  "reason": "security patch release (CVE fixes in the driver or sidecar images); the upgrade itself is the action"
  }
 ]

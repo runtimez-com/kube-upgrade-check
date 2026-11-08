@@ -1,0 +1,54 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.8-crd-fields-certificatearn-ipaddresstype-vpcid",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams gains certificateArn / ipAddressType and TargetGroupBinding gains vpcID — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws|targetgroupbindings\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(certificateArn|vpcID)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); IngressClassParams certificateArn and TargetGroupBinding vpcID are v2.8.0's additions (ipAddressType predates it on both) — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "We have added `certificateArn` and updated `ipAddressType` fields in IngressClassParams, and added `vpcID` field in TargetGroupBinding. If you are upgrading the charts using helm upgrade, you need to update CRDs manually `kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"`",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" before upgrading when installed with helm. A TargetGroupBinding to a target group in another VPC (vpcID) is pruned on the old schema.",
+    "verifyCommand": "kubectl get crd targetgroupbindings.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; vpcID absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "v2.8.0 (Whats new): Support for TargetGroupBinding on targets outside the cluster's VPC. This fe",
+      "ingress_class.md › spec.certificateArn › If the field is specified, LBC will ignore the alb.ingr"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.8-iam-cn-describe-trust-stores",
+    "severity": "LOW",
+    "title": "China partition reference policy gains elasticloadbalancing:DescribeTrustStores",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; only controllers in the China partition using mutual-authentication are affected — the hint names those Ingresses"
+    },
+    "quote": "ALB mTLS is now available in the China partition. We've updated the reference IAM policies to explicitly add the `elasticloadbalancing:DescribeTrustStores` permission for describing the trust stores resources to use the new mTLS feature for ingresses on controller. If you want to use the ALB mTLS feature in China region, updating your controller IAM policies with the new permissions.",
+    "remediation": "In aws-cn regions apply docs/install/iam_policy_cn.json before using alb.ingress.kubernetes.io/mutual-authentication.",
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "alb.ingress.kubernetes.io/mutual-authentication"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:DescribeTrustStores --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.8-sidecar-restartpolicy-needs-2-8-1-on-kubernetes-1-29",
+    "severity": "MEDIUM",
+    "title": "Every LBC before v2.8.1 strips restartPolicy: Always from native sidecars in readiness-gate namespaces (Kubernetes 1.29+) — land on v2.8.1 or newer",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|StatefulSet|DaemonSet",
+      "target": "initContainers[].name",
+      "value": ".",
+      "reason": "checked workloads for a native sidecar — the agent's initContainers carries ONLY the restartPolicy: Always entries (an ordinary init container is not in it, and restartPolicy itself is not projected), so any entry is one; the pods the mpod webhook re-encodes are only those in namespaces labelled elbv2.k8s.aws/pod-readiness-gate-inject=enabled"
+    },
+    "quote": "Fix the incompatibility with sidecar `restartPolicy` field for k8s 1.29+",
+    "remediation": "Land on v2.8.1 or newer before running native sidecars (Kubernetes 1.29+) in a readiness-gate namespace. The mpod.elbv2.k8s.aws mutating webhook re-encodes the pod through k8s.io/api v0.26, which has no Container.restartPolicy, so its JSON patch removes the field and the sidecar becomes an ordinary init container that blocks the pod forever. This hits every controller before 2.8.1 (not only v2.8.0), and only pods in elbv2.k8s.aws/pod-readiness-gate-inject=enabled namespaces.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(any(.spec.initContainers[]?; .restartPolicy == \"Always\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"' | head -50  # pods with native sidecars; with the ALB readiness gate they need v2.8.1+"
+  }
+]
