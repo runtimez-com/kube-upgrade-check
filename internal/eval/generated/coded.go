@@ -107,11 +107,11 @@ func resolveAt(node any, segments []string) (leaves []string, resolved bool) {
 		return nil, false
 	}
 	if len(segments) == 0 {
-		switch node.(type) {
+		switch n := node.(type) {
 		case []any:
 			return nil, false // an array leaf must be stepped into with "[]"
 		case map[string]any:
-			if m, _ := node.(map[string]any); m == nil {
+			if n == nil {
 				return nil, false
 			}
 		}
