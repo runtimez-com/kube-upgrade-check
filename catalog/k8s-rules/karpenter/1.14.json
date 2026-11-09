@@ -16,5 +16,17 @@
       "value": "^karpenter\\.(sh|k8s\\.aws)$"
     },
     "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.metadata.name | test(\"capacitybuffers|karpenter\")) | .metadata.name'  # capacitybuffers.autoscaling.x-k8s.io missing from this list means the CRD chart is behind the controller"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.14-consolidation-candidate-order-changes",
+    "severity": "LOW",
+    "title": "Consolidation considers nodes in a different order after the upgrade",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a change to the controller's own algorithm for every consolidationPolicy: no object setting opts in or out, so no collected field narrows it"
+    },
+    "quote": "This version changes the order in which Karpenter considers nodes for consolidation, for every `consolidationPolicy` (#2962). If you see negative outcomes in Karpenter's bin packing after upgrading, please add your cluster configuration to #9531 so we can better understand how to improve outcomes in future releases.",
+    "remediation": "Nothing to change before upgrading. Karpenter now picks consolidation candidates in a different order under every consolidation policy, so which nodes it removes or replaces first changes. Watch node count and cost for a few days after the upgrade; if bin packing gets worse, upstream asks for your cluster configuration on #9531.",
+    "verifyCommand": "kubectl get nodepools -o json 2>/dev/null | jq -r '.items[]? | \"\\(.metadata.name) policy=\\(.spec.disruption.consolidationPolicy // \"-\") after=\\(.spec.disruption.consolidateAfter // \"-\")\"'  # each NodePool printed consolidates under the new candidate order, unless consolidateAfter is Never or it is a static pool (spec.replicas)"
   }
 ]

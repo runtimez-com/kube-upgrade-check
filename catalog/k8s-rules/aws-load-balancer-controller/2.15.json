@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.15-quic-server-id-webhook-fail",
+    "severity": "MEDIUM",
+    "title": "v2.15 adds the quicid.elbv2.k8s.aws pod mutating webhook with failurePolicy Fail — a custom webhookNamespaceSelectors value puts it on every readiness-gate namespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the webhook does not exist before the upgrade, and the chart value webhookNamespaceSelectors is not a projected fact; the hint names the installed LBC pod webhook and the command prints its namespaceSelector — a selector that is not the default pod-readiness-gate-inject label is a custom one and will be copied onto the new Fail webhook"
+    },
+    "quote": "name: quicid.elbv2.k8s.aws",
+    "remediation": "By default the new webhook only matches namespaces labelled elbv2.k8s.aws/quic-server-id-inject=enabled, so nothing changes. If the chart is installed with a custom webhookNamespaceSelectors value, that selector replaces the QUIC default and the Fail-policy pod webhook lands on every namespace it selects (typically the readiness-gate ones): pod creation there blocks whenever the controller is down. Set the value back to the default or add podMutatorWebhookConfig-style scoping before upgrading.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "MutatingWebhookConfiguration",
+      "target": "webhooks[].name",
+      "value": "^mpod\\.elbv2\\.k8s\\.aws$"
+    },
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations,validatingwebhookconfigurations -o json | jq -r '.items[] | .webhooks[] | select(.name | test(\"k8s\\\\.aws$\")) | \"\\(.name) failurePolicy=\\(.failurePolicy) namespaceSelector=\\(.namespaceSelector // {} | tojson)\"'  # the LBC admission webhooks installed on this cluster and the failure policy each runs with"
+  }
+]

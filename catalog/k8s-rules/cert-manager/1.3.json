@@ -4,11 +4,14 @@
   "severity": "HIGH",
   "title": "Venafi Cloud issuers must move to the OutagePREDICT zone syntax",
   "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the projected issuer type is `venafi` for TPP and Cloud alike, and only Cloud zones changed; the command below narrows to `.spec.venafi.cloud`"
+  },
+  "scope": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Issuer|ClusterIssuer",
    "target": "types[]",
-   "value": "^venafi$",
-   "reason": "the issuer TYPE is projected, the zone string is not — these issuers are the ones whose zone has to be rewritten, which is the whole population"
+   "value": "^venafi$"
   },
   "quote": "The only impact to Venafi Cloud users is the change in zone syntax. The zone is now `<Application Name>\\<Issuing Template Alias>` (e.g. `My Application\\My CIT`).",
   "remediation": "Create an Application in OutagePREDICT with an Issuing Template and set each Venafi issuer's zone to `<Application Name>\\<Issuing Template Alias>` instead of the DA Zone ID (a UUID).",
@@ -17,17 +20,17 @@
  {
   "ruleId": "rtz-cert-manager-1.3-renew-before-expiration-duration-flag",
   "severity": "HIGH",
-  "title": "--renew-before-expiration-duration is removed — the controller will not start with it",
+  "title": "--renew-before-expiry-duration is removed — the controller will not start with it",
   "detection": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Deployment|DaemonSet",
    "target": "containers[].args[]",
-   "value": "renew-before-expiration-duration",
-   "reason": "checked in the cert-manager workload's container args only — a flag passed through a config file is not scanned"
+   "value": "renew-before-expir(y|ation)-duration",
+   "reason": "checked in the cert-manager workload's container args only — a flag passed through a config file is not scanned. Both spellings match: the vendor's notes say `expiration`, the controller's flag is `--renew-before-expiry-duration` (options.go at v1.1.0 / v1.2.0)"
   },
   "quote": "The `--renew-before-expiration-duration` flag has been removed from the cert-manager controller, having been deprecated in the previous release.",
-  "remediation": "Remove the flag from the controller's args before upgrading and set `spec.renewBefore` on the Certificates that relied on it.",
-  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"renew-before-expiration-duration\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller still started with the flag; NO rows = clean"
+  "remediation": "Remove `--renew-before-expiry-duration` from the controller's args before upgrading (the vendor's notes spell it `--renew-before-expiration-duration`; the controller's flag is the `expiry` one) and set `spec.renewBefore` on the Certificates that relied on it.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"renew-before-expir(y|ation)-duration\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller still started with the flag; NO rows = clean"
  },
  {
   "ruleId": "rtz-cert-manager-1.3-certificaterequests-become-immutable",

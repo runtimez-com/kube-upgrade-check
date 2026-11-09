@@ -62,6 +62,11 @@ var projectors = map[string]projector{
 	"EnvoyFilter":     projectEnvoyFilter,
 
 	"Service": projectService,
+
+	// Webhook configurations have no spec: the rules read the webhooks' NAMES (the AWS Load
+	// Balancer Controller's mutating/validating hooks). Same keys the agent's ResourceMapper writes.
+	"MutatingWebhookConfiguration":   projectWebhookConfiguration,
+	"ValidatingWebhookConfiguration": projectWebhookConfiguration,
 	// StorageClass has no spec: provisioner and the binding fields are top-level. Same four keys
 	// the agent's ResourceMapper writes (parameters are not collected by either).
 	"StorageClass": projectStorageClass,
@@ -226,7 +231,41 @@ func projectService(obj map[string]any, base map[string]any) map[string]any {
 	spec, _ := obj["spec"].(map[string]any)
 	delete(out, "externalIPs")
 	out["hasExternalIPs"] = len(listAt(spec, "externalIPs")) > 0
+	// loadBalancerClass decides WHICH controller owns a LoadBalancer Service (service.k8s.aws/nlb =
+	// the AWS Load Balancer Controller, unset = the cloud provider's default): kept verbatim when it
+	// is a short identifier. loadBalancerClassDefault is written on every LoadBalancer Service, true
+	// when no class is set, so a cluster whose Services all name a class reads clean, not unknown.
+	delete(out, "loadBalancerClass")
+	class, _ := spec["loadBalancerClass"].(string)
+	classSet := class != "" && len(class) <= 128 && lbClassPattern.MatchString(class)
+	if classSet {
+		out["loadBalancerClass"] = class
+	}
+	if t, _ := spec["type"].(string); t == "LoadBalancer" {
+		out["loadBalancerClassDefault"] = !classSet
+	}
 	return out
+}
+
+var lbClassPattern = regexp.MustCompile(`^[A-Za-z0-9._/-]+$`)
+
+// maxWebhooks caps the webhooks kept per configuration; webhookCount is the pre-cap count.
+const maxWebhooks = 64
+
+func projectWebhookConfiguration(obj map[string]any, base map[string]any) map[string]any {
+	hooks := listAt(obj, "webhooks")
+	out := []any{}
+	for _, h := range hooks {
+		if len(out) >= maxWebhooks {
+			break
+		}
+		if m, ok := h.(map[string]any); ok {
+			out = append(out, pick(m, "name"))
+		}
+	}
+	base["webhookCount"] = len(hooks)
+	base["webhooks"] = out
+	return base
 }
 
 func projectStorageClass(obj map[string]any, base map[string]any) map[string]any {
@@ -1015,7 +1054,43 @@ func projectEC2NodeClass(obj map[string]any, base map[string]any) map[string]any
 	out["amiFamily"] = enumString(spec["amiFamily"])
 	out["instanceStorePolicy"] = enumString(spec["instanceStorePolicy"])
 	out["capacityReservationSelectorTermsPresent"] = len(listAt(spec, "capacityReservationSelectorTerms")) > 0
+	// Karpenter 1.15 rejects kubelet fields a non-AL2023 family cannot apply: the family an alias
+	// picks (the part before '@', never the version), the kubelet KEY names (never a value) and how
+	// many clusterDNS entries there are (never the addresses). Same keys as the agent's projection.
+	out["amiAliasFamily"] = aliasFamily(listAt(spec, "amiSelectorTerms"))
+	kubelet := mapAt(spec, "kubelet")
+	keys := []string{}
+	for _, k := range sortedKeys(kubelet) {
+		if kubelet[k] != nil && enumString(k) != "" && len(keys) < maxKarpenterList {
+			keys = append(keys, k)
+		}
+	}
+	out["kubeletKeys"] = toAny(keys)
+	out["kubeletClusterDnsCount"] = len(listAt(kubelet, "clusterDNS"))
 	return out
+}
+
+const maxKarpenterList = 50
+
+// aliasFamily is the lower-cased family of the first amiSelectorTerms alias ("al2023@v20240807"
+// → "al2023"), or "" when no term carries one.
+func aliasFamily(terms []any) string {
+	for _, t := range terms {
+		m, _ := t.(map[string]any)
+		a, _ := m["alias"].(string)
+		if strings.TrimSpace(a) == "" {
+			continue
+		}
+		if at := strings.Index(a, "@"); at >= 0 {
+			a = a[:at]
+		}
+		a = strings.ToLower(a)
+		if len(a) > 32 {
+			return ""
+		}
+		return enumString(a)
+	}
+	return ""
 }
 
 // ---------- CustomResourceDefinition ----------
@@ -1051,7 +1126,50 @@ func CRDSpec(crd CRD) map[string]any {
 		}
 	}
 	out["versions"] = versions
+	// The storage version's top-level spec PROPERTY NAMES (a schema key is a field name, never a
+	// value), capped: what tells "this installed CRD lacks the field a release added" from "it was
+	// updated". Absent when no storage version carries a structural schema.
+	if fields := crdSpecFields(listAt(spec, "versions")); fields != nil {
+		out["crdSpecFields"] = toAny(fields)
+	}
+	// Gateway API CRDs: the bundle-version annotation a controller reads to decide whether it
+	// processes the kind at all. This group only, like the agent.
+	if g, _ := spec["group"].(string); g == "gateway.networking.k8s.io" {
+		if crd.BundleVersion != "" {
+			out["bundleVersion"] = crd.BundleVersion
+		} else {
+			out["bundleVersion"] = nil
+		}
+	}
 	return out
+}
+
+const maxCRDSpecFields = 64
+
+func crdSpecFields(versions []any) []string {
+	for _, v := range versions {
+		m, _ := v.(map[string]any)
+		if storage, _ := m["storage"].(bool); !storage {
+			continue
+		}
+		props := mapAt(m, "schema", "openAPIV3Schema", "properties")
+		if props == nil {
+			continue
+		}
+		specProps := mapAt(props, "spec", "properties")
+		out := []string{}
+		for _, k := range sortedKeys(specProps) {
+			if len(k) > 64 || enumString(k) == "" {
+				continue
+			}
+			if len(out) >= maxCRDSpecFields {
+				break
+			}
+			out = append(out, k)
+		}
+		return out
+	}
+	return nil
 }
 
 // ---------- helpers ----------

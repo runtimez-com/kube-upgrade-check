@@ -1,0 +1,42 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.11-crd-fields-capacity-reservation-targetgroupname",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams gains minimumLoadBalancerCapacity and TargetGroupBinding gains targetGroupName — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws|targetgroupbindings\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(minimumLoadBalancerCapacity|targetGroupName)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); IngressClassParams minimumLoadBalancerCapacity and TargetGroupBinding targetGroupName are v2.11.0's additions — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "🚨 🚨 🚨 We’ve added new fields for capacity unit reservation on IngressClassParams. We’ve also added the `targetGroupName` field to the TargetGroupBinding which users can set in order to fetch targetGroup by Name instead or ARN. Make sure to update the CRD definition in your cluster. If you're upgrading the charts using helm upgrade, you need to update CRDs manually: `kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"`",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" before upgrading when installed with helm. A TargetGroupBinding by targetGroupName is rejected on the old schema (targetGroupARN stays required).",
+    "verifyCommand": "kubectl get crd targetgroupbindings.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; targetGroupName absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "ingress_class.md › spec.minimumLoadBalancerCapacity › They may specify capacityUnits. If the fie"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.11-iam-capacity-reservation",
+    "severity": "LOW",
+    "title": "Reference IAM policy gains Describe/ModifyCapacityReservation — update the controller's policy",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the hint names the Ingresses that set minimum-load-balancer-capacity — the only reconciles that call the new actions (Services use service.beta.kubernetes.io/aws-load-balancer-minimum-load-balancer-capacity)"
+    },
+    "quote": "We've updated the reference IAM policies to explicitly add the `elasticloadbalancing:DescribeCapacityReservation` and `elasticloadbalancing:ModifyCapacityReservation` permissions for describing and modifying capacity reservation. Please be sure to apply the latest IAM policy when upgrading.",
+    "remediation": "Apply the v2.11.0 reference IAM policy before using alb.ingress.kubernetes.io/minimum-load-balancer-capacity (or the Service twin): the controller calls DescribeCapacityReservation / ModifyCapacityReservation only when the annotation is set and skips the reconciler otherwise, so nothing breaks for load balancers without it.",
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "alb.ingress.kubernetes.io/minimum-load-balancer-capacity"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:DescribeCapacityReservation elasticloadbalancing:ModifyCapacityReservation --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "IAM policy: new action — \"elasticloadbalancing:DescribeCapacityReservation\"",
+      "IAM policy: new action — \"elasticloadbalancing:ModifyCapacityReservation\""
+    ]
+  }
+]

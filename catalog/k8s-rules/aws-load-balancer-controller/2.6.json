@@ -1,0 +1,37 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.6-nlb-managed-security-groups-by-default",
+    "severity": "MEDIUM",
+    "title": "v2.6.0 attaches managed frontend and backend security groups to every new NLB by default — node security-group rules are no longer the control",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-type",
+      "value": "^(external|nlb-ip)$",
+      "reason": "checked for LoadBalancer Services that name the LBC through aws-load-balancer-type external / nlb-ip (the in-tree value nlb is not the LBC); Services the 2.5 mutator claimed through spec.loadBalancerClass alone carry no annotation and are NOT seen until the agent projects loadBalancerClass"
+    },
+    "quote": "Added support of Security Groups for NLB. With the security group support, it is feasible to forward the NLB traffic to the EC2 instances without having to open up the instances for global access. For backwards compatibility, NLBs created without the security groups or the existing NLBs will continue to provide the legacy behavior. Similar to ALB, there are two sets of SGs for NLB - frontend and backend SGs:",
+    "remediation": "New NLBs get an LBC-managed frontend security group (inbound from loadBalancerSourceRanges / 0.0.0.0/0) and a backend security group on the nodes; existing NLBs are untouched. The same applies to Services the 2.5 mutating webhook claimed through spec.loadBalancerClass: service.k8s.aws/nlb without any annotation. Firewalls, prefix lists or CIDR allow-lists that were applied on the node security group must move to service.beta.kubernetes.io/aws-load-balancer-security-groups or the source-ranges annotation, or disable with service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules / the NLBSecurityGroup feature gate.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"LoadBalancer\" and (.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-type\"] // \"\" | test(\"external|nlb-ip\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) sg=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-security-groups\"] // \"managed\") source-ranges=\\(.spec.loadBalancerSourceRanges // [] | join(\",\"))\"'  # LBC NLB Services; sg=managed get the new frontend/backend security groups on the next re-creation",
+    "coversNotes": [
+      "v2.6.0 (Enhancement): The Backend SG controls the traffic between the NLB and the EC2 instances/",
+      "annotations.md › Access control › this annotation will be ignored if service.beta.kubernetes.io/",
+      "security_groups.md › Management of Backend Security Group Rul › When the frontend security group"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.6-nlb-managed-security-groups-by-default-loadbalancerclass",
+    "severity": "MEDIUM",
+    "title": "v2.6.0 attaches managed frontend and backend security groups to every new NLB by default — Services the LBC owns through spec.loadBalancerClass",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Service",
+      "target": "loadBalancerClass",
+      "value": "service.k8s.aws/nlb",
+      "reason": "checked LoadBalancer Services that name the LBC through spec.loadBalancerClass: service.k8s.aws/nlb (the 2.5 mutator's stamp, or set by hand) — the sibling rule covers the annotation form; a Service carrying both is named once, the two cards fold on the shared quote"
+    },
+    "quote": "Added support of Security Groups for NLB. With the security group support, it is feasible to forward the NLB traffic to the EC2 instances without having to open up the instances for global access. For backwards compatibility, NLBs created without the security groups or the existing NLBs will continue to provide the legacy behavior. Similar to ALB, there are two sets of SGs for NLB - frontend and backend SGs:",
+    "remediation": "New NLBs get an LBC-managed frontend security group (inbound from loadBalancerSourceRanges / 0.0.0.0/0) and a backend security group on the nodes; existing NLBs are untouched. This applies to Services the 2.5 mutating webhook claimed through spec.loadBalancerClass: service.k8s.aws/nlb without any annotation as much as to annotated ones. Firewalls, prefix lists or CIDR allow-lists that were applied on the node security group must move to service.beta.kubernetes.io/aws-load-balancer-security-groups or the source-ranges annotation, or disable with service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules / the NLBSecurityGroup feature gate.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"LoadBalancer\" and .spec.loadBalancerClass == \"service.k8s.aws/nlb\") | \"\\(.metadata.namespace)/\\(.metadata.name) sg=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-security-groups\"] // \"managed\") source-ranges=\\(.spec.loadBalancerSourceRanges // [] | join(\",\"))\"'  # LBC NLB Services by class; sg=managed get the new frontend/backend security groups on the next re-creation"
+  }
+]

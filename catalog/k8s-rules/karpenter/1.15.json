@@ -1,0 +1,79 @@
+[
+  {
+    "ruleId": "rtz-karpenter-1.15-node-repair-becomes-a-budgeted-voluntary-disruption",
+    "severity": "MEDIUM",
+    "title": "Node Auto Repair now drains through disruption budgets and PDBs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only applies with the NodeRepair feature gate on, and the controller's env VALUES are not collected (names only) — the hint names the controller, the command reads the gate"
+    },
+    "quote": "**Breaking:** Node Auto Repair (alpha, `NodeRepair` feature gate) is now a voluntary disruption method. Instead of forcefully terminating an unhealthy node, Karpenter pre-spins a replacement, respects NodePool Disruption Budgets under the new `Unhealthy` reason, and drains the node while respecting PDBs. The drain is bounded by a per-condition termination grace period; see Monitored Node Conditions. Use the new `karpenter.sh/do-not-repair: \"true\"` node annotation to opt individual nodes out of repair; see Annotations. With the default budget (`nodes: 10%`), Karpenter repairs at most 10% of a NodePool's nodes at a time. The CRD adds `Unhealthy` to the budget `reasons` enum, so upgrade your CRDs alongside the controller. See CRD Upgrades above.",
+    "remediation": "Only matters if the `NodeRepair` feature gate is on. From 1.15 an unhealthy node is no longer terminated outright: Karpenter launches a replacement first, takes a NodePool disruption budget under the new `Unhealthy` reason (default `nodes: 10%`, so at most 10% of a pool is repaired at once), and drains the node respecting PodDisruptionBudgets, bounded by the repair policy's drain time (10 minutes, 5 for GPU XID faults, or the NodeClaim's `terminationGracePeriod` if shorter). A budget with no `reasons` now covers `Unhealthy` too, so a NodePool frozen with `nodes: \"0\"` (or inside a zero-budget schedule window) gets NO repair at all — list `reasons` on that budget if repair must keep working. Repair also stops for a NodePool with more than 20% of its nodes unhealthy, and `karpenter.sh/do-not-disrupt` on a node does not block it. Upgrade the CRDs with the controller — the `Unhealthy` budget reason is new in the CRD. Annotate nodes `karpenter.sh/do-not-repair: \"true\"` to opt them out. On clusters with 1000+ nodes where repair now slows disruption, `settings.legacyNodeRepair` (`LEGACY_NODE_REPAIR=true`) brings back the old forceful health controller.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment|DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)karpenter/controller([:@]|$)"
+    },
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"karpenter/controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[0].env[]? | select(.name | test(\"^(FEATURE_GATES|AWS_FEATURE_GATES|LEGACY_NODE_REPAIR)$\")) | \"\\(.name)=\\(.value)\"] | join(\" \"))\"'; kubectl get nodepools -o json 2>/dev/null | jq -r '.items[]? | \"\\(.metadata.name) budgets=\\(.spec.disruption.budgets // [] | tojson)\"'  # NodeRepair=true in FEATURE_GATES (env only; a --feature-gates arg is not read) turns repair into a budgeted drain; a pool printed with a budget of nodes 0 and no reasons gets no repair at all",
+    "coversNotes": [
+      "Legacy health controller: Clusters with 1000+ nodes that enable node repair may see disruption slow down …",
+      "The default repair policies bound the drain at 10 minutes, or 5 minutes for GPU XID faults."
+    ]
+  },
+  {
+    "ruleId": "rtz-karpenter-1.15-bottlerocket-root-volume-default-grows-to-6gi",
+    "severity": "MEDIUM",
+    "title": "Bottlerocket NVIDIA nodes on Kubernetes 1.37 need a 6Gi root volume",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "bites only node classes that set blockDeviceMappings themselves AND launch Bottlerocket NVIDIA AMIs on 1.37+; blockDeviceMappings is not collected. The hint names node classes whose amiFamily or amiSelectorTerms alias is Bottlerocket"
+    },
+    "quote": "The default Bottlerocket root volume (`/dev/xvda`) size is now `6Gi` (previously `4Gi`). Bottlerocket v1.66.0+ `aws-k8s-1.37-nvidia` AMIs have a 6 GiB root snapshot, and launches with a smaller root volume fail with `InvalidBlockDeviceMapping`. This only applies to EC2NodeClasses that do not set `blockDeviceMappings`. If you set `blockDeviceMappings` yourself and use Bottlerocket NVIDIA AMIs on Kubernetes 1.37+, set the `/dev/xvda` `volumeSize` to at least `6Gi`. This default change does not drift existing nodes, and new nodes pick up the larger volume as they launch.",
+    "remediation": "Nothing to do for node classes that leave `blockDeviceMappings` unset: the default root volume of every new Bottlerocket node grows from 4Gi to 6Gi (2Gi more EBS per node), without drifting existing ones. If a Bottlerocket node class sets `blockDeviceMappings` itself and launches `aws-k8s-1.37-nvidia` AMIs, raise the `/dev/xvda` `volumeSize` to at least `6Gi` — a smaller root volume fails the launch with `InvalidBlockDeviceMapping`.",
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "EC2NodeClass",
+      "target": "amiFamily|amiAliasFamily",
+      "value": "Bottlerocket"
+    },
+    "verifyCommand": "kubectl get ec2nodeclasses -o json 2>/dev/null | jq -r '.items[]? | select((.spec.amiFamily // \"\" | test(\"(?i)bottlerocket\")) or ([.spec.amiSelectorTerms[]?.alias // \"\"] | any(test(\"(?i)^bottlerocket\")))) | \"\\(.metadata.name) xvda=\\([.spec.blockDeviceMappings[]? | select(.deviceName == \"/dev/xvda\") | .ebs.volumeSize] | join(\",\"))\"'  # a Bottlerocket class printed with an xvda size below 6Gi fails NVIDIA 1.37 launches"
+  },
+  {
+    "ruleId": "rtz-karpenter-1.15-pod-deletion-cost-steering-is-deprecated",
+    "severity": "LOW",
+    "title": "Pods steer consolidation with the deprecated pod-deletion-cost annotation",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Pod",
+      "target": "controller.kubernetes.io/pod-deletion-cost"
+    },
+    "quote": "**Deprecation:** Karpenter now reads the `karpenter.sh/disruption-cost` annotation to decide which pods are cheaper to disrupt during consolidation. Using `controller.kubernetes.io/pod-deletion-cost` to steer consolidation is deprecated. If you set `controller.kubernetes.io/pod-deletion-cost` on your pods to influence Karpenter consolidation, set `karpenter.sh/disruption-cost` to the same value instead. Karpenter still falls back to `controller.kubernetes.io/pod-deletion-cost` when `karpenter.sh/disruption-cost` is absent, but only while the `PodDeletionCostManagement` feature gate is disabled, and the fallback is planned to be removed in a future release.",
+    "remediation": "If these pods set `controller.kubernetes.io/pod-deletion-cost` to influence which nodes Karpenter consolidates, add `karpenter.sh/disruption-cost` with the same value. Karpenter 1.15 reads the new annotation first and falls back to the old one only while the `PodDeletionCostManagement` feature gate is off; the fallback is planned for removal, and turning that gate on makes Karpenter overwrite or remove the old annotation on ReplicaSet pods. Pods that set it only for ReplicaSet scale-down need nothing.",
+    "verifyCommand": "kubectl get pods -A -o json | jq -r '.items[] | select(.metadata.annotations[\"controller.kubernetes.io/pod-deletion-cost\"] != null) | \"\\(.metadata.namespace)/\\(.metadata.name) cost=\\(.metadata.annotations[\"controller.kubernetes.io/pod-deletion-cost\"]) karpenter=\\(.metadata.annotations[\"karpenter.sh/disruption-cost\"] // \"-\")\"'  # karpenter=- on a row means the pod steers consolidation only through the deprecated annotation",
+    "coversNotes": [
+      "This version adds the alpha `PodDeletionCostManagement` feature gate (Helm …"
+    ]
+  },
+  {
+    "ruleId": "rtz-karpenter-1.15-kubelet-fields-a-non-al2023-family-cannot-apply-stop-launches",
+    "severity": "HIGH",
+    "title": "EC2NodeClasses with kubelet settings their AMI family cannot apply launch no nodes",
+    "detection": {
+      "kind": "CODED_CHECK",
+      "objectKind": "EC2NodeClass",
+      "target": "karpenter-kubelet-fields-unsupported",
+      "reason": "reads the resolved AMI family (amiFamily, else the amiSelectorTerms alias), the spec.kubelet key names and the clusterDNS count the agent projects from 0.4.157; an EC2NodeClass synced by an older agent is not judged"
+    },
+    "quote": "Any other field set on those families is rejected rather than silently dropped: the `ValidationSucceeded` status condition is set to `False` with reason `UnsupportedKubeletConfiguration`, and no nodes launch from the NodeClass until the unsupported fields are removed. Two field-level restrictions are enforced the same way, for the same reason:",
+    "remediation": "Before upgrading, check every EC2NodeClass whose AMI family is not `AL2023` or `Custom` (`AL2`, `Bottlerocket`, `Windows2019`/`2022`/`2025`, including classes that pick the family through an `amiSelectorTerms` alias). On `Bottlerocket`, remove `spec.kubelet.podsPerCore` — Bottlerocket never applied it, so running nodes do not change. Reduce `spec.kubelet.clusterDNS` to one entry — these families only ever passed the first one to the kubelet. Karpenter 1.15 sets `ValidationSucceeded=False` (`UnsupportedKubeletConfiguration`) on a class that still has either and launches no nodes from it until it is fixed. From 1.15 `spec.kubelet` accepts any KubeletConfiguration field, but on these families only the 12 mapped fields are allowed; any other field added later is rejected the same way.",
+    "verifyCommand": "kubectl get ec2nodeclasses -o json 2>/dev/null | jq -r '.items[]? | (.spec.amiFamily // ([.spec.amiSelectorTerms[]?.alias // empty] | first // \"\" | split(\"@\")[0])) as $f | select($f != \"\" and ($f | test(\"(?i)^(al2023|custom)$\") | not)) | select(((.spec.kubelet.podsPerCore != null) and ($f | test(\"(?i)^bottlerocket$\"))) or (.spec.kubelet.clusterDNS[1]? != null)) | \"\\(.metadata.name) family=\\($f) podsPerCore=\\(.spec.kubelet.podsPerCore // \"-\") clusterDNS=\\(.spec.kubelet.clusterDNS // [] | length)\"'  # a printed class launches no nodes on Karpenter 1.15 until the field is fixed",
+    "coversNotes": [
+      "Only the `AL2023` AMI family bootstraps nodes with a full kubelet configuration document, so it is the only …",
+      "`clusterDNS`, `maxPods`, `podsPerCore`, `systemReserved`, `kubeReserved`, `evictionHard`, `evictionSoft` …",
+      "`podsPerCore` is not applied by the `Bottlerocket` family.",
+      "`clusterDNS` accepts only one entry on these non-AL2023 families, not a list.",
+      "The `Custom` AMI family is exempt from these checks."
+    ]
+  }
+]

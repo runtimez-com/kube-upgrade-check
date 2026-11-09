@@ -14,7 +14,7 @@
   },
   "quote": "The `cert-manager-edit` aggregate ClusterRole no longer grants `create` for `challenges.acme.cert-manager.io` or `create`, `patch`, `update` for `orders.acme.cert-manager.io`. This fixes a security issue (`GHSA-8rvj-mm4h-c258`) where these permissions allowed namespace users to bypass Issuer solver selectors and abuse ClusterIssuer credentials.",
   "remediation": "If any tooling creates Challenge or Order resources directly — outside the normal Certificate → CertificateRequest → Order → Challenge flow — grant it those permissions explicitly. This closed a security issue (GHSA-8rvj-mm4h-c258) and is not being reverted.",
-  "verifyCommand": "kubectl get clusterrole cert-manager-edit -o json 2>/dev/null | jq -r '.rules[] | select(.apiGroups[]? | test(\"acme.cert-manager.io\")) | \"\\(.resources | join(\",\")): \\(.verbs | join(\",\"))\"'  # create on challenges, and create/patch/update on orders, are what the upgrade removes",
+  "verifyCommand": "kubectl get clusterrole cert-manager-edit -o json 2>/dev/null | jq -r '.rules[] | select(.apiGroups[]? | test(\"acme.cert-manager.io\")) | select(((.resources | index(\"challenges\")) and (.verbs | index(\"create\"))) or ((.resources | index(\"orders\")) and (.verbs | (index(\"create\") or index(\"patch\") or index(\"update\"))))) | \"\\(.resources | join(\",\")): \\(.verbs | join(\",\"))\"'  # each row grants a verb the upgrade removes; NO rows = already restricted",
   "coversNotes": [
    "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole"
   ],
@@ -33,11 +33,14 @@
    "objectKind": "Issuer|ClusterIssuer",
    "target": "serviceAccountRefs[]",
    "value": "^cert-manager$",
-   "reason": "matches the CHART DEFAULT ServiceAccount name; an installation that renamed the controller ServiceAccount needs the command below instead"
+   "reason": "matches the CHART DEFAULT ServiceAccount name. The removed Role lives in the cert-manager namespace and names the controller's own ServiceAccount, so only ClusterIssuers, and Issuers in that namespace, are affected — an Issuer elsewhere whose own ServiceAccount is also called cert-manager matches here and is fine. The Role exists from 1.16, so an install that never ran 1.16-1.20 never had it. A renamed controller ServiceAccount needs the command below instead"
   },
   "quote": "The Helm chart no longer creates a default `Role` and `RoleBinding` granting the cert-manager controller permission to create tokens for its own ServiceAccount (`serviceaccounts/token: create`).",
   "remediation": "Either create your own Role and RoleBinding granting `serviceaccounts/token: create` on the cert-manager ServiceAccount, or (recommended) move these issuers to a dedicated ServiceAccount with its own RBAC.",
-  "verifyCommand": "kubectl get clusterissuers,issuers -A -o json | jq -r '.items[] | select([.. | objects | .serviceAccountRef? // empty | .name][0] != null) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) sa=\\([.. | objects | .serviceAccountRef? // empty | .name] | join(\",\"))\"'  # any row naming the cert-manager controller's own ServiceAccount breaks at 1.21"
+  "verifyCommand": "kubectl get clusterissuers,issuers -A -o json | jq -r '.items[] | select(.kind == \"ClusterIssuer\" or .metadata.namespace == \"cert-manager\") | select([.. | objects | .serviceAccountRef? // empty | .name][0] != null) | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) sa=\\([.. | objects | .serviceAccountRef? // empty | .name] | join(\",\"))\"'  # any row naming the controller's own ServiceAccount breaks at 1.21; NO rows = clean",
+  "coversNotes": [
+   "BREAKING: The Helm chart no longer ships a default `Role` and `RoleBinding` granting the…"
+  ]
  },
  {
   "ruleId": "rtz-cert-manager-1.21-prometheus-helm-values-removed",
@@ -56,11 +59,14 @@
   "severity": "MEDIUM",
   "title": "The controller Service's metrics port is renamed — scrape configs on the old name stop matching",
   "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the old port name is on every stock pre-1.21 controller Service, and the chart's own ServiceMonitor and PodMonitor follow the rename; what breaks is a custom scrape config, which is not collected"
+  },
+  "scope": {
    "kind": "SPEC_PATH_MATCHES",
    "objectKind": "Service",
    "target": "ports[].name",
-   "value": "^tcp-prometheus-servicemonitor$",
-   "reason": "the Service port name is projected; ServiceMonitors and scrape configs that select it are not collected"
+   "value": "^tcp-prometheus-servicemonitor$"
   },
   "quote": "The controller Service metrics port has also been renamed from `tcp-prometheus-servicemonitor` to `http-metrics`.",
   "remediation": "Change every ServiceMonitor or scrape config that selects the port `tcp-prometheus-servicemonitor` to `http-metrics`.",

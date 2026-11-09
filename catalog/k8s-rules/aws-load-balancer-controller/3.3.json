@@ -1,0 +1,46 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.3-acm-certificate-management-iam",
+    "severity": "LOW",
+    "title": "EnableCertificateManagement (off by default) needs an additional ACM + Route 53 IAM policy on the controller role",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "EnableCertificateManagement=true",
+      "reason": "checked the controller Deployment's --feature-gates for EnableCertificateManagement=true — the opt-in that needs the extra policy"
+    },
+    "quote": "If you enable the `EnableCertificateManagement` feature gate, attach the additional IAM policy for ACM and Route53 permissions to your controller's IAM role. See the documentation for details.",
+    "remediation": "Only when enabling the gate: attach docs/install/iam_policy_acm_certs.json (acm:RequestCertificate / DeleteCertificate / AddTagsToCertificate / ListTagsForCertificate, acm-pca:IssueCertificate / GetCertificate / ListPermissions, route53:ChangeResourceRecordSets / ListHostedZones / ListHostedZonesByName) before Ingresses use alb.ingress.kubernetes.io/create-acm-cert.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with; SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names acm:RequestCertificate route53:ChangeResourceRecordSets --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "v3.3.0 (Ingress Features): ACM Certificate Management (Feature Gate: EnableCertificateManagement",
+      "annotations.md › ACM Certificates › <a name=\"create-acm-cert\">alb.ingress.kubernetes.io/create-a",
+      "certificate_management.md › Create TLS certificates for all ingresse › Currently the feature has",
+      "certificate_management.md › Conflict with explicitly configured cert › Explicitly configured Cer",
+      "certificate_management.md › Ingress Group Behavior › certificate-arn — use a manually specified",
+      "certificate_management.md › PCA-Support › ingress annotation: an ingress object can use any PCA"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.3-crd-updates-3-3",
+    "severity": "INFO",
+    "title": "v3.3.0 repeats the vendor's apply-the-latest-CRDs note — no CRD schema changed between v3.2.0 and v3.3.0",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "nothing in the CRD files changed for this release (git diff v3.2.0..v3.3.0 over config/crd and helm crds is empty); the certificate-management feature is annotation-driven code; the hint names the LBC CRDs"
+    },
+    "quote": "Action: Please apply the latest CRD definitions",
+    "remediation": "No CRD change ships in 3.3.0 (ACM certificate management is driven by Ingress annotations). Re-applying the CRDs is harmless.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^(elbv2|gateway)\\.k8s\\.aws$"
+    },
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; nothing new absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "v3.3.0 (Gateway API updates): Experimental Gateway API CRDs: kubectl apply -f https://github.com"
+    ]
+  }
+]

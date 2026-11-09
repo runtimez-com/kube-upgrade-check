@@ -1,0 +1,37 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.17-global-accelerator-controller-opt-in",
+    "severity": "LOW",
+    "title": "v2.17 ships an AWS Global Accelerator controller behind the GlobalAcceleratorController feature gate — new CRD, IAM policy and RBAC when enabled",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "GlobalAcceleratorController=true",
+      "reason": "checked the controller Deployment's --feature-gates for GlobalAcceleratorController=true — the only switch (there is no --enable-global-accelerator flag; an unknown flag stops the controller at start); off, nothing of this applies"
+    },
+    "quote": "Feature Flag for Global Accelerator - Enable the feature flag `--enable-global-accelerator=true,--feature-gates=EnableRGTAPI` to use Accelerator functionality",
+    "remediation": "Only when enabling it: apply config/crd/aga/aga.k8s.aws_globalaccelerators.yaml, docs/install/aga_controller_iam_policy.json and the latest config/rbac/role.yaml, then pass --feature-gates=GlobalAcceleratorController=true,EnableRGTAPI=true (the chart's controllerConfig.featureGates). There is no --enable-global-accelerator flag.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "coversNotes": [
+      "v2.17.0: CRD Updates - If you're upgrading the charts using helm upgrade, you need to update CRD",
+      "v2.17.0: IAM Policy Updates - Update the controller's IAM policy with Global Accelerator permiss",
+      "v2.17.0: RBAC Updates - Apply the latest RBAC definitions for Global Accelerator controller perm"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.17-aga-controller-gate-renamed",
+    "severity": "MEDIUM",
+    "title": "The 2.15/2.16 feature gate AGAController is renamed GlobalAcceleratorController in 2.17 — the old name is an unknown gate and the controller refuses to start",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "AGAController=",
+      "reason": "checked the controller Deployment's --feature-gates for the pre-2.17 gate name AGAController — 2.17 parses it as 'unknown feature' and exits"
+    },
+    "quote": "AGAController: false,",
+    "remediation": "Rename AGAController to GlobalAcceleratorController in --feature-gates (controllerConfig.featureGates) in the same change as the 2.17 upgrade; a 2.17 controller started with AGAController=... logs 'unknown feature' and crash-loops.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with"
+  }
+]

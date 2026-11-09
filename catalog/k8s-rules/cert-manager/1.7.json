@@ -2,17 +2,18 @@
  {
   "ruleId": "rtz-cert-manager-1.7-deprecated-api-versions-removed",
   "severity": "HIGH",
-  "title": "cert-manager CRDs still carry a removed API version",
+  "title": "Removed API versions — every CRD's storedVersions must be [v1] before 1.7",
   "detection": {
-   "kind": "SPEC_PATH_MATCHES",
+   "kind": "NOT_DETECTABLE",
+   "reason": "the blocker is each CRD's `status.storedVersions`, which is not projected; the CRD version LIST cannot stand in for it, because the 1.6 CRDs still declare v1alpha2/v1alpha3/v1beta1 (served: false) on every install, migrated or not"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
    "objectKind": "CustomResourceDefinition",
-   "objectName": "cert-manager\\.io$",
-   "target": "versions[].name",
-   "value": "^v1(alpha[23]|beta1)$",
-   "reason": "the CRDs' version LIST is projected; which version each resource is STORED at in etcd is not, so a clean result here means the CRDs no longer declare the removed versions, not that etcd has been migrated"
+   "objectName": "\\.cert-manager\\.io$"
   },
   "quote": "⚠ Following their deprecation in version 1.5, the cert-manager API versions v1alpha2, v1alpha3, and v1beta1 have been removed. You must ensure that all cert-manager custom resources are stored in etcd at version v1 and that all cert-manager `CustomResourceDefinition`s have only v1 as the stored version **before** upgrading. Please read [Migrating Deprecated API Resources] for full instructions.",
-  "remediation": "Migrate stored resources to v1 (`cmctl upgrade migrate-api-version`, or re-apply every cert-manager resource) and make v1 the only version the CRDs declare, BEFORE upgrading.",
+  "remediation": "On 1.6, BEFORE upgrading, run `cmctl upgrade migrate-api-version` (cmctl 1.7+): it rewrites every cert-manager object at v1 and sets each CRD's `status.storedVersions` to `[v1]`. Re-applying manifests alone does not update storedVersions, and the API server refuses the 1.7 CRDs while a removed version is still listed there.",
   "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.status.storedVersions[] | select(. != \"v1\") | \"\\($c.metadata.name) still stores \\(.)\"'  # each row is a CRD whose etcd contents must be migrated to v1; NO rows = clean",
   "coversNotes": [
    "Removal of Deprecated APIs",
@@ -31,7 +32,7 @@
    "reason": "whether a solver uses an Ingress is projected; the class VALUE and which controller serves it are not"
   },
   "quote": "If you are using Traefik, Istio, Ambassador, or ingress-nginx _and_ you are using a non-default value for the class (e.g., `istio-internal`), or if you experience any issues with your HTTP-01 challenges please read the [notes on Ingress v1 compatibility].",
-  "remediation": "If the solver's class is a non-default value on Traefik, Istio, Ambassador or ingress-nginx, confirm the controller honours the `kubernetes.io/ingress.class` annotation, or set the solver's `ingressClassName` explicitly.",
+  "remediation": "On 1.7 the solver's `class` is written as the `kubernetes.io/ingress.class` annotation again: if the class is a non-default value on Traefik, Istio, Ambassador or ingress-nginx, confirm the controller honours that annotation. The regression was in v1.5.4, v1.6.0 and v1.6.1 only — upgrading from 1.5.3 or earlier, 1.5.5+ or 1.6.2+ changes nothing here.",
   "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | . as $i | .spec.acme.solvers[]? | select(.http01.ingress.class) | \"\\($i.kind)/\\($i.metadata.namespace // \"cluster\")/\\($i.metadata.name) class=\\(.http01.ingress.class)\"'  # each row's class is applied as an annotation again from 1.7"
  },
  {
@@ -50,5 +51,20 @@
   "quote": "As part of the work to remove deprecated APIs cert-manager `CustomResourceDefinition`s no longer require a conversion webhook. The related change in cert-manager `CustomResourceDefinition` specs results in invalid `CustomResourceDefinition` configurations for users who are upgrading to cert-manager 1.7 using `kubectl apply --server-side=true -f <manifests>`.",
   "remediation": "Before applying the 1.7 CRDs with server-side apply, remove the `cainjector` entry from each cert-manager CRD's managedFields (the vendor's note carries the patch loop).",
   "verifyCommand": "kubectl get crd -o json --show-managed-fields | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\\\\.io$\")) | select([.metadata.managedFields[]?.manager] | index(\"cainjector\")) | .metadata.name'  # each row still carries the cainjector entry; NO rows = clean"
+ },
+ {
+  "ruleId": "rtz-cert-manager-1.7-dns01-self-check-nameservers-flag-removed",
+  "severity": "HIGH",
+  "title": "--dns01-self-check-nameservers is removed — the controller will not start with it",
+  "detection": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Deployment|DaemonSet",
+   "target": "containers[].args[]",
+   "value": "dns01-self-check-nameservers",
+   "reason": "checked in the cert-manager workload's container args only — a flag passed through a config file is not scanned"
+  },
+  "quote": "Breaking change: removes the deprecated `dns01-self-check-nameservers` flag. Use `--dns01-recursive-nameservers` instead.",
+  "remediation": "Replace `--dns01-self-check-nameservers` with `--dns01-recursive-nameservers` (same value) before upgrading: the 1.7 controller exits on the unknown flag.",
+  "verifyCommand": "kubectl get deploy,ds -A -o json | jq -r '.items[] | .metadata as $m | .spec.template.spec.containers[].args[]? | select(test(\"dns01-self-check-nameservers\")) | \"\\($m.namespace)/\\($m.name) \\(.)\"'  # each row is a controller still started with the removed flag; NO rows = clean"
  }
 ]

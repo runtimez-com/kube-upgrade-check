@@ -217,11 +217,36 @@
   {
     "version": "1.14",
     "note": "This version adds a Balanced consolidation policy.",
-    "reason": "a new consolidation policy that the note says leaves existing NodePools unaffected unless you opt into it."
+    "reason": "a new consolidation policy whose scoring and approval threshold the note says apply only to NodePools that opt into Balanced. The candidate-order change the same note mentions applies to every NodePool and is upstream's own next note, ruled as 1.14 consolidation-candidate-order-changes."
   },
   {
     "version": "1.14",
     "note": "This version adds support for preview instance types, allowing Karpenter to consider instance types that do …",
     "reason": "preview instance types behind an existing feature gate, described by the note as opt-in."
+  },
+  {
+    "version": "1.15",
+    "note": "Breaking: the `reason` label on the `karpenter_nodepool_allowed_disruptions` and …",
+    "reason": "a metric LABEL change (the reason label on karpenter_nodepool_allowed_disruptions and karpenter_nodepool_nodes_consuming_budgets becomes lowercase). Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.15",
+    "note": "Breaking: the `consolidation_type` label on the `karpenter_voluntary_disruption_queue_failures_total` metric …",
+    "reason": "a metric LABEL change (consolidation_type on karpenter_voluntary_disruption_queue_failures_total now carries the consolidation type). Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.15",
+    "note": "Breaking: the `error` label on the `karpenter_cloudprovider_errors_total` metric now uses `unknown` instead …",
+    "reason": "a metric LABEL change (error on karpenter_cloudprovider_errors_total reads unknown instead of an empty string). Dashboards and alerts are not Kubernetes objects this platform collects."
+  },
+  {
+    "version": "1.15",
+    "note": "This version adds the `TerminateFirstDrift` and `TerminateFirstRepair` alpha feature gates for …",
+    "reason": "two new alpha feature gates (TerminateFirstDrift, TerminateFirstRepair) that the note says are disabled by default. Nothing changes unless they are enabled."
+  },
+  {
+    "version": "1.15",
+    "note": "This version adds the alpha `RebootForRepair` AWS feature gate, disabled by default.",
+    "reason": "a new alpha AWS feature gate (RebootForRepair) that the note says is disabled by default; it needs ec2:RebootInstances, which is IAM, not a Kubernetes object this platform collects."
   }
 ]

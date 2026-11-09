@@ -70,11 +70,6 @@
   "reason": "the release notes' POINTER at the 1.11 upgrade guide, whose Gateway API note carries the rule (rtz-cert-manager-1.11-gateway-api-crds-move-to-v1beta1)."
  },
  {
-  "version": "1.16",
-  "note": "OperatorHub Packages Discontinued",
-  "reason": "an OLM PACKAGING change, like the 1.4 Red Hat Marketplace one: the OperatorHub package stops at v1.16.5, and the move to Helm or static manifests is done through OLM, not through any object this product collects."
- },
- {
   "version": "1.19",
   "note": "Potentially Breaking: Challenge and Order RBAC restricted in `cert-manager-edit` ClusterRole",
   "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
@@ -93,5 +88,55 @@
   "version": "1.20",
   "note": "Restrict Challenge and Order RBAC in `cert-manager-edit` ClusterRole",
   "reason": "covered by `rtz-cert-manager-1.21-cert-manager-edit-loses-challenge-order-create`, whose introducedIn [\"1.19.6\", \"1.20.3\", \"1.21.0\"] carries this line's patch — one rule per change, so a hop from any line selects it once (a second copy here would fire beside it on every hop that crosses both, and without its patch it was selected for a hop that ends below the patch and missed for a patch-only hop onto it)."
+ },
+ {
+  "version": "1.7",
+  "note": "Breaking change: pprof now runs by default on `localhost:6060` on the webhook and the…",
+  "reason": "profiling stays OFF unless `--enable-profiling` is set (options.go at v1.7.0); what changed is the default ADDRESS an operator who turns it on gets. Nothing about a running install changes on upgrade."
+ },
+ {
+  "version": "1.12",
+  "note": "POTENTIALLY BREAKING: the cert-manager binaries and some tests have been split into…",
+  "reason": "a Go MODULE layout change: the vendor's own text says it has no impact on running cert-manager in a cluster, only on code that imports its binaries or tests."
+ },
+ {
+  "version": "1.12",
+  "note": "Cainjector memory improvements: removes second cache of secrets, CRDs,…",
+  "reason": "breaks only a cainjector run WITHOUT the `certificates.cert-manager.io` CRD; every cert-manager install (Helm, manifests, OLM) ships that CRD, so the condition cannot hold on a cluster where this add-on is detected."
+ },
+ {
+  "version": "1.12",
+  "note": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is…",
+  "reason": "a known issue present since v1.0 and exposed by Let's Encrypt's 2024-02-08 chain change, not introduced by 1.12; it is fixed in 1.15 (#6755) and the behaviour change is carried there by rtz-cert-manager-1.15-acme-preferred-chain-now-honoured."
+ },
+ {
+  "version": "1.13",
+  "note": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is…",
+  "reason": "same known issue as the 1.12 entry: present since v1.0, fixed in 1.15 (rtz-cert-manager-1.15-acme-preferred-chain-now-honoured)."
+ },
+ {
+  "version": "1.15",
+  "note": "Startupapicheck image change",
+  "reason": "restates 1.14: the chart switched startupapicheck from the cert-manager-ctl image to its own image in v1.14.0 (values.yaml:1223; v1.13.0:687 still names cert-manager-ctl). Carried by rtz-cert-manager-1.14-startupapicheck-image-changed."
+ },
+ {
+  "version": "1.15",
+  "note": "⚠️ Possibly breaking: Helm will now keep the CRDs when you uninstall cert-manager by…",
+  "reason": "changes `helm uninstall` only (CRDs are kept); `installCRDs` is still accepted through v1.21.3 (values.yaml:104), so an upgrade with existing values behaves as before."
+ },
+ {
+  "version": "1.17",
+  "note": "⚠️ Potentially BREAKING: Log messages that were not structured have now been replaced…",
+  "reason": "log FORMAT only, same as the 1.17 structured-logs entry above: log lines are not collected, and nothing about issuance changes."
+ },
+ {
+  "version": "1.14",
+  "note": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is configured - #6755, #6757",
+  "reason": "same known issue as the 1.12 entry: present since v1.0 and exposed by Let's Encrypt's 2024-02-08 chain change; the fix (#6755) shipped in 1.15, where rtz-cert-manager-1.15-acme-preferred-chain-now-honoured carries the behaviour change."
+ },
+ {
+  "version": "1.14",
+  "note": "ACME Issuer (Let's Encrypt): wrong certificate chain may be used if `preferredChain` is…",
+  "reason": "same known issue as the 1.12 entry: present since v1.0 and exposed by Let's Encrypt's 2024-02-08 chain change; the fix (#6755) shipped in 1.15, where rtz-cert-manager-1.15-acme-preferred-chain-now-honoured carries the behaviour change."
  }
 ]

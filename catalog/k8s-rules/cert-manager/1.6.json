@@ -1,31 +1,20 @@
 [
  {
-  "ruleId": "rtz-cert-manager-1.6-crd-still-serves-v1alpha2",
+  "ruleId": "rtz-cert-manager-1.6-legacy-api-versions-not-served",
   "severity": "HIGH",
-  "title": "cert-manager CRDs still serve v1alpha2, which 1.6 stops serving",
+  "title": "1.6 stops serving v1alpha2/v1alpha3/v1beta1 — unconverted manifests can no longer be applied",
   "detection": {
-   "kind": "CRD_SERVED_VERSION",
-   "objectKind": "cert-manager.io",
-   "target": "v1alpha2",
-   "reason": "read from the CRDs' own served-version list"
+   "kind": "NOT_DETECTABLE",
+   "reason": "what breaks is manifests in Git, Helm charts and scripts that still use a legacy apiVersion, which are not cluster objects; every 1.5 CRD serves the legacy versions until the upgrade itself, so the served list cannot clear this either"
+  },
+  "scope": {
+   "kind": "KIND_PRESENT",
+   "objectKind": "CustomResourceDefinition",
+   "objectName": "\\.cert-manager\\.io$"
   },
   "quote": "Following their deprecation in version 1.4, the cert-manager API versions `v1alpha2, v1alpha3, and v1beta1` are no longer served.",
-  "remediation": "Convert every cert-manager manifest to `cert-manager.io/v1` (`cmctl convert` does it) and re-apply the 1.6 CRDs so only v1 is served.",
-  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.spec.versions[] | select(.served) | select(.name != \"v1\") | \"\\($c.metadata.name) still serves \\(.name)\"'  # each row is a CRD serving a version 1.6 stops serving; NO rows = clean"
- },
- {
-  "ruleId": "rtz-cert-manager-1.6-crd-still-serves-v1beta1",
-  "severity": "HIGH",
-  "title": "cert-manager CRDs still serve v1beta1, which 1.6 stops serving",
-  "detection": {
-   "kind": "CRD_SERVED_VERSION",
-   "objectKind": "cert-manager.io",
-   "target": "v1beta1",
-   "reason": "read from the CRDs' own served-version list"
-  },
-  "quote": "This means if your deployment manifests contain any of these API versions, you will not be able to deploy them after upgrading. Our new `cmctl` utility or old `kubectl cert-manager` plugin can convert old manifests to `v1` for you.",
-  "remediation": "Convert every cert-manager manifest to `cert-manager.io/v1` and re-apply the 1.6 CRDs so only v1 is served.",
-  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.spec.versions[] | select(.served) | select(.name != \"v1\") | \"\\($c.metadata.name) still serves \\(.name)\"'  # each row is a CRD serving a version 1.6 stops serving; NO rows = clean"
+  "remediation": "Convert every cert-manager manifest in Git, charts and scripts to `cert-manager.io/v1` (`cmctl convert`) before upgrading: from 1.6 the API server refuses the legacy versions, so a GitOps sync or `kubectl apply` of an unconverted manifest fails. On a cluster that ran cert-manager before v1.0, also run `cmctl upgrade migrate-api-version` so every CRD's storedVersions is `[v1]` (the command below).",
+  "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"cert-manager\\\\.io$\")) as $c | $c.status.storedVersions[] | select(. != \"v1\") | \"\\($c.metadata.name) still stores \\(.)\"'  # each row is a CRD still storing a legacy version (clusters that predate v1.0); NO rows = only your manifests need converting"
  },
  {
   "ruleId": "rtz-cert-manager-1.6-do-not-install-1-6-0",
@@ -42,6 +31,6 @@
   },
   "quote": "In cert-manager `v1.6.0` JKS Keystores had a minimum password length of 6 characters, as an unintended side effect of upgrading keystore-go from `v2` to `v4`. If you are using a shorter password, certificates would have failed to renew, and the only observable error was in the cert-manager logs. This was fixed in cert-manager `v1.6.1`.",
   "remediation": "Skip v1.6.0 and install the latest 1.6 patch.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # a tag of v1.6.0 after the upgrade is the one release to avoid"
+  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].image'  # lists, does not judge: a tag of v1.6.0 after the upgrade is the one release to avoid"
  }
 ]

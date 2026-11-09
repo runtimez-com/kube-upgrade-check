@@ -1,0 +1,231 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-oidc-auth-needs-secret-rbac",
+    "severity": "HIGH",
+    "title": "Chart 1.4.1+ no longer grants the controller Secret RBAC — Ingresses using OIDC authentication lose their client secret",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "alb.ingress.kubernetes.io/auth-idp-oidc",
+      "reason": "checked for the OIDC authentication annotation on Ingress — the only feature that makes the controller read a Secret"
+    },
+    "quote": "🚨 🚨 🚨 The new HelmChart(version 1.4.1) and installation YAML for v2.4.1+ **no longer contain the RBAC permission for controller to access Secret resources by default**.",
+    "remediation": "Before upgrading the chart or manifests to v2.4.1+, grant the controller read access to each Secret an Ingress names in alb.ingress.kubernetes.io/auth-idp-oidc (a namespaced Role + RoleBinding for the controller ServiceAccount), or keep the old behaviour with --set clusterSecretsPermissions.allowAllSecrets=true. Without it the OIDC listener rule cannot be built and the Ingress stops reconciling.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select(.metadata.annotations[\"alb.ingress.kubernetes.io/auth-idp-oidc\"] != null) | \"\\(.metadata.namespace)/\\(.metadata.name) secret=\\(.metadata.annotations[\"alb.ingress.kubernetes.io/auth-idp-oidc\"] | fromjson? | .secretName // \"?\")\"'; kubectl auth can-i get secrets --as=system:serviceaccount:kube-system:aws-load-balancer-controller -A  # each OIDC Ingress and the Secret it names; the can-i must be yes (or a Role in that namespace must grant it)",
+    "coversNotes": [
+      "v2.4.1: If you do use the authentication via OIDC IDP feature for any Ingress in cluster, you mu",
+      "v2.4.1: If you don't use the authentication via OIDC IDP feature for any Ingresses in cluster, n",
+      "v2.4.1 (What's new): The controller will no longer require permissions for all Secret resources."
+    ],
+    "introducedIn": [
+      "2.4.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-iam-addtags-permission",
+    "severity": "MEDIUM",
+    "title": "Reference IAM policy gains elasticloadbalancing:AddTags on create — update the controller's policy",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the controller's IAM policy lives in AWS, not in a Kubernetes object the agent collects; the hint names the controller Deployment whose role to simulate"
+    },
+    "quote": "🚨 🚨 🚨 We've updated the reference IAM policies to explicitly add the `AddTag` permission for creating load balancer and listener resources. We recommend updating your controller IAM policies with the new permissions for existing installations as well.",
+    "remediation": "Attach the v2.4.7 reference policy (docs/install/iam_policy.json) to the controller's IAM role before upgrading: CreateLoadBalancer and CreateTargetGroup now tag on create and fail with AccessDenied without elasticloadbalancing:AddTags conditioned on elasticloadbalancing:CreateAction (CreateTargetGroup, CreateLoadBalancer — listeners and rules are not in the condition).",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:AddTags elasticloadbalancing:CreateLoadBalancer elasticloadbalancing:CreateTargetGroup --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "v2.4.7 (Whats new): We have also updated the reference IAM policies to explicitly allow the AddT"
+    ],
+    "introducedIn": [
+      "2.4.7"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-kubernetes-1-19-floor-ingress-v1",
+    "severity": "INFO",
+    "title": "v2.4 is built on networking.k8s.io/v1 Ingress and requires Kubernetes 1.19+",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a statement about the control-plane version, which every supported EKS release satisfies; recorded so the floor is visible on the hop, never a compatibility matrix"
+    },
+    "quote": "v2.4.7 (requires Kubernetes 1.19+)",
+    "remediation": "Nothing to do on Kubernetes 1.19 or newer. The controller reads Ingress through networking.k8s.io/v1 from v2.4.0; extensions/v1beta1 and networking.k8s.io/v1beta1 Ingress objects are converted by the API server on clusters that still serve them.",
+    "verifyCommand": null,
+    "coversNotes": [
+      "v2.4.0 (Note): This release uses the new Ingress API version networking.k8s.io/v1 available in k",
+      "installation.md › Supported Kubernetes versions › AWS Load Balancer Controller v2.4.0+ requires"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-apply-entire-manifest-webhook-changes",
+    "severity": "MEDIUM",
+    "title": "v2.4.0 moves the Ingress validating webhook to /validate-networking-v1-ingress — apply the entire manifest or use Helm, never just the image tag",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the controller was installed (helm upgrade vs. a hand-edited image tag) is not a Kubernetes fact; the hint names the controller Deployment and the webhook configurations to compare"
+    },
+    "quote": "**IMPORTANT** If you are upgrading the controller from a prior version to v2.4.0, please apply the entire manifest or use helm due to the webhook changes.",
+    "remediation": "Upgrade with helm upgrade or kubectl apply of the full v2.4.0 manifest. The vingress.elbv2.k8s.aws entry of the aws-load-balancer-webhook ValidatingWebhookConfiguration changes its path from /validate-networking-v1beta1-ingress to /validate-networking-v1-ingress; with only the Deployment image edited the API server keeps calling the old path, the controller answers 404, and with failurePolicy Fail every Ingress create or update on the cluster is rejected.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations,validatingwebhookconfigurations -o json | jq -r '.items[] | .webhooks[] | select(.name | test(\"k8s\\\\.aws$\")) | \"\\(.name) failurePolicy=\\(.failurePolicy) namespaceSelector=\\(.namespaceSelector // {} | tojson)\"'  # the LBC admission webhooks installed on this cluster and the failure policy each runs with"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-endpointslice-v1-api",
+    "severity": "LOW",
+    "title": "v2.4.7 reads EndpointSlice through discovery.k8s.io/v1 — needed on Kubernetes 1.25+, supported on 1.21+ only",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "(?i)--enable-endpoint-slices(=true)?$",
+      "reason": "checked the controller Deployment's container args for --enable-endpoint-slices — the only mode in which the controller reads EndpointSlice at all"
+    },
+    "quote": "This patch release updates the controller to use discovery.k8s.io/v1 version of EndpointSlice for compatibility with k8s 1.25 and later releases. Starting this patch release, the controller will be able to support EndpointSlice in k8s 1.21 and later clusters only.",
+    "remediation": "If --enable-endpoint-slices is on, run v2.4.7 or newer before moving the cluster to Kubernetes 1.25 (discovery.k8s.io/v1beta1 is gone there); on clusters older than 1.21 keep EndpointSlice mode off.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "introducedIn": [
+      "2.4.7"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-chart-creates-ingressclass-alb",
+    "severity": "LOW",
+    "title": "The v2.4.0 chart and manifest create an IngressClass named alb by default — an existing one collides",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "IngressClass",
+      "objectName": "^alb$",
+      "target": "controller",
+      "value": "ingress.k8s.aws/alb",
+      "reason": "checked for an IngressClass named alb with the LBC controller name — the object the chart now wants to create"
+    },
+    "quote": "For convenience, the v2.4.0 release manifest and the helm chart creates an `IngressClass` resource named `alb` by default.",
+    "remediation": "If the cluster already has an IngressClass named alb that Helm does not own, install the chart with --set createIngressClassResource=false (or adopt the object with the Helm release labels); otherwise helm install fails with 'already exists'. Ingresses that relied on the kubernetes.io/ingress.class annotation keep working.",
+    "verifyCommand": "kubectl get ingressclass alb -o json 2>/dev/null | jq -r '\"controller=\\(.spec.controller) managed-by=\\(.metadata.labels[\"app.kubernetes.io/managed-by\"] // \"-\") release=\\(.metadata.annotations[\"meta.helm.sh/release-name\"] // \"-\")\"'  # managed-by - means the object predates the chart and must be adopted or createIngressClassResource set to false",
+    "coversNotes": [
+      "v2.4.0 (What's new): Helm chart create IngressClass and IngressClassParams by default",
+      "chart value added: createIngressClassResource = true — createIngressClassResource: true"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-deprecated-load-balancer-attribute-annotations",
+    "severity": "LOW",
+    "title": "The access-log and cross-zone Service annotations are deprecated in favour of aws-load-balancer-attributes",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-access-log-enabled|service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name|service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix|service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled",
+      "reason": "checked for the four deprecated attribute annotations on a classed Service — one the controller owns"
+    },
+    "quote": "the following annotations are deprecated in v2.3.0 release in favor of service.beta.kubernetes.io/aws-load-balancer-attributes",
+    "remediation": "Move the settings into service.beta.kubernetes.io/aws-load-balancer-attributes (access_logs.s3.enabled, access_logs.s3.bucket, access_logs.s3.prefix, load_balancing.cross_zone.enabled — carry the CURRENT values over) and drop the old annotations. They still work at v3.6.2 and win a tie against aws-load-balancer-attributes, except that access-log-enabled \"false\" is ignored rather than winning, so this is clean-up, not an upgrade blocker.",
+    "gate": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Service",
+      "target": "loadBalancerClass",
+      "reason": "the in-tree AWS cloud provider reads these same annotations for its Classic ELBs, where they are NOT deprecated, and it never reconciles a Service that names a spec.loadBalancerClass — a classed Service is the controller's (service.k8s.aws/nlb, or a custom --load-balancer-class); the unclassed aws-load-balancer-type external | nlb-ip Services are the by-type sibling's"
+    },
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.loadBalancerClass != null) | . as $s | [.metadata.annotations // {} | keys[] | select(test(\"aws-load-balancer-(access-log-(enabled|s3-bucket-name|s3-bucket-prefix)|cross-zone-load-balancing-enabled)$\"))] | select(.[0] != null) | \"\\($s.metadata.namespace)/\\($s.metadata.name) \\(join(\",\"))\"'  # each classed Service still setting a deprecated attribute annotation",
+    "coversNotes": [
+      "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-access-log-enabled",
+      "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-access-log-s3-buck",
+      "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-access-log-s3-buck (2)",
+      "annotations.md › Annotations › | service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-ba"
+    ],
+    "deprecationOnly": true,
+    "alwaysOn": true
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-deprecated-load-balancer-attribute-annotations-by-type",
+    "severity": "LOW",
+    "title": "The access-log and cross-zone Service annotations are deprecated in favour of aws-load-balancer-attributes",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-access-log-enabled|service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name|service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix|service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled",
+      "reason": "checked for the four deprecated attribute annotations on an unclassed aws-load-balancer-type external | nlb-ip Service — one the controller owns"
+    },
+    "quote": "the following annotations are deprecated in v2.3.0 release in favor of service.beta.kubernetes.io/aws-load-balancer-attributes",
+    "remediation": "Move the settings into service.beta.kubernetes.io/aws-load-balancer-attributes (access_logs.s3.enabled, access_logs.s3.bucket, access_logs.s3.prefix, load_balancing.cross_zone.enabled — carry the CURRENT values over) and drop the old annotations. They still work at v3.6.2 and win a tie against aws-load-balancer-attributes, except that access-log-enabled \"false\" is ignored rather than winning, so this is clean-up, not an upgrade blocker.",
+    "gate": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-type",
+      "value": "^\\s*(external|nlb-ip)\\s*$",
+      "reason": "a Service with no spec.loadBalancerClass is the controller's only through aws-load-balancer-type external | nlb-ip, values the in-tree provider ignores; every other unclassed LoadBalancer Service is the in-tree provider's, where these keys are NOT deprecated"
+    },
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.loadBalancerClass == null and (.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-type\"] // \"\" | test(\"^ *(external|nlb-ip) *$\"))) | . as $s | [.metadata.annotations // {} | keys[] | select(test(\"aws-load-balancer-(access-log-(enabled|s3-bucket-name|s3-bucket-prefix)|cross-zone-load-balancing-enabled)$\"))] | select(.[0] != null) | \"\\($s.metadata.namespace)/\\($s.metadata.name) \\(join(\",\"))\"'  # each unclassed aws-load-balancer-type external | nlb-ip Service still setting a deprecated attribute annotation",
+    "deprecationOnly": true,
+    "alwaysOn": true
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-nlb-ip-load-balancer-type-deprecated",
+    "severity": "LOW",
+    "title": "aws-load-balancer-type: nlb-ip is deprecated — new Services use external with nlb-target-type: ip",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-type",
+      "value": "^\\s*nlb-ip\\s*$",
+      "reason": "checked for aws-load-balancer-type nlb-ip, a value only this controller reconciles"
+    },
+    "quote": "[Deprecated] For type `nlb-ip`, the controller will provision an NLB with targets registered by IP address. This value is supported for backwards compatibility.",
+    "remediation": "Leave existing Services as they are: the vendor says not to add or modify aws-load-balancer-type on an existing Service, and nlb-ip stays supported. Write new Services with aws-load-balancer-type: external and aws-load-balancer-nlb-target-type: ip (or spec.loadBalancerClass: service.k8s.aws/nlb); moving an existing one means a new Service and a new NLB.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-type\"]? == \"nlb-ip\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each Service still on the deprecated nlb-ip type",
+    "deprecationOnly": true,
+    "alwaysOn": true
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-internal-annotation-deprecated",
+    "severity": "LOW",
+    "title": "service.beta.kubernetes.io/aws-load-balancer-internal is deprecated in favour of aws-load-balancer-scheme",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-internal",
+      "reason": "checked for aws-load-balancer-internal on a classed Service — one the controller owns"
+    },
+    "quote": "This annotation is deprecated starting v2.2.0 release in favor of the new aws-load-balancer-scheme annotation. It will be supported, but in case of ties, the aws-load-balancer-scheme gets precedence.",
+    "remediation": "Replace it with the SAME scheme: aws-load-balancer-internal: \"true\" becomes aws-load-balancer-scheme: internal, \"false\" becomes internet-facing. A different scheme makes the controller delete the NLB and create a new one with a new DNS name. When both are set the scheme annotation already wins, so check it is the one you mean before dropping the old key.",
+    "gate": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "Service",
+      "target": "loadBalancerClass",
+      "reason": "the in-tree AWS cloud provider reads these same annotations for its Classic ELBs, where they are NOT deprecated, and it never reconciles a Service that names a spec.loadBalancerClass — a classed Service is the controller's (service.k8s.aws/nlb, or a custom --load-balancer-class); the unclassed aws-load-balancer-type external | nlb-ip Services are the by-type sibling's"
+    },
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.loadBalancerClass != null) | select(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-internal\"]? != null) | \"\\(.metadata.namespace)/\\(.metadata.name) internal=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-internal\"]) scheme=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-scheme\"] // \"-\")\"'  # each classed Service on the deprecated key, with the scheme annotation that wins a tie",
+    "deprecationOnly": true,
+    "alwaysOn": true
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.4-internal-annotation-deprecated-by-type",
+    "severity": "LOW",
+    "title": "service.beta.kubernetes.io/aws-load-balancer-internal is deprecated in favour of aws-load-balancer-scheme",
+    "detection": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-internal",
+      "reason": "checked for aws-load-balancer-internal on an unclassed aws-load-balancer-type external | nlb-ip Service — one the controller owns"
+    },
+    "quote": "This annotation is deprecated starting v2.2.0 release in favor of the new aws-load-balancer-scheme annotation. It will be supported, but in case of ties, the aws-load-balancer-scheme gets precedence.",
+    "remediation": "Replace it with the SAME scheme: aws-load-balancer-internal: \"true\" becomes aws-load-balancer-scheme: internal, \"false\" becomes internet-facing. A different scheme makes the controller delete the NLB and create a new one with a new DNS name. When both are set the scheme annotation already wins, so check it is the one you mean before dropping the old key.",
+    "gate": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Service",
+      "target": "service.beta.kubernetes.io/aws-load-balancer-type",
+      "value": "^\\s*(external|nlb-ip)\\s*$",
+      "reason": "a Service with no spec.loadBalancerClass is the controller's only through aws-load-balancer-type external | nlb-ip, values the in-tree provider ignores; every other unclassed LoadBalancer Service is the in-tree provider's, where these keys are NOT deprecated"
+    },
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.loadBalancerClass == null and (.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-type\"] // \"\" | test(\"^ *(external|nlb-ip) *$\"))) | select(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-internal\"]? != null) | \"\\(.metadata.namespace)/\\(.metadata.name) internal=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-internal\"]) scheme=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-scheme\"] // \"-\")\"'  # each unclassed aws-load-balancer-type external | nlb-ip Service on the deprecated key, with the scheme annotation that wins a tie",
+    "deprecationOnly": true,
+    "alwaysOn": true
+  }
+]

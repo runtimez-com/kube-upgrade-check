@@ -1,0 +1,79 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.2-gateway-api-v1-5-tlsroute-v1-only",
+    "severity": "HIGH",
+    "title": "v3.2 moves to Gateway API v1.5 — TLSRoute is read from v1 only and no longer from the alpha API; install the v1.5 CRDs before the controller",
+    "detection": {
+      "kind": "CRD_SERVED_VERSION",
+      "objectKind": "tlsroutes.gateway.networking.k8s.io",
+      "target": "v1alpha2",
+      "reason": "checked whether the installed TLSRoute CRD still serves v1alpha2 — the bundle predates v1.5 and v3.2 will not read those objects"
+    },
+    "quote": "🚨 This release moves the Gateway API version from 1.3 to 1.5. For NLB Gateway users, this means that TLSRoute has been moved to the v1 API and is no longer served in the Alpha API version. It is recommended to install the experimental version of the TLSRoute to ensure zero downtime upgrades. 🚨",
+    "remediation": "Gateway API users: apply the v1.5.0 CRDs (experimental-install for NLB Gateways — it carries TLSRoute v1) BEFORE upgrading the controller, and move TLSRoute manifests to gateway.networking.k8s.io/v1. A controller upgraded first stops serving every TLSRoute until the CRDs are updated.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"-\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # the installed Gateway API CRD bundle version and the API versions each route CRD still serves",
+    "coversNotes": [
+      "Gateway API dependency: sigs.k8s.io/gateway-api v1.3.0 -> v1.5.0",
+      "Gateway API CRDs to install (v1.5.0): Standard Gateway API CRDs: kubectl apply --server-side=true",
+      "v3.2.0 (Gateway API updates): Experimental Gateway API CRDs: kubectl apply --server-side=true -f",
+      "gateway.md › Prerequisites › Experimental Gateway API CRDs: kubectl apply --server-side=true -f"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.2-gateway-api-autodetected-gates-default-on",
+    "severity": "MEDIUM",
+    "title": "ALBGatewayAPI and NLBGatewayAPI default to on — the controller starts reconciling every Gateway whose class names it, without the feature flag",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "GatewayClass",
+      "target": "controllerName",
+      "value": "^gateway\\.k8s\\.aws/(alb|nlb)$",
+      "reason": "checked for GatewayClasses naming either LBC controller (gateway.k8s.aws/alb or gateway.k8s.aws/nlb) — the Gateways the controller now reconciles unasked"
+    },
+    "quote": "ALBGatewayAPI: generateDefaultFeatureStatus(true),",
+    "remediation": "Clusters that carried Gateway / GatewayClass objects for the LBC controller without the feature gates now get load balancers provisioned on upgrade. Audit GatewayClasses with controllerName gateway.k8s.aws/alb or gateway.k8s.aws/nlb before upgrading, or keep the old behaviour with --feature-gates=ALBGatewayAPI=false,NLBGatewayAPI=false.",
+    "verifyCommand": "kubectl get gatewayclass -o json 2>/dev/null | jq -r '.items[] | select(.spec.controllerName | test(\"gateway.k8s.aws\")) | \"\\(.metadata.name) \\(.spec.controllerName)\"'; kubectl get gateway -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) class=\\(.spec.gatewayClassName)\"'  # every Gateway of an LBC class is reconciled from 3.2 on",
+    "coversNotes": [
+      "feature gate default flipped: NLBGatewayAPI (false -> true) — NLBGatewayAPI: generateDefaultFeatureStatus(true),"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.2-aws-vpc-tags-all-tags-filter",
+    "severity": "MEDIUM",
+    "title": "--aws-vpc-tag-key is ignored and every --aws-vpc-tags entry is a VPC filter — a VPC matching only some of the tags is no longer found",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "(?i)--aws-vpc-tag(s|-key)=",
+      "reason": "checked the controller Deployment's args for --aws-vpc-tags / --aws-vpc-tag-key — the only installs that resolve the VPC by tag"
+    },
+    "quote": "--aws-vpc-tag-key is now deprecated and ignored. All tags from --aws-vpc-tags are always used for VPC lookup. This flag will be removed in a future release.",
+    "remediation": "Make every tag in --aws-vpc-tags match the VPC (or trim the list to the ones that do) before upgrading; --aws-vpc-tag-key can be dropped. A controller that cannot resolve its VPC fails every reconcile at start.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "coversNotes": [
+      "v3.2.0: If you were passing multiple tags via --aws-vpc-tags but your VPC only matched a subset",
+      "configurations.md › Controller command line flags › | aws-vpc-tag-key | string | Name | [DEPRECA"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.2-crd-updates-3-2",
+    "severity": "LOW",
+    "title": "v3.2.0 adds LoadBalancerConfiguration.spec.defaultTargetGroupConfiguration — apply the LBC gateway CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(loadbalancerconfigurations\\.gateway\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(defaultTargetGroupConfiguration)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); LoadBalancerConfiguration defaultTargetGroupConfiguration is v3.2.0's addition — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "Action : Please apply the latest CRD definitions",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" and config/crd/gateway/gateway-crds.yaml before upgrading when installed with helm.",
+    "verifyCommand": "kubectl get crd loadbalancerconfigurations.gateway.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; defaultTargetGroupConfiguration absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "v3.2.2 (CRD Updates): Action : Please apply the latest CRD definitions",
+      "v3.2.1 (): Same release as https://github.com/kubernetes-sigs/aws-load-balancer-controller/relea"
+    ]
+  }
+]

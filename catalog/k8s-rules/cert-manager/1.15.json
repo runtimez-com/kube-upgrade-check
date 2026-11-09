@@ -15,20 +15,21 @@
   "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.metadata.name | test(\"cert-manager\")) | .spec.template.spec.containers[].args[]? | select(test(\"GatewayAPI\"))'  # any row still naming the feature gate must become --enable-gateway-api"
  },
  {
-  "ruleId": "rtz-cert-manager-1.15-startupapicheck-image-split-out",
-  "severity": "MEDIUM",
-  "title": "The cert-manager ctl image is gone — startupapicheck pulls its own image",
+  "ruleId": "rtz-cert-manager-1.15-acme-preferred-chain-now-honoured",
+  "severity": "LOW",
+  "title": "ACME preferredChain is matched as documented from 1.15 — the chain served can change",
   "detection": {
    "kind": "NOT_DETECTABLE",
-   "reason": "the startupapicheck Job exists only during a Helm install/upgrade, so it is not in a steady-state inventory; whether YOUR registry mirrors the new image is not a cluster fact at all"
+   "reason": "`preferredChain` is not in the issuer projection; ACME issuers are the only ones that carry it"
   },
   "scope": {
-   "kind": "IMAGE_REPOSITORY_PRESENT",
-   "objectKind": "Deployment",
-   "target": "cert-manager"
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "Issuer|ClusterIssuer",
+   "target": "types[]",
+   "value": "^acme$"
   },
-  "quote": "As of this release the cert-manager ctl is no longer part of the main repo, it has been broken out into its own project. As such the startupapicheck job uses a new OCI image called startupapicheck. If you run in an environment in which images cannot be pulled, be sure to include the new image.",
-  "remediation": "In an environment where images cannot be pulled freely, mirror the new `startupapicheck` image before upgrading.",
-  "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[].spec.template.spec.containers[] | select(.image | test(\"cert-manager\")) | .image' | sed 's#/[^/]*$##' | sort -u  # the registry prefix printed is the one that must also carry startupapicheck"
+  "quote": "Breaking Change: Fixed unintended certificate chain is used if `preferredChain` is configured.",
+  "remediation": "Before 1.15 `preferredChain` matched the issuer CN of ANY certificate in an offered chain; from 1.15 it selects the chain as documented. An ACME issuer that sets `preferredChain` can be served a different chain at its next renewal — check that clients which trust only one root still validate it.",
+  "verifyCommand": "kubectl get issuers,clusterissuers -A -o json | jq -r '.items[] | select((.spec.acme.preferredChain // \"\") != \"\") | \"\\(.kind)/\\(.metadata.namespace // \"cluster\")/\\(.metadata.name) preferredChain=\\(.spec.acme.preferredChain)\"'  # each row may be served a different chain after the upgrade; NO rows = clean"
  }
 ]

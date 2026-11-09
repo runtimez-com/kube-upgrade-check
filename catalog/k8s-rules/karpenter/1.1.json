@@ -58,7 +58,7 @@
     "gate": {
       "kind": "SPEC_FIELD_EQUALS",
       "objectKind": "EC2NodeClass",
-      "target": "amiFamily",
+      "target": "amiFamily|amiAliasFamily",
       "value": "Bottlerocket",
       "reason": "the RAID0 userData generation is specific to the Bottlerocket AMI family; on any other family the same instanceStorePolicy value is unaffected by this change"
     },

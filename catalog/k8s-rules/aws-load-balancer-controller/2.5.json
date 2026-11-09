@@ -1,0 +1,194 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-service-mutator-makes-lbc-default-for-loadbalancer-services",
+    "severity": "HIGH",
+    "title": "v2.5.0 installs a mutating webhook that makes the LBC the controller for every new type: LoadBalancer Service — internal NLB by default, no more Classic Load Balancers",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "Service",
+      "target": "loadBalancerClassDefault",
+      "value": "true",
+      "reason": "checked LoadBalancer Services whose spec.loadBalancerClass is unset (the agent writes loadBalancerClassDefault on every LoadBalancer Service, agent 0.4.154+) — the objects the mservice webhook claims on their next creation; a Service that already names a class is untouched. An older agent carries the field on no row, which reads not projected, never clean"
+    },
+    "quote": "🚨 🚨 🚨We have made the LBC the default controller for service type LoadBalancer by adding a mutating webhook. Therefore, from v2.5.0, it is required to use k8s 1.22 or later to support the `spec.loadBalancerClass`. This controller creates an `internal` NLB by default. You need to specify the annotation `service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing` on your service if you want to create an `internet-facing` NLB for your service.",
+    "remediation": "Before the upgrade decide per LoadBalancer Service: every Service created after the upgrade without spec.loadBalancerClass gets loadBalancerClass service.k8s.aws/nlb stamped by the mservice.elbv2.k8s.aws webhook — annotations do not exempt it, the mutator checks only the class — and an INTERNAL NLB with instance targets, not the Classic Load Balancer the in-tree controller made. Add service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing (and nlb-target-type) where an internet-facing NLB is wanted, or keep the in-tree controller with --set enableServiceMutatorWebhook=false. Existing Services are untouched until re-created.",
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"LoadBalancer\") | \"\\(.metadata.namespace)/\\(.metadata.name) class=\\(.spec.loadBalancerClass // \"-\") type-annotation=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-type\"] // \"-\") scheme=\\(.metadata.annotations[\"service.beta.kubernetes.io/aws-load-balancer-scheme\"] // \"-\")\"'  # a LoadBalancer Service with class - and type-annotation - is re-created by the in-tree controller today and by the LBC mutating webhook (internal NLB) once it is installed",
+    "coversNotes": [
+      "v2.5.1: We have made the LBC the default controller for service type LoadBalancer by adding a mu",
+      "v2.5.0 (Whats new): The AWS LBC provides a mutating webhook for service resources to set the spe",
+      "admission webhook added: mservice.elbv2.k8s.aws (failurePolicy Fail) — name: mservice.elbv2.k8s.aws",
+      "chart value added: enableServiceMutatorWebhook = true — enableServiceMutatorWebhook: true",
+      "nlb.md › Configuration › By default, Kubernetes Service resources of type LoadBalancer get recon",
+      "nlb.md › Network Load Balancer › Since the :octicons-tag-24: v2.2.0 release, the LBC provisions",
+      "nlb.md › Configuration › By default, the NLB uses the instance target type. You can customize it",
+      "chart value added: defaultTargetType = instance — defaultTargetType: instance"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-kubernetes-1-22-floor",
+    "severity": "INFO",
+    "title": "v2.5.0+ requires Kubernetes 1.22 or newer (spec.loadBalancerClass, policy/v1, cert-manager.io/v1)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a control-plane version floor; every EKS release the product supports is above it, so this is recorded for the hop's honesty, never derived into a compatibility matrix"
+    },
+    "quote": "v2.5.4 (requires Kubernetes 1.22+)",
+    "remediation": "Do not move the controller to v2.5.0 or newer on a cluster below Kubernetes 1.22: the Service mutating webhook sets spec.loadBalancerClass (beta and on by default from 1.22, GA in 1.24), v2.5.3 drops policy/v1beta1 PodDisruptionBudget and cert-manager.io/v1alpha2. Upgrade the control plane first.",
+    "verifyCommand": null,
+    "coversNotes": [
+      "installation.md › Supported Kubernetes versions › AWS Load Balancer Controller v2.5.0+ requires",
+      "v2.5.3 (Enhancement): Drop the support for policy/v1beta1 of PodDisruptionBudget, since the k8s"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-cert-manager-v1-api-required",
+    "severity": "LOW",
+    "title": "v2.5.3 issues its webhook certificate through cert-manager.io/v1 only — cert-manager below 1.0 can no longer sign it",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the chart runs with enableCertManager=true is not a projected fact; the hint names the cert-manager CRDs whose served versions settle it"
+    },
+    "quote": "Drop the support for ```cert-manager.io/v1alpha2```, and explicitly set to ```cert-manager.io/v1```",
+    "remediation": "Only when the chart is installed with enableCertManager=true: make sure cert-manager serves cert-manager.io/v1 (cert-manager 1.0+) before upgrading, or the Certificate the chart creates is rejected and the webhook has no serving certificate.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^cert-manager\\.io$"
+    },
+    "verifyCommand": "kubectl get crd certificates.cert-manager.io -o json 2>/dev/null | jq -r '\"served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # v1 must be served; v1alpha2-only means cert-manager is older than 1.0",
+    "introducedIn": [
+      "2.5.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-ingress-validator-2-5-0-rejects-rules-without-http-paths",
+    "severity": "MEDIUM",
+    "title": "v2.5.0's Ingress validating webhook cannot handle rules without http.paths (#3158) — land on v2.5.1 or newer",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "an Ingress rule with an EMPTY http.paths list is projected as an empty array, which the path matcher cannot distinguish from 'no rule'; the command lists them"
+    },
+    "quote": "🚨 🚨 🚨 The v2.5.0 ingress validator is not able to handle ingress rules without HTTP path due to bug #3158. If your ingress rules don't have the http paths defined, do not upgrade to v2.5.0 release.",
+    "remediation": "Skip v2.5.0: if any Ingress rule has no http.paths the vingress.elbv2.k8s.aws webhook rejects every update to it. Upgrade straight to v2.5.1+ where #3158 is fixed.",
+    "verifyCommand": "kubectl get ingress -A -o json | jq -r '.items[] | select(any(.spec.rules[]?; (.http.paths // []) | length == 0)) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # every Ingress carrying a rule without http.paths — rejected by the v2.5.0 validator"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-controller-manifests-must-be-reapplied",
+    "severity": "HIGH",
+    "title": "v2.5.x controller image is not compatible with manifests from earlier releases — helm upgrade or re-apply the manifest",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the controller was installed is not a Kubernetes fact; the hint names the controller Deployment and the command shows whether the 2.5 webhooks exist beside it"
+    },
+    "quote": "🚨 🚨 🚨We've updated the controller manifests, so either use helm upgrade or apply the new manifest. The new controller image is not compatible with manifests from earlier releases, so we don't recommend editing existing deployment and updating the image tag.",
+    "remediation": "Upgrade through helm upgrade or by applying the full v2.5.x manifest. v2.5.0 switches leader election from a ConfigMap lock to the ConfigMap+Lease lock and the RBAC gains get/create/update on leases.coordination.k8s.io — with only the Deployment image edited no leader is ever elected and the controller reconciles nothing. The image-only edit also leaves out the new Service mutating webhook and IngressClassParams validator the image expects.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations,validatingwebhookconfigurations -o json | jq -r '.items[] | .webhooks[] | select(.name | test(\"k8s\\\\.aws$\")) | \"\\(.name) failurePolicy=\\(.failurePolicy) namespaceSelector=\\(.namespaceSelector // {} | tojson)\"'  # the LBC admission webhooks installed on this cluster and the failure policy each runs with",
+    "coversNotes": [
+      "v2.5.1: We've updated the controller manifests, so either use helm upgrade or apply the new mani",
+      "admission webhook added: vingressclassparams.elbv2.k8s.aws (failurePolicy Fail) — name: vingressclassparams.elbv2.k8s.aw"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-ingressclassparams-crd-fields-subnets-inboundcidrs-sslpolicy",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams gains subnets, inboundCIDRs and sslPolicy — Helm does not upgrade CRDs, apply them by hand",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(subnets)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); subnets, inboundCIDRs and sslPolicy arrived together in v2.5.0's CRD, so subnets stands for all three — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "We have added `subnets`, `InboundCIDRs` and `SSLPolicy` fields in `IngressClassParams`. If you are upgrading the chart via helm upgrade, you need to update the IngressClassParams CRD manually by running `kubectl apply -k \"http://github.com/aws/eks-charts/stable/aws-load-balancer-controller//crds?ref=master\"`",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" before upgrading when the chart was installed with helm (which never upgrades CRDs). On the old schema the new IngressClassParams fields are pruned silently. Note the new fields override the matching Ingress annotations (inbound-cidrs, ssl-policy, subnets) once set.",
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; subnets/inboundCIDRs/sslPolicy absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "ingress_class.md › spec.inboundCIDRs › If the field is specified, LBC will ignore the alb.ingres",
+      "ingress_class.md › spec.sslPolicy › If the field is specified, LBC will ignore the alb.ingress.k",
+      "ingress_class.md › spec.subnets › They may specify either ids or tags. If the field is specified"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-sync-period-default-10h",
+    "severity": "LOW",
+    "title": "--sync-period default moves from 60m to 10h — drift on AWS resources is reconciled far less often",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "Deployment",
+      "objectImage": "eks/aws-load-balancer-controller",
+      "target": "containers[].args[]|containers[].command[]",
+      "value": "^--sync-period(=|$)",
+      "reason": "the controller Deployment's container args and command (the controller parses every os.Args flag and has no config file; the chart renders its values into args) — an unset --sync-period takes the new 10h default"
+    },
+    "quote": "defaultSyncPeriod = 10 * time.Hour",
+    "remediation": "If you rely on periodic reconciliation to undo out-of-band changes to load balancers, pass --sync-period explicitly (the chart's controllerConfig / extraArgs); otherwise accept the 10 h default, which cuts AWS API throttling.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "coversNotes": [
+      "configurations.md › sync-period › --sync-period defines a fixed interval for the controller to r"
+    ],
+    "introducedIn": [
+      "2.5.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-endpoints-fail-open-default-on",
+    "severity": "LOW",
+    "title": "EndpointsFailOpen is on by default — with every node NotReady the controller keeps targets registered instead of draining them",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "Deployment",
+      "objectImage": "eks/aws-load-balancer-controller",
+      "target": "containers[].args[]|containers[].command[]",
+      "value": "EndpointsFailOpen",
+      "reason": "the controller Deployment's container args and command (the controller parses every os.Args flag and has no config file; the chart renders its values into args) — a --feature-gates value without EndpointsFailOpen takes the new default (on)"
+    },
+    "quote": "Enable `EndpointsFailOpen` by default",
+    "remediation": "No action unless the previous drain-on-all-nodes-unready behaviour is wanted: then pass --feature-gates=EndpointsFailOpen=false. Mirrors Kubernetes' own endpoint fail-open.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "coversNotes": [
+      "feature gate default flipped: EndpointsFailOpen (false -> true) — EndpointsFailOpen: true,"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-iam-resource-group-tagging-permission",
+    "severity": "LOW",
+    "title": "v2.5.2 adds a Resource Groups Tagging API permission to the reference policy (EnableRGTAPI)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the controller Deployment is the candidate whose role to simulate"
+    },
+    "quote": "add additional permission to the IAM policy used by the controller",
+    "remediation": "Only when enabling the EnableRGTAPI feature gate (off by default): grant tag:GetResources on the controller's role by hand — the reference iam_policy.json never gained it (the v2.5.2 addition was reverted). With the gate on and the permission missing there is no fallback: every load-balancer and target-group listing returns the AccessDenied error and reconciliation stops.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names tag:GetResources --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "v2.5.2 (Enhancement): Added support for the AWS Resource Group API which can be enabled via the"
+    ],
+    "introducedIn": [
+      "2.5.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.5-client-go-crash-on-kubernetes-1-27-before-2-5-3",
+    "severity": "MEDIUM",
+    "title": "v2.5.0–v2.5.2 crash on Kubernetes 1.27 (client-go / prometheus-adapter issue) — land on v2.5.3 or newer",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the installed patch and the control-plane version are known to the hop, not to a projected object; recorded so a 2.5 landing is pointed at 2.5.3+"
+    },
+    "quote": "Update ```k8s.io/client-go``` to v0.26.5 to fix the promethus-adapter issue that causes the client-go to crash in k8s 1.27",
+    "remediation": "When the cluster is on Kubernetes 1.27 or newer, upgrade to v2.5.3 or later, never v2.5.0–v2.5.2.",
+    "verifyCommand": null
+  }
+]

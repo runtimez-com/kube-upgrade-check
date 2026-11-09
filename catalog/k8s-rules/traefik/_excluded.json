@@ -102,7 +102,7 @@
   {
     "version": "3.6",
     "note": "Encoded Characters in Request Path",
-    "reason": "net no-op for every supported target: the reject-by-default behaviour existed only in v3.6.4–v3.6.6 and v3.6.7 flipped the options back to a `true` default, which every 3.7.x target carries; the one install this still concerns (3.6.4–3.6.6, whose hardening goes away) is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\", \"3.7.0\"])."
+    "reason": "net no-op for every supported target: the reject-by-default behaviour existed only in v3.6.4–v3.6.6 and v3.6.7 flipped the options back to a `true` default, which every 3.7.x target carries; the one install this still concerns (3.6.4–3.6.6, whose hardening goes away) is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\"], requiresInstalledSince [\"2.11.32\", \"3.6.4\"])."
   },
   {
     "version": "2.10",
@@ -142,7 +142,7 @@
   {
     "version": "2.11",
     "note": "Encoded Characters in Request Path",
-    "reason": "net no-op for every supported target: reject-by-default existed only in v2.11.32–v2.11.34 and v2.11.35 flipped the options back to a `true` default; the remaining effect is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\", \"3.7.0\"])."
+    "reason": "net no-op for every supported target: reject-by-default existed only in v2.11.32–v2.11.34 and v2.11.35 flipped the options back to a `true` default; the remaining effect is told by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\"], requiresInstalledSince [\"2.11.32\", \"3.6.4\"])."
   },
   {
     "version": "2.11",
@@ -158,5 +158,20 @@
     "version": "2.11",
     "note": "Conflicting TLS options",
     "reason": "covered by `rtz-traefik-3.7-strict-tls-options-available`, whose introducedIn [\"2.11.55\", \"3.7.11\"] carries this line's patch — one rule per change, so a hop from any line selects it once."
+  },
+  {
+    "version": "2.11",
+    "note": "CONNECT Requests",
+    "reason": "covered by `rtz-traefik-3.7-connect-rejected-all-http-versions`, whose introducedIn [\"2.11.59\", \"3.7.15\"] carries this line's patch — one rule per change, so a hop from any line selects it once."
+  },
+  {
+    "version": "2.11",
+    "note": "Encoded Characters Configuration Default Values",
+    "reason": "covered by `rtz-traefik-3.6-encoded-characters-defaults-flipped-to-true` (introducedIn [\"2.11.35\", \"3.6.7\"], requiresInstalledSince [\"2.11.32\", \"3.6.4\"]), which selects the 2.11.32–2.11.34 installs this note concerns; the 2.11 twin was minor-granular (no introducedIn) and so fired only on 2.10 → 2.11+ hops — an install that never ran the 2.11.32 hardening (4d7d62731 first ships in v2.11.32) and had nothing to re-enable. Retired 2026-10-30 (slice 3, validator F3)."
+  },
+  {
+    "version": "3.6",
+    "note": "Kubernetes Gateway API Provider",
+    "reason": "the v3.6.19 QPS/Burst note is covered by `rtz-traefik-3.7-gateway-client-qps-burst-increased`, whose introducedIn [\"3.6.19\", \"3.7.3\"] carries this line's patch — one rule per change, filed under 3.7 because a 3.6 row may not name the 3.7 patch the change first ships in (3.7.2 was cancelled, StaticRuleSource refuses a newer-line entry); the other note under this heading (v3.6.0: Gateway API v1.4.0 CRDs) keeps its own rule `rtz-traefik-3.6-gateway-api-requires-spec-v1-4-0-crds` (audit 3 N5, 2026-10-31)"
   }
 ]

@@ -1,0 +1,61 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.9-shield-advanced-crash-before-2-9-2",
+    "severity": "HIGH",
+    "title": "v2.9.0 and v2.9.1 crash the controller on accounts subscribed to AWS Shield Advanced — land on v2.9.2 or newer",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "--enable-shield defaults to TRUE and the chart does not render it, so the flag's absence means enabled — absence cannot be matched; the Shield Advanced subscription is an AWS-account fact. The hint names the controller Deployment and the command prints its args"
+    },
+    "quote": "🚨 🚨 🚨 The v2.9.0 contains a bug which will crash controllers with the account subscribed to AWS shield advanced service as described in #3888, please upgrade to v2.9.2+ for the bug fix if your account has subscribed to AWS shield and your controller has shield service enabled.",
+    "remediation": "Upgrade to v2.9.2 or newer, never v2.9.0 / v2.9.1, when the account subscribes to AWS Shield Advanced: the controller crashes (#3888) unless it runs with --enable-shield=false (the flag defaults to true and the chart's enableShield value is empty, so a default install has Shield enabled).",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with",
+    "coversNotes": [
+      "v2.9.1: The v2.9.1 contains a bug which will crash controllers with the account subscribed to AW",
+      "v2.9.2 (Enhancement and Fixes): Fixes the controller crash due to enabling shield protection on"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.9-iam-listener-attributes",
+    "severity": "MEDIUM",
+    "title": "Reference IAM policy gains Describe/ModifyListenerAttributes (NLB TCP idle timeout) — update the controller's policy",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the hint names the controller Deployment whose role to simulate"
+    },
+    "quote": "AWS NLB now supports configurable TCP idle timeout. We've updated the reference IAM policies to explicitly add the `elasticloadbalancing:DescribeListenerAttributes` and `elasticloadbalancing:ModifyListenerAttributes` permissions for describing and modifying this listener attribute for NLB's TCP listener resources on controller.",
+    "remediation": "Apply the v2.9.0 reference IAM policy before upgrading: the controller now calls DescribeListenerAttributes on every NLB listener reconcile, and AccessDenied there fails the Service's reconcile — not only the ones using listener-attributes.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:DescribeListenerAttributes elasticloadbalancing:ModifyListenerAttributes --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "v2.9.0 (What's new): AWS Network Load Balancer (NLB) now supports configurable TCP idle timeout.",
+      "IAM policy: new action — \"elasticloadbalancing:DescribeListenerAttributes\"",
+      "IAM policy: new action — \"elasticloadbalancing:ModifyListenerAttributes\""
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.9-crd-field-listenerattributes",
+    "severity": "LOW",
+    "title": "IngressClassParams gains listenerAttributes — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(listeners)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); v2.9.0 adds spec.listeners, which carries listenerAttributes — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "We've added a `listenerAttributes` field to `IngressClassParams` to support listener attributes for load balancers in the future. Note that there are no listener attributes supported on Application Load Balancers (ALBs) yet. Therefore, this field is currently not used. However, updating CRDs is necessary for future compatibility. If you're upgrading the charts using helm upgrade, you need to update CRDs manually: `kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"`",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" when installed with helm; the field is unused on ALBs today but the controller expects the schema.",
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; listenerAttributes absent from the field list means the CRDs were not re-applied for this release"
+  }
+]

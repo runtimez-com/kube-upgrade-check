@@ -1,0 +1,64 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.4-alb-rule-per-hostname-limits",
+    "severity": "MEDIUM",
+    "title": "v3.4.3 generates one ALB listener rule per hostname of an HTTPRoute/GRPCRoute — routes with several hostnames can exceed the ALB rules-per-listener quota",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only a route with two or more hostnames on an LBC ALB Gateway gains listener rules, and the projection can neither count hostnames per route nor sum them per listener; the hint names the HTTPRoutes and GRPCRoutes whose Gateway class is the ALB controller's (a route on a Traefik or other Gateway is not the LBC's)"
+    },
+    "quote": "[ALB Gateway Users] Double check your ALB rule limits, when using HTTP / GRPC route with multiple hostnames, a distinict rule per hostname is generated. Users who specify multiple hostnames per route will want to double check their ALB limits. https://github.com/kubernetes-sigs/aws-load-balancer-controller/pull/4863/changes/2c657342ff09998a92fddf1fbcb945ecc7ef612a",
+    "remediation": "Before upgrading, count rules × hostnames per ALB Gateway listener against the account's rules-per-listener quota (default 100); split routes or raise the quota where it is exceeded, otherwise the listener update is rejected and the route stays unprogrammed.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "HTTPRoute|GRPCRoute",
+      "target": "parents[].controllerName",
+      "value": "^gateway\\.k8s\\.aws/alb$"
+    },
+    "verifyCommand": "kubectl get gatewayclasses,gateways,httproutes,grpcroutes -A -o json 2>/dev/null | jq -r '.items as $i | [$i[] | select(.kind == \"GatewayClass\" and .spec.controllerName == \"gateway.k8s.aws/alb\") | .metadata.name] as $c | [$i[] | select(.kind == \"Gateway\" and (.spec.gatewayClassName | IN($c[]))) | .metadata.namespace + \"/\" + .metadata.name] as $g | $i[] | select(.kind == \"HTTPRoute\" or .kind == \"GRPCRoute\") | .metadata.namespace as $ns | select(any(.spec.parentRefs[]?; ((.namespace // $ns) + \"/\" + .name) | IN($g[]))) | select((.spec.hostnames // []) | length | . != 0 and . != 1) | \"\\(.kind) \\(.metadata.namespace)/\\(.metadata.name) hostnames=\\(.spec.hostnames | length) rules=\\(.spec.rules | length) listener-rules=\\((.spec.hostnames | length) * (.spec.rules | length))\"'  # routes with several hostnames on an LBC ALB Gateway; the listener-rules column adds up per listener against the ALB quota",
+    "coversNotes": [
+      "v3.4.3 (Enhancements and Fixes): [Rule precedence] - When using HTTP / GRPC route with multiple",
+      "v3.4.1 (Gateway API Features): Shared Hostname for HTTPRoute and GRPCRoute (PR #4794): HTTPRoute",
+      "v3.4.1 (Enhancements and Fixes): [Bug fix] Fix non-transitive rule precedence for routes without"
+    ],
+    "introducedIn": [
+      "3.4.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.4-admission-webhooks-v1",
+    "severity": "INFO",
+    "title": "The LBC webhooks answer AdmissionReview v1 (admissionReviewVersions v1beta1 → v1) — the configurations were already admissionregistration.k8s.io/v1",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the change is the admissionReviewVersions the webhook handlers accept, re-rendered by the chart on upgrade; nothing collected distinguishes it, the hint names the LBC webhooks (*.elbv2.k8s.aws, and vglobalaccelerator.aga.k8s.aws from 3.6) — not the VPC resource controller's *.vpc.k8s.aws"
+    },
+    "quote": "Webhooks upgraded to v1: Admission webhooks were upgraded from v1beta1 to v1. Applied automatically on upgrade — no action needed (#4743)",
+    "remediation": "No action: the chart has rendered admissionregistration.k8s.io/v1 configurations since 2.4.0, and 3.4 only moves admissionReviewVersions from v1beta1 to v1 (supported by every Kubernetes the controller runs on). Hand-maintained manifests pick the new value up with the 3.4 bundle.",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "MutatingWebhookConfiguration|ValidatingWebhookConfiguration",
+      "target": "webhooks[].name",
+      "value": "\\.(elbv2|aga)\\.k8s\\.aws$"
+    },
+    "verifyCommand": "kubectl get mutatingwebhookconfigurations,validatingwebhookconfigurations -o json | jq -r '.items[] | .webhooks[] | select(.name | test(\"\\\\.(elbv2|aga)\\\\.k8s\\\\.aws$\")) | \"\\(.name) failurePolicy=\\(.failurePolicy) namespaceSelector=\\(.namespaceSelector // {} | tojson)\"'  # the LBC admission webhooks installed on this cluster and the failure policy each runs with"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.4-crd-updates-3-4",
+    "severity": "INFO",
+    "title": "v3.4.x repeats the vendor's apply-the-latest-CRDs note — no CRD schema changed between v3.3.0 and v3.4.3",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "nothing in the CRD files changed for this release (git diff v3.3.0..v3.4.3 over config/crd and helm crds is empty); the hint names the LBC CRDs"
+    },
+    "quote": "Action : Please apply the latest CRD definitions",
+    "remediation": "No CRD change ships in 3.4.x. Re-applying the CRDs is harmless; the 3.5 rules carry the next real schema change (gateway.k8s.aws v1 storage).",
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^(elbv2|gateway)\\.k8s\\.aws$"
+    },
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; nothing new absent from the field list means the CRDs were not re-applied for this release"
+  }
+]

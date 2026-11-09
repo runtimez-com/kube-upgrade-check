@@ -1,0 +1,85 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.12-pod-readiness-gate-webhook-failurepolicy-ignore",
+    "severity": "MEDIUM",
+    "title": "The pod readiness-gate mutating webhook defaults to failurePolicy Ignore — pods created while the controller is down start without the ALB readiness gate",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Namespace",
+      "target": "elbv2.k8s.aws/pod-readiness-gate-inject",
+      "value": "^enabled$",
+      "reason": "checked for namespaces labelled elbv2.k8s.aws/pod-readiness-gate-inject=enabled — the only pods the webhook mutates, and the ones a rolling deploy exposes when the gate is missing"
+    },
+    "quote": "In v2.12.0, we have changed the default policy of the LBC webhook from Fail to Ignore in order to improve disaster recovery. See our documentation for how to change the policy back to Fail if you want better guarantees for having readiness gates getting attached to your pods.",
+    "remediation": "Decide the trade-off before upgrading the chart to 2.12+: with the new default a pod created during a controller outage (its own upgrade included) is Ready before the target group registers it, so a rolling deploy in a gated namespace can drain the old pods into 5xx. Keep the old guarantee with --set podMutatorWebhookConfig.failurePolicy=Fail combined with an explicit objectSelector, or accept that availability wins over readiness-gate injection.",
+    "verifyCommand": "kubectl get ns -l elbv2.k8s.aws/pod-readiness-gate-inject=enabled -o name  # every namespace whose pods get the ALB readiness gate injected; with failurePolicy Ignore a pod created while the controller is down starts without it; kubectl get mutatingwebhookconfigurations,validatingwebhookconfigurations -o json | jq -r '.items[] | .webhooks[] | select(.name | test(\"k8s\\\\.aws$\")) | \"\\(.name) failurePolicy=\\(.failurePolicy) namespaceSelector=\\(.namespaceSelector // {} | tojson)\"'  # the LBC admission webhooks installed on this cluster and the failure policy each runs with",
+    "coversNotes": [
+      "pod_readiness_gate.md › FailurePolicy › The failurePolicy of a webhook determines how errors, su",
+      "pod_readiness_gate.md › FailurePolicy › failurePolicy: Fail: When applied to a pod mutation webh",
+      "pod_readiness_gate.md › FailurePolicy › failurePolicy: Ignore: Setting this policy allows Kubern",
+      "pod_readiness_gate.md › FailurePolicy › To strike a balance between reliability and availability",
+      "pod_readiness_gate.md › FailurePolicy › failurePolicy: Ignore (for versions > v2.11.0)",
+      "pod_readiness_gate.md › FailurePolicy › failurePolicy: Fail (for versions <= v2.11.0)",
+      "pod_readiness_gate.md › FailurePolicy › You can customize the behavior using Helm chart settings",
+      "pod_readiness_gate.md › FailurePolicy › For optimal reliability & availability, it is recommende",
+      "chart value added: podMutatorWebhookConfig.failurePolicy = Ignore — failurePolicy: Ignore"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.12-iam-ipam-and-set-rule-priorities",
+    "severity": "MEDIUM",
+    "title": "Reference IAM policy gains ec2:DescribeIpamPools, elasticloadbalancing:ModifyIpPools and SetRulePriorities — update the controller's policy",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the hint names the controller Deployment whose role to simulate"
+    },
+    "quote": "AWS ALB now supports integrating with AWS VPC IPAM (ec2:DescribeIpamPools, elasticloadbalancing:ModifyIpPools). We also have added new IAM permissions (elasticloadbalancing:SetRulePriorities) in order to effectively manage your ALB listener rules. We've updated the reference IAM policies to explicitly add new permissions to allow for usage of the features.",
+    "remediation": "Apply the v2.12.0 reference IAM policy before upgrading: SetRulePriorities is used on ordinary listener-rule reconciles (not only with IPAM), so a stale policy fails rule re-ordering with AccessDenied.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:SetRulePriorities ec2:DescribeIpamPools elasticloadbalancing:ModifyIpPools --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "IAM policy: new action — \"ec2:DescribeIpamPools\"",
+      "IAM policy: new action — \"elasticloadbalancing:ModifyIpPools\"",
+      "IAM policy: new action — \"elasticloadbalancing:SetRulePriorities\"",
+      "targetgroupbinding.md › AssumeRole › By default, this permission is not a part of the standard I"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.12-crd-fields-ipam-assume-role",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams (ipamConfiguration) and TargetGroupBinding (iamRoleArnToAssume, assumeRoleExternalId) gain fields — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws|targetgroupbindings\\.elbv2\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(ipamConfiguration|iamRoleArnToAssume)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); IngressClassParams ipamConfiguration and TargetGroupBinding iamRoleArnToAssume (with assumeRoleExternalId) are v2.12.0's additions — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "We’ve added new fields to both the IngressClassParams and TargetGroupBinding. Please apply the latest CRD definitions: kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" before upgrading when installed with helm.",
+    "verifyCommand": "kubectl get crd targetgroupbindings.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; iamRoleArnToAssume absent from the field list means the CRDs were not re-applied for this release"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.12-multi-cluster-target-group-binding-allowed",
+    "severity": "LOW",
+    "title": "v2.12.0 lifts the one-TargetGroupBinding-per-target-group rule when multiClusterTargetGroup is set on every binding",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether two bindings in this cluster point at ONE target group is an AWS-side identity the projection does not carry (the ARN never leaves the agent); the hint names the bindings that set multiClusterTargetGroup and the command prints their target groups"
+    },
+    "quote": "In previous releases there was an enforced 1-1 mapping of TargetGroupBinding to Target Group. v2.12.0 removes this limitation if the MultiCluster flag is set on each binding.",
+    "remediation": "Nothing changes for existing bindings. From 2.12 several TargetGroupBindings in THIS cluster may point at one target group when every one of them sets multiClusterTargetGroup: true (the validator rejected the second binding before); sharing a target group across clusters already worked since 2.10 under the same flag, and a binding without it still deregisters the targets the others registered.",
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "TargetGroupBinding",
+      "target": "multiClusterTargetGroup",
+      "value": "true"
+    },
+    "verifyCommand": "kubectl get targetgroupbindings -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) tg=\\(.spec.targetGroupARN // .spec.targetGroupName) multiCluster=\\(.spec.multiClusterTargetGroup // false)\"'  # bindings sharing a target group across clusters must all read multiCluster=true"
+  }
+]

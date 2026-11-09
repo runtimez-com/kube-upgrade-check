@@ -1,0 +1,22 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.7-iam-describe-trust-stores",
+    "severity": "MEDIUM",
+    "title": "Reference IAM policy gains elasticloadbalancing:DescribeTrustStores for ALB mutual TLS",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "IAM lives in AWS; the hint names the Ingresses that use mutual-authentication, whose reconciles need the permission"
+    },
+    "quote": "We've updated the reference IAM policies to explicitly add the `elasticloadbalancing:DescribeTrustStores` permission for describing the trust stores resources to use the new mTLS feature for ingresses on controller. load balancer and listener resources. We recommend updating your controller IAM policies with the new permissions for your existing installations as well.",
+    "remediation": "Apply the v2.7.0 reference IAM policy before using alb.ingress.kubernetes.io/mutual-authentication; without DescribeTrustStores the listener update fails with AccessDenied.",
+    "scope": {
+      "kind": "ANNOTATION_KEY_PRESENT",
+      "objectKind": "Ingress",
+      "target": "alb.ingress.kubernetes.io/mutual-authentication"
+    },
+    "verifyCommand": "SA=$(kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace) \\(.spec.template.spec.serviceAccountName)\"' | head -1); ROLE=$(kubectl get sa -n ${SA% *} ${SA##* } -o jsonpath='{.metadata.annotations.eks\\.amazonaws\\.com/role-arn}'); aws iam simulate-principal-policy --policy-source-arn \"$ROLE\" --action-names elasticloadbalancing:DescribeTrustStores --query 'EvaluationResults[].[EvalActionName,EvalDecision]' --output text  # every row must read allowed; implicitDeny means the controller's IAM policy predates this release (Pod Identity: read the association's role with aws eks list-pod-identity-associations --cluster-name ... --namespace ... --service-account ...)",
+    "coversNotes": [
+      "v2.7.0 (Whats new): Introducing the support for (mTLS) Mutual Transport Layer Security on Ingres"
+    ]
+  }
+]

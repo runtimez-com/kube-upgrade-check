@@ -1,0 +1,62 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.0-helm-chart-version-realigned",
+    "severity": "MEDIUM",
+    "title": "From v3.0.0 the Helm chart version equals the controller version (chart 1.17 → 3.0) — pinned chart ranges and tooling break",
+    "detection": {
+      "kind": "LABEL_KEY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "helm.sh/chart",
+      "value": "^aws-load-balancer-controller-1\\."
+    },
+    "quote": "Helm Chart Version Alignment: Helm chart version now aligns with LBC version. Previously, LBC v2.x used Helm chart v1.x (e.g., LBC v2.17 = Helm v1.17). Starting with v3.0.0, both versions match.**",
+    "remediation": "Update every chart-version pin (HelmRelease / Argo CD Application targetRevision, Terraform helm_release version, renovate rules) from the 1.x line to 3.x; a constraint like ~1.17 never resolves the new release. The app version is unchanged in meaning.",
+    "verifyCommand": "kubectl get secret -A -l owner=helm,name=aws-load-balancer-controller -o json | jq -r '.items[] | \"\\(.metadata.namespace)/\\(.metadata.name) chart=\\(.metadata.labels.version // \"-\") status=\\(.metadata.labels.status)\"'  # the installed chart version per Helm release"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.0-keeptlssecret-cert-manager-certificate-removed",
+    "severity": "HIGH",
+    "title": "Chart 1.15–1.17 (LBC 2.15–2.17) with enableCertManager=true deleted the Certificate that renews aws-load-balancer-tls — the webhook certificate expires; v3.0.0 restores it",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether the chart runs with enableCertManager is not projected; the hint names the controller Deployment and the command checks the Certificate exists and is renewing"
+    },
+    "quote": "Issue: #4359 attempted to fix a race condition in webhook certificate renewal but introduced a critical bug. The aws-load-balancer-tls Secret persists but the Certificate that owned and renewed it was removed, causing eventual certificate expiration and webhook TLS failures (#4541). This prevents the controller from updating target group bindings and can lead to outages. This bug impacts users deploying with Helm and utilizing the enableCertManager=true flag.",
+    "remediation": "Upgrade to v3.0.0 or newer, which reinstates the Certificate (keepTLSSecret is removed from the chart). Users staying on the 1.15–1.17 charts (LBC 2.15–2.17) with cert-manager must set keepTLSSecret=false. After the upgrade confirm cert-manager owns aws-load-balancer-serving-cert again; an expired aws-load-balancer-tls Secret stops every LBC webhook, and with failurePolicy Fail pod and Service creation with it.",
+    "scope": {
+      "kind": "IMAGE_REPOSITORY_PRESENT",
+      "objectKind": "Deployment",
+      "target": "eks/aws-load-balancer-controller"
+    },
+    "verifyCommand": "kubectl get certificate -A -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | test(\"aws-load-balancer\")) | \"\\(.metadata.namespace)/\\(.metadata.name) ready=\\((.status.conditions // [])[] | select(.type == \"Ready\") | .status) notAfter=\\(.status.notAfter // \"-\")\"'; kubectl get secret -A -o json | jq -r '.items[] | select(.metadata.name == \"aws-load-balancer-tls\") | \"\\(.metadata.namespace)/\\(.metadata.name) owner=\\((.metadata.ownerReferences // [])[0].kind // \"none\")\"'  # with cert-manager the Secret must be owned by a Certificate; owner=none means nothing renews it",
+    "coversNotes": [
+      "v3.0.0 (Webhook Certificate Issu): Action for users upgrading to v3.0.0: No action required - th",
+      "v3.0.0 (Enhancements and Fixes): Webhook Certificate: Reverted race condition fix in webhook cer",
+      "chart value removed: keepTLSSecret (was true)"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-3.0-gateway-api-ga-v1-3-crds-required",
+    "severity": "MEDIUM",
+    "title": "Gateway API support is GA in v3.0.0 and built against Gateway API v1.3.0 CRDs — install them before the controller",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "bundleVersion",
+      "value": "^v(0\\.|1\\.[0-2]\\.)",
+      "objectName": "gateway\\.networking\\.k8s\\.io$",
+      "reason": "checked the Gateway API CRDs' bundle-version annotation — a bundle below v1.3.0 is older than what v3.0 is built against"
+    },
+    "quote": "Standard Gateway API CRDs: `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml` [REQUIRED]",
+    "remediation": "Apply the Gateway API v1.3.0 standard CRDs (experimental-install for TCPRoute/UDPRoute/TLSRoute) and the LBC gateway CRDs (config/crd/gateway/gateway-crds.yaml) before upgrading the controller.",
+    "gate": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "HTTPRoute|GRPCRoute|TCPRoute|TLSRoute|UDPRoute",
+      "reason": "the Gateway API CRD requirement only bites clusters that run Gateway API routes under this controller — with no route of any kind in the snapshot the controller has nothing to serve"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"-\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # the installed Gateway API CRD bundle version and the API versions each route CRD still serves",
+    "coversNotes": [
+      "v3.0.0 (CRD Updates): Action : Please apply the latest CRD definitions"
+    ]
+  }
+]

@@ -8,9 +8,9 @@
  },
  "source": {
   "url": "https://karpenter.sh/docs/upgrading/compatibility/",
-  "ref": "aws/karpenter-provider-aws @ v1.14.1 (bde00654c) — website/content/en/preview/upgrading/upgrade-guide.md via scripts/readiness-agent/kb/karpenter/manifest.json",
-  "lastVerified": "2026-09-07",
-  "note": "supportWindows transcribed mechanically from hack/docs/compatibilitymatrix_gen/compatibility.yaml at the tag above (the 1.14 row: minK8s 1.26, maxK8s 1.36). Since 2026-09-07 this entry carries NO hand-written rules or upgradeNotes: the per-minor upgrade guide is extracted verbatim into kb/karpenter/notes-<minor>.md by extract-karpenter-notes.py and evaluated through the hop-scoped generated-rule source `karpenter` (k8s-rules/karpenter/, the Traefik recipe). The three legacy predicate rules (v1beta1 served, nodeClassRef group/kind, capacitybuffers CRD lag) were ported there as 1.0/1.1/1.14 rules. Read the guide at a RELEASE TAG, never the clone's working tree: on 2026-08-29 a window and a note were quoted from uncommitted local edits and shipped as the vendor's words."
+  "ref": "aws/karpenter-provider-aws @ v1.15.1 (2b6449d0a) — website/content/en/preview/upgrading/upgrade-guide.md via scripts/readiness-agent/kb/karpenter/manifest.json",
+  "lastVerified": "2026-11-06",
+  "note": "supportWindows transcribed mechanically from hack/docs/compatibilitymatrix_gen/compatibility.yaml. Rows up to 1.14 are read at the tag above; the 1.15 row (minK8s 1.26, maxK8s 1.37) is read from upstream main's release commit 6d1426c4c (\"chore: Release v1.15.0\", the generator output the published compatibility page renders), because the v1.15.0/v1.15.1 tags carry a defective matrix whose last row repeats 1.14.x and has no 1.15.x row. Since 2026-09-07 this entry carries NO hand-written rules or upgradeNotes: the per-minor upgrade guide is extracted verbatim into kb/karpenter/notes-<minor>.md by extract-karpenter-notes.py and evaluated through the hop-scoped generated-rule source `karpenter` (k8s-rules/karpenter/, the Traefik recipe). The three legacy predicate rules (v1beta1 served, nodeClassRef group/kind, capacitybuffers CRD lag) were ported there as 1.0/1.1/1.14 rules. Read the guide at a RELEASE TAG, never the clone's working tree: on 2026-08-29 a window and a note were quoted from uncommitted local edits and shipped as the vendor's words."
  },
  "supportWindows": [
   {
@@ -177,6 +177,11 @@
    "version": "1.14",
    "minK8s": "1.26",
    "maxK8s": "1.36"
+  },
+  {
+   "version": "1.15",
+   "minK8s": "1.26",
+   "maxK8s": "1.37"
   }
  ],
  "upgradeNotes": [],

@@ -154,3 +154,33 @@ func TestAtOrPastTreatsAFloatingTagOnTheLatestLineAsCurrent(t *testing.T) {
 		}
 	}
 }
+
+func TestRequiresInstalledSinceIsValidated(t *testing.T) {
+	base := GeneratedRule{RuleID: "r", IntroducedIn: []string{"2.11.35", "3.6.7"}}
+	ok := base
+	ok.RequiresInstalledSince = []string{"2.11.32", "3.6.4"}
+	if err := validateRequiresInstalledSince(ok); err != nil {
+		t.Fatalf("valid floors rejected: %v", err)
+	}
+	for _, bad := range [][]string{{}, {"3.6"}, {"3.5.1"}, {"3.6.7"}, {"3.6.9"}, {"3.6.1", "3.6.2"}} {
+		r := base
+		r.RequiresInstalledSince = bad
+		if err := validateRequiresInstalledSince(r); err == nil {
+			t.Errorf("%v must be rejected", bad)
+		}
+	}
+	if err := validateRequiresInstalledSince(GeneratedRule{RuleID: "r", RequiresInstalledSince: []string{"3.6.4"}}); err == nil {
+		t.Errorf("floors without introducedIn must be rejected")
+	}
+}
+
+func TestCodedCheckMustNameAnImplementedCheck(t *testing.T) {
+	r := GeneratedRule{RuleID: "r", Detection: Detection{Kind: DetectCodedCheck, ObjectKind: "EC2NodeClass", Target: "karpenter-kubelet-fields-unsupported"}}
+	if err := r.Validate(); err != nil {
+		t.Fatalf("implemented check rejected: %v", err)
+	}
+	r.Detection.Target = "no-such-check"
+	if err := r.Validate(); err == nil {
+		t.Errorf("an unknown coded check must be rejected")
+	}
+}

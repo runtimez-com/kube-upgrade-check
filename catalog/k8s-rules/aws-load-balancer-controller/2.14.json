@@ -1,0 +1,83 @@
+[
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.14-endpointslices-default-on",
+    "severity": "MEDIUM",
+    "title": "EndpointSlices become the default endpoint source — manifest installs need the discovery.k8s.io RBAC, and the old Endpoints path is opt-out",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "Deployment",
+      "objectImage": "eks/aws-load-balancer-controller",
+      "target": "containers[].args[]|containers[].command[]",
+      "value": "^--enable-endpoint-slices(=|$)",
+      "reason": "the controller Deployment's container args and command (the controller parses every os.Args flag and has no config file; the chart renders its values into args) — an unset --enable-endpoint-slices takes the new default (EndpointSlices)"
+    },
+    "quote": "**Change**: EndpointSlices enabled by default (better performance and old endpoint api is on deprecation path: https://kubernetes.io/blog/2025/04/24/endpoints-deprecation/)",
+    "remediation": "If the controller was installed from a hand-maintained manifest, grant list/watch on endpointslices.discovery.k8s.io before upgrading (the chart's ClusterRole already has it) — without it IP-target registration finds no endpoints and target groups drain. To keep the Endpoints API pass --enable-endpoint-slices=false.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with; kubectl auth can-i list endpointslices.discovery.k8s.io --as=system:serviceaccount:kube-system:aws-load-balancer-controller -A  # the can-i must be yes once EndpointSlices are the default",
+    "coversNotes": [
+      "flag default changed: defaultEnableEndpointSlices (false -> true) — defaultEnableEndpointSlices = true"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.14-crd-fields-2-14",
+    "severity": "MEDIUM",
+    "title": "IngressClassParams and TargetGroupBinding gain fields in v2.14 — apply the CRDs by hand under Helm",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(ingressclassparams\\.elbv2\\.k8s\\.aws|targetgroupbindings\\.elbv2\\.k8s\\.aws|loadbalancerconfigurations\\.gateway\\.k8s\\.aws)$",
+      "target": "crdSpecFields[]",
+      "value": "^(sslRedirectPort|targetGroupProtocol|shieldConfiguration)$",
+      "reason": "reads the installed CRD's top-level spec field names (crdSpecFields[], agent 0.4.154+); IngressClassParams sslRedirectPort (with loadBalancerName, prefixListsIDs, wafv2Acl*), TargetGroupBinding targetGroupProtocol and LoadBalancerConfiguration shieldConfiguration (with wafV2) are v2.14.0's additions — an older agent writes no field list, which reads not projected, never clean"
+    },
+    "quote": "**Action** : Please apply the latest CRD definitions: `kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\"`",
+    "remediation": "Run kubectl apply -k \"github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master\" and config/crd/gateway/gateway-crds.yaml before upgrading when installed with helm (the crds kustomization applies crds.yaml only, so the gateway.k8s.aws LoadBalancerConfiguration CRD needs the second file).",
+    "verifyCommand": "kubectl get crd ingressclassparams.elbv2.k8s.aws -o json | jq -r '[.spec.versions[] | select(.served) | .name] as $v | (.spec.versions[] | select(.storage) | .schema.openAPIV3Schema.properties.spec.properties // {} | keys) as $k | \"served=\\($v | join(\",\")) spec fields=\\($k | join(\",\"))\"'  # the installed CRD schema; the 2.14 fields (prefixListsIDs, wafv2AclName) absent from the field list means the CRDs were not re-applied for this release",
+    "coversNotes": [
+      "v2.14.0 (CRD Naming Fix): Impact: No action required. Both name will be supported, existing cust",
+      "v2.14.0 (Configuration Improvemen): PrefixListsIDs backward compatibility",
+      "ingress_class.md › spec.loadBalancerName › If loadBalancerName is set, one load balancer per Ing",
+      "ingress_class.md › spec.sslRedirectPort › If the field is specified, LBC will ignore the alb.ing",
+      "ingress_class.md › spec.wafv2AclName › If the field is specified, LBC will ignore the 'alb.ingre"
+    ]
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.14-enhanced-default-behavior-gate",
+    "severity": "LOW",
+    "title": "EnhancedDefaultBehavior (off by default) makes the controller REMOVE ALPN / mTLS / capacity settings when their annotation is removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "EnhancedDefaultBehavior=true",
+      "reason": "checked the controller Deployment's --feature-gates for EnhancedDefaultBehavior=true — the opt-in that changes what a removed annotation does"
+    },
+    "quote": "**Impact**: Enable this feature to allow the controller to remove ALPN and mTLS settings by removing the corresponding annotation",
+    "remediation": "Nothing changes unless the gate is enabled. With it on, deleting alb.ingress.kubernetes.io/mutual-authentication or minimum-load-balancer-capacity now resets the AWS setting instead of leaving it; review Ingresses whose annotations were removed to keep a setting.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(.spec.template.spec.containers[]?.image? // \"\" | test(\"aws-load-balancer-controller\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.template.spec.containers[0].image) args=\\(.spec.template.spec.containers[0].args // [] | join(\" \"))\"'  # the controller Deployment, its image tag and every flag it runs with"
+  },
+  {
+    "ruleId": "rtz-aws-load-balancer-controller-2.14-gateway-api-v1-3-dependency",
+    "severity": "LOW",
+    "title": "v2.14 builds against Gateway API v1.3.0 (docs still point at the v1.2.0 install until 2.17)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "bundleVersion",
+      "value": "^v(0\\.|1\\.[0-2]\\.)",
+      "objectName": "gateway\\.networking\\.k8s\\.io$",
+      "reason": "checked the Gateway API CRDs' bundle-version annotation — a bundle below v1.3.0 is older than what v2.14 was built against"
+    },
+    "quote": "sigs.k8s.io/gateway-api v1.3.0",
+    "remediation": "Gateway API users: install the v1.3.0 CRDs (standard; experimental for L4 routes) before upgrading, so the fields the controller reads (v1.3 GRPCRoute, ListenerSet precursors) are served.",
+    "gate": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "HTTPRoute|GRPCRoute|TCPRoute|TLSRoute|UDPRoute",
+      "reason": "the Gateway API CRD requirement only bites clusters that run Gateway API routes under this controller — with no route of any kind in the snapshot the controller has nothing to serve"
+    },
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"-\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # the installed Gateway API CRD bundle version and the API versions each route CRD still serves",
+    "coversNotes": [
+      "Gateway API CRDs to install (v1.2.0): Standard Gateway API CRDs: kubectl apply -f https://github.c"
+    ]
+  }
+]
