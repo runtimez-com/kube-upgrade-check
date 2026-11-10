@@ -1,0 +1,23 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.8-chart-cert-controller-startupprobe-values-removed",
+    "severity": "LOW",
+    "title": "Helm chart: `certController.startupProbe.port` / `useReadinessProbePort` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "useReadinessProbePort: true",
+    "remediation": "If the release set either value, drop it; the cert-controller startup probe now always uses the readiness port. Helm ignores the old keys.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | startswith(\"external-secrets-\")) | \"\\(.namespace)/\\(.name) \\(.chart)\"'  # each row is an ESO Helm release; run helm get values on it",
+    "coversNotes": [
+      "chart value certController.startupProbe.port removed"
+    ]
+  }
+]

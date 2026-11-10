@@ -1,0 +1,169 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.16-v1alpha1-removed",
+    "severity": "HIGH",
+    "title": "`external-secrets.io/v1alpha1` removed (with the conversion webhook)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret|SecretStore|ClusterSecretStore",
+      "target": "fieldManagers[].apiVersion",
+      "value": "^external-secrets\\.io/v1alpha1$",
+      "reason": "read from each object's managedFields: the apiVersion every field manager (kubectl, Helm, Argo CD, Flux) last wrote it with — the manifests that will fail to apply"
+    },
+    "quote": "Removal of Conversion Webhooks and `SecretStore/v1alpha1`, `ExternalSecret/v1alpha1` and their cluster counterparts",
+    "remediation": "Rewrite the manifests of the objects named in `external-secrets.io/v1` (v1alpha1 `dataFrom` entries become `dataFrom[].extract`) and re-apply them BEFORE the upgrade; 0.16 drops v1alpha1 and the conversion webhook, so an apply in v1alpha1 is refused.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"external-secrets.io/v1alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written as v1alpha1 by some manager",
+    "coversNotes": [
+      "v0.16.0: warning it is known v0.16.0 will not be an easy upgrade if you're not consuming from ou",
+      "v0.16.0: Make sure you are not using any v1alpha1 resources across all of your infrastructure.",
+      "v0.16.1: Make sure you are not using any v1alpha1 resources across all of your infrastructure.",
+      "CRD clustersecretstores.external-secrets.io: version v1alpha1 removed",
+      "CRD externalsecrets.external-secrets.io: version v1alpha1 removed",
+      "CRD secretstores.external-secrets.io: version v1alpha1 removed"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-v1alpha1-stored-versions",
+    "severity": "HIGH",
+    "title": "CRD `status.storedVersions` still lists v1alpha1 — the 0.16 CRDs cannot be applied",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "storedVersions[]",
+      "value": "^v1alpha1$",
+      "objectName": "^(externalsecrets|clusterexternalsecrets|secretstores|clustersecretstores)\\.external-secrets\\.io$"
+    },
+    "quote": "If that command returns not safe, remove v1alpha1 from your stored versions. Make sure this status is persisted after you verify these commands.",
+    "remediation": "For each CRD named, migrate stored objects off v1alpha1 (re-write each object), then patch `status.storedVersions` to `[\"v1\", \"v1beta1\"]` as the 0.16 upgrade guide shows; the 0.16 CRD drops v1alpha1 from spec.versions and the API server refuses that while it is still a stored version.",
+    "verifyCommand": "kubectl get crd externalsecrets.external-secrets.io secretstores.external-secrets.io clustersecretstores.external-secrets.io clusterexternalsecrets.external-secrets.io -o json | jq -r '.items[] | select(.status.storedVersions | index(\"v1alpha1\")) | .metadata.name'  # each name still stores v1alpha1",
+    "coversNotes": [
+      "v0.16.0: Make sure there are no storedVersions on v1alpha1 for externalsecrets clusterexternalse",
+      "v0.16.1: Make sure there are no storedVersions on v1alpha1 for externalsecrets clusterexternalse"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-crds-before-controller",
+    "severity": "HIGH",
+    "title": "0.16 CRDs must be installed before the controller (conversion webhook removed)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the CRDs are installed (Helm `installCRDs`, a separate bundle, Argo CD / Flux) is not collected; the CRDs themselves are"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^external-secrets\\.io$"
+    },
+    "quote": "If CRDs are installed separately, the first step you need to do is bump the crds:",
+    "remediation": "Helm with `installCRDs=true` (the default) upgrades both. If the CRDs are applied separately, apply the 0.16.1+ bundle first, check it applies cleanly, then upgrade the controller — and use 0.16.1, never 0.16.0 (its CRDs still carried `spec.conversion.webhookClientConfig`). A failed CRD step shows up as `conversion webhook for external-secrets.io/v1, Kind=ExternalSecret failed`.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"external-secrets.io\") | \"\\(.metadata.name) conversion=\\(.spec.conversion.strategy) helm=\\(.metadata.labels[\"app.kubernetes.io/managed-by\"] // \"-\")\"'  # each row is an ESO CRD; Webhook conversion means the old CRD is still installed",
+    "coversNotes": [
+      "v0.16.0: CRDs as part of external-secrets installation",
+      "v0.16.1: CRDs as part of external-secrets installation",
+      "v0.16.1: CRDs installed separately",
+      "v0.16.0: conversion webhook for external-secrets.io/v1 Kind ExternalSecret failed the server cou",
+      "v0.16.1: conversion webhook for external-secrets.io/v1 Kind ExternalSecret failed the server cou",
+      "v0.16.0: spec.conversion.webhookClientConfig Forbidden should not be set when strategy is not se",
+      "v0.16.1 (What's Changed): fix: remove crds from bundle",
+      "v0.16.1 (What's Changed): fix: remove the conversion hook completely",
+      "chart value crds.conversion.enabled default changed true -> false"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-template-engine-v1-removed",
+    "severity": "HIGH",
+    "title": "Templating engine v1 removed",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templateEngineVersion",
+      "value": "v1",
+      "reason": "the agent writes templateEngineVersion on every ExternalSecret (\"\" when there is no template)"
+    },
+    "quote": "Removal of `v1` templating engine",
+    "remediation": "Port each template named to engine v2 (`engineVersion: v2`, Go templates with sprig; v1 helpers such as `pemCertificate` / `pemPrivateKey` become `filterPEM`), following upstream's templating-v1 migration guide, before upgrading.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.target.template.engineVersion // .spec.externalSecretSpec.target.template.engineVersion // \"\") == \"v1\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row still renders with engine v1",
+    "coversNotes": [
+      "ExternalSecret spec.target.template.engineVersion value v1 removed"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-storage-version-v1",
+    "severity": "LOW",
+    "title": "Storage version moved to v1 — objects stored as v1beta1 stay so until rewritten",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "storedVersions[]",
+      "value": "^v1beta1$",
+      "objectName": "^(externalsecrets|clusterexternalsecrets|secretstores|clustersecretstores)\\.external-secrets\\.io$"
+    },
+    "quote": "Promotion of `ExternalSecret/v1` and `SecretStore/v1` and their cluster counterparts",
+    "remediation": "Nothing breaks in 2.14 (v1beta1 is still listed, unserved). Before a future release drops v1beta1 from the CRDs, run a storage migration (rewrite every object) and trim `status.storedVersions` to `[\"v1\"]` on the CRDs named.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"external-secrets.io\") | select(.status.storedVersions | index(\"v1beta1\")) | .metadata.name'  # each name still records v1beta1 as a stored version",
+    "coversNotes": [
+      "CRD clusterexternalsecrets.external-secrets.io: storage version moved v1beta1 -> v1",
+      "CRD clustersecretstores.external-secrets.io: storage version moved v1beta1 -> v1",
+      "CRD externalsecrets.external-secrets.io: storage version moved v1beta1 -> v1",
+      "CRD secretstores.external-secrets.io: storage version moved v1beta1 -> v1"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-fake-provider-valuemap-removed",
+    "severity": "LOW",
+    "title": "Fake provider `valueMap` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the fake provider's data[] entries are not in the store projection beyond their key names"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^fake\\.data\\[\\]\\.valueMap$"
+    },
+    "quote": "Removal of `ValueMaps` from Fake Secret Store",
+    "remediation": "Replace `valueMap` with `value` in each fake store's `data[]` entry.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"fake\")) | select(any(.spec.provider.fake.data[]?; has(\"valueMap\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a fake store still using valueMap"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-generators-refresh-forced",
+    "severity": "HIGH",
+    "title": "0.16.2: generators with `refreshInterval: 0` or a no-refresh policy are re-generated",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the projection carries each ExternalSecret's generator kinds and refresh settings separately; the pair is checked by the verify command"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "generatorKinds[]",
+      "value": ".+"
+    },
+    "quote": "When updating to `v0.16.2`, if you leverage `Generators` with `refreshInterval: 0` or any refreshPolicy to not update it, this version WILL FORCE THAT VALUE TO BE UPDATED.",
+    "remediation": "Before moving past 0.16.1, back up the current values of every generator-backed Secret named whose ExternalSecret has `refreshInterval: 0` or a `refreshPolicy` other than Periodic (generated passwords, tokens); 0.16.2 regenerates them once. Restore or re-distribute the values after the upgrade.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | (.spec // {}) as $s | ($s.externalSecretSpec // $s) as $e | select([($e.dataFrom // [])[]?.sourceRef.generatorRef] | map(select(. != null)) | length != 0) | select(($e.refreshInterval // \"1h\") == \"0\" or ($e.refreshInterval // \"\") == \"0s\" or (($e.refreshPolicy // \"Periodic\") != \"Periodic\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a generator-backed secret that 0.16.2 regenerates",
+    "introducedIn": [
+      "0.16.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.16-aws-secretsmanager-pushsecret-metadata-format",
+    "severity": "HIGH",
+    "title": "AWS Secrets Manager PushSecret: metadata must use the `PushSecretMetadata` wrapper",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which provider a PushSecret's store uses is a reference; the PushSecret projection carries the metadata FORMAT of each entry"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "PushSecret|ClusterPushSecret",
+      "target": "dataMetadataFormats[]",
+      "value": "^legacy$"
+    },
+    "quote": "feat(aws): support for aws tags",
+    "remediation": "For each PushSecret named that pushes to AWS Secrets Manager, rewrite `spec.data[].metadata` from the bare form (e.g. `{secretPushFormat: string}`, the 0.15 documented shape) to `apiVersion: kubernetes.external-secrets.io/v1alpha1`, `kind: PushSecretMetadata`, `spec: {secretPushFormat, tags, …}` before upgrading. From 0.16 the provider parses metadata strictly (#4538) and the bare form fails the push.",
+    "verifyCommand": "kubectl get pushsecrets.external-secrets.io,clusterpushsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any((.spec.data // .spec.pushSecretSpec.data // [])[]; .metadata != null and .metadata.kind != \"PushSecretMetadata\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) stores=\\([(.spec.secretStoreRefs // .spec.pushSecretSpec.secretStoreRefs // [])[].name] | join(\",\"))\"'  # each row pushes metadata without the PushSecretMetadata wrapper; check whether its store is AWS Secrets Manager"
+  }
+]

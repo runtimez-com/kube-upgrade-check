@@ -1,0 +1,131 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.9-data-sourceref-generatorref-deprecated",
+    "severity": "HIGH",
+    "title": "`generatorRef` under `.data[].sourceRef` is not implemented — from 0.9.9 it fails the whole ExternalSecret",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "dataSourceGeneratorKinds[]",
+      "value": ".+",
+      "reason": "read from the agent's projection of each ExternalSecret's data[].sourceRef.generatorRef kind (kind only, never the remote key)"
+    },
+    "quote": "fix: remove sourceRef.generatorRef from .data[]",
+    "remediation": "Move every generator reference from `spec.data[].sourceRef.generatorRef` to `spec.dataFrom[].sourceRef.generatorRef` on the ExternalSecrets named. Before 0.9.9 such an entry silently read from the object's default store; from 0.9.9 it resolves a store named \"\" and the whole ExternalSecret errors (SecretStore \"\" not found). The field is still accepted, and still ignored, in the v1 API.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | (.spec.data // .spec.externalSecretSpec.data // [])[] | select(.sourceRef.generatorRef != null) | . as $d | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) generator=\\($d.sourceRef.generatorRef.kind)\"'  # each row is a .data[] entry that still points at a generator",
+    "coversNotes": [
+      "API v1beta1 externalsecret_types.go GeneratorRef: Deprecated: The generatorRef is not implemented in .data[]."
+    ],
+    "introducedIn": [
+      "0.9.9"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.9-clusterexternalsecret-namespaceselector-deprecated",
+    "severity": "LOW",
+    "title": "ClusterExternalSecret `namespaceSelector` is deprecated in favour of `namespaceSelectors`",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ClusterExternalSecret",
+      "target": "namespaceSelectorSet",
+      "value": "true"
+    },
+    "quote": "Deprecated: Use NamespaceSelectors instead.",
+    "remediation": "Move `spec.namespaceSelector` to a one-element `spec.namespaceSelectors` list on each ClusterExternalSecret named. The singular field still works in 2.14; upstream says it will be removed in a future release.",
+    "verifyCommand": "kubectl get clusterexternalsecrets.external-secrets.io -o json 2>/dev/null | jq -r '.items[] | select(.spec.namespaceSelector != null) | .metadata.name'  # each name still sets the deprecated singular selector",
+    "deprecationOnly": true,
+    "introducedIn": [
+      "0.9.15"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.9-fake-provider-valuemap-deprecated",
+    "severity": "LOW",
+    "title": "Fake provider `valueMap` is deprecated (removed in 0.16)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the fake provider's data[] entries are not in the store projection beyond their key names"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^fake\\.data\\[\\]\\.valueMap$"
+    },
+    "quote": "Deprecated: ValueMap is deprecated and is intended to be removed in the future, use the `value` field instead.",
+    "remediation": "Replace `valueMap` with `value` (a JSON string) in each fake store's `data[]` entry. 0.16 removes `valueMap` (rtz-external-secrets-0.16-fake-provider-valuemap-removed).",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"fake\")) | select(any(.spec.provider.fake.data[]?; has(\"valueMap\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a fake store still using valueMap",
+    "coversNotes": [
+      "v0.9.10 (What's Changed): feat(fake): deprecate ValueMap to use Value instead"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.9-azure-aad-pod-identity-deprecated",
+    "severity": "LOW",
+    "title": "Azure Key Vault: AAD Pod Identity authentication is deprecated — use Workload Identity",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Azure identity a ManagedIdentity store resolves through (AAD Pod Identity or Workload Identity) is decided outside the store spec"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^azurekv\\.authType$"
+    },
+    "quote": "Since the AAD Pod Identity is deprecated, it is recommended to use the Workload Identity authentication.",
+    "remediation": "For each Azure Key Vault store named with `authType: ManagedIdentity` that relies on AAD Pod Identity (an AzureIdentity/AzureIdentityBinding), move it to `authType: WorkloadIdentity` with a federated service account. AAD Pod Identity itself is archived upstream.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"azurekv\")) | select(.spec.provider.azurekv.authType == \"ManagedIdentity\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an Azure store that may depend on AAD Pod Identity",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.9-ibm-secret-by-name-removed",
+    "severity": "MEDIUM",
+    "title": "IBM Cloud Secrets Manager: the deprecated fetch-secret-by-name code path is removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the remote key of an ExternalSecret is never collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^ibm$"
+    },
+    "quote": "IBM provider: remove deprecated code for fetching secret by name",
+    "remediation": "For each IBM store named, check that every ExternalSecret using it references secrets the way the 0.9.12 IBM provider docs describe (secret type prefix + ID or name with secret group); a name-only key that resolved through the removed code path now fails with \"secret group name is missing\" and stops syncing.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"ibm\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an IBM store whose ExternalSecrets should be re-checked",
+    "introducedIn": [
+      "0.9.12"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.9-chart-prometheus-values-removed",
+    "severity": "MEDIUM",
+    "title": "Helm chart: `prometheus.*` values removed — metrics scraping set through them stops",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "prometheus:",
+    "remediation": "If the release set `prometheus.enabled` / `prometheus.service.*` (or the webhook / certController copies), move them to the top-level `serviceMonitor.*` and `metrics.service.*` values before upgrading — Helm ignores the old keys silently and the metrics Service / ServiceMonitor is no longer rendered.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | startswith(\"external-secrets-\")) | \"\\(.namespace)/\\(.name) \\(.chart)\"'  # each row is an ESO Helm release; run helm get values on it and look for prometheus",
+    "coversNotes": [
+      "chart value certController.prometheus removed",
+      "chart value certController.serviceMonitor removed",
+      "chart value webhook.prometheus removed",
+      "chart value webhook.serviceMonitor removed",
+      "v0.9.10 (What's Changed): Remove references to Prometheus in Helm chart"
+    ],
+    "introducedIn": [
+      "0.9.10"
+    ]
+  }
+]

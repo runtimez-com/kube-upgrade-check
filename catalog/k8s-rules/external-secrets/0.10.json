@@ -1,0 +1,108 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.10-webhook-provider-secrets-must-be-labeled",
+    "severity": "HIGH",
+    "title": "Webhook provider: referenced Secrets must carry the label `external-secrets.io/type: webhook`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the labels of the Secrets a webhook store references are not joined to the store; the store projection carries key names only"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^webhook$"
+    },
+    "quote": "Webhook provider now can only use secrets that are labeled with `external-secrets.io/type: webhook`. This enforces explicit setup for webhook secrets by users.",
+    "remediation": "Before upgrading, add the label `external-secrets.io/type: webhook` to every Secret referenced from `spec.provider.webhook.secrets[].secretRef` of the stores named; an unlabeled Secret makes every ExternalSecret on that store fail to sync.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"webhook\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) secrets=\\([.spec.provider.webhook.secrets[]?.secretRef.name] | join(\",\"))\"'  # each row is a webhook store and the Secrets it reads; check their labels",
+    "coversNotes": [
+      "v0.10.0: Fixing the issue",
+      "v0.10.0 (What's Changed): feat: webhook secrets must be labeled"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.10-webhook-generator-label-renamed",
+    "severity": "HIGH",
+    "title": "Webhook generator: Secret label renamed `generators.external-secrets.io/type` → `external-secrets.io/type`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Webhook generator objects are not collected; the ExternalSecrets that reference one are"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "generatorKinds[]",
+      "value": "^Webhook$"
+    },
+    "quote": "Webhook generator labels have changed from `generators.external-secrets.io/type: webhook` to `external-secrets.io/type: webhook`.",
+    "remediation": "Relabel every Secret a Webhook generator reads: replace `generators.external-secrets.io/type: webhook` with `external-secrets.io/type: webhook`. The ExternalSecrets named use a Webhook generator and stop refreshing otherwise.",
+    "verifyCommand": "kubectl get secrets -A -l generators.external-secrets.io/type=webhook -o json | jq -r '.items[] | select(.metadata.labels[\"external-secrets.io/type\"] != \"webhook\") | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a Secret still carrying only the old label"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.10-clusterexternalsecret-namespaceselector-deprecated",
+    "severity": "LOW",
+    "title": "ClusterExternalSecret `namespaceSelector` is deprecated in favour of `namespaceSelectors`",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ClusterExternalSecret",
+      "target": "namespaceSelectorSet",
+      "value": "true"
+    },
+    "quote": "The field `namespaceSelector` has been deprecated in favor of `namespaceSelectors` and will be removed in a future",
+    "remediation": "Move `spec.namespaceSelector` to a one-element `spec.namespaceSelectors` list on each ClusterExternalSecret named. The singular field still works in 2.14.",
+    "verifyCommand": "kubectl get clusterexternalsecrets.external-secrets.io -o json 2>/dev/null | jq -r '.items[] | select(.spec.namespaceSelector != null) | .metadata.name'  # each name still sets the deprecated singular selector",
+    "coversNotes": [
+      "v0.10.0 (What's Changed): Update docs for namespaceSelectors usage and namespaceSelector depreca"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.10-pulumi-projectid-required",
+    "severity": "MEDIUM",
+    "title": "Pulumi ESC provider: `project` is now required (upstream calls it `projectID`)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a missing key is not a projected value; the store projection names the keys present"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^pulumi$"
+    },
+    "quote": "**WARNING**: With this update, Pulumi has added `projectID` to it's required properties.",
+    "remediation": "Add `spec.provider.pulumi.project` (the CRD field upstream's note calls `projectID`) to each Pulumi store named before upgrading; the CRD rejects any later update of a store without it. The same release moves the CRD's `apiUrl` default from `https://api.pulumi.com/api/preview` to `https://api.pulumi.com/api/esc`; a store created earlier keeps the old default persisted, so set `apiUrl: https://api.pulumi.com/api/esc` on it as well.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"pulumi\")) | select((.spec.provider.pulumi.project // \"\") == \"\" or (.spec.provider.pulumi.apiUrl // \"\" | test(\"/api/preview\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) project=\\(.spec.provider.pulumi.project // \"-\") apiUrl=\\(.spec.provider.pulumi.apiUrl // \"-\")\"'  # each row is a Pulumi store missing project or still on the /api/preview URL",
+    "introducedIn": [
+      "0.10.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.10-default-image-registry-oci",
+    "severity": "MEDIUM",
+    "title": "Helm chart: default image registry moved from ghcr.io to oci.external-secrets.io",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values and registry allow-lists are not collected; the running image is"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "From this version onwards, the default image registry name will be oci.external-secrets.io.",
+    "remediation": "If image pulls are restricted (egress firewall, admission allow-list, pull-through mirror), allow `oci.external-secrets.io` or pin `image.repository`, `webhook.image.repository` and `certController.image.repository` before upgrading; the chart changed the default for all three. The default moves back to ghcr.io in 1.1 (rtz-external-secrets-1.1-default-image-registry-ghcr).",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is an ESO workload and the registry it pulls from today",
+    "coversNotes": [
+      "v0.10.4 (What's Changed): chore: updates default oci",
+      "chart value certController.image.repository default changed ghcr.io/external-secrets -> oci.external-secrets.io/",
+      "chart value image.repository default changed ghcr.io/external-secrets -> oci.external-secrets.io/",
+      "chart value webhook.image.repository default changed ghcr.io/external-secrets -> oci.external-secrets.io/"
+    ],
+    "introducedIn": [
+      "0.10.4"
+    ]
+  }
+]

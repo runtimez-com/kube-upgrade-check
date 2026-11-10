@@ -1,0 +1,41 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.5-pulumi-accesstoken-deprecated",
+    "severity": "LOW",
+    "title": "Pulumi ESC: root-level `accessToken` deprecated — use `auth.accessToken`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^pulumi\\.accessToken$"
+    },
+    "quote": "Deprecated: Use auth.accessToken instead.",
+    "remediation": "Move `spec.provider.pulumi.accessToken` under `spec.provider.pulumi.auth.accessToken` on each store named.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"pulumi\")) | select(.spec.provider.pulumi.accessToken != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row still sets the root-level accessToken",
+    "coversNotes": [
+      "pulumi.md › Using Access Token › Note: The deprecated accessToken field at the root level is sti"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-external-secrets-2.5-chart-scopednamespace-default",
+    "severity": "HIGH",
+    "title": "Helm chart: `scopedRBAC: true` without `scopedNamespace` now scopes to the release namespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected; the controller's args are"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "feat(charts): default scopedNamespace to .Release.Namespace when scopedRBAC is true",
+    "remediation": "If the release sets `scopedRBAC: true` without `scopedNamespace`: before 2.5 that combination did nothing and the install was cluster-wide. From 2.5 the controller watches only the release namespace (`--namespace=<release ns>`) with namespaced RBAC there, AND the ClusterSecretStore, ClusterExternalSecret and ClusterPushSecret reconcilers are switched off, so ExternalSecrets in other namespaces and every cluster-scoped object stop syncing. Set `scopedRBAC: false` to keep the cluster-wide behaviour you had; setting `scopedNamespace` does not restore it.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].args[]?] | map(select(test(\"^--namespace|^--enable-cluster\"))) | join(\" \"))\"'  # each row shows the namespace scope the controller runs with",
+    "coversNotes": [
+      "v2.5.0 (General): fix(charts): remove stale args guard in controller deployment"
+    ]
+  }
+]

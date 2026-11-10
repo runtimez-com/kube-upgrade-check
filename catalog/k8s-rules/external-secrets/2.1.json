@@ -1,0 +1,21 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.1-azure-aad-pod-identity-deprecated",
+    "severity": "LOW",
+    "title": "Azure Key Vault: AAD Pod Identity authentication is deprecated — use Workload Identity",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which Azure identity a ManagedIdentity store resolves through (AAD Pod Identity or Workload Identity) is decided outside the store spec"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^azurekv\\.authType$"
+    },
+    "quote": "This authentication option uses AAD Pod Identity which is deprecated, it is recommended to use the Workload Identity authentication instead.",
+    "remediation": "Move the Azure stores named that rely on AAD Pod Identity to `authType: WorkloadIdentity`.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"azurekv\")) | select(.spec.provider.azurekv.authType == \"ManagedIdentity\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an Azure store that may depend on AAD Pod Identity",
+    "deprecationOnly": true
+  }
+]

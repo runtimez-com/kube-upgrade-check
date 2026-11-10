@@ -1,0 +1,57 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.19-crds-require-server-side-apply",
+    "severity": "HIGH",
+    "title": "CRDs are too large for client-side apply — use server-side apply",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "CustomResourceDefinition",
+      "target": "lastAppliedConfigurationPresent",
+      "value": "true",
+      "objectName": "\\.external-secrets\\.io$",
+      "reason": "a CRD carrying kubectl.kubernetes.io/last-applied-configuration was last written by client-side apply (kubectl apply, or Argo CD without ServerSideApply); Helm-installed CRDs carry none"
+    },
+    "quote": "Please note that this a breaking change because our CRDs are now too big. Meaning a simple kubectl apply or Argo's default client side apply WILL NOT WORK!",
+    "remediation": "Install the 0.19+ CRDs with `kubectl apply --server-side` (or Helm), and add `ServerSideApply=true` to the `syncOptions` of the Argo CD Application that manages them; the client-side annotation exceeds the 262144-byte limit.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | endswith(\"external-secrets.io\")) | select(.metadata.annotations[\"kubectl.kubernetes.io/last-applied-configuration\"] != null) | .metadata.name'  # each name was last applied client-side"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.19-sts-generator-jwt-auth-removed",
+    "severity": "MEDIUM",
+    "title": "STSSessionToken generator: JWT authentication removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "generator objects are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "generatorKinds[]",
+      "value": "^STSSessionToken$"
+    },
+    "quote": "fix: remove authentication option with JWT token from STSSessionToken generator",
+    "remediation": "Switch each STSSessionToken generator that uses `auth.jwt` to `auth.secretRef` (static credentials); AWS GetSessionToken cannot be called with web-identity credentials and 0.19 rejects the combination.",
+    "verifyCommand": "kubectl get stssessiontokens.generators.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.auth.jwt != null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row uses the removed JWT auth"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.19-cert-controller-endpointslices-rbac",
+    "severity": "MEDIUM",
+    "title": "cert-controller reads EndpointSlices — non-Helm installs need the new RBAC",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ClusterRoles are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "feat: migration from endpoint to endpointslice",
+    "remediation": "Helm adds the rule. For a non-Helm install, grant the cert-controller's ServiceAccount `get`, `list`, `watch` on `endpointslices` in `discovery.k8s.io` before upgrading; without it the webhook readiness check never passes.",
+    "verifyCommand": "kubectl get clusterrole -o json | jq -r '.items[] | select(.metadata.name | test(\"external-secrets-cert-controller\")) | \"\\(.metadata.name) endpointslices=\\([.rules[] | select((.resources // []) | index(\"endpointslices\"))] | length)\"'  # 0 means the cert-controller cannot read EndpointSlices",
+    "introducedIn": [
+      "0.19.1"
+    ]
+  }
+]

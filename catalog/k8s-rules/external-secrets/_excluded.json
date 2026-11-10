@@ -1,0 +1,392 @@
+[
+  {
+    "version": "0.9",
+    "note": "v0.9.2 (What's Changed): Highlight that property field must be set for DSV secret",
+    "reason": "docs-only PR (📚): documents an existing requirement of the Delinea DSV provider; nothing changed in the operator"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.2 (What's Changed): Remove builder.OnlyMetadata",
+    "reason": "controller-runtime watch internals; no API, flag or behaviour change an operator acts on"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.3 (What's Changed): Include remove orphans logic",
+    "reason": "additive: the controller now deletes target Secrets it orphaned after a target rename; no configuration needed"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.3 (What's Changed): Remove paginating namespaces",
+    "reason": "bug fix (🐛) in the ClusterExternalSecret namespace listing; nothing to change"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.5 (What's Changed): Stop using builder.OnlyMetadata for ExternalSecrets",
+    "reason": "controller-runtime watch internals; no API, flag or behaviour change an operator acts on"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.5 (What's Changed): Remove metrics when a resouce is deleted",
+    "reason": "metrics hygiene: series of deleted objects are dropped instead of lingering; no metric renamed"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.5 (What's Changed): fix: assign default value to prevent nil panic",
+    "reason": "nil-pointer fix; nothing to change"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.11 (What's Changed): chore: replace deprecated command with environment file",
+    "reason": "CI workflow change (GitHub Actions set-output); not part of the operator"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.12 (What's Changed): feat: set default namespace on vault secretStore (namespaced ressource",
+    "reason": "fix for namespaced Vault SecretStores: before 0.9.12 their caProvider lookup carried no namespace and could not succeed; it only makes a broken configuration work"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.14 (What's Changed): Revert \"3012 - Probes for external-secrets\"",
+    "reason": "the probe change it reverts never reached a release (3012 and its revert both land in 0.9.14)"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.14 (What's Changed): Update Scaleway provider to use v1beta1 API version",
+    "reason": "the Scaleway provider switched the Scaleway API version it calls; nothing in the store spec changes"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.16 (What's Changed): Pulumi: Remove unwanted chars when extract secret",
+    "reason": "bug fix in the Pulumi provider's value extraction"
+  },
+  {
+    "version": "0.9",
+    "note": "v0.9.20 (What's Changed): Adds codepath for removing finalizers",
+    "reason": "bug fix (490eeacca touches only the PushSecret controller): a PushSecret with deletionPolicy None now drops its finalizer"
+  },
+  {
+    "version": "0.9",
+    "note": "deprecation-policy.md › API Surface › We define the following scope that is covered by our depre",
+    "reason": "the project's deprecation policy text, not a change"
+  },
+  {
+    "version": "0.9",
+    "note": "chart value prometheus removed",
+    "reason": "same chart change as the rule's quote (top-level prometheus block) — kept as an exclusion only because two notes share the quote 'prometheus:'"
+  },
+  {
+    "version": "0.10",
+    "note": "v0.10.0 (What's Changed): docs: Remove references to pemCertificate and pemPrivateKey functions",
+    "reason": "pemCertificate / pemPrivateKey exist only in templating engine v1 (pkg/template/v1 at v0.10.0) and leave with it in 0.16 — rtz-external-secrets-0.16-template-engine-v1-removed"
+  },
+  {
+    "version": "0.10",
+    "note": "v0.10.3 (What's Changed): fix: bitwarden API url to point to the correct default location",
+    "reason": "bug fix: a trailing / is trimmed from apiURL / identityURL, and the docs example host is corrected; nothing to change"
+  },
+  {
+    "version": "0.10",
+    "note": "v0.10.3 (What's Changed): Removed duplicate and deprecated API spec page",
+    "reason": "documentation site change"
+  },
+  {
+    "version": "0.10",
+    "note": "v0.10.5 (What's Changed): feat: edit all required changes for recursive option",
+    "reason": "additive: Infisical gains an optional `recursive` flag (defaults false, the old behaviour)"
+  },
+  {
+    "version": "0.10",
+    "note": "v0.10.7 (What's Changed): fix(azure-keyvault): remove incorrect suffix from provider URL to fix",
+    "reason": "bug fix in the Azure workload-identity OpenID discovery URL"
+  },
+  {
+    "version": "0.11",
+    "note": "deprecation-policy.md › Non-Scope › Everything not listed in scope is not subject to this deprec",
+    "reason": "the project's deprecation policy text, not a change"
+  },
+  {
+    "version": "0.11",
+    "note": "deprecation-policy.md › Depreaction Process: › Deprecation process is described within the proje",
+    "reason": "the project's deprecation policy text, not a change"
+  },
+  {
+    "version": "0.12",
+    "note": "v0.12.1 (What's Changed): chore: deprecate olm proposal",
+    "reason": "the design proposal behind the 0.11 OLM end (rtz-external-secrets-0.11-olm-releases-end)"
+  },
+  {
+    "version": "0.12",
+    "note": "v0.12.1 (What's Changed): fix: increase default QPS/Burst to 50/100 by @thesuperzapper (#4202)",
+    "reason": "raises the controller's OWN client-side rate limits (0 meant client-go's 5 QPS / 10 burst); a release that set --client-qps / --client-burst keeps its value, nothing to change"
+  },
+  {
+    "version": "0.12",
+    "note": "google-secrets-manager.md › PushSecret owning an existing Go › By default, the PushSecret spec w",
+    "reason": "documents the new optional `mergePolicy` metadata field; upstream: 'defaults to `Replace` to ensure that there are no breaking changes'"
+  },
+  {
+    "version": "0.12",
+    "note": "flag --client-burst default changed 0 -> 100",
+    "reason": "same change as #4202 above: the controller's own client rate limit"
+  },
+  {
+    "version": "0.12",
+    "note": "flag --client-qps default changed 0 -> 50",
+    "reason": "same change as #4202 above: the controller's own client rate limit"
+  },
+  {
+    "version": "0.14",
+    "note": "stability-support.md › Supported Versions › external-secrets only supports the most-up-to date,",
+    "reason": "the support POLICY, carried in k8s-addons/external-secrets.json as supportedMinorsBehindLatest=0 (the MEDIUM outside-vendor-support finding); a rule would report it through a second engine"
+  },
+  {
+    "version": "0.16",
+    "note": "v0.16.0: CRDs installed separately",
+    "reason": "the 0.16.0 copy of the CRD-upgrade guide; the 0.16.1 copy is covered by rtz-external-secrets-0.16-crds-before-controller"
+  },
+  {
+    "version": "0.16",
+    "note": "v0.16.0: My issue is not here What do I do",
+    "reason": "a pointer to the upstream issue tracker"
+  },
+  {
+    "version": "0.16",
+    "note": "v0.16.0 (What's Changed): fix: revert main to 0.15.1",
+    "reason": "release engineering on main between 0.15.1 and 0.16.0; no shipped behaviour"
+  },
+  {
+    "version": "0.16",
+    "note": "v0.16.2 (What's Changed): feat(helm): Offer the possiblity to disable aggreate-to-view and aggre",
+    "reason": "additive chart values (aggregate-to-view / aggregate-to-edit toggles default to the old behaviour)"
+  },
+  {
+    "version": "0.17",
+    "note": "v0.17.0 (What's Changed): fix: remove comment from helm",
+    "reason": "a comment in the Helm chart templates"
+  },
+  {
+    "version": "0.18",
+    "note": "v0.18.0 (What's Changed): Revert \"fix: keepersecurity support for shortcuts\"",
+    "reason": "the shortcut fix it reverts (#4825) and the revert both first ship in v0.18.0 — never released"
+  },
+  {
+    "version": "0.18",
+    "note": "deprecation-policy.md › Deprecation Process: › Deprecation process is described within the proje",
+    "reason": "the project's deprecation policy text, not a change"
+  },
+  {
+    "version": "0.19",
+    "note": "v0.19.1 (What's Changed): fix: do not run ApplyTemplate for immutable secrets in mutationFunc",
+    "reason": "bug fix: immutable target Secrets are no longer re-templated on every loop"
+  },
+  {
+    "version": "0.20",
+    "note": "chart value certController.nameOverride removed",
+    "reason": "no template read webhook.* / certController.* nameOverride, fullnameOverride or webhook.rbac at v0.9.0, v0.12.1, v0.15.0, v0.19.0 or v0.20.3; #5334 (v0.20.4) removed dead values from values.yaml, README and schema only, so nothing renders differently (E2 audit #2 D5)"
+  },
+  {
+    "version": "0.20",
+    "note": "chart value certController.fullnameOverride removed",
+    "reason": "no template read webhook.* / certController.* nameOverride, fullnameOverride or webhook.rbac at v0.9.0, v0.12.1, v0.15.0, v0.19.0 or v0.20.3; #5334 (v0.20.4) removed dead values from values.yaml, README and schema only, so nothing renders differently (E2 audit #2 D5)"
+  },
+  {
+    "version": "0.20",
+    "note": "chart value webhook.fullnameOverride removed",
+    "reason": "no template read webhook.* / certController.* nameOverride, fullnameOverride or webhook.rbac at v0.9.0, v0.12.1, v0.15.0, v0.19.0 or v0.20.3; #5334 (v0.20.4) removed dead values from values.yaml, README and schema only, so nothing renders differently (E2 audit #2 D5)"
+  },
+  {
+    "version": "0.20",
+    "note": "chart value webhook.nameOverride removed",
+    "reason": "no template read webhook.* / certController.* nameOverride, fullnameOverride or webhook.rbac at v0.9.0, v0.12.1, v0.15.0, v0.19.0 or v0.20.3; #5334 (v0.20.4) removed dead values from values.yaml, README and schema only, so nothing renders differently (E2 audit #2 D5)"
+  },
+  {
+    "version": "0.20",
+    "note": "chart value webhook.rbac removed",
+    "reason": "no template read webhook.* / certController.* nameOverride, fullnameOverride or webhook.rbac at v0.9.0, v0.12.1, v0.15.0, v0.19.0 or v0.20.3; #5334 (v0.20.4) removed dead values from values.yaml, README and schema only, so nothing renders differently (E2 audit #2 D5)"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.0: WARNING This release has been accidentally created as immutable, which causes us to not",
+    "reason": "release-publication notice (immutable GitHub release, manifests re-published as 0.20.1)"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.0 (General): fix: remove release- branch automation",
+    "reason": "release engineering"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.0 (General): ref: removing Yandex Cloud specific common types declaration duplication",
+    "reason": "internal refactor of shared Yandex types; no API change"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.2 (General): fix: IBM Cloud Secrets Manager Imported Cert does not always require intermed",
+    "reason": "bug fix: an imported certificate without an intermediate no longer fails"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.4 (General): fix: remove the finalizer on namespace deletion",
+    "reason": "bug fix: ClusterExternalSecret finalizers no longer block namespace deletion"
+  },
+  {
+    "version": "0.20",
+    "note": "v0.20.4 (General): fix: remove extra json convert check",
+    "reason": "internal simplification of value decoding"
+  },
+  {
+    "version": "0.20",
+    "note": "stability-support.md › Upgrading › External Secrets Operator has not reached stable 1.0 yet. Thi",
+    "reason": "upstream's general upgrade advice; the support policy is in the catalog and every breaking change is its own rule"
+  },
+  {
+    "version": "0.20",
+    "note": "stability-support.md › Upgrading › Deprecated feature removals",
+    "reason": "a list heading of the upgrade advice above"
+  },
+  {
+    "version": "0.20",
+    "note": "stability-support.md › Upgrading › Plan your upgrades carefully - Always review release notes be",
+    "reason": "upstream's general upgrade advice"
+  },
+  {
+    "version": "1.0",
+    "note": "provider passbolt: maintenance status NotMaintained",
+    "reason": "temporary: passbolt is MaintenanceStatusMaintained again from v1.3.2 / v2.0.0 (f5ee3b3c1; v2.14.0 providers/v1/passbolt/passbolt.go), so a hop to the 2.14 target lands on a maintained provider (E2 audit #2 D14)"
+  },
+  {
+    "version": "1.0",
+    "note": "v1.0.0 (General): fix(charts): normalize certificate duration default value",
+    "reason": "the chart's certificate duration default is rewritten in a normalized form (8760h); same duration"
+  },
+  {
+    "version": "1.1",
+    "note": "v1.1.1 (General): fix: use patch instead of update for finalizers addition and removal",
+    "reason": "controller internals (patch instead of update); fewer conflicts, nothing to change"
+  },
+  {
+    "version": "1.3",
+    "note": "v1.3.0: BROKEN:",
+    "reason": "1.3.0's images were not promoted; 1.3.1 ships the same changes. The hop's target is a newer release"
+  },
+  {
+    "version": "1.3",
+    "note": "v1.3.0 (General): fix: push secret delete was removing the wrong key",
+    "reason": "bug fix: PushSecret deletion removed the wrong remote key"
+  },
+  {
+    "version": "1.3",
+    "note": "v1.3.0 (General): fix: Include all providers in default dev build",
+    "reason": "developer build configuration"
+  },
+  {
+    "version": "1.3",
+    "note": "v1.3.0 (General): chore: remove unmaintained secret stores",
+    "reason": "removed and reverted (#5857) within 1.3.0 — the removal shipped in 2.0 (rtz-external-secrets-2.0-alibaba-device42-removed)"
+  },
+  {
+    "version": "1.3",
+    "note": "v1.3.0 (General): chore: revert remove unmaintained secret stores",
+    "reason": "reverts #5854 within 1.3.0; nothing shipped"
+  },
+  {
+    "version": "2.4",
+    "note": "clusterexternalsecret.md › Reducing provider calls for larg › a deprecation of the simpler patte",
+    "reason": "the docs sentence says the opposite of a deprecation: 'This is a recommendation for minimizing provider load, not a deprecation of the simpler pattern shown above.'"
+  },
+  {
+    "version": "2.7",
+    "note": "aws-secrets-manager.md › Additional Metadata for PushSecr › Note: ESO treats the PushSecret as t",
+    "reason": "the 2.7 docs restate, for tags, the resource policy and the new opt-in replicationLocations, the source-of-truth behaviour that rtz-external-secrets-2.2-aws-pushsecret-tags-source-of-truth already states for tags and the resource policy (E2 audit #2 D8)"
+  },
+  {
+    "version": "2.7",
+    "note": "aws-secrets-manager.md › Location Replication › Regions already configured in AWS but not listed",
+    "reason": "replicationLocations is new in 2.7 (#6451) and opt-in: manageRegionReplication returns early when it is unset; tags and the resource policy are rtz-external-secrets-2.2-aws-pushsecret-tags-source-of-truth (E2 audit #2 D8)"
+  },
+  {
+    "version": "2.7",
+    "note": "v2.7.0 (General): fix: no need for the field to have a default if it can be omitted",
+    "reason": "drops the CRD default of the optional nullBytePolicy fields; an omitted value is read as Ignore exactly as before"
+  },
+  {
+    "version": "2.7",
+    "note": "infisical.md › Deletion › The Infisical write API requires the project's internal ID, while the",
+    "reason": "documents how the Infisical provider resolves a project slug; nothing to configure"
+  },
+  {
+    "version": "2.8",
+    "note": "v2.8.0 (General): fix(oracle): cache default WorkloadIdentity provider to prevent tcp port exhau",
+    "reason": "bug fix: Oracle workload identity provider is cached (port exhaustion)"
+  },
+  {
+    "version": "2.8",
+    "note": "aws-certificate-manager.md › Usage with cert-manager › If the PushSecret is deleted and deletion",
+    "reason": "documents deletionPolicy on the ACM provider added in this line; nothing changes for an existing store"
+  },
+  {
+    "version": "2.8",
+    "note": "beyondtrustworkloadcredentials.md › Limitations › The target.deletionPolicy: Delete shown above",
+    "reason": "documents a provider added in 2.7"
+  },
+  {
+    "version": "2.9",
+    "note": "v2.9.0 (General): fix(api): stop defaulting optional ExternalSecret strategy fields",
+    "reason": "conversion/decoding/metadata strategies lose their CRD defaults but the controller reads an omitted value as the old default (Default / None); only the stored object stops carrying the defaulted value"
+  },
+  {
+    "version": "2.9",
+    "note": "v2.9.0 (General): chore: remove/cleanup remaining tools from tools.go.",
+    "reason": "build tooling (tools.go)"
+  },
+  {
+    "version": "2.10",
+    "note": "v2.10.0 (General): fix(vault): only apply deprecated token-cache flags when explicitly set",
+    "reason": "bug fix: Vault token-cache flags are applied only when set"
+  },
+  {
+    "version": "2.10",
+    "note": "flag --tls-min-version default changed \"1.2\" -> \"\"",
+    "reason": "the webhook falls back to Go's default minimum, which is TLS 1.2 for servers in the Go toolchains 2.10 builds with — the same floor as the old explicit default"
+  },
+  {
+    "version": "2.11",
+    "note": "v2.11.0 (General): chore: Revert #6908",
+    "reason": "reverts #6908 (Infisical: keep duplicate secret keys) inside 2.11.0; the revert 142b09453 is in 2.11.0 too, so it was never released"
+  },
+  {
+    "version": "2.11",
+    "note": "keeper-security.md › Behavior › NOTE: A record that cannot be found is reported as a missing sec",
+    "reason": "documents how Keeper reports a missing record; no behaviour change"
+  },
+  {
+    "version": "2.11",
+    "note": "chart value certController.image.repository default changed ghcr.io/external-secrets -> external-secrets/externa",
+    "reason": "2.11 split image.repository into global.imageRegistry + repository with the same resulting image (ghcr.io/external-secrets/external-secrets); reverted in 2.12 — see rtz-external-secrets-2.12-chart-global-imageregistry-removed"
+  },
+  {
+    "version": "2.11",
+    "note": "chart value image.repository default changed ghcr.io/external-secrets -> external-secrets/externa",
+    "reason": "same 2.11 registry split as above, reverted in 2.12"
+  },
+  {
+    "version": "2.11",
+    "note": "chart value webhook.image.repository default changed ghcr.io/external-secrets -> external-secrets/externa",
+    "reason": "same 2.11 registry split as above, reverted in 2.12"
+  },
+  {
+    "version": "2.13",
+    "note": "v2.13.0 (General): fix: Restrict v1beta1 Secret template targets",
+    "reason": "the check is added to the v1beta1 validator only (apis/externalsecrets/v1beta1/externalsecret_validator.go); v1beta1 is unserved since 0.17, so no object reaches it"
+  },
+  {
+    "version": "2.14",
+    "note": "v2.14.0 (General): fix: Insufficient default cooldown",
+    "reason": "dependabot configuration in the upstream repository"
+  },
+  {
+    "version": "2.14",
+    "note": "v2.14.0 (General): chore: use sha instead of tags and deprecate unmaintained images",
+    "reason": "the operator image's base moves to distroless Debian 13 pinned by digest; no configuration or API change"
+  }
+]

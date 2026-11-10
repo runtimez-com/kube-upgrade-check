@@ -1,0 +1,17 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.15-clusterexternalsecret-namespaces-deprecated",
+    "severity": "LOW",
+    "title": "ClusterExternalSecret `namespaces` list is deprecated in favour of `namespaceSelectors`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterExternalSecret",
+      "target": "namespacesCount",
+      "value": "^[1-9]"
+    },
+    "quote": "Deprecated: Use NamespaceSelectors instead.",
+    "remediation": "Replace `spec.namespaces` with a `namespaceSelectors` entry matching `kubernetes.io/metadata.name` on each ClusterExternalSecret named.",
+    "verifyCommand": "kubectl get clusterexternalsecrets.external-secrets.io -o json 2>/dev/null | jq -r '.items[] | select((.spec.namespaces // []) | length != 0) | .metadata.name'  # each name still lists namespaces explicitly",
+    "deprecationOnly": true
+  }
+]

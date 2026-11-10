@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.13-aws-parameterstore-pushsecret-metadata-format",
+    "severity": "HIGH",
+    "title": "AWS Parameter Store: PushSecret metadata structure changed to `PushSecretMetadata`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the store a PushSecret pushes to is a reference; the projection carries each data entry's metadata FORMAT, not the provider behind its store"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "PushSecret|ClusterPushSecret",
+      "target": "dataMetadataFormats[]",
+      "value": "^legacy$"
+    },
+    "quote": "https://github.com/external-secrets/external-secrets/pull/4262 introduces a breaking change in the METADATA structure for the AWS PARAMETER STORE.",
+    "remediation": "For each PushSecret named whose store is AWS Parameter Store, rewrite `spec.data[].metadata` in the `apiVersion: kubernetes.external-secrets.io/v1alpha1`, `kind: PushSecretMetadata` form (secretType, kmsKeyID, tier, tags under `spec`) before upgrading.",
+    "verifyCommand": "kubectl get pushsecrets.external-secrets.io,clusterpushsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any((.spec.data // .spec.pushSecretSpec.data // [])[]; .metadata != null and .metadata.kind != \"PushSecretMetadata\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) stores=\\([(.spec.secretStoreRefs // .spec.pushSecretSpec.secretStoreRefs // [])[].name] | join(\",\"))\"'  # each row pushes metadata in the old format"
+  }
+]

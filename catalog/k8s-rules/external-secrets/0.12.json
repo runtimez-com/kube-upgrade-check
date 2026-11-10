@@ -1,0 +1,59 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.12-aws-bulkfetch-iam-permission",
+    "severity": "HIGH",
+    "title": "AWS Secrets Manager: bulk fetch needs `secretsmanager:BatchGetSecretValue`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the IAM policy of the role a store assumes is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^aws\\.service$"
+    },
+    "quote": "Permission update for AWS provider adding BulkFetch when getting multiple secrets ( significant API reduce but comes with adding a permission for bulk endpoint )",
+    "remediation": "Add `secretsmanager:BatchGetSecretValue` to the IAM policy of every role the AWS Secrets Manager stores named assume; `dataFrom.find` lookups call BatchGetSecretValue with no fallback and fail without it.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"aws\")) | select(.spec.provider.aws.service == \"SecretsManager\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) role=\\(.spec.provider.aws.role // \"-\")\"'  # each row is an AWS Secrets Manager store; check its role for BatchGetSecretValue"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.12-gcp-pushsecret-metadata-format",
+    "severity": "HIGH",
+    "title": "GCP Secret Manager: PushSecret metadata must use the standardized `PushSecretMetadata` format",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the store a PushSecret pushes to is a reference; the projection carries each data entry's metadata FORMAT, not the provider behind its store"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "PushSecret|ClusterPushSecret",
+      "target": "dataMetadataFormats[]",
+      "value": "^legacy$"
+    },
+    "quote": "We standardized the GCP Secrets Manager Metadata structure for PushSecrets ( be aware that existing manifests will stop working until updated to the standardized version ) for more info see https://github.com/external-secrets/external-secrets/pull/4210",
+    "remediation": "For each PushSecret named whose store is GCP Secret Manager, wrap `spec.data[].metadata` as `apiVersion: kubernetes.external-secrets.io/v1alpha1`, `kind: PushSecretMetadata`, `spec: {annotations, labels, mergePolicy, cmekKeyName}`; the old bare `{annotations, labels}` form stops pushing.",
+    "verifyCommand": "kubectl get pushsecrets.external-secrets.io,clusterpushsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any((.spec.data // .spec.pushSecretSpec.data // [])[]; .metadata != null and .metadata.kind != \"PushSecretMetadata\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) stores=\\([(.spec.secretStoreRefs // .spec.pushSecretSpec.secretStoreRefs // [])[].name] | join(\",\"))\"'  # each row pushes metadata in the old format",
+    "coversNotes": [
+      "v0.12.1 (What's Changed): BREAKING: Standardize GCP Secret Manager PushSecret metadata format an"
+    ],
+    "introducedIn": [
+      "0.12.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.12-ecr-generator-spec-typo-fixed",
+    "severity": "MEDIUM",
+    "title": "ClusterGenerator: `ecrRAuthorizationTokenSpec` json key renamed to `ecrAuthorizationTokenSpec`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ClusterGenerator objects are not collected"
+    },
+    "quote": "fixed a typo for a generator in the json tag where before it was `ecrRAuthorizationTokenSpec` with an extra R",
+    "remediation": "Rename `spec.generator.ecrRAuthorizationTokenSpec` to `ecrAuthorizationTokenSpec` in every ClusterGenerator that wraps an ECR token generator; the old key is dropped by the new CRD.",
+    "verifyCommand": "kubectl get clustergenerators.generators.external-secrets.io -o json 2>/dev/null | jq -r '.items[] | select(.spec.generator | has(\"ecrRAuthorizationTokenSpec\")) | .metadata.name'  # each name still uses the misspelled key",
+    "introducedIn": [
+      "0.12.1"
+    ]
+  }
+]
