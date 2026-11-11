@@ -318,16 +318,19 @@
     "severity": "LOW",
     "title": "`enable-ipsec-encrypted-overlay` has no effect — removed in 1.20",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-ipsec-encrypted-overlay on every IPsec install (default \"false\")"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-ipsec-encrypted-overlay)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-ipsec-encrypted-overlay)$"
     },
     "quote": "The `--enable-ipsec-encrypted-overlay` flag has no effect and will be removed in Cilium 1.20.",
-    "remediation": "Remove the key (Helm `encryption.ipsec.encryptedOverlay`); IPsec always applies after encapsulation since 1.18.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-ipsec-encrypted-overlay)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "The flag has no effect, so the chart default (`false`) needs nothing. If the command prints `true`, drop Helm `encryption.ipsec.encryptedOverlay`: IPsec always applies after encapsulation since 1.18, and 1.20 removes the flag.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-ipsec-encrypted-overlay)$\")) | \"\\(.key)=\\(.value)\"'  # true was set by hand; false is the chart default",
     "deprecationOnly": true
   },
   {
@@ -407,32 +410,38 @@
     "severity": "MEDIUM",
     "title": "`enable-session-affinity`, `enable-internal-traffic-policy`, `enable-svc-source-range-check` removed — always on",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18 and enable-session-affinity only when it is true"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-session-affinity|enable-svc-source-range-check)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-session-affinity|enable-svc-source-range-check)$"
     },
     "quote": "The previously deprecated `--enable-session-affinity`, `--enable-internal-traffic-policy`, and `--enable-svc-source-range-check` flags have been removed.",
-    "remediation": "If any of these was `false`, the feature turns ON at 1.19: Services with `sessionAffinity: ClientIP` start pinning clients, `loadBalancerSourceRanges` start being enforced (traffic from outside the ranges is dropped), and `internalTrafficPolicy: Local` keeps traffic node-local. Review those Services before upgrading.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-session-affinity|enable-svc-source-range-check)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+    "remediation": "Only `false` matters (the chart writes `enable-svc-source-range-check: \"true\"` and never writes the other two as false). If the command prints `false`, the feature turns ON at 1.19: Services with `sessionAffinity: ClientIP` start pinning clients, `loadBalancerSourceRanges` start being enforced (traffic from outside the ranges is dropped), and `internalTrafficPolicy: Local` keeps traffic node-local. Review those Services before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-session-affinity|enable-svc-source-range-check)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the default"
   },
   {
     "ruleId": "rtz-cilium-1.19-nodeport-hostport-externalips-flags-removed",
     "severity": "HIGH",
     "title": "`enable-node-port` / `enable-host-port` / `enable-external-ips` removed — need `kube-proxy-replacement=true`",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-node-port / enable-host-port / enable-external-ips: \"false\" on every install without kube-proxy replacement (1.14-1.18)"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-node-port|enable-host-port|enable-external-ips)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-node-port|enable-host-port|enable-external-ips)$"
     },
     "quote": "The previously deprecated `--enable-node-port`, `--enable-host-port`, and `--enable-external-ips` flags have been removed.",
-    "remediation": "cilium-config enables these features individually. On 1.19 they work only with `kube-proxy-replacement: \"true\"`; with it false, NodePort, hostPort and externalIPs handling by Cilium stops. Switch to full kube-proxy replacement (or keep kube-proxy serving them) before upgrading.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-node-port|enable-host-port|enable-external-ips)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+    "remediation": "Affected only if the command prints one of these as `true` while `kube-proxy-replacement` is `false` (the chart writes them as `false` on every install without kube-proxy replacement — that needs nothing). On 1.19 they work only with `kube-proxy-replacement: \"true\"`; with it false, NodePort, hostPort and externalIPs handling by Cilium stops. Switch to full kube-proxy replacement (or keep kube-proxy serving them) before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-node-port|enable-host-port|enable-external-ips|kube-proxy-replacement)$\")) | \"\\(.key)=\\(.value)\"'  # true while kube-proxy-replacement=false is affected; false is the chart default"
   },
   {
     "ruleId": "rtz-cilium-1.19-custom-calls-removed",

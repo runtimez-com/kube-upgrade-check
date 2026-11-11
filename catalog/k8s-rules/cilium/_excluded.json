@@ -287,7 +287,7 @@
   {
     "version": "1.18",
     "note": "Removed Options: The previously deprecated hubble-relay flag `--dial-timeout`",
-    "reason": "the flag was a no-op since 1.17"
+    "reason": "the flag was a no-op since 1.17, and the chart passes relay settings through hubble-relay's config file, where an unknown key is ignored — a leftover `dial-timeout` does not stop relay from starting"
   },
   {
     "version": "1.18",

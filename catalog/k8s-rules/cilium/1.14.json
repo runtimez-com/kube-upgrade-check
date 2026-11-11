@@ -19,15 +19,11 @@
     "severity": "MEDIUM",
     "title": "`tofqdns-min-ttl` default drops from 3600 s to 0 — DNS policy now honours upstream TTLs",
     "detection": {
-      "kind": "SPEC_PATH_NONE_MATCHES",
-      "objectKind": "ConfigMap",
-      "objectName": "^cilium-config$",
-      "target": "keys[]",
-      "value": "^(tofqdns-min-ttl)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; only matters where toFQDNs policies exist"
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the 1.13 chart writes tofqdns-min-ttl: \"3600\" on every install and the 1.14 chart stops writing it, so the key's presence today says nothing about the upgraded value"
     },
     "quote": "The default value of `--tofqdns-min-ttl` has changed from 3600 seconds to zero.",
-    "remediation": "cilium-config does not pin `tofqdns-min-ttl`, so on 1.14 a toFQDNs policy expires an allowed IP at the upstream DNS TTL instead of after an hour. Applications that cache a resolved IP past its TTL and open NEW connections to it are then denied. If any of your workloads do that, set Helm `dnsProxy.minTtl=3600` (cilium-config `tofqdns-min-ttl: \"3600\"`) before upgrading.",
+    "remediation": "The 1.13 chart wrote `tofqdns-min-ttl: \"3600\"` by default; the 1.14 chart drops it unless Helm `dnsProxy.minTtl` is set, so after `helm upgrade` a toFQDNs policy expires an allowed IP at the upstream DNS TTL instead of after an hour. Applications that cache a resolved IP past its TTL and open NEW connections to it are then denied. If any of your workloads do that, set Helm `dnsProxy.minTtl=3600` before upgrading.",
     "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; (.toFQDNs // []) | length != 0)) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy with toFQDNs rules — the TTL change applies to them"
   },
   {
@@ -185,7 +181,7 @@
   },
   {
     "ruleId": "rtz-cilium-1.14-tunnel-option-deprecated",
-    "severity": "MEDIUM",
+    "severity": "LOW",
     "title": "`tunnel` option deprecated (removed in 1.15) — use `routing-mode` / `tunnel-protocol`",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
@@ -193,10 +189,10 @@
       "objectName": "^cilium-config$",
       "target": "keys[]",
       "value": "^(tunnel)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the 1.13 chart writes tunnel on every install and the 1.14 chart converts Helm `tunnel` itself"
     },
     "quote": "The `tunnel` option is deprecated and will be removed in v1.15.",
-    "remediation": "Replace `tunnel` in cilium-config with `routing-mode: native` (was `tunnel: disabled`) or `routing-mode: tunnel` + `tunnel-protocol: vxlan|geneve` (Helm `routingMode` / `tunnelProtocol`). 1.15 drops `tunnel` entirely (rtz-cilium-1.15-tunnel-option-removed).",
+    "remediation": "`helm upgrade` with the 1.14 chart rewrites `tunnel` into `routing-mode` / `tunnel-protocol` for you; only a hand-managed cilium-config must change. There, replace `tunnel` with `routing-mode: native` (was `tunnel: disabled`) or `routing-mode: tunnel` + `tunnel-protocol: vxlan|geneve` (Helm `routingMode` / `tunnelProtocol`). 1.15 drops `tunnel` entirely (rtz-cilium-1.15-tunnel-option-removed).",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(tunnel)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
     "coversNotes": [
       "Helm Options: Following the deprecation of the `tunnel`"
@@ -212,8 +208,8 @@
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(disable-cnp-status-updates|cnp-node-status-gc-interval|enable-k8s-event-handover)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-k8s-event-handover)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; disable-cnp-status-updates is written on every 1.13 install, so only enable-k8s-event-handover is read"
     },
     "quote": "The `disable-cnp-status-updates`, `cnp-node-status-gc-interval duration` and `enable-k8s-event-handover` options are deprecated and will be removed in v1.15.",
     "remediation": "Remove these keys (Helm `enableCnpStatusUpdates`, `enableK8sEventHandover`); they have no replacement.",

@@ -8,7 +8,7 @@
       "reason": "CiliumLocalRedirectPolicy is not collected"
     },
     "quote": "`CiliumLocalRedirectPolicy` with `addressMatcher` will no longer override an existing Service at the same frontend address.",
-    "remediation": "For each policy the command lists whose frontend address is also a Service's ClusterIP, migrate to `serviceMatcher`. `--enable-lrp-address-matcher-override=true` restores the old behaviour on 1.17 only.",
+    "remediation": "For each policy the command lists whose frontend address is also a Service's ClusterIP, migrate to `serviceMatcher`. `--enable-lrp-address-matcher-override=true` restores the old behaviour on 1.17.16+ only: the flag does not exist in 1.18 or later, and 1.18.10+ / 1.19.4+ enforce the same guard with no override (upstream ships no 1.18/1.19 upgrade note for it), so migrate instead of relying on the flag.",
     "verifyCommand": "kubectl get ciliumlocalredirectpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.redirectFrontend.addressMatcher != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row uses addressMatcher",
     "introducedIn": [
       "1.17.16"
@@ -23,7 +23,7 @@
       "reason": "probe behaviour"
     },
     "quote": "The check for connectivity to the Kubernetes apiserver has been removed from the cilium-agent liveness probe.",
-    "remediation": "An agent that loses the apiserver is no longer restarted by its liveness probe. Set Helm `livenessProbe.requireK8sConnectivity=true` to keep the old behaviour.",
+    "remediation": "An agent that loses the apiserver is no longer restarted by its liveness probe. Set Helm `livenessProbe.requireK8sConnectivity=true` to keep the old behaviour. (The change was also backported to 1.16.10 — a 1.16.10+ cluster already behaves this way.)",
     "introducedIn": [
       "1.17.4"
     ]
@@ -181,7 +181,7 @@
       "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
     },
     "quote": "TLS Visibility can now pass secrets to Envoy via SDS instead of inline via NPDS.",
-    "remediation": "`tls.readSecretsOnlyFromSecretsNamespace` defaults to true: Secrets referenced by `terminatingTLS` / `originatingTLS` in the policies listed must live in `tls.secretsNamespace` (copy them there) or set the option to false.",
+    "remediation": "`tls.readSecretsOnlyFromSecretsNamespace` defaults to true. With `tls.secretSync.enabled: true` (the default for NEW clusters) the operator copies the Secrets referenced by `terminatingTLS` / `originatingTLS` into `tls.secretsNamespace` for you. With `upgradeCompatibility: 1.16` (or `tls.secretSync.enabled=false`) nothing copies them: for the policies listed, copy the Secrets into `tls.secretsNamespace` before upgrading, or set `tls.readSecretsOnlyFromSecretsNamespace=false`.",
     "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; (.toPorts // []) | any(.terminatingTLS != null or .originatingTLS != null))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row references TLS Secrets"
   },
   {
@@ -268,16 +268,19 @@
     "severity": "LOW",
     "title": "`enable-k8s-terminating-endpoint` deprecated — always on in 1.18",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-k8s-terminating-endpoint: \"true\" on every install up to 1.17"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-k8s-terminating-endpoint)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-k8s-terminating-endpoint)$"
     },
     "quote": "The `--enable-k8s-terminating-endpoint` cilium-agent flag (`enableK8sTerminatingEndpoint` in Helm) has been deprecated.",
-    "remediation": "Remove the key; if it is `false`, expect terminating endpoints to be used for traffic from 1.18.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-k8s-terminating-endpoint)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "Only `false` matters: if the command prints `false`, expect terminating endpoints to be used for traffic from 1.18. `true` (the chart default) needs nothing.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-k8s-terminating-endpoint)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the default",
     "deprecationOnly": true
   },
   {

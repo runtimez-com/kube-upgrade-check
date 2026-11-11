@@ -54,15 +54,18 @@
     "severity": "LOW",
     "title": "CNI spec version `1.0.0` by default — update custom CNI configs",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes custom-cni-conf: \"false\" on every install"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(custom-cni-conf)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written when Helm cni.customConf is set"
+      "value": "^(custom-cni-conf)$"
     },
     "quote": "Cilium updated to use CNI standard `v1.0.0` by default.",
-    "remediation": "cilium-config uses a custom CNI configuration; set its `cniVersion` to `1.0.0` before upgrading.",
+    "remediation": "Affected only if the command prints `custom-cni-conf=true` (you maintain the CNI configuration yourself): set its `cniVersion` to `1.0.0` before upgrading. `false` (the chart default) needs nothing.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(custom-cni-conf|cni-chaining-mode)$\")) | \"\\(.key)=\\(.value)\"'  # custom-cni-conf=true means you maintain the CNI config"
   },
   {
@@ -75,11 +78,35 @@
       "objectName": "\\.gateway\\.networking\\.k8s\\.io$",
       "target": "bundleVersion",
       "value": "^v(0\\.|1\\.[0-5]\\.|1\\.6\\.0($|[^0-9]))",
-      "reason": "checked the Gateway API CRDs' bundle-version annotation — a bundle below v1.6.1 must be upgraded first"
+      "reason": "checked the Gateway API CRDs' bundle-version annotation — a bundle below v1.6.1 must be upgraded first; a required CRD that is not installed at all is caught by rtz-cilium-1.20-gateway-api-v1-crds-required's command"
     },
     "quote": "Cilium's Gateway API support now requires Gateway API v1.6.1 at a minimum to work correctly.",
     "remediation": "Upgrade the Gateway API CRDs named to v1.6.1 BEFORE Cilium 1.20. If you use TLSRoute, back the objects up and install the EXPERIMENTAL TLSRoute CRD from v1.6.1 (it still serves v1alpha2) — the Standard one makes existing TLSRoute objects unreadable from etcd, i.e. they vanish.",
     "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"?\") channel=\\(.metadata.annotations[\"gateway.networking.k8s.io/channel\"] // \"?\") versions=\\([.spec.versions[].name] | join(\",\"))\"'  # bundles below v1.6.1 must be upgraded; TLSRoute must be the experimental channel",
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-gateway-api)$",
+      "reason": "only clusters with Cilium's Gateway API support enabled are affected"
+    }
+  },
+  {
+    "ruleId": "rtz-cilium-1.20-gateway-api-v1-crds-required",
+    "severity": "HIGH",
+    "title": "Gateway API: GRPCRoute, TLSRoute, ReferenceGrant and BackendTLSPolicy CRDs must serve `v1`",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(grpcroutes|tlsroutes|referencegrants|backendtlspolicies)\\.gateway\\.networking\\.k8s\\.io$",
+      "target": "versions[].name",
+      "value": "^v1$",
+      "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command prints it as MISSING"
+    },
+    "quote": "Cilium's Gateway API support now requires Gateway API v1.6.1 at a minimum to work correctly.",
+    "remediation": "Cilium 1.20's operator requires GatewayClass, Gateway, HTTPRoute, GRPCRoute, TLSRoute, ReferenceGrant and BackendTLSPolicy, all served at `v1`; the CRDs named do not serve it, and any the command prints as MISSING must be installed too. Install the Gateway API v1.6.1 CRDs (TLSRoute from the EXPERIMENTAL channel if you have TLSRoute objects — see rtz-cilium-1.20-gateway-api-1-6-1-required) before upgrading Cilium.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '(.items | map({key: .metadata.name, value: ([.spec.versions[] | select(.served) | .name] | join(\",\"))}) | from_entries) as $c | [\"gatewayclasses\",\"gateways\",\"httproutes\",\"grpcroutes\",\"tlsroutes\",\"referencegrants\",\"backendtlspolicies\"][] | (. + \".gateway.networking.k8s.io\") as $n | \"\\($n) \\($c[$n] // \"MISSING\")\"'  # every row must list v1; MISSING or no v1 disables the Cilium Gateway API support",
     "gate": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
@@ -346,16 +373,19 @@
     "severity": "LOW",
     "title": "`enable-ipsec-encrypted-overlay` removed",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-ipsec-encrypted-overlay on every IPsec install (default \"false\")"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-ipsec-encrypted-overlay)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-ipsec-encrypted-overlay)$"
     },
     "quote": "The previously deprecated and ignored `--enable-ipsec-encrypted-overlay` agent flag (Helm `encryption.ipsec.encryptedOverlay`) has been removed.",
-    "remediation": "Remove the key.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-ipsec-encrypted-overlay)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+    "remediation": "The flag was already ignored, so nothing changes in the datapath. If the command prints `true`, drop Helm `encryption.ipsec.encryptedOverlay`; the 1.20 agent ignores the key.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-ipsec-encrypted-overlay)$\")) | \"\\(.key)=\\(.value)\"'  # true was set by hand; false is the chart default"
   },
   {
     "ruleId": "rtz-cilium-1.20-encryption-strict-mode-removed",

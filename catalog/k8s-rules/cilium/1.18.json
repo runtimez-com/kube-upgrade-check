@@ -109,7 +109,7 @@
       "objectKind": "Node",
       "target": "osImage",
       "value": "Container-Optimized OS",
-      "reason": "only GKE nodes (Container-Optimized OS) are affected"
+      "reason": "GKE nodes are recognised by their Container-Optimized OS image only — a GKE Ubuntu node pool is not recognised, so on GKE with Ubuntu nodes check the firewall regardless"
     }
   },
   {
@@ -129,7 +129,7 @@
     },
     "quote": "The Helm value of `enableIPv4Masquerade` in `eni` mode changes from `true` to `false` by default from 1.18.",
     "remediation": "If cilium-config shows `ipam=eni` and you never set `enableIPv4Masquerade`, pod traffic leaving the VPC stops being SNATed to the node IP after the upgrade — anything reaching the internet through a NAT that only knows node IPs, or allow-listing node IPs, breaks. Set `enableIPv4Masquerade=true` (or `upgradeCompatibility` below 1.18) before upgrading.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam|enable-ipv4-masquerade)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni without an explicit masquerade value is affected",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni is affected unless your Helm values set enableIPv4Masquerade or upgradeCompatibility below 1.18 (helm get values) — cilium-config always carries enable-ipv4-masquerade, so it cannot tell",
     "coversNotes": [
       "Helm Options: The Helm value of `enableIPv4Masquerade` in"
     ]
@@ -264,16 +264,19 @@
     "severity": "LOW",
     "title": "`enable-k8s-terminating-endpoint` removed — always on",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-k8s-terminating-endpoint: \"true\" on every install up to 1.17"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-k8s-terminating-endpoint)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-k8s-terminating-endpoint)$"
     },
     "quote": "The previously deprecated flag `--enable-k8s-terminating-endpoint` has been removed.",
-    "remediation": "Remove the key; if it was `false`, terminating endpoints now receive traffic during graceful shutdown.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-k8s-terminating-endpoint)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+    "remediation": "Only `false` matters: if the command prints `false`, terminating endpoints receive traffic during graceful shutdown after the upgrade. `true` (the chart default) needs nothing; the key is ignored.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-k8s-terminating-endpoint)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the default"
   },
   {
     "ruleId": "rtz-cilium-1.18-conntrack-local-removed",
@@ -291,16 +294,19 @@
     "severity": "LOW",
     "title": "`enableRuntimeDeviceDetection` removed",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-runtime-device-detection: \"true\" on every 1.16-1.17 install"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-runtime-device-detection)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-runtime-device-detection)$"
     },
     "quote": "The previously deprecated `enableRuntimeDeviceDetection` option has been removed",
-    "remediation": "Remove the key / Helm value; runtime device detection is always on since 1.16.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-runtime-device-detection)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+    "remediation": "Nothing changes for the chart default (`true`): runtime device detection is always on since 1.16 and the key is ignored. Drop the Helm value if you set it.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-runtime-device-detection)$\")) | \"\\(.key)=\\(.value)\"'  # true is the default and needs nothing"
   },
   {
     "ruleId": "rtz-cilium-1.18-ces-rate-limit-flags-removed",
@@ -323,16 +329,19 @@
     "severity": "LOW",
     "title": "`arping-refresh-period` removed — neighbour refresh follows `base_reachable_time_ms`",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes arping-refresh-period: \"30s\" on every install up to 1.17"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(arping-refresh-period)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(arping-refresh-period)$"
     },
     "quote": "The `arping-refresh-period` option has been removed.",
-    "remediation": "Remove the key (Helm `l2NeighDiscovery.refreshPeriod`); tune the kernel's `base_reachable_time_ms` sysctl instead.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(arping-refresh-period)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "The default `30s` needs nothing. If you tuned it (Helm `l2NeighDiscovery.refreshPeriod`), tune the kernel's `base_reachable_time_ms` sysctl instead — 1.18 ignores the key.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(arping-refresh-period)$\")) | \"\\(.key)=\\(.value)\"'  # a value other than 30s was tuned and is lost",
     "coversNotes": [
       "Helm Options: The `l2NeighDiscovery.refreshPeriod` option has been removed"
     ]
@@ -461,16 +470,19 @@
     "severity": "LOW",
     "title": "`enable-node-port` / `enable-host-port` / `enable-external-ips` deprecated",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-node-port / enable-host-port / enable-external-ips: \"false\" on every install without kube-proxy replacement (1.14-1.18)"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-node-port|enable-host-port|enable-external-ips)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-node-port|enable-host-port|enable-external-ips)$"
     },
     "quote": "The kube-proxy replacement features will be only enabled when `--kube-proxy-replacent` is set to `true`.",
-    "remediation": "Plan the change now: cilium-config sets `enable-node-port`, `enable-host-port`, `enable-external-ips`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-node-port|enable-host-port|enable-external-ips)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "Only a non-default value matters: if the command prints `true` while `kube-proxy-replacement` is `false`, plan the change now — Cilium 1.19 removes `enable-node-port`, `enable-host-port`, `enable-external-ips` (see the 1.19 rule for what breaks). The chart default needs nothing.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-node-port|enable-host-port|enable-external-ips|kube-proxy-replacement)$\")) | \"\\(.key)=\\(.value)\"'  # true while kube-proxy-replacement=false is affected; false is the chart default",
     "deprecationOnly": true
   },
   {
@@ -495,16 +507,19 @@
     "severity": "LOW",
     "title": "`enable-svc-source-range-check` deprecated",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18 and enable-session-affinity only when it is true"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-svc-source-range-check)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-svc-source-range-check)$"
     },
     "quote": "The flag `--enable-svc-source-range-check` (`svcSourceRangeCheck` in Helm) has been deprecated",
-    "remediation": "Plan the change now: cilium-config sets `enable-svc-source-range-check`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-svc-source-range-check)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "Only a non-default value matters: if the command prints `false`, plan the change now — Cilium 1.19 removes `enable-svc-source-range-check` (see the 1.19 rule for what breaks). The chart default needs nothing.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-svc-source-range-check)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the chart default",
     "deprecationOnly": true
   },
   {
@@ -638,16 +653,19 @@
     "severity": "MEDIUM",
     "title": "L2 neighbour discovery now off by default",
     "detection": {
-      "kind": "SPEC_PATH_NONE_MATCHES",
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-l2-neigh-discovery on every install (\"true\" up to 1.17, \"false\" from 1.18), so presence says nothing"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-l2-neigh-discovery)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written only when Helm l2NeighDiscovery.enabled is set"
+      "value": "^(enable-l2-neigh-discovery)$"
     },
     "quote": "The `--enable-l2-neigh-discovery` flag has been changed to default to `false`.",
-    "remediation": "cilium-config does not pin `enable-l2-neigh-discovery`, so 1.18 stops Cilium's L2 neighbour discovery. Clusters using XDP acceleration or direct routing that rely on Cilium resolving neighbours should set Helm `l2NeighDiscovery.enabled=true`.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-l2-neigh-discovery|bpf-lb-acceleration|auto-direct-node-routes)$\")) | \"\\(.key)=\\(.value)\"'  # settings that depend on neighbour discovery",
+    "remediation": "Unless your Helm values set `l2NeighDiscovery.enabled=true` explicitly, `helm upgrade` to 1.18 writes `false` and Cilium's L2 neighbour discovery stops. Clusters using XDP acceleration or direct routing that rely on Cilium resolving neighbours should set `l2NeighDiscovery.enabled=true` before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-l2-neigh-discovery|bpf-lb-acceleration|auto-direct-node-routes)$\")) | \"\\(.key)=\\(.value)\"'  # settings that depend on neighbour discovery; true today flips to false unless Helm sets it",
     "coversNotes": [
       "Helm Options: The `l2NeighDiscovery.enabled` option has been changed"
     ]

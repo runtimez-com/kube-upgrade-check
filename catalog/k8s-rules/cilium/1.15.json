@@ -1,8 +1,8 @@
 [
   {
     "ruleId": "rtz-cilium-1.15-dual-stack-full-cidr-connection-breakage",
-    "severity": "MEDIUM",
-    "title": "Dual-stack + `0.0.0.0/0` / `::/0` CIDR policy: existing connections may be denied while switching versions",
+    "severity": "LOW",
+    "title": "Dual-stack + `0.0.0.0/0` / `::/0` CIDR policy: a ROLLBACK to 1.14 may deny existing connections",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
@@ -14,8 +14,8 @@
       "target": "keys[]",
       "value": "^(enable-ipv6)$"
     },
-    "quote": "you may experience connection breakage when switching Cilium versions.",
-    "remediation": "On dual-stack clusters, policies the command lists (toCIDR/toCIDRSet covering a full range) can deny ESTABLISHED connections during the version switch until the application reconnects. Plan the upgrade in a window where reconnects are acceptable, or check the upgrade notes' affected-version list for your exact hop.",
+    "quote": "Downgrading from Cilium 1.15.y or later to Cilium 1.14.x or earlier may trigger this problem.",
+    "remediation": "The upgrade to 1.15 is not affected. If you may have to roll back to 1.14, know that on dual-stack clusters the policies the command lists (toCIDR/toCIDRSet covering a full range) can deny ESTABLISHED connections after the downgrade until the application reconnects; new connections are not impacted.",
     "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; [(.toCIDR // [])[], ((.toCIDRSet // [])[] | .cidr // empty)] | any(. == \"0.0.0.0/0\" or . == \"::/0\"))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy matching a full IP range"
   },
   {
@@ -89,6 +89,55 @@
     },
     "quote": "If you are using Gateway API, please make sure that new v1 CRDs are installed.",
     "remediation": "The CRDs named do not serve `v1`. Install the Gateway API v1.0+ CRDs before upgrading, then move GatewayClass, Gateway and HTTPRoute manifests from `v1beta1` to `v1`.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '(.items | map({key: .metadata.name, value: ([.spec.versions[] | select(.served) | .name] | join(\",\"))}) | from_entries) as $c | [\"gatewayclasses\",\"gateways\",\"httproutes\",\"grpcroutes\",\"tlsroutes\",\"referencegrants\"][] | (. + \".gateway.networking.k8s.io\") as $n | \"\\($n) \\($c[$n] // \"MISSING\")\"'  # need v1 on the first three, v1alpha2 on grpcroutes/tlsroutes, v1beta1 on referencegrants; MISSING disables Gateway API",
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-gateway-api)$",
+      "reason": "only clusters with Cilium's Gateway API support enabled read these CRDs"
+    }
+  },
+  {
+    "ruleId": "rtz-cilium-1.15-gateway-api-grpc-tls-route-crds",
+    "severity": "MEDIUM",
+    "title": "Gateway API: Cilium 1.15 also requires grpcroute and tlsroute CRDs serving `v1alpha2`",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(grpcroutes|tlsroutes)\\.gateway\\.networking\\.k8s\\.io$",
+      "target": "versions[].name",
+      "value": "^v1alpha2$",
+      "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command lists it"
+    },
+    "quote": "If you are using Gateway API, please make sure that new v1 CRDs are installed.",
+    "remediation": "Cilium 1.15's operator checks GatewayClass/Gateway/HTTPRoute at `v1`, GRPCRoute and TLSRoute at `v1alpha2` and ReferenceGrant at `v1beta1`; if any is missing or does not serve that version it logs \"Required GatewayAPI resources are not found\" and Gateway API stops reconciling. Install the Gateway API v1.0 EXPERIMENTAL-channel CRDs (the standard channel has no GRPCRoute/TLSRoute) before upgrading.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '(.items | map({key: .metadata.name, value: ([.spec.versions[] | select(.served) | .name] | join(\",\"))}) | from_entries) as $c | [\"gatewayclasses\",\"gateways\",\"httproutes\",\"grpcroutes\",\"tlsroutes\",\"referencegrants\"][] | (. + \".gateway.networking.k8s.io\") as $n | \"\\($n) \\($c[$n] // \"MISSING\")\"'  # need v1 on the first three, v1alpha2 on grpcroutes/tlsroutes, v1beta1 on referencegrants; MISSING disables Gateway API",
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-gateway-api)$",
+      "reason": "only clusters with Cilium's Gateway API support enabled read these CRDs"
+    }
+  },
+  {
+    "ruleId": "rtz-cilium-1.15-gateway-api-referencegrant-crd",
+    "severity": "MEDIUM",
+    "title": "Gateway API: Cilium 1.15 also requires referencegrant CRDs serving `v1beta1`",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(referencegrants)\\.gateway\\.networking\\.k8s\\.io$",
+      "target": "versions[].name",
+      "value": "^v1beta1$",
+      "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command lists it"
+    },
+    "quote": "If you are using Gateway API, please make sure that new v1 CRDs are installed.",
+    "remediation": "Cilium 1.15's operator checks GatewayClass/Gateway/HTTPRoute at `v1`, GRPCRoute and TLSRoute at `v1alpha2` and ReferenceGrant at `v1beta1`; if any is missing or does not serve that version it logs \"Required GatewayAPI resources are not found\" and Gateway API stops reconciling. Install the Gateway API v1.0 EXPERIMENTAL-channel CRDs (the standard channel has no GRPCRoute/TLSRoute) before upgrading.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '(.items | map({key: .metadata.name, value: ([.spec.versions[] | select(.served) | .name] | join(\",\"))}) | from_entries) as $c | [\"gatewayclasses\",\"gateways\",\"httproutes\",\"grpcroutes\",\"tlsroutes\",\"referencegrants\"][] | (. + \".gateway.networking.k8s.io\") as $n | \"\\($n) \\($c[$n] // \"MISSING\")\"'  # need v1 on the first three, v1alpha2 on grpcroutes/tlsroutes, v1beta1 on referencegrants; MISSING disables Gateway API",
     "gate": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
@@ -237,8 +286,8 @@
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-k8s-event-handover|cnp-status-update-interval|disable-cnp-status-updates|cnp-node-status-gc-interval)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(enable-k8s-event-handover|cnp-status-update-interval)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; disable-cnp-status-updates and cnp-node-status-gc-interval are written on every 1.14 install, so they are not read"
     },
     "quote": "Deprecated options `enable-k8s-event-handover` and `cnp-status-update-interval` has been removed.",
     "remediation": "Remove these keys (Helm `enableK8sEventHandover`, `enableCnpStatusUpdates`); CiliumNetworkPolicy node status is no longer written.",
