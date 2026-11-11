@@ -20,8 +20,8 @@
       "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
     },
     "quote": "The `CiliumNetworkPolicy` and `CiliumClusterwideNetworkPolicy` CRDs now enforce that the `FromRequires` and `ToRequires` fields are empty.",
-    "remediation": "Remove `fromRequires` / `toRequires` from every policy the command lists before upgrading (express the requirement with an extra selector instead); after the CRD update those policies can no longer be applied.",
-    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; .fromRequires != null or .toRequires != null)) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row still uses fromRequires/toRequires"
+    "remediation": "Cilium 1.19 no longer evaluates `fromRequires` / `toRequires`: a policy already stored keeps loading, but its requirement is IGNORED, so peers it used to exclude become allowed — the policy silently gets broader. Any later update to such a policy is rejected by the CRD. Before upgrading, rewrite every policy the command lists so the requirement is expressed in its `fromEndpoints` / `toEndpoints` selectors, then remove the two fields.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; ((.fromRequires // []) | length != 0) or ((.toRequires // []) | length != 0))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a fromRequires/toRequires requirement that 1.19 stops enforcing"
   },
   {
     "ruleId": "rtz-cilium-1.19-kafka-policy-deprecated",
@@ -411,18 +411,18 @@
     "title": "`enable-session-affinity`, `enable-internal-traffic-policy`, `enable-svc-source-range-check` removed — always on",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18 and enable-session-affinity only when it is true"
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18, enable-session-affinity only when it is true, and enable-internal-traffic-policy with your Helm value on every 1.17-1.18 install"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(enable-session-affinity|enable-svc-source-range-check)$"
+      "value": "^(enable-session-affinity|enable-internal-traffic-policy|enable-svc-source-range-check)$"
     },
     "quote": "The previously deprecated `--enable-session-affinity`, `--enable-internal-traffic-policy`, and `--enable-svc-source-range-check` flags have been removed.",
-    "remediation": "Only `false` matters (the chart writes `enable-svc-source-range-check: \"true\"` and never writes the other two as false). If the command prints `false`, the feature turns ON at 1.19: Services with `sessionAffinity: ClientIP` start pinning clients, `loadBalancerSourceRanges` start being enforced (traffic from outside the ranges is dropped), and `internalTrafficPolicy: Local` keeps traffic node-local. Review those Services before upgrading.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-session-affinity|enable-svc-source-range-check)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the default"
+    "remediation": "Only `false` matters. The 1.18 chart writes `enable-internal-traffic-policy` with your Helm `enableInternalTrafficPolicy` value, so a `false` there is the likely case; the other two are written only as `true`, so a `false` comes from a hand edit or `extraConfig`. For each key the command prints as `false`, the feature turns ON at 1.19: Services with `sessionAffinity: ClientIP` start pinning clients, `loadBalancerSourceRanges` start being enforced (traffic from outside the ranges is dropped), and `internalTrafficPolicy: Local` keeps traffic node-local. Review those Services before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-session-affinity|enable-internal-traffic-policy|enable-svc-source-range-check)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected; true is the default"
   },
   {
     "ruleId": "rtz-cilium-1.19-nodeport-hostport-externalips-flags-removed",
@@ -430,7 +430,7 @@
     "title": "`enable-node-port` / `enable-host-port` / `enable-external-ips` removed — need `kube-proxy-replacement=true`",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-node-port / enable-host-port / enable-external-ips: \"false\" on every install without kube-proxy replacement (1.14-1.18)"
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); without kube-proxy replacement the chart writes enable-node-port: \"false\" on every install (1.14-1.18; enable-host-port and enable-external-ips too up to 1.17)"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",

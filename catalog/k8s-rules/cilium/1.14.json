@@ -47,7 +47,7 @@
   {
     "ruleId": "rtz-cilium-1.14-ec2-adapter-limit-via-api-default-true",
     "severity": "MEDIUM",
-    "title": "ENI mode: operator now fetches EC2 adapter limits from the AWS API — needs `ec2:DescribeInstances`",
+    "title": "ENI mode: operator now fetches EC2 adapter limits from the AWS API — needs `ec2:DescribeInstanceTypes`",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "the operator's IAM permissions are AWS-side"
@@ -60,8 +60,8 @@
       "value": "^(ipam)$"
     },
     "quote": "The default value of `--update-ec2-adapter-limit-via-api` has changed from `false` to `true`.",
-    "remediation": "In ENI IPAM mode the 1.14 operator calls `ec2:DescribeInstances`; make sure the operator's IAM role (or the node role it inherits) grants it — `AmazonEKSWorkerNodePolicy` does. Without it the operator cannot refresh adapter limits. To keep the old behaviour set `update-ec2-adapter-limit-via-api: \"false\"`.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni means the operator needs ec2:DescribeInstances"
+    "remediation": "In ENI IPAM mode the 1.14 operator fetches instance-type limits from the EC2 API: the call in the code is `ec2:DescribeInstanceTypes`, while the upstream note names `ec2:DescribeInstances` — make sure the operator's IAM role (or the node role it inherits) grants both; upstream says `AmazonEKSWorkerNodePolicy` usually covers it on EKS. Without it the operator cannot refresh adapter limits. To keep the old behaviour set `update-ec2-adapter-limit-via-api: \"false\"`.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni means the operator needs ec2:DescribeInstanceTypes and ec2:DescribeInstances"
   },
   {
     "ruleId": "rtz-cilium-1.14-egress-gateway-drops-without-gateway",
@@ -274,7 +274,7 @@
       "value": "^(kube-proxy-replacement)$"
     },
     "quote": "The `kube-proxy-replacement` option's values `strict`, `partial` and `disabled` are deprecated and will be removed in v1.15.",
-    "remediation": "Set `kube-proxy-replacement` to `true` (was `strict`) or `false` (was `disabled`; with `partial`, also enable each kube-proxy-replacement feature you used explicitly). 1.15 no longer accepts the old values.",
+    "remediation": "Set `kube-proxy-replacement` to `true` (was `strict`) or `false` (was `disabled`; with `partial`, also enable each kube-proxy-replacement feature you used explicitly). 1.15 still accepts the old values; 1.16 does not — its chart refuses to render and its agent refuses to start with them — and upstream ships no 1.16 note for it, so change the value now.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(kube-proxy-replacement)$\")) | \"\\(.key)=\\(.value)\"'  # strict|partial|disabled must be rewritten",
     "deprecationOnly": true
   },
@@ -315,7 +315,7 @@
       "value": "^(cluster-pool-ipv4-cidr|cluster-pool-ipv6-cidr)$"
     },
     "quote": "Values `ipam.operator.clusterPoolIPv4PodCIDR` and `ipam.operator.clusterPoolIPv6PodCIDR` were deprecated in Cilium 1.11",
-    "remediation": "Run `helm get values` for the Cilium release and rename before upgrading: `ipam.operator.clusterPoolIPv4PodCIDR` → `clusterPoolIPv4PodCIDRList` (same for IPv6) — a removed value is IGNORED and the default pod CIDR is used instead; `hubble.tls.ca*` → `tls.ca*`; drop `hubble.peerService.enabled` and `hubble.ui.securityContext.enabled`.",
+    "remediation": "Run `helm get values` for the Cilium release and rename before upgrading: `ipam.operator.clusterPoolIPv4PodCIDR` → `clusterPoolIPv4PodCIDRList` (same for IPv6) — the 1.14 chart refuses to render while the old names are set (`helm upgrade` fails), so nothing changes until you rename; `hubble.tls.ca*` → `tls.ca*`; drop `hubble.peerService.enabled` and `hubble.ui.securityContext.enabled`.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(cluster-pool-ipv4-cidr|cluster-pool-ipv6-cidr)$\")) | \"\\(.key)=\\(.value)\"'  # the pod CIDRs in use today — they must survive the values rename",
     "coversNotes": [
       "Helm Options: Value `hubble.peerService.enabled` was deprecated in Cilium",

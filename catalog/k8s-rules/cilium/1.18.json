@@ -103,7 +103,7 @@
     },
     "quote": "If using an IPsec deployment within a Google Cloud GKE cluster the default firewall rules for the cluster's subnet must be updated to allow ESP traffic.",
     "remediation": "IPsec is enabled; on GKE, add a VPC firewall rule allowing protocol `esp` between the nodes before upgrading, or cross-node traffic is dropped.",
-    "verifyCommand": "gcloud compute firewall-rules list --format='table(name,network,allowed[].IPProtocol)' 2>/dev/null | grep -i esp  # no row means ESP is not allowed",
+    "verifyCommand": "gcloud compute firewall-rules list --format='table(name,network,allowed[].IPProtocol)' 2>/dev/null | grep -iE 'esp|all'  # lists every network in the project: no esp/all row for the CLUSTER's network means ESP is not allowed",
     "gate": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Node",
@@ -248,12 +248,12 @@
       "objectKind": "ConfigMap",
       "objectName": "^cilium-config$",
       "target": "keys[]",
-      "value": "^(update-ec2-adapter-limit-via-api|aws-instance-limit-mapping)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "value": "^(aws-instance-limit-mapping)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; update-ec2-adapter-limit-via-api is written by the chart on every ENI install and dropped by `helm upgrade`, so it is not read"
     },
     "quote": "The `update-ec2-adapter-limit-via-api` CLI flag for the operator has been removed",
-    "remediation": "Remove the keys; the operator always reads limits from the EC2 API (needs `ec2:DescribeInstances`).",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(update-ec2-adapter-limit-via-api|aws-instance-limit-mapping)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "remediation": "cilium-config sets `aws-instance-limit-mapping`, which 1.18 ignores: the operator always reads instance limits from the EC2 API, so its IAM role needs `ec2:DescribeInstanceTypes` (the upstream note names `ec2:DescribeInstances`; grant both). Remove the key. `update-ec2-adapter-limit-via-api` needs nothing — the chart wrote it and the 1.18 chart drops it.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(update-ec2-adapter-limit-via-api|aws-instance-limit-mapping)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # aws-instance-limit-mapping is a hand-set override that 1.18 ignores; update-ec2-adapter-limit-via-api is chart-written",
     "coversNotes": [
       "Removed Options: The `aws-instance-limit-mapping` CLI flag for the",
       "Helm Options: `eni.updateEC2AdapterLimitViaAPI` is removed since the operator"
@@ -471,7 +471,7 @@
     "title": "`enable-node-port` / `enable-host-port` / `enable-external-ips` deprecated",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-node-port / enable-host-port / enable-external-ips: \"false\" on every install without kube-proxy replacement (1.14-1.18)"
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); without kube-proxy replacement the chart writes enable-node-port: \"false\" on every install (1.14-1.18; enable-host-port and enable-external-ips too up to 1.17)"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -508,7 +508,7 @@
     "title": "`enable-svc-source-range-check` deprecated",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18 and enable-session-affinity only when it is true"
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-svc-source-range-check: \"true\" on every install up to 1.18, enable-session-affinity only when it is true, and enable-internal-traffic-policy with your Helm value on every 1.17-1.18 install"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
@@ -549,10 +549,10 @@
       "objectName": "^cilium-config$",
       "target": "keys[]",
       "value": "^(enable-ipv4-egress-gateway)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the 1.17 chart writes this key whenever Helm egressGateway.enabled is set"
     },
     "quote": "The flag `--enable-ipv4-egress-gateway` has been deprecated in favor of `--enable-egress-gateway` and will be removed in Cilium 1.19.",
-    "remediation": "Plan the change now: cilium-config sets `enable-ipv4-egress-gateway`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "remediation": "`helm upgrade` with the 1.18 chart writes `enable-egress-gateway` for you; only a hand-managed cilium-config (or `extraConfig`) must rename the key before 1.19 removes it (rtz-cilium-1.19-ipv4-egress-gateway-flag-removed).",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-ipv4-egress-gateway)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
     "deprecationOnly": true
   },
@@ -664,8 +664,8 @@
       "value": "^(enable-l2-neigh-discovery)$"
     },
     "quote": "The `--enable-l2-neigh-discovery` flag has been changed to default to `false`.",
-    "remediation": "Unless your Helm values set `l2NeighDiscovery.enabled=true` explicitly, `helm upgrade` to 1.18 writes `false` and Cilium's L2 neighbour discovery stops. Clusters using XDP acceleration or direct routing that rely on Cilium resolving neighbours should set `l2NeighDiscovery.enabled=true` before upgrading.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-l2-neigh-discovery|bpf-lb-acceleration|auto-direct-node-routes)$\")) | \"\\(.key)=\\(.value)\"'  # settings that depend on neighbour discovery; true today flips to false unless Helm sets it",
+    "remediation": "Unless your Helm values set `l2NeighDiscovery.enabled=true` explicitly, `helm upgrade` to 1.18 writes `false` and Cilium's L2 neighbour discovery stops. Upstream describes it as used by kube-proxy replacement and IPsec; clusters relying on Cilium resolving next-hop neighbours for those should set `l2NeighDiscovery.enabled=true` before upgrading. XDP acceleration is not affected: 1.18 keeps discovery on whenever XDP is enabled.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-l2-neigh-discovery|kube-proxy-replacement|enable-ipsec|bpf-lb-acceleration)$\")) | \"\\(.key)=\\(.value)\"'  # true today flips to false unless Helm sets it; matters with kube-proxy-replacement=true or enable-ipsec, not when bpf-lb-acceleration is native",
     "coversNotes": [
       "Helm Options: The `l2NeighDiscovery.enabled` option has been changed"
     ]
@@ -686,7 +686,7 @@
       "value": "^(enable-cilium-endpoint-slice)$"
     },
     "quote": "The deprecated Helm option `enableCiliumEndpointSlice` has been removed.",
-    "remediation": "If cilium-config shows `enable-cilium-endpoint-slice=true`, set `ciliumEndpointSlice.enabled=true` before upgrading — otherwise CiliumEndpointSlices are switched off.",
+    "remediation": "If your Helm values still set `enableCiliumEndpointSlice`, the 1.18 chart refuses to render (`helm upgrade` fails) until you remove it. If cilium-config shows `enable-cilium-endpoint-slice=true`, set `ciliumEndpointSlice.enabled=true` in the same change — dropping the old value without it switches CiliumEndpointSlices off.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-cilium-endpoint-slice)$\")) | \"\\(.key)=\\(.value)\"'  # true must be carried over to ciliumEndpointSlice.enabled"
   },
   {
@@ -755,16 +755,16 @@
       "kind": "NOT_DETECTABLE",
       "reason": "Prometheus series names are not Kubernetes objects; runtimez does not scrape Cilium metrics"
     },
-    "quote": "`doublewrite_identity_crd_total_count` has been renamed to `doublewrite_crd_identities`",
+    "quote": "`cilium_agent_bgp_control_plane_reconcile_error_count` has been renamed to `cilium_agent_bgp_control_plane_reconcile_errors_total`.",
     "remediation": "Before upgrading to 1.18, search your dashboards, recording rules and alerts for the metric names listed in the Cilium 1.18 upgrade notes (Changed / Removed Metrics) and move them to the new names or labels. An alert on a renamed or removed series does not fail: it silently stops firing.",
     "coversNotes": [
       "Removed Metrics: `node_connectivity_status`",
       "Removed Metrics: `node_connectivity_latency_seconds`",
+      "Changed Metrics: `doublewrite_identity_crd_total_count` has been renamed to `doublewrite_crd_identities`",
       "Changed Metrics: `doublewrite_identity_kvstore_total_count` has been renamed to",
       "Changed Metrics: `doublewrite_identity_crd_only_count` has been renamed to",
       "Changed Metrics: `doublewrite_identity_kvstore_only_count` has been renamed to",
       "Changed Metrics: The type of the `cilium_agent_bootstrap_seconds` metric",
-      "Changed Metrics: `cilium_agent_bgp_control_plane_reconcile_error_count` has been renamed to",
       "Changed Metrics: `cilium_operator_bgp_control_plane_cluster_config_error_count` has been renamed to"
     ]
   }

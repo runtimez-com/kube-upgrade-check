@@ -166,11 +166,6 @@
   },
   {
     "version": "1.17",
-    "note": "General: The Kubernetes clients used by Cilium Agent",
-    "reason": "raises the operator's default client rate limit; no configuration needed"
-  },
-  {
-    "version": "1.17",
     "note": "General: MTU auto-detection is now continuous during",
     "reason": "improvement: MTU changes no longer need an agent restart"
   },
@@ -403,11 +398,6 @@
     "version": "1.20",
     "note": "Informational Notes: The Azure IPAM status on `CiliumNode` now",
     "reason": "CiliumNode status read by the operator and agent; the deprecated fields are still mirrored for one release"
-  },
-  {
-    "version": "1.20",
-    "note": "Informational Notes: Cilium MCS-API implementation now uses the",
-    "reason": "upstream: \"this upgrade should be fully transparent\"; v1alpha1 stays supported"
   },
   {
     "version": "1.20",

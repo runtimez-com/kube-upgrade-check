@@ -23,10 +23,29 @@
       "reason": "probe behaviour"
     },
     "quote": "The check for connectivity to the Kubernetes apiserver has been removed from the cilium-agent liveness probe.",
-    "remediation": "An agent that loses the apiserver is no longer restarted by its liveness probe. Set Helm `livenessProbe.requireK8sConnectivity=true` to keep the old behaviour. (The change was also backported to 1.16.10 — a 1.16.10+ cluster already behaves this way.)",
+    "remediation": "An agent that loses the apiserver is no longer restarted by its liveness probe. Set Helm `livenessProbe.requireK8sConnectivity=true` to keep the old behaviour (1.16.10+ has the same setting but defaults it to true, so every 1.16 cluster changes on this upgrade).",
     "introducedIn": [
       "1.17.4"
     ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.17-operator-k8s-client-rate-limit-separate",
+    "severity": "LOW",
+    "title": "Operator Kubernetes client rate limit is now configured separately from the agent's",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(k8s-client-qps|k8s-client-burst)$"
+    },
+    "quote": "The Kubernetes clients used by Cilium Agent and Cilium Operator now have separately configurable rate limits.",
+    "remediation": "Only matters if you raised `k8s-client-qps` / `k8s-client-burst` (Helm `k8sClientRateLimit.qps/burst`) above 100 / 200: from 1.17 those apply to the agent only and the operator uses 100 QPS / 200 burst unless you also set `operator-k8s-client-qps` / `operator-k8s-client-burst` (Helm `k8sClientRateLimit.operator.*`). Lower or unset values need nothing — the operator's default went up.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(k8s-client-qps|k8s-client-burst|operator-k8s-client-qps|operator-k8s-client-burst)$\")) | \"\\(.key)=\\(.value)\"'  # k8s-client-qps above 100 or burst above 200 without the operator-* keys is affected"
   },
   {
     "ruleId": "rtz-cilium-1.17-consul-kvstore-removed",
@@ -137,7 +156,7 @@
     },
     "quote": "For IPsec, support for a single key has been removed.",
     "remediation": "IPsec is enabled. If the command prints `per-tunnel=false`, rotate the key to the per-tunnel format before upgrading (the 1.16 note already required it); the command prints only the format, never the key.",
-    "verifyCommand": "kubectl get secret -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-ipsec-keys\") | \"\\(.metadata.namespace)/\\(.metadata.name) per-tunnel=\\(.data.keys | @base64d | test(\"^[0-9]+\\\\+\"))\"'  # per-tunnel=false must be rotated first"
+    "verifyCommand": "kubectl get daemonset,secret -A -o json | jq -r '.items as $i | [$i[] | select(.kind == \"DaemonSet\") | .metadata.namespace as $ns | .spec.template.spec.volumes[]? | select(.name == \"cilium-ipsec-secrets\") | {ns: $ns, n: .secret.secretName}] | unique[] | . as $v | ([$i[] | select(.kind == \"Secret\" and .metadata.namespace == $v.ns and .metadata.name == $v.n)] | first) as $s | if $s == null then \"\\($v.ns)/\\($v.n) MISSING\" else \"\\($v.ns)/\\($v.n) per-tunnel=\\([$s.data[]? | @base64d | test(\"^[0-9]+\\\\+\")] | (length != 0) and all)\" end'  # per-tunnel=false must be rotated first; MISSING means the agent mounts a Secret that does not exist; no row means no IPsec key volume"
   },
   {
     "ruleId": "rtz-cilium-1.17-metallb-bgp-removed",

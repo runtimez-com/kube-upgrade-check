@@ -144,6 +144,25 @@
     "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec == null and .specs == null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an empty policy the API server will refuse on update"
   },
   {
+    "ruleId": "rtz-cilium-1.20-mcs-api-crds-v1beta1",
+    "severity": "MEDIUM",
+    "title": "Cluster Mesh MCS-API: self-managed ServiceExport / ServiceImport CRDs must serve `v1beta1`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes clustermesh-enable-mcs-api and clustermesh-mcs-api-install-crds on every install"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^service(imports|exports)\\.multicluster\\.x-k8s\\.io$",
+      "target": "group",
+      "value": "^multicluster\\.x-k8s\\.io$"
+    },
+    "quote": "Cilium MCS-API implementation now uses the `v1beta1` version of the MCS-API CRDs.",
+    "remediation": "Affected only if the command prints `clustermesh-enable-mcs-api=true` with `clustermesh-mcs-api-install-crds=false` (you install the MCS-API CRDs yourself): the 1.20 operator then requires ServiceExport and ServiceImport served at `v1beta1` and reports \"Required MCS-API resources are not found\" otherwise, so MCS-API support does not start. Install the mcs-api CRDs that serve `v1beta1` before upgrading. With `install-crds=true` (the chart default) the operator updates the CRDs itself and the upgrade is transparent, as upstream says.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(clustermesh-enable-mcs-api|clustermesh-mcs-api-install-crds)$\")) | \"\\(.key)=\\(.value)\"'  # enable=true with install-crds=false is affected"
+  },
+  {
     "ruleId": "rtz-cilium-1.20-clustermesh-cert-validity-one-year",
     "severity": "MEDIUM",
     "title": "Auto-generated Cluster Mesh certificates now valid one year — renewed only on chart re-render",

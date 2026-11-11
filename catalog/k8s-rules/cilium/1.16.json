@@ -308,8 +308,8 @@
   },
   {
     "ruleId": "rtz-cilium-1.16-ipsec-per-tunnel-keys-mandatory",
-    "severity": "HIGH",
-    "title": "IPsec: per-tunnel keys (`+` in the key Secret) are mandatory",
+    "severity": "MEDIUM",
+    "title": "IPsec: per-tunnel keys (`+` in the key Secret) required — a global key still runs on 1.16 with a warning, not on 1.17",
     "detection": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
@@ -319,8 +319,8 @@
       "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written when IPsec encryption is enabled"
     },
     "quote": "For IPsec, the use of per-tunnel keys is mandatory, via the use of the `+` sign in the secret.",
-    "remediation": "IPsec is enabled. If the command prints `per-tunnel=false`, rotate the key to the per-tunnel format (`<id>+ …`) following the IPsec key-rotation procedure BEFORE upgrading; the command prints only whether the format is right, never the key.",
-    "verifyCommand": "kubectl get secret -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-ipsec-keys\") | \"\\(.metadata.namespace)/\\(.metadata.name) per-tunnel=\\(.data.keys | @base64d | test(\"^[0-9]+\\\\+\"))\"'  # per-tunnel=false must be rotated first"
+    "remediation": "IPsec is enabled. If the command prints `per-tunnel=false`, rotate the key to the per-tunnel format (`<id>+ …`) following the IPsec key-rotation procedure. Cilium 1.16 still accepts a global key and logs a deprecation warning; 1.17 removes it (rtz-cilium-1.17-ipsec-single-key-removed), so rotate before going past 1.16. The command prints only whether the format is right, never the key.",
+    "verifyCommand": "kubectl get daemonset,secret -A -o json | jq -r '.items as $i | [$i[] | select(.kind == \"DaemonSet\") | .metadata.namespace as $ns | .spec.template.spec.volumes[]? | select(.name == \"cilium-ipsec-secrets\") | {ns: $ns, n: .secret.secretName}] | unique[] | . as $v | ([$i[] | select(.kind == \"Secret\" and .metadata.namespace == $v.ns and .metadata.name == $v.n)] | first) as $s | if $s == null then \"\\($v.ns)/\\($v.n) MISSING\" else \"\\($v.ns)/\\($v.n) per-tunnel=\\([$s.data[]? | @base64d | test(\"^[0-9]+\\\\+\")] | (length != 0) and all)\" end'  # per-tunnel=false must be rotated first; MISSING means the agent mounts a Secret that does not exist; no row means no IPsec key volume"
   },
   {
     "ruleId": "rtz-cilium-1.16-cnp-empty-slice-selects-nothing",
@@ -331,8 +331,8 @@
       "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
     },
     "quote": "`CiliumNetworkPolicy` changed the semantics of the empty non-nil slice.",
-    "remediation": "A rule with an empty `fromEndpoints`/`fromCIDR`/`fromCIDRSet`/`fromEntities` (or `to*`) list now matches no peer, so an allow policy falls back to default deny. Delete the empty fields (or fill them) in every policy the command lists before upgrading.",
-    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; [.fromEndpoints, .fromCIDR, .fromCIDRSet, .fromEntities, .toEndpoints, .toCIDR, .toCIDRSet, .toEntities] | any(. == []))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy with an empty selector list"
+    "remediation": "A rule with an empty `fromEndpoints`/`fromCIDR`/`fromCIDRSet`/`fromEntities` (or `to*`) list now matches no peer, so an allow policy falls back to default deny. Delete the empty fields (or fill them) in every policy the command lists before upgrading. The same note flips a `fromCIDRSet` / `toCIDRSet` whose `cidrGroupRef` entries all name CiliumCIDRGroups that do not exist from allow-all to deny-all: the command lists those policies too — compare each referenced name with `kubectl get ciliumcidrgroups`.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; ([.fromEndpoints, .fromCIDR, .fromCIDRSet, .fromEntities, .toEndpoints, .toCIDR, .toCIDRSet, .toEntities] | any(. == [])) or (((.fromCIDRSet // []) + (.toCIDRSet // [])) | any(.cidrGroupRef != null)))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has an empty selector list, or a cidrGroupRef whose CiliumCIDRGroup must exist"
   },
   {
     "ruleId": "rtz-cilium-1.16-endpoint-status-removed",
@@ -426,8 +426,8 @@
   },
   {
     "ruleId": "rtz-cilium-1.16-ipsec-legacy-helm-values-removed",
-    "severity": "HIGH",
-    "title": "Helm `encryption.keyFile/mountPath/secretName/interface` removed — use `encryption.ipsec.*`",
+    "severity": "MEDIUM",
+    "title": "Helm `encryption.keyFile/mountPath/secretName/interface` removed — `helm upgrade` fails until they move to `encryption.ipsec.*`",
     "detection": {
       "kind": "NOT_DETECTABLE",
       "reason": "Helm values are not collected"
@@ -440,7 +440,7 @@
       "value": "^(enable-ipsec)$"
     },
     "quote": "Deprecated Helm option encryption.{keyFile,mountPath,secretName,interface} are removed in favor of encryption.ipsec.*.",
-    "remediation": "With IPsec enabled, move these four values under `encryption.ipsec.*` before upgrading; the 1.16 chart ignores the old names and falls back to the defaults (key Secret `cilium-ipsec-keys`), which breaks encryption where you used another Secret or interface.",
+    "remediation": "If your Helm values still set any of these four, the 1.16 chart refuses to render (`helm upgrade` fails with a message naming them) — nothing is changed on the cluster. Move them under `encryption.ipsec.*` first.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-ipsec|encrypt-interface|ipsec-key-file)$\")) | \"\\(.key)=\\(.value)\"'  # IPsec settings in effect today"
   },
   {
@@ -452,7 +452,7 @@
       "reason": "Helm values are not collected"
     },
     "quote": "Deprecated options `proxy.prometheus.enabled` and `proxy.prometheus.port` have been removed.",
-    "remediation": "Rename to `envoy.prometheus.enabled` / `envoy.prometheus.port`; otherwise Envoy metrics stop being exposed."
+    "remediation": "Rename to `envoy.prometheus.enabled` / `envoy.prometheus.port` and remove the old values — even an explicit `proxy.prometheus.enabled=false`: the 1.16 chart refuses to render while either is set (`helm upgrade` fails)."
   },
   {
     "ruleId": "rtz-cilium-1.16-clustermesh-apiserver-non-root",
@@ -481,7 +481,7 @@
       "reason": "Helm values are not collected"
     },
     "quote": "Deprecated Helm option `containerRuntime.integration` is removed.",
-    "remediation": "If you set `containerRuntime.integration` (e.g. `crio`), follow the CRI-O instructions in the 1.16 docs and use `bpf.autoMount.enabled`; the value is ignored from 1.16."
+    "remediation": "If you set `containerRuntime.integration` (e.g. `crio`), follow the CRI-O instructions in the 1.16 docs and use `bpf.autoMount.enabled`, then remove the value: the 1.16 chart refuses to render while it is set (`helm upgrade` fails)."
   },
   {
     "ruleId": "rtz-cilium-1.16-enable-cilium-endpoint-slice-deprecated",
