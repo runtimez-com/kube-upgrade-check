@@ -356,9 +356,10 @@ func judge(inv *inventory.Inventory, d detection, currentVersion, targetVersion 
 	status.UpgradeNotes = notesOnPath(d.addon, d.version)
 
 	findings := windowFinding(d, status, targetVersion)
-	if verdict == VerdictNoVendorData {
-		findings = append(findings, vendorSupportPolicyFinding(d, targetVersion)...)
-	}
+	// A support POLICY is independent of the Kubernetes window: Cilium publishes both (tested windows AND "the last
+	// three minor versions" get stable releases), so it is read on every verdict — same as the hosted product.
+	findings = append(findings, vendorSupportPolicyFinding(d, targetVersion)...)
+	findings = append(findings, consecutiveMinorFinding(d, targetVersion)...)
 	findings = append(findings, ruleFindings(inv, d, registry, skipped)...)
 	return status, findings
 }
@@ -534,6 +535,45 @@ func vendorSupportPolicyFinding(d detection, targetVersion string) []report.Find
 			"bugs and vulnerabilities are fixed only there. Upgrade %s to %s. This is the vendor's support policy, "+
 			"not a Kubernetes compatibility window. Source: %s.",
 			*policy, oldest, l[0], l[1], d.addon.Source.LastVerified, name, latest, d.addon.Source.URL),
+		Category:         "RELIABILITY",
+		Severity:         catalog.SeverityMedium,
+		ScoreImpact:      catalog.SeverityMedium.ScoreImpact(),
+		ResourceName:     d.workloadRef,
+		ResourceType:     d.addon.AddonID,
+		AppliesAtVersion: catalog.MinorOf(targetVersion),
+		SourceURL:        d.addon.Source.URL,
+		Evidence:         []string{fmt.Sprintf("Detected %s from %s", displayVersion(d), d.workloadRef)},
+	}}
+}
+
+// consecutiveMinorFinding mirrors the hosted product's rtz-addon-<id>-skips-minor-releases: the vendor tests upgrades
+// only between consecutive minors, and the hop this target forces crosses more than one. Same major only.
+func consecutiveMinorFinding(d detection, targetVersion string) []report.Finding {
+	if !d.addon.ConsecutiveMinorUpgrades {
+		return nil
+	}
+	hop, ok := forcedHop(d, targetVersion)
+	if !ok || !catalog.IsParseable(hop.RequiredVersion) {
+		return nil
+	}
+	i, t := catalog.Components(d.version), catalog.Components(hop.RequiredVersion)
+	if i[0] != t[0] || t[1]-i[1] < 2 {
+		return nil
+	}
+	steps := []string{fmt.Sprintf("%d.%d", i[0], i[1])}
+	for m := i[1] + 1; m <= t[1]; m++ {
+		steps = append(steps, fmt.Sprintf("%d.%d", i[0], m))
+	}
+	name := displayName(d.addon)
+	ruleID := "rtz-addon-" + d.addon.AddonID + "-skips-minor-releases"
+	return []report.Finding{{
+		ID:     report.NewID(ruleID, d.workloadRef),
+		RuleID: ruleID,
+		Title: fmt.Sprintf("%s %s → %s crosses %d minor releases; the vendor tests only one minor at a time",
+			name, d.version, hop.RequiredVersion, t[1]-i[1]),
+		Recommendation: "The vendor's only tested upgrade and rollback path is between consecutive minor releases. Upgrade one " +
+			"minor at a time: " + strings.Join(steps, " → ") + ". Before each step, move to the latest patch of the line you are " +
+			"on and read that minor's upgrade notes (each step's breaking changes are listed below). Source: " + d.addon.Source.URL + ".",
 		Category:         "RELIABILITY",
 		Severity:         catalog.SeverityMedium,
 		ScoreImpact:      catalog.SeverityMedium.ScoreImpact(),

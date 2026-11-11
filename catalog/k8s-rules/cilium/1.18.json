@@ -1,0 +1,753 @@
+[
+  {
+    "ruleId": "rtz-cilium-1.18-bgp-v2alpha1-deprecated",
+    "severity": "MEDIUM",
+    "title": "BGP CRDs `v2alpha1` deprecated — use `cilium.io/v2`; `transport.localPort` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "cilium.io BGP resources are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^ciliumbgp(clusterconfigs|peerconfigs|advertisements|nodeconfigs|nodeconfigoverrides)\\.cilium\\.io$",
+      "target": "group",
+      "value": "^cilium\\.io$"
+    },
+    "quote": "Change `apiVersion: cilium.io/v2alpha1` to `apiVersion: cilium.io/v2` for these CRDs in all your BGP configs.",
+    "remediation": "Rewrite CiliumBGPClusterConfig / PeerConfig / Advertisement / NodeConfig / NodeConfigOverride manifests to `cilium.io/v2` (the command lists objects last written as v2alpha1) and drop `spec.transport.localPort` from peer configs — it is ignored from 1.18.",
+    "verifyCommand": "kubectl get ciliumbgpclusterconfigs.cilium.io,ciliumbgppeerconfigs.cilium.io,ciliumbgpadvertisements.cilium.io,ciliumbgpnodeconfigoverrides.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-bgp-peering-policy-deprecated",
+    "severity": "MEDIUM",
+    "title": "`CiliumBGPPeeringPolicy` (BGPv1) deprecated — removed in 1.19",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CiliumBGPPeeringPolicy objects are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^ciliumbgppeeringpolicies\\.cilium\\.io$"
+    },
+    "quote": "The `CiliumBGPPeeringPolicy` CRD is deprecated and will be removed in a future release.",
+    "remediation": "Migrate every CiliumBGPPeeringPolicy the command lists to the v2 BGP CRDs (ClusterConfig, PeerConfig, Advertisement, NodeConfigOverride); 1.19 removes BGPv1 (rtz-cilium-1.19-bgp-peering-policy-removed).",
+    "verifyCommand": "kubectl get ciliumbgppeeringpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(.) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a BGPv1 policy to migrate",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-cidrgroup-v2alpha1-deprecated",
+    "severity": "LOW",
+    "title": "`CiliumCIDRGroup` v2alpha1 deprecated — use `cilium.io/v2`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CiliumCIDRGroup objects are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^ciliumcidrgroups\\.cilium\\.io$",
+      "target": "group",
+      "value": "^cilium\\.io$"
+    },
+    "quote": "The `v2alpha1` version of `CiliumCIDRGroup` CRD was deprecated in favor of the `v2` version.",
+    "remediation": "Rewrite CiliumCIDRGroup manifests to `apiVersion: cilium.io/v2`.",
+    "verifyCommand": "kubectl get ciliumcidrgroups.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-serviceaccount-identity-label-default",
+    "severity": "MEDIUM",
+    "title": "`io.cilium.k8s.policy.serviceaccount` joins the default identity labels",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(labels)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; only clusters that set their own identity-relevant labels are affected"
+    },
+    "quote": "If you configure your own identity-relevant labels on your cluster, the number of identities will temporarily increase during the upgrade, which will result in increased drops.",
+    "remediation": "cilium-config sets `labels`. Expect an identity surge and drops during the upgrade; to avoid it, add `!io\\.cilium\\.k8s\\.policy\\.serviceaccount` to your identity-relevant labels before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(labels)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # the identity-relevant labels configured today"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ipsec-upgrade-special-procedure",
+    "severity": "HIGH",
+    "title": "IPsec: the 1.17 → 1.18 upgrade needs the special procedure",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-ipsec)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written when IPsec encryption is enabled"
+    },
+    "quote": "If using IPsec encryption the upgrade from v1.17 to v1.18 requires special attention.",
+    "remediation": "IPsec is enabled. Follow the IPsec section of the 1.18 encryption guide step by step for this upgrade; a plain rolling upgrade can drop cross-node traffic. On GKE also open ESP in the subnet firewall (rtz-cilium-1.18-ipsec-gke-esp-firewall).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-ipsec|encrypt-interface)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # IPsec settings in effect today"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ipsec-gke-esp-firewall",
+    "severity": "HIGH",
+    "title": "IPsec on GKE: firewall rules must allow ESP",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-ipsec)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written when IPsec encryption is enabled"
+    },
+    "quote": "If using an IPsec deployment within a Google Cloud GKE cluster the default firewall rules for the cluster's subnet must be updated to allow ESP traffic.",
+    "remediation": "IPsec is enabled; on GKE, add a VPC firewall rule allowing protocol `esp` between the nodes before upgrading, or cross-node traffic is dropped.",
+    "verifyCommand": "gcloud compute firewall-rules list --format='table(name,network,allowed[].IPProtocol)' 2>/dev/null | grep -i esp  # no row means ESP is not allowed",
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Node",
+      "target": "osImage",
+      "value": "Container-Optimized OS",
+      "reason": "only GKE nodes (Container-Optimized OS) are affected"
+    }
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-eni-ipv4-masquerade-default-false",
+    "severity": "HIGH",
+    "title": "ENI mode: `enableIPv4Masquerade` default flips from true to false",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ipam)$"
+    },
+    "quote": "The Helm value of `enableIPv4Masquerade` in `eni` mode changes from `true` to `false` by default from 1.18.",
+    "remediation": "If cilium-config shows `ipam=eni` and you never set `enableIPv4Masquerade`, pod traffic leaving the VPC stops being SNATed to the node IP after the upgrade — anything reaching the internet through a NAT that only knows node IPs, or allow-listing node IPs, breaks. Set `enableIPv4Masquerade=true` (or `upgradeCompatibility` below 1.18) before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam|enable-ipv4-masquerade)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni without an explicit masquerade value is affected",
+    "coversNotes": [
+      "Helm Options: The Helm value of `enableIPv4Masquerade` in"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-kernel-5-10-required",
+    "severity": "HIGH",
+    "title": "Cilium 1.18 requires Linux kernel 5.10+ (4.18 on RHEL 8.10)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Node",
+      "target": "kernelVersion",
+      "value": "^([0-3]\\.|4\\.([0-9]|1[0-7]|19|2[0-9])\\.|5\\.[0-9]([.-]|$))",
+      "reason": "reads each Node's reported kernel version; a 4.18 kernel is NOT flagged (RHEL 8.10 is supported on it, other 4.18 builds are not) — the command prints kernel and OS for every node"
+    },
+    "quote": "This Cilium version now requires a v5.10 Linux kernel or newer.",
+    "remediation": "Replace or upgrade the nodes named to a 5.10+ kernel (or RHEL 8.10's 4.18) BEFORE upgrading Cilium; the 1.18 agent does not run on them. Also check any 4.18 node in the command's output: only RHEL 8.10 is supported on 4.18.",
+    "verifyCommand": "kubectl get nodes -o json | jq -r '.items[] | \"\\(.metadata.name) \\(.status.nodeInfo.kernelVersion) \\(.status.nodeInfo.osImage)\"'  # each row is a node's kernel and OS"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ciliumidentity-security-labels-removed",
+    "severity": "LOW",
+    "title": "CiliumIdentity no longer carries security labels in metadata (except the namespace)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CiliumIdentity objects are not collected"
+    },
+    "quote": "CiliumIdentity CRD does not contain Security Labels in metadata anymore except for the namespace label.",
+    "remediation": "Tooling that reads pod labels off CiliumIdentity `metadata.labels` must read `security-labels` instead."
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-proxylib-deprecated",
+    "severity": "MEDIUM",
+    "title": "Envoy Go Extensions (proxylib) deprecated — Kafka and other proxylib L7 policies removed in 1.20",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+    },
+    "quote": "The support for Envoy Go Extensions (proxylib) is deprecated, and will be removed in a future release.",
+    "remediation": "Policies the command lists use a proxylib parser (`kafka`, `l7proto`, generic `l7`); plan to replace those rules — 1.20 removes them (rtz-cilium-1.20-proxylib-removed).",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; (.toPorts // []) | any(.rules != null and (.rules | has(\"kafka\") or has(\"l7\") or has(\"l7proto\"))))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row uses proxylib",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-policy-default-local-cluster-flag",
+    "severity": "MEDIUM",
+    "title": "Cluster Mesh: `policy-default-local-cluster` introduced — becomes the default in 1.19",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/clustermesh-apiserver([:@]|$)"
+    },
+    "quote": "The new `policy-default-local-cluster` flag allows to change this behavior, and only select endpoints from the local cluster",
+    "remediation": "In a Cluster Mesh, policies that select peers without a cluster selector will only match the LOCAL cluster from 1.19. Prepare them now (see the 'Preparing for a policy-default-local-cluster change' procedure): add explicit `io.cilium.k8s.policy.cluster` selectors where cross-cluster traffic is intended.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(policy-default-local-cluster)$\")) | \"\\(.key)=\\(.value)\"'  # true means local-only selection is already on"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-eni-operator-describe-route-tables",
+    "severity": "MEDIUM",
+    "title": "ENI mode: operator needs `ec2:DescribeRouteTables`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the operator's IAM permissions are AWS-side"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ipam)$"
+    },
+    "quote": "The cilium operator now needs the `ec2:DescribeRouteTables` IAM action permission when used in ENI mode.",
+    "remediation": "With `ipam=eni`, add `ec2:DescribeRouteTables` to the operator's IAM role before upgrading.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni needs ec2:DescribeRouteTables"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-high-scale-ipcache-removed",
+    "severity": "MEDIUM",
+    "title": "High-scale ipcache mode removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-high-scale-ipcache)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The previously deprecated high-scale mode for ipcache has been removed.",
+    "remediation": "Turn off `enable-high-scale-ipcache` before upgrading; the 1.18 agent no longer supports it.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-high-scale-ipcache)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-external-workloads-removed",
+    "severity": "LOW",
+    "title": "External Workloads removed — delete the stale CRD",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^ciliumexternalworkloads\\.cilium\\.io$"
+    },
+    "quote": "The previously deprecated External Workloads feature has been removed.",
+    "remediation": "The CRD is registered on every pre-1.18 install, so this card names every such cluster: list external workloads with the command — any row must be migrated before upgrading. After upgrading, delete the stale CRD (`ciliumexternalworkloads.cilium.io`) and the External Workloads Secret in kube-system, as the note says.",
+    "verifyCommand": "kubectl get ciliumexternalworkloads.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(.) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an external workload that stops working"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ec2-adapter-limit-flags-removed",
+    "severity": "LOW",
+    "title": "Operator `update-ec2-adapter-limit-via-api` / `aws-instance-limit-mapping` removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(update-ec2-adapter-limit-via-api|aws-instance-limit-mapping)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The `update-ec2-adapter-limit-via-api` CLI flag for the operator has been removed",
+    "remediation": "Remove the keys; the operator always reads limits from the EC2 API (needs `ec2:DescribeInstances`).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(update-ec2-adapter-limit-via-api|aws-instance-limit-mapping)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "coversNotes": [
+      "Removed Options: The `aws-instance-limit-mapping` CLI flag for the",
+      "Helm Options: `eni.updateEC2AdapterLimitViaAPI` is removed since the operator"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-k8s-terminating-endpoint-removed",
+    "severity": "LOW",
+    "title": "`enable-k8s-terminating-endpoint` removed — always on",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-k8s-terminating-endpoint)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The previously deprecated flag `--enable-k8s-terminating-endpoint` has been removed.",
+    "remediation": "Remove the key; if it was `false`, terminating endpoints now receive traffic during graceful shutdown.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-k8s-terminating-endpoint)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-conntrack-local-removed",
+    "severity": "LOW",
+    "title": "`CONNTRACK_LOCAL` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a datapath build option, not a collected setting"
+    },
+    "quote": "The previously deprecated `CONNTRACK_LOCAL` option has been removed",
+    "remediation": "Drop `CONNTRACK_LOCAL` from any custom datapath configuration."
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-runtime-device-detection-option-removed",
+    "severity": "LOW",
+    "title": "`enableRuntimeDeviceDetection` removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-runtime-device-detection)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The previously deprecated `enableRuntimeDeviceDetection` option has been removed",
+    "remediation": "Remove the key / Helm value; runtime device detection is always on since 1.16.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-runtime-device-detection)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ces-rate-limit-flags-removed",
+    "severity": "LOW",
+    "title": "Ignored CiliumEndpointSlice rate-limit flags removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ces-write-qps-limit|ces-write-qps-burst|ces-enable-dynamic-rate-limit|ces-dynamic-rate-limit-nodes|ces-dynamic-rate-limit-qps-limit|ces-dynamic-rate-limit-qps-burst)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The previously deprecated and ignored operator flags `ces-write-qps-limit`",
+    "remediation": "Remove the keys; use `ces-rate-limits` (Helm `ciliumEndpointSlice.rateLimits`).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(ces-write-qps-limit|ces-write-qps-burst|ces-enable-dynamic-rate-limit|ces-dynamic-rate-limit-nodes|ces-dynamic-rate-limit-qps-limit|ces-dynamic-rate-limit-qps-burst)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-arping-refresh-period-removed",
+    "severity": "LOW",
+    "title": "`arping-refresh-period` removed — neighbour refresh follows `base_reachable_time_ms`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(arping-refresh-period)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The `arping-refresh-period` option has been removed.",
+    "remediation": "Remove the key (Helm `l2NeighDiscovery.refreshPeriod`); tune the kernel's `base_reachable_time_ms` sysctl instead.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(arping-refresh-period)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "coversNotes": [
+      "Helm Options: The `l2NeighDiscovery.refreshPeriod` option has been removed"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ces-slice-mode-deprecated",
+    "severity": "LOW",
+    "title": "`ces-slice-mode` deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ces-slice-mode)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "Operator flag `ces-slice-mode` has been deprecated and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `ces-slice-mode`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(ces-slice-mode)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-k8s-api-server-deprecated",
+    "severity": "LOW",
+    "title": "`k8s-api-server` deprecated — use `k8s-api-server-urls`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(k8s-api-server)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "`k8s-api-server`: This option has been deprecated in favor of `k8s-api-server-urls` and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `k8s-api-server`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(k8s-api-server)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-l2-pod-announcements-interface-deprecated",
+    "severity": "LOW",
+    "title": "`l2-pod-announcements-interface` deprecated — use `-pattern`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(l2-pod-announcements-interface)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "`--l2-pod-announcements-interface` has been deprecated in favor of `--l2-pod-announcements-interface-pattern` and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `l2-pod-announcements-interface`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(l2-pod-announcements-interface)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-session-affinity-deprecated",
+    "severity": "LOW",
+    "title": "`enable-session-affinity` deprecated — always on in 1.19",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-session-affinity)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--enable-session-affinity` (`sessionAffinity` in Helm) has been deprecated and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `enable-session-affinity`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-session-affinity)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-custom-calls-deprecated",
+    "severity": "LOW",
+    "title": "Custom calls (`enable-custom-calls`) deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-custom-calls)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The custom calls feature (`--enable-custom-calls`) has been deprecated, and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `enable-custom-calls`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-custom-calls)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-bpf-lb-proto-diff-deprecated",
+    "severity": "LOW",
+    "title": "`bpf-lb-proto-diff` deprecated — always on in 1.19",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(bpf-lb-proto-diff)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--bpf-lb-proto-diff` has been deprecated and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `bpf-lb-proto-diff`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(bpf-lb-proto-diff)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-recorder-deprecated",
+    "severity": "LOW",
+    "title": "Hubble Recorder flags deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-recorder|enable-hubble-recorder-api|hubble-recorder-storage-path|hubble-recorder-sink-queue-size)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The Hubble Recorder feature will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `enable-recorder`, `enable-hubble-recorder-api`, `hubble-recorder-storage-path`, `hubble-recorder-sink-queue-size`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-recorder|enable-hubble-recorder-api|hubble-recorder-storage-path|hubble-recorder-sink-queue-size)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-node-port-deprecated",
+    "severity": "LOW",
+    "title": "`enable-node-port` / `enable-host-port` / `enable-external-ips` deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-node-port|enable-host-port|enable-external-ips)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The kube-proxy replacement features will be only enabled when `--kube-proxy-replacent` is set to `true`.",
+    "remediation": "Plan the change now: cilium-config sets `enable-node-port`, `enable-host-port`, `enable-external-ips`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-node-port|enable-host-port|enable-external-ips)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-k8s-endpoint-slice-deprecated",
+    "severity": "LOW",
+    "title": "`enable-k8s-endpoint-slice` deprecated — always on in 1.19",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-k8s-endpoint-slice)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--enable-k8s-endpoint-slice` have been deprecated and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `enable-k8s-endpoint-slice`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-k8s-endpoint-slice)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-svc-source-range-check-deprecated",
+    "severity": "LOW",
+    "title": "`enable-svc-source-range-check` deprecated",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-svc-source-range-check)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--enable-svc-source-range-check` (`svcSourceRangeCheck` in Helm) has been deprecated",
+    "remediation": "Plan the change now: cilium-config sets `enable-svc-source-range-check`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-svc-source-range-check)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-egress-multi-home-ip-rule-compat-deprecated",
+    "severity": "LOW",
+    "title": "`egress-multi-home-ip-rule-compat` deprecated — 1.18 migrates IP rules",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(egress-multi-home-ip-rule-compat)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--egress-multi-home-ip-rule-compat` and the old IP rule scheme has been deprecated",
+    "remediation": "Plan the change now: cilium-config sets `egress-multi-home-ip-rule-compat`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(egress-multi-home-ip-rule-compat)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-ipv4-egress-gateway-deprecated",
+    "severity": "LOW",
+    "title": "`enable-ipv4-egress-gateway` deprecated — use `enable-egress-gateway`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-ipv4-egress-gateway)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The flag `--enable-ipv4-egress-gateway` has been deprecated in favor of `--enable-egress-gateway` and will be removed in Cilium 1.19.",
+    "remediation": "Plan the change now: cilium-config sets `enable-ipv4-egress-gateway`, which Cilium 1.19 removes (see the 1.19 rule for what breaks).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(enable-ipv4-egress-gateway)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-internal-traffic-policy-flag-deprecated",
+    "severity": "LOW",
+    "title": "`enable-internal-traffic-policy` deprecated — always respected in 1.19",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes enable-internal-traffic-policy on every 1.17-1.18 install"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-internal-traffic-policy)$"
+    },
+    "quote": "The flag `--enable-internal-traffic-policy` (`enableInternalTrafficPolicy` in Helm) has been deprecated",
+    "remediation": "If the value is `false`, Services with `internalTrafficPolicy: Local` will start keeping traffic node-local from 1.19.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-internal-traffic-policy)$\")) | \"\\(.key)=\\(.value)\"'  # false is affected",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-hubble-export-file-values-deprecated",
+    "severity": "LOW",
+    "title": "Helm `hubble.export.file*` values deprecated — moved under `hubble.export.static` / `dynamic`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "quote": "have been deprecated in favor of their corresponding exporter type options and will be removed in Cilium 1.19.",
+    "remediation": "Move `hubble.export.fileMaxSizeMb`, `fileMaxBackups`, `fileCompress` under `hubble.export.static` (or the dynamic exporter config).",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-ces-slice-mode-helm-removed",
+    "severity": "LOW",
+    "title": "Helm `ciliumEndpointSlice.sliceMode` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "quote": "The Helm option `ciliumEndpointSlice.sliceMode` has been removed.",
+    "remediation": "Drop the value; slices are batched first-come-first-serve."
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-client-go-backoff-env-default",
+    "severity": "LOW",
+    "title": "Chart sets `KUBE_CLIENT_BACKOFF_*` on the agent by default",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "container env NAMES are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/cilium([:@]|$)"
+    },
+    "quote": "Users who were already setting these using `extraEnv` should either remove them from `extraEnv` or set `k8sClientExponentialBackoff.enabled=false`.",
+    "remediation": "If `extraEnv` already sets `KUBE_CLIENT_BACKOFF_BASE` / `KUBE_CLIENT_BACKOFF_DURATION`, remove them or set `k8sClientExponentialBackoff.enabled=false`; a duplicate env var fails the DaemonSet update.",
+    "verifyCommand": "kubectl get daemonset -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/cilium([:@]|$)\"))) | .metadata.name as $n | .spec.template.spec.containers[].env[]? | select(.name | test(\"^KUBE_CLIENT_BACKOFF_\")) | \"\\($n) \\(.name)\"'  # each row is an env var the chart will now also set"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-l2-pod-announcements-interface-helm-deprecated",
+    "severity": "LOW",
+    "title": "Helm `l2PodAnnouncements.interface` deprecated — use `interfacePattern`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "quote": "The Helm option `l2PodAnnouncements.interface` has been deprecated in favor of `l2PodAnnouncements.interfacePattern`",
+    "remediation": "Rename the value; 1.19 removes it (the flag rule rtz-cilium-1.18-l2-pod-announcements-interface-deprecated names the config key).",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-kvstoremesh-helm-deprecated",
+    "severity": "LOW",
+    "title": "Helm `clustermesh.apiserver.kvstoremesh.enabled` deprecated — KVStoreMesh always on in 1.19",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/clustermesh-apiserver([:@]|$)"
+    },
+    "quote": "Starting from 1.19 KVStoreMesh will be unconditionally enabled when the Cluster Mesh API Server is enabled.",
+    "remediation": "If you disabled KVStoreMesh, plan for it to be on from 1.19.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/clustermesh-apiserver([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) containers=\\([.spec.template.spec.containers[].name] | join(\",\"))\"'  # no kvstoremesh container means it is off today",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-l2-neigh-discovery-default-false",
+    "severity": "MEDIUM",
+    "title": "L2 neighbour discovery now off by default",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-l2-neigh-discovery)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is written only when Helm l2NeighDiscovery.enabled is set"
+    },
+    "quote": "The `--enable-l2-neigh-discovery` flag has been changed to default to `false`.",
+    "remediation": "cilium-config does not pin `enable-l2-neigh-discovery`, so 1.18 stops Cilium's L2 neighbour discovery. Clusters using XDP acceleration or direct routing that rely on Cilium resolving neighbours should set Helm `l2NeighDiscovery.enabled=true`.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-l2-neigh-discovery|bpf-lb-acceleration|auto-direct-node-routes)$\")) | \"\\(.key)=\\(.value)\"'  # settings that depend on neighbour discovery",
+    "coversNotes": [
+      "Helm Options: The `l2NeighDiscovery.enabled` option has been changed"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-enable-cilium-endpoint-slice-removed",
+    "severity": "MEDIUM",
+    "title": "Helm `enableCiliumEndpointSlice` removed — use `ciliumEndpointSlice.enabled`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-cilium-endpoint-slice)$"
+    },
+    "quote": "The deprecated Helm option `enableCiliumEndpointSlice` has been removed.",
+    "remediation": "If cilium-config shows `enable-cilium-endpoint-slice=true`, set `ciliumEndpointSlice.enabled=true` before upgrading — otherwise CiliumEndpointSlices are switched off.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-cilium-endpoint-slice)$\")) | \"\\(.key)=\\(.value)\"'  # true must be carried over to ciliumEndpointSlice.enabled"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-local-redirect-policy-helm-deprecated",
+    "severity": "LOW",
+    "title": "Helm `localRedirectPolicy` deprecated — use `localRedirectPolicies.enabled`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-local-redirect-policy)$"
+    },
+    "quote": "`localRedirectPolicy` helm option has been deprecated. Set `localRedirectPolicies.enabled` instead.",
+    "remediation": "Rename the value.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-local-redirect-policy)$\")) | \"\\(.key)=\\(.value)\"'  # true means the value is in use",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-operator-tolerations-narrowed",
+    "severity": "MEDIUM",
+    "title": "Operator default tolerations narrowed — it no longer runs on drained nodes",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/operator(-generic|-aws|-azure|-alibabacloud)?([:@]|$)"
+    },
+    "quote": "The default value for `operator.tolerations` has been narrowed to only include the following tolerations:",
+    "remediation": "If your control-plane or system nodes carry other taints the operator must tolerate, set `operator.tolerations` explicitly before upgrading or the operator may stay Pending.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/operator(-generic|-aws|-azure|-alibabacloud)?([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) tolerations=\\([.spec.template.spec.tolerations[]?.key] | join(\",\"))\"'  # tolerations the operator has today"
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-kvstore-flags-renamed",
+    "severity": "MEDIUM",
+    "title": "`kvstore-connectivity-timeout` / `kvstore-periodic-sync` renamed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(kvstore-connectivity-timeout|kvstore-periodic-sync)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The `kvstore-connectivity-timeout` flag is renamed to `identity-allocation-timeout` to better reflect its purpose.",
+    "remediation": "Rename to `identity-allocation-timeout` / `identity-allocation-sync-interval`; the old keys are ignored.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(kvstore-connectivity-timeout|kvstore-periodic-sync)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "coversNotes": [
+      "Agent Options: The `kvstore-periodic-sync` flag is renamed to",
+      "Cluster Mesh API Server Options: The previously unused `kvstore-connectivity-timeout` and `kvstore-periodic-sync`"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.18-metrics-renamed-or-removed",
+    "severity": "LOW",
+    "title": "Cilium 1.18 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Prometheus series names are not Kubernetes objects; runtimez does not scrape Cilium metrics"
+    },
+    "quote": "`doublewrite_identity_crd_total_count` has been renamed to `doublewrite_crd_identities`",
+    "remediation": "Before upgrading to 1.18, search your dashboards, recording rules and alerts for the metric names listed in the Cilium 1.18 upgrade notes (Changed / Removed Metrics) and move them to the new names or labels. An alert on a renamed or removed series does not fail: it silently stops firing.",
+    "coversNotes": [
+      "Removed Metrics: `node_connectivity_status`",
+      "Removed Metrics: `node_connectivity_latency_seconds`",
+      "Changed Metrics: `doublewrite_identity_kvstore_total_count` has been renamed to",
+      "Changed Metrics: `doublewrite_identity_crd_only_count` has been renamed to",
+      "Changed Metrics: `doublewrite_identity_kvstore_only_count` has been renamed to",
+      "Changed Metrics: The type of the `cilium_agent_bootstrap_seconds` metric",
+      "Changed Metrics: `cilium_agent_bgp_control_plane_reconcile_error_count` has been renamed to",
+      "Changed Metrics: `cilium_operator_bgp_control_plane_cluster_config_error_count` has been renamed to"
+    ]
+  }
+]

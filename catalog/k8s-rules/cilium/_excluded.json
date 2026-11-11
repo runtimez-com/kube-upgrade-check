@@ -1,0 +1,482 @@
+[
+  {
+    "version": "1.14",
+    "note": "New Options: `routing-mode=native`: This option enables native-routing mode",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.14",
+    "note": "New Options: `tunnel-protocol`: This option allows setting the",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.14",
+    "note": "New Options: `tls-relay-client-ca-files`: This option lets you provide",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.14",
+    "note": "Deprecated Commands: The `cilium endpoint regenerate` command is",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.14",
+    "note": "Cilium CLI: Upgrade Cilium CLI to v0.15.0 or later to",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.14",
+    "note": "Cilium CLI: Helm and classic mode installations are not",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.14",
+    "note": "Cilium CLI: To migrate a classic mode Cilium installation",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_operator_ces_sync_total`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_policy_change_total`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `go_sched_latencies_seconds`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_operator_ipam_available_ips`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_operator_ipam_used_ips`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_operator_ipam_needed_ips`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `kvstore_sync_queue_size`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `kvstore_initial_sync_completed`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: `cilium_endpoint_max_ifindex` See #27953 for configuration and",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.14",
+    "note": "Added Metrics: You can now additionally configure the clustermesh-apiserver",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.15",
+    "note": "Cilium CLI: Upgrade Cilium CLI to v0.15.0 or later to",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.15",
+    "note": "Cilium CLI: Helm and classic mode installations are not",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.15",
+    "note": "Cilium CLI: To migrate a classic mode Cilium installation",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.15",
+    "note": "Added Metrics: `cilium_ipam_capacity`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.15",
+    "note": "Added Metrics: `cilium_endpoint_max_ifindex` See #27953 for configuration and",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.16",
+    "note": "Removed Options: The unused flag `sidecar-istio-proxy-image` has been",
+    "reason": "unused flag; the chart wrote it on every install up to 1.15 and nothing read it"
+  },
+  {
+    "version": "1.16",
+    "note": "Helm Options: The unused Helm option `proxy.sidecarImageRegex` has",
+    "reason": "unused value; nothing read it"
+  },
+  {
+    "version": "1.16",
+    "note": "Helm Options: The IP addresses on which to expose NodePort",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.16",
+    "note": "Cilium CLI: Upgrade Cilium CLI to v0.15.0 or later to",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.16",
+    "note": "Cilium CLI: Helm and classic mode installations are not",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.16",
+    "note": "Cilium CLI: To migrate a classic mode Cilium installation",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.16",
+    "note": "General: Starting with Cilium 1.16 netkit is supported",
+    "reason": "opt-in datapath mode; veth stays the default and nothing changes without opting in"
+  },
+  {
+    "version": "1.16",
+    "note": "General: The `cilium-dbg status --verbose` command health",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.16",
+    "note": "Added Metrics: `cilium_identity_label_sources` is a new metric which",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.16",
+    "note": "Added Metrics: `cilium_fqdn_selectors` is a new metric counting",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "General: Operating Cilium in `--datapath-mode=lb-only` for plain",
+    "reason": "plain Docker mode (no Kubernetes)"
+  },
+  {
+    "version": "1.17",
+    "note": "General: The Kubernetes clients used by Cilium Agent",
+    "reason": "raises the operator's default client rate limit; no configuration needed"
+  },
+  {
+    "version": "1.17",
+    "note": "General: MTU auto-detection is now continuous during",
+    "reason": "improvement: MTU changes no longer need an agent restart"
+  },
+  {
+    "version": "1.17",
+    "note": "General: The option to run a synchronous probe using",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.17",
+    "note": "General: The Cilium status API now reports the KVStore",
+    "reason": "internal implementation or status-output change with no configuration or API impact"
+  },
+  {
+    "version": "1.17",
+    "note": "Deprecated Options: The hubble-relay flag `--dial-timeout` has been",
+    "reason": "the flag became a no-op; nothing changes for a user who sets it"
+  },
+  {
+    "version": "1.17",
+    "note": "Deprecated Options: The `cilium-docker-plugin` has been deprecated and",
+    "reason": "Docker plugin — not Kubernetes"
+  },
+  {
+    "version": "1.17",
+    "note": "Deprecated Options: The `--datapath-mode=lb-only` has been deprecated and",
+    "reason": "plain Docker mode (no Kubernetes)"
+  },
+  {
+    "version": "1.17",
+    "note": "Helm Options: The Helm options `hubble.tls.server.cert`, `hubble.tls.server.key`,",
+    "reason": "restates the 1.16 note verbatim (rtz-cilium-1.16-hubble-tls-cert-values-deprecated)"
+  },
+  {
+    "version": "1.17",
+    "note": "Helm Options: The default value of `hubble.tls.auto.certValidityDuration` has",
+    "reason": "restates the 1.16 note verbatim (rtz-cilium-1.16-hubble-cert-validity-365-days)"
+  },
+  {
+    "version": "1.17",
+    "note": "Helm Options: The Helm option `hubble.relay.dialTimeout` has been",
+    "reason": "the value became a no-op; nothing changes for a user who sets it"
+  },
+  {
+    "version": "1.17",
+    "note": "Helm Options: The default value of `dnsProxy.endpointMaxIpPerHostname` and",
+    "reason": "raises a limit (50 -> 1000); nothing that worked before breaks"
+  },
+  {
+    "version": "1.17",
+    "note": "Bugtool Options: The flag `k8s-mode` (and related flags `cilium-agent-container-name`",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.17",
+    "note": "Hubble CLI: the `--cluster` behavior changed to show",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_node_health_connectivity_status`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_node_health_connectivity_latency_seconds`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_operator_unmanaged_pods`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_policy_selector_match_count_max`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_identity_cache_timer_duration`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_identity_cache_timer_trigger_latency`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.17",
+    "note": "Added Metrics: `cilium_identity_cache_timer_trigger_folds`",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.18",
+    "note": "General: `cilium-dbg bpf policy` now prints `ANY`",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.18",
+    "note": "General: The check for connectivity to the Kubernetes",
+    "reason": "restates the 1.17.4 note (rtz-cilium-1.17-liveness-probe-no-apiserver-check)"
+  },
+  {
+    "version": "1.18",
+    "note": "General: The kube_proxy_healthz endpoint no longer requires",
+    "reason": "improvement: a health endpoint stops failing on control-plane loss; nothing to configure"
+  },
+  {
+    "version": "1.18",
+    "note": "General: Creating or deleting policies via the local",
+    "reason": "local agent REST API used by node-local tooling, not by Kubernetes objects"
+  },
+  {
+    "version": "1.18",
+    "note": "Removed Options: The previously deprecated hubble-relay flag `--dial-timeout`",
+    "reason": "the flag was a no-op since 1.17"
+  },
+  {
+    "version": "1.18",
+    "note": "Removed Options: The previously deprecated `--datapath-mode=lb-only` for plain",
+    "reason": "plain Docker mode (no Kubernetes)"
+  },
+  {
+    "version": "1.18",
+    "note": "Helm Options: The deprecated Helm option `hubble.relay.dialTimeout` has",
+    "reason": "the value was a no-op since 1.17"
+  },
+  {
+    "version": "1.18",
+    "note": "Helm Options: The new Helm option `underlayProtocol` allows",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.18",
+    "note": "Helm Options: `k8s.apiServerURLs` has been introduced to specify",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.18",
+    "note": "Agent Options: The new agent flag `underlay-protocol` allows",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.18",
+    "note": "Agent Options: `k8s-api-server-urls`: This option specifies a list",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.18",
+    "note": "Helm Options: The new `localRedirectPolicies.addressMatcherCIDRs` option can be",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.18",
+    "note": "Bugtool Options: The deprecated flag `k8s-mode` (and related",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.18",
+    "note": "Deprecated Options: The flag value `--datapath-mode=lb-only` for plain",
+    "reason": "plain Docker mode (no Kubernetes)"
+  },
+  {
+    "version": "1.19",
+    "note": "Action Required: If you are using Network Policies or Cluster",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.19",
+    "note": "Informational Notes / General Notes: The Socket LB tracing message format has",
+    "reason": "transient parsing errors in trace output during the upgrade; nothing to change"
+  },
+  {
+    "version": "1.19",
+    "note": "Informational Notes / General Notes: Hubble field mask API was stabilized. In",
+    "reason": "Hubble Observer gRPC API / Hubble CLI flag rename — client-side, not cluster state"
+  },
+  {
+    "version": "1.19",
+    "note": "Informational Notes / General Notes: Testing for RHEL8 compatibility now uses",
+    "reason": "upstream test-matrix change; no cluster impact"
+  },
+  {
+    "version": "1.19",
+    "note": "Informational Notes / Cluster Mesh: MCS-API CoreDNS configuration recommendation has been",
+    "reason": "documentation recommendation; existing configurations keep working"
+  },
+  {
+    "version": "1.19",
+    "note": "Informational Notes / Cluster Mesh: Cilium-agent ClusterMesh status will no longer",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Features / New Options: The new agent flag `enable-remote-node-masquerade` has",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Features / New Options: The new agent flag `encryption-strict-mode-ingress` allows",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Features / Changed Options: The Helm option `clustermesh.config.clusters` now supports",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Features / Deprecated Options: The following options have been deprecated",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Features / Removed Options: The following options were previously deprecated",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.19",
+    "note": "Changes to Metrics / Added Metrics: `cilium_agent_clustermesh_remote_cluster_endpoints` was added and report the",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Action Required: If you are using the following features in",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.20",
+    "note": "Informational Notes: The Azure IPAM status on `CiliumNode` now",
+    "reason": "CiliumNode status read by the operator and agent; the deprecated fields are still mirrored for one release"
+  },
+  {
+    "version": "1.20",
+    "note": "Informational Notes: Cilium MCS-API implementation now uses the",
+    "reason": "upstream: \"this upgrade should be fully transparent\"; v1alpha1 stays supported"
+  },
+  {
+    "version": "1.20",
+    "note": "Informational Notes: Listing BGP peers, routes and route-policies",
+    "reason": "Cilium CLI / Hubble CLI / bugtool behaviour on the operator's workstation — not cluster state"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / New Options: The `configDriftDetection` Helm value group has",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / New Options: `bpf.datapathMode=auto` config option has been introduced",
+    "reason": "additive: a new option or capability that nothing breaks by not using"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / Changed Options: Cluster Mesh certificates are now configured",
+    "reason": "the cronJob method now rotates certificates more often; nothing to change"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / Deprecated Options: The following options have been deprecated",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / Removed Options: The following options were previously deprecated",
+    "reason": "section intro (\"read the notes below\"), not a change"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / Removed Options: The `cilium-dbg preflight fqdn-poller` subcommand and",
+    "reason": "pre-flight tool for the 1.3 -> 1.4 upgrade path; no cluster state"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Features / Removed Options: The previously deprecated `cilium-docker-plugin` has been",
+    "reason": "Docker plugin — not Kubernetes"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_policy_missing_proxy_redirects` was added and reports the",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_endpoint_component_status` was added and reports the",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_kubernetes_resource_sync_duration` was added and reports duration",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_hive_start_duration` was added and reports the",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_hive_stop_duration` was added and reports the",
+    "reason": "additive: a new metric"
+  },
+  {
+    "version": "1.20",
+    "note": "Changes to Metrics / Added Metrics: `cilium_hive_populate_duration` was added and reports the",
+    "reason": "additive: a new metric"
+  }
+]
