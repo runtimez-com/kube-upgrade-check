@@ -525,16 +525,21 @@ func vendorSupportPolicyFinding(d detection, targetVersion string) []report.Find
 	}
 	name := displayName(d.addon)
 	oldest := fmt.Sprintf("%d.%d", l[0], l[1]-*policy)
+	// two lines read "1.66.x and 1.67.x"; three or more say "through" — "1.18.x and 1.20.x" reads as if 1.19 were unsupported
+	joiner := "and"
+	if *policy > 1 {
+		joiner = "through"
+	}
 	ruleID := "rtz-addon-" + d.addon.AddonID + "-outside-vendor-support"
 	return []report.Finding{{
 		ID:     report.NewID(ruleID, d.workloadRef),
 		RuleID: ruleID,
 		Title: fmt.Sprintf("%s %s is %d minor releases behind the latest (%s) — outside the vendor's support policy",
 			name, d.version, behind, latest),
-		Recommendation: fmt.Sprintf("The vendor supports the latest version and %d prior (%s.x and %d.%d.x as of %s); "+
+		Recommendation: fmt.Sprintf("The vendor supports the latest version and %d prior (%s.x %s %d.%d.x as of %s); "+
 			"bugs and vulnerabilities are fixed only there. Upgrade %s to %s. This is the vendor's support policy, "+
 			"not a Kubernetes compatibility window. Source: %s.",
-			*policy, oldest, l[0], l[1], d.addon.Source.LastVerified, name, latest, d.addon.Source.URL),
+			*policy, oldest, joiner, l[0], l[1], d.addon.Source.LastVerified, name, latest, d.addon.Source.URL),
 		Category:         "RELIABILITY",
 		Severity:         catalog.SeverityMedium,
 		ScoreImpact:      catalog.SeverityMedium.ScoreImpact(),

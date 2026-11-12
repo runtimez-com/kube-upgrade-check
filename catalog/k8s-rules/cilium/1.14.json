@@ -360,7 +360,7 @@
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(disable-endpoint-crd)$\")) | \"\\(.key)=\\(.value)\"'  # disable-endpoint-crd=true is set today"
   },
   {
-    "ruleId": "rtz-cilium-1.14-metrics-renamed-or-removed",
+    "ruleId": "rtz-cilium-1.14-metrics-changed-in-1-14",
     "severity": "LOW",
     "title": "Cilium 1.14 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
     "detection": {

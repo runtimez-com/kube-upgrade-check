@@ -368,7 +368,7 @@
     "remediation": "Expect new metrics ports/Services. Set `operator.prometheus.enabled=false` and `clustermesh.apiserver.metrics.etcd.enabled=false` to keep them off."
   },
   {
-    "ruleId": "rtz-cilium-1.15-metrics-renamed-or-removed",
+    "ruleId": "rtz-cilium-1.15-metrics-changed-in-1-15",
     "severity": "LOW",
     "title": "Cilium 1.15 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
     "detection": {

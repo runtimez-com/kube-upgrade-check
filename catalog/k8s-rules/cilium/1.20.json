@@ -478,7 +478,7 @@
     ]
   },
   {
-    "ruleId": "rtz-cilium-1.20-metrics-renamed-or-removed",
+    "ruleId": "rtz-cilium-1.20-metrics-changed-in-1-20",
     "severity": "LOW",
     "title": "Cilium 1.20 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
     "detection": {

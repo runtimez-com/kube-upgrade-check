@@ -505,6 +505,8 @@ func TestCiliumSupportPolicyAndConsecutiveMinors(t *testing.T) {
 	// windows present AND a policy: the policy still applies (1.17 is the fourth-newest minor of 1.20.4)
 	if got := vendorSupportPolicyFinding(detection{addon: cilium, version: "v1.17.18"}, "1.33"); len(got) != 1 {
 		t.Fatalf("1.17 is outside the last three minors: got %d findings", len(got))
+	} else if !strings.Contains(got[0].Recommendation, "(1.18.x through 1.20.x") {
+		t.Fatalf("three supported lines must read as a range, got %q", got[0].Recommendation)
 	}
 	if got := vendorSupportPolicyFinding(detection{addon: cilium, version: "v1.18.0"}, "1.33"); len(got) != 0 {
 		t.Fatalf("1.18 is one of the last three minors: got %d findings", len(got))

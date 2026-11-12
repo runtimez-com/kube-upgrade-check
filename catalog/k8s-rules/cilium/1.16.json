@@ -527,7 +527,7 @@
     "remediation": "With the `helm` generation method certificates are only renewed when the chart is re-rendered: upgrade (or re-render) at least once a year, use `cronJob` / `certmanager`, or set `hubble.tls.auto.certValidityDuration` explicitly."
   },
   {
-    "ruleId": "rtz-cilium-1.16-metrics-renamed-or-removed",
+    "ruleId": "rtz-cilium-1.16-metrics-changed-in-1-16",
     "severity": "LOW",
     "title": "Cilium 1.16 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
     "detection": {

@@ -508,7 +508,7 @@
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(l2-pod-announcements-interface)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
   },
   {
-    "ruleId": "rtz-cilium-1.19-metrics-renamed-or-removed",
+    "ruleId": "rtz-cilium-1.19-metrics-changed-in-1-19",
     "severity": "LOW",
     "title": "Cilium 1.19 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
     "detection": {
