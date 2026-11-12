@@ -116,7 +116,7 @@ af8ee56525945d8f9b464373c5fe3ca18230e701186ef63807ccfb5e494d74a7  k8s-rules/cert
 997ff8b0a9c6fdfa428cb9e96df590c9a290d4935dbfe3a30a58274a92c4187f  k8s-rules/cert-manager/1.8.json
 503aee19471f902011eeb5eafa8226b49cba89ef2ddfd9416e378b3cae0c1f10  k8s-rules/cert-manager/_excluded.json
 6dbb813141f76da91da87217dd58d77b80233dc714f2d5af1df11584816c314c  k8s-rules/cilium/1.14.json
-66ba3f388f8c6c05afe4b4ea93593a19e8246f7ba6d5efeeea5f21f7a86894db  k8s-rules/cilium/1.15.json
+0618a2bb72c29b9e8f96d6ff731732bd469d7932a23edad7e34af8edf4d8edad  k8s-rules/cilium/1.15.json
 a5efcd91454645030c1b9b7e2bcfce8174006dab08adef4e1ffc1e89d8ad7154  k8s-rules/cilium/1.16.json
 c0005dacb4eca6cc5f59c6cc7e8a35191584aa21f965ff098be597e9528f1c71  k8s-rules/cilium/1.17.json
 dc255523cae66bdd4c02de69ce89bb8c7f5d442c25799e2ee94a2b233c9467ab  k8s-rules/cilium/1.18.json

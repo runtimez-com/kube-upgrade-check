@@ -252,10 +252,10 @@
       "objectName": "^cilium-config$",
       "target": "keys[]",
       "value": "^(tunnel)$",
-      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the 1.13 chart writes tunnel on every install (the 1.14 chart rewrites it), so on a 1.13 cluster the key alone does not mean it was hand-set"
     },
     "quote": "The `tunnel` option (deprecated in Cilium 1.14) has been removed.",
-    "remediation": "cilium-config still sets `tunnel`, which 1.15 ignores. Replace it before upgrading: `tunnel: disabled` → `routing-mode: native`; `tunnel: vxlan|geneve` → `routing-mode: tunnel` + `tunnel-protocol: vxlan|geneve` (Helm `routingMode` / `tunnelProtocol`). A cluster that ran native routing through `tunnel: disabled` switches to VXLAN encapsulation otherwise.",
+    "remediation": "cilium-config still sets `tunnel`, which the 1.15 agent ignores (its default is `routing-mode: tunnel`). Helm-managed: upgrading through 1.14 rewrites the key into `routing-mode` / `tunnel-protocol` for you, but the 1.15 chart refuses to render while your values still set `tunnel` — move it to `routingMode` / `tunnelProtocol`. Hand-managed cilium-config: replace it before upgrading: `tunnel: disabled` → `routing-mode: native`; `tunnel: vxlan|geneve` → `routing-mode: tunnel` + `tunnel-protocol: vxlan|geneve`. A cluster that ran native routing through `tunnel: disabled` switches to VXLAN encapsulation otherwise.",
     "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(tunnel)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
     "coversNotes": [
       "Helm Options: Value `tunnel` was deprecated in Cilium 1.14"
