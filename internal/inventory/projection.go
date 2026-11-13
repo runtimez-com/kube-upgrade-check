@@ -54,6 +54,11 @@ var projectors = map[string]projector{
 	"GRPCRoute":  projectRouteStatusParents,
 	"AppProject": projectAppProject,
 
+	"CiliumNetworkPolicy":            projectCiliumPolicy,
+	"CiliumClusterwideNetworkPolicy": projectCiliumPolicy,
+	"CiliumLocalRedirectPolicy":      projectCiliumLocalRedirectPolicy,
+	"CiliumLoadBalancerIPPool":       projectCiliumLBIPPool,
+
 	"NodePool":     projectNodePool,
 	"NodeClaim":    projectNodeClaim,
 	"EC2NodeClass": projectEC2NodeClass,

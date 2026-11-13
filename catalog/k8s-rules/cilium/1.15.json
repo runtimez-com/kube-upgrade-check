@@ -5,14 +5,13 @@
     "title": "Dual-stack + `0.0.0.0/0` / `::/0` CIDR policy: a ROLLBACK to 1.14 may deny existing connections",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "reason": "only dual-stack clusters are affected, and whether IPv6 is enabled is a cilium-config VALUE the agent does not collect (the chart writes enable-ipv6 on every install)"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ConfigMap",
-      "objectName": "^cilium-config$",
-      "target": "keys[]",
-      "value": "^(enable-ipv6)$"
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^fullRangeCidr$"
     },
     "quote": "Downgrading from Cilium 1.15.y or later to Cilium 1.14.x or earlier may trigger this problem.",
     "remediation": "The upgrade to 1.15 is not affected. If you may have to roll back to 1.14, know that on dual-stack clusters the policies the command lists (toCIDR/toCIDRSet covering a full range) can deny ESTABLISHED connections after the downgrade until the application reconnects; new connections are not impacted.",
@@ -23,8 +22,11 @@
     "severity": "HIGH",
     "title": "CiliumNetworkPolicy can no longer match `reserved:init` labels",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy",
+      "target": "features[]",
+      "value": "^reservedInit$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "`CiliumNetworkPolicy` cannot match the `reserved:init` labels any more.",
     "remediation": "Convert every CiliumNetworkPolicy that matches `reserved:init` into a CiliumClusterwideNetworkPolicy before upgrading (same note as 1.14.2; a 1.14.0/1.14.1 install meets it here).",

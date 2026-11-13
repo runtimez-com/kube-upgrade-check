@@ -165,8 +165,11 @@
     "severity": "MEDIUM",
     "title": "Envoy Go Extensions (proxylib) deprecated — Kafka and other proxylib L7 policies removed in 1.20",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^proxylib$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "The support for Envoy Go Extensions (proxylib) is deprecated, and will be removed in a future release.",
     "remediation": "Policies the command lists use a proxylib parser (`kafka`, `l7proto`, generic `l7`); plan to replace those rules — 1.20 removes them (rtz-cilium-1.20-proxylib-removed).",
