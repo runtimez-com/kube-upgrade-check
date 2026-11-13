@@ -1,0 +1,34 @@
+{
+ "addonId": "cilium",
+ "displayName": "Cilium",
+ "detect": {
+  "imageSuffixes": [
+   "cilium/cilium"
+  ]
+ },
+ "source": {
+  "url": "https://docs.cilium.io/en/stable/network/kubernetes/compatibility/",
+  "ref": "cilium/cilium @ v1.20.4 (beb276d2f3) + the last GA tag of every minor v1.10.20 .. v1.19.10 (Documentation/network/kubernetes/compatibility.rst; v1.10-v1.12 Documentation/concepts/kubernetes/compatibility.rst) + README.rst \"Stable Releases\" + Documentation/operations/upgrade-notes.inc (via kb/cilium)",
+  "lastVerified": "2026-11-11",
+  "note": "supportWindows transcribed mechanically from the k8s Version cell of compatibility.rst read at the LAST GA patch tag of each minor (never main, never the .0 tag): minK8s/maxK8s are the first and last versions listed. The page says \"All Kubernetes versions listed are e2e tested and guaranteed to be compatible with Cilium. Older and newer Kubernetes versions, while not listed, will depend on the forward / backward compatibility offered by Kubernetes.\" The row moves within a minor: v1.19.0 listed 1.31, 1.32, 1.33, 1.34 and v1.19.10 lists 1.32, 1.33, 1.34, 1.35, so a window is only as current as the tag it was read at (kb/cilium/manifest.json k8sTested records it per minor). NEVER derive a window from go.mod (k8s.io/client-go). Support policy (README.rst \"Stable Releases\" at v1.20.4): \"The Cilium community maintains minor stable releases for the last three minor Cilium versions. Older Cilium stable versions from minor releases prior to that are considered EOL.\" -> supportedMinorsBehindLatest 2 against latestKnownVersion; no EOL dates are published, so no window carries one. Upgrade path (Documentation/operations/upgrade-notes.inc): \"The only tested upgrade and rollback path is between consecutive minor releases. Always perform upgrades and rollbacks between one minor release at a time. Additionally, always update to the latest patch release of your current version before attempting an upgrade.\" -> consecutiveMinorUpgrades. Detection: the agent image repository ends in cilium/cilium (quay.io/cilium/cilium, docker.io/cilium/cilium, AKS mcr.microsoft.com/oss/cilium/cilium, GKE Dataplane V2 gke.gcr.io/cilium/cilium); the operator (cilium/operator-*), cilium-envoy, hubble-relay and Tetragon (cilium/tetragon, which shares the cilium.io CRD group) never match. Isovalent Enterprise (quay.io/isovalent/cilium, -cee tags) is a separate build and is not claimed. Rules and upgrade notes do NOT live here: they are the hand-authored corpus in k8s-rules/cilium/ (1.14-1.20, one file per minor, hop-scoped), written from kb/cilium/notes-<minor>.md, which scripts/readiness-agent/extract-cilium-notes.py extracts verbatim from the upgrade guide at each minor's last GA tag."
+ },
+ "supportWindows": [
+  { "version": "1.20", "minK8s": "1.33", "maxK8s": "1.36" },
+  { "version": "1.19", "minK8s": "1.32", "maxK8s": "1.35" },
+  { "version": "1.18", "minK8s": "1.30", "maxK8s": "1.33" },
+  { "version": "1.17", "minK8s": "1.29", "maxK8s": "1.32" },
+  { "version": "1.16", "minK8s": "1.27", "maxK8s": "1.30" },
+  { "version": "1.15", "minK8s": "1.26", "maxK8s": "1.29" },
+  { "version": "1.14", "minK8s": "1.19", "maxK8s": "1.27" },
+  { "version": "1.13", "minK8s": "1.16", "maxK8s": "1.26" },
+  { "version": "1.12", "minK8s": "1.16", "maxK8s": "1.24" },
+  { "version": "1.11", "minK8s": "1.16", "maxK8s": "1.23" },
+  { "version": "1.10", "minK8s": "1.16", "maxK8s": "1.21" }
+ ],
+ "latestKnownVersion": "1.20.4",
+ "supportedMinorsBehindLatest": 2,
+ "consecutiveMinorUpgrades": true,
+ "inventoryKinds": [],
+ "rules": [],
+ "upgradeNotes": []
+}

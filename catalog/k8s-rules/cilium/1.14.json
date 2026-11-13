@@ -1,0 +1,380 @@
+[
+  {
+    "ruleId": "rtz-cilium-1.14-cnp-reserved-init-labels",
+    "severity": "HIGH",
+    "title": "CiliumNetworkPolicy can no longer match `reserved:init` labels (from 1.14.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+    },
+    "quote": "`CiliumNetworkPolicy` cannot match the `reserved:init` labels any more.",
+    "remediation": "Convert every CiliumNetworkPolicy that selects or allows `reserved:init` into a CiliumClusterwideNetworkPolicy (same rules, cluster-scoped resource) before upgrading. A namespaced policy that keeps the match stops applying to endpoints in the init identity, so traffic it allowed during endpoint initialisation is denied.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"reserved:init\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a namespaced policy that still matches reserved:init",
+    "introducedIn": [
+      "1.14.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-tofqdns-min-ttl-default-zero",
+    "severity": "MEDIUM",
+    "title": "`tofqdns-min-ttl` default drops from 3600 s to 0 — DNS policy now honours upstream TTLs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the 1.13 chart writes tofqdns-min-ttl: \"3600\" on every install and the 1.14 chart stops writing it, so the key's presence today says nothing about the upgraded value"
+    },
+    "quote": "The default value of `--tofqdns-min-ttl` has changed from 3600 seconds to zero.",
+    "remediation": "The 1.13 chart wrote `tofqdns-min-ttl: \"3600\"` by default; the 1.14 chart drops it unless Helm `dnsProxy.minTtl` is set, so after `helm upgrade` a toFQDNs policy expires an allowed IP at the upstream DNS TTL instead of after an hour. Applications that cache a resolved IP past its TTL and open NEW connections to it are then denied. If any of your workloads do that, set Helm `dnsProxy.minTtl=3600` before upgrading.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; (.toFQDNs // []) | length != 0)) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy with toFQDNs rules — the TTL change applies to them"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-cni-conf-file-renamed-conflist",
+    "severity": "LOW",
+    "title": "CNI configuration file renamed to `05-cilium.conflist`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "datapath / runtime behaviour — nothing in the collected inventory states it"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "DaemonSet",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/cilium([:@]|$)"
+    },
+    "quote": "Cilium now writes its CNI configuration file to `05-cilium.conflist` in all cases",
+    "remediation": "Tooling that reads, templates or deletes `/etc/cni/net.d/05-cilium.conf` on the nodes (node images, bootstrap scripts, other CNIs in chaining mode) must look for `05-cilium.conflist` instead; a stale `05-cilium.conf` left behind can be picked up first by the container runtime.",
+    "verifyCommand": "kubectl get daemonset -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/cilium([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is the Cilium agent that writes the CNI file on every node"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-ec2-adapter-limit-via-api-default-true",
+    "severity": "MEDIUM",
+    "title": "ENI mode: operator now fetches EC2 adapter limits from the AWS API — needs `ec2:DescribeInstanceTypes`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the operator's IAM permissions are AWS-side"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ipam)$"
+    },
+    "quote": "The default value of `--update-ec2-adapter-limit-via-api` has changed from `false` to `true`.",
+    "remediation": "In ENI IPAM mode the 1.14 operator fetches instance-type limits from the EC2 API: the call in the code is `ec2:DescribeInstanceTypes`, while the upstream note names `ec2:DescribeInstances` — make sure the operator's IAM role (or the node role it inherits) grants both; upstream says `AmazonEKSWorkerNodePolicy` usually covers it on EKS. Without it the operator cannot refresh adapter limits. To keep the old behaviour set `update-ec2-adapter-limit-via-api: \"false\"`.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=eni means the operator needs ec2:DescribeInstanceTypes and ec2:DescribeInstances"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-egress-gateway-drops-without-gateway",
+    "severity": "HIGH",
+    "title": "Egress Gateway policies now DROP traffic when no gateway node is found",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-ipv4-egress-gateway|enable-egress-gateway)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the key is set when Egress Gateway is enabled"
+    },
+    "quote": "Egress Gateway policies now drop matching traffic when no gateway nodes can be found.",
+    "remediation": "Egress Gateway is enabled here. Before upgrading, make sure every CiliumEgressGatewayPolicy's `egressGateway.nodeSelector` matches at least one Ready node; on 1.14 traffic from the selected pods is dropped (it used to leave the cluster un-rerouted) whenever no gateway node matches — e.g. during a gateway node replacement.",
+    "verifyCommand": "kubectl get ciliumegressgatewaypolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(.) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an egress gateway policy whose node selector must keep matching a Ready node"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-gateway-api-crds-v0-6",
+    "severity": "MEDIUM",
+    "title": "Gateway API support needs the v0.6 CRDs (ReferenceGrant v1beta1)",
+    "detection": {
+      "kind": "SPEC_PATH_NONE_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^referencegrants\\.gateway\\.networking\\.k8s\\.io$",
+      "target": "versions[].name",
+      "value": "^v1beta1$",
+      "reason": "reads the installed ReferenceGrant CRD's served versions"
+    },
+    "quote": "If Gateway API feature is enabled, please upgrade related CRDs to v0.6.x.",
+    "remediation": "Install the Gateway API v0.6.x (or newer) CRDs before upgrading Cilium; the installed ReferenceGrant CRD does not serve `v1beta1`, which Cilium 1.14's Gateway API controller reads.",
+    "gate": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-gateway-api)$",
+      "reason": "only clusters with Cilium's Gateway API support enabled read these CRDs"
+    }
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-auth-type-renamed-authentication-mode",
+    "severity": "HIGH",
+    "title": "CiliumNetworkPolicy `auth.type` renamed to `authentication.mode`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+    },
+    "quote": "The attribute `auth.type` is renamed to `authentication.mode` in both Ingress and Egress rules in CiliumNetworkPolicy CRD. The old attribute name is no longer supported",
+    "remediation": "Rewrite `auth: {type: …}` to `authentication: {mode: required|disabled|test-always-fail}` in every policy the command lists before upgrading; the 1.14 CRD no longer accepts `auth.type`.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; .auth != null)) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy still using auth.type"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-clustermesh-apiserver-before-agents",
+    "severity": "MEDIUM",
+    "title": "Cluster Mesh: upgrade the clustermesh-apiserver in every cluster before the agents",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "upgrade ordering across clusters"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/clustermesh-apiserver([:@]|$)"
+    },
+    "quote": "Please upgrade the *clustermesh-apiserver* in all clusters before the Cilium agents",
+    "remediation": "1.14 agents clean up stale remote-cluster state after reconnecting; against an older clustermesh-apiserver that restarts, that causes brief drops to remote pods and global services. Upgrade the clustermesh-apiserver in ALL meshed clusters first, then the agents.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/clustermesh-apiserver([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is a clustermesh-apiserver and its version"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-deny-policies-take-precedence",
+    "severity": "HIGH",
+    "title": "CIDR deny policies now take precedence over overlapping allow policies",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+    },
+    "quote": "Deny policies now always take precedence over allow policies.",
+    "remediation": "Traffic that an overlapping CIDR allow policy used to let through despite a CIDR deny policy is DROPPED on 1.14. For each policy pair the command lists, confirm the deny is intended; narrow the deny CIDR where it is not.",
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select([(.spec // empty), (.specs[]?)] | any((.ingressDeny // []) + (.egressDeny // []) | length != 0)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy with deny rules — check the CIDR allows that overlap it"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-cilium-host-ipv6-from-ipam",
+    "severity": "LOW",
+    "title": "IPv6 on `cilium_host` now comes from the IPAM pool",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "datapath / runtime behaviour — nothing in the collected inventory states it"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-ipv6)$"
+    },
+    "quote": "IPv6 on `cilium_host` now is assigned from IPAM pool, rather than using the same IPv6 as native host interface",
+    "remediation": "On dual-stack clusters, firewall rules, monitoring or routes that expect `cilium_host` to share the node's native IPv6 must be updated: after the upgrade it holds an IPAM-allocated address.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(enable-ipv6)$\")) | \"\\(.key)=\\(.value)\"'  # enable-ipv6=true means cilium_host gets a new IPv6"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-sockops-local-policy-eval-removed",
+    "severity": "MEDIUM",
+    "title": "`sockops-enable` and `force-local-policy-eval-at-source` removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(sockops-enable|force-local-policy-eval-at-source)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned"
+    },
+    "quote": "The `sockops-enable` and `force-local-policy-eval-at-source` options deprecated in version 1.13 are removed.",
+    "remediation": "Remove these keys from cilium-config (Helm `sockops.enabled`); 1.14 ignores them, so sockops acceleration silently stops.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(sockops-enable|force-local-policy-eval-at-source)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-tunnel-option-deprecated",
+    "severity": "LOW",
+    "title": "`tunnel` option deprecated (removed in 1.15) — use `routing-mode` / `tunnel-protocol`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(tunnel)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; the 1.13 chart writes tunnel on every install and the 1.14 chart converts Helm `tunnel` itself"
+    },
+    "quote": "The `tunnel` option is deprecated and will be removed in v1.15.",
+    "remediation": "`helm upgrade` with the 1.14 chart rewrites `tunnel` into `routing-mode` / `tunnel-protocol` for you; only a hand-managed cilium-config must change. There, replace `tunnel` with `routing-mode: native` (was `tunnel: disabled`) or `routing-mode: tunnel` + `tunnel-protocol: vxlan|geneve` (Helm `routingMode` / `tunnelProtocol`). 1.15 drops `tunnel` entirely (rtz-cilium-1.15-tunnel-option-removed).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(tunnel)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "coversNotes": [
+      "Helm Options: Following the deprecation of the `tunnel`"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-cnp-status-updates-deprecated",
+    "severity": "LOW",
+    "title": "`disable-cnp-status-updates`, `cnp-node-status-gc-interval`, `enable-k8s-event-handover` deprecated (removed in 1.15)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(enable-k8s-event-handover)$",
+      "reason": "cilium-config keys only (names, never values): an option passed on the agent or operator command line (extraArgs) or in a ConfigMap of another name is not scanned; disable-cnp-status-updates is written on every 1.13 install, so only enable-k8s-event-handover is read"
+    },
+    "quote": "The `disable-cnp-status-updates`, `cnp-node-status-gc-interval duration` and `enable-k8s-event-handover` options are deprecated and will be removed in v1.15.",
+    "remediation": "Remove these keys (Helm `enableCnpStatusUpdates`, `enableK8sEventHandover`); they have no replacement.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .metadata.namespace as $ns | .data | to_entries[] | select(.key | test(\"^(disable-cnp-status-updates|cnp-node-status-gc-interval|enable-k8s-event-handover)$\")) | \"\\($ns)/cilium-config \\(.key)=\\(.value)\"'  # each row is an option still set in cilium-config",
+    "coversNotes": [
+      "Helm Options: Following the deprecation of the `disable-cnp-status-updates`"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-cluster-pool-v2beta-deprecated",
+    "severity": "MEDIUM",
+    "title": "`cluster-pool-v2beta` IPAM mode deprecated (removed in 1.15)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(ipam)$"
+    },
+    "quote": "The `cluster-pool-v2beta` IPAM mode is deprecated and will be removed in v1.15.",
+    "remediation": "If cilium-config `ipam` is `cluster-pool-v2beta`, plan the move to `multi-pool` IPAM: 1.15 removes the mode (rtz-cilium-1.15-cluster-pool-v2beta-removed).",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(ipam)$\")) | \"\\(.key)=\\(.value)\"'  # ipam=cluster-pool-v2beta is affected",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-hubble-relay-tls-flags-deprecated",
+    "severity": "LOW",
+    "title": "Hubble Relay `tls-client-*` / `tls-server-*` flags deprecated",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "hubble-relay's own config file values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/hubble-relay([:@]|$)"
+    },
+    "quote": "The following Hubble Relay options are deprecated and will be removed in v1.15:",
+    "remediation": "If you run hubble-relay with hand-written flags, rename `tls-client-cert-file`/`tls-client-key-file` to `tls-hubble-client-*` and `tls-server-cert-file`/`tls-server-key-file` to `tls-relay-server-*`. Helm-managed relays are rendered correctly by the 1.14 chart.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"hubble-relay-config\") | .data[\"config.yaml\"] // \"\"' | grep -E '^tls-(client|server)-(cert|key)-file'  # each line is a deprecated relay option still set",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-kube-proxy-replacement-values-deprecated",
+    "severity": "MEDIUM",
+    "title": "`kube-proxy-replacement` values `strict` / `partial` / `disabled` deprecated — use `true` / `false`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the option's VALUE is not collected (cilium-config ships key names only); the chart writes kube-proxy-replacement on every install"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(kube-proxy-replacement)$"
+    },
+    "quote": "The `kube-proxy-replacement` option's values `strict`, `partial` and `disabled` are deprecated and will be removed in v1.15.",
+    "remediation": "Set `kube-proxy-replacement` to `true` (was `strict`) or `false` (was `disabled`; with `partial`, also enable each kube-proxy-replacement feature you used explicitly). 1.15 still accepts the old values; 1.16 does not — its chart refuses to render and its agent refuses to start with them — and upstream ships no 1.16 note for it, so change the value now.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(kube-proxy-replacement)$\")) | \"\\(.key)=\\(.value)\"'  # strict|partial|disabled must be rewritten",
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-hubble-relay-security-context",
+    "severity": "LOW",
+    "title": "Hubble Relay `securityContext` now applies to the container and defaults to non-root, all capabilities dropped",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)cilium/hubble-relay([:@]|$)"
+    },
+    "quote": "The `securityContext` for Hubble Relay now applies to the container, not the pod.",
+    "remediation": "If you set `hubble.relay.securityContext` expecting pod-level settings, move them to `hubble.relay.podSecurityContext`. Custom relay images that need root or capabilities must set them explicitly.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/hubble-relay([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) pod=\\(.spec.template.spec.securityContext) container=\\(.spec.template.spec.containers[0].securityContext)\"'  # each row is a hubble-relay and its security contexts",
+    "coversNotes": [
+      "Helm Options: The `securityContext` for Hubble Relay now defaults"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-helm-values-removed",
+    "severity": "MEDIUM",
+    "title": "Helm values removed in 1.14 (`hubble.peerService.enabled`, `hubble.tls.ca*`, `hubble.ui.securityContext.enabled`, `ipam.operator.clusterPool*PodCIDR`)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(cluster-pool-ipv4-cidr|cluster-pool-ipv6-cidr)$"
+    },
+    "quote": "Values `ipam.operator.clusterPoolIPv4PodCIDR` and `ipam.operator.clusterPoolIPv6PodCIDR` were deprecated in Cilium 1.11",
+    "remediation": "Run `helm get values` for the Cilium release and rename before upgrading: `ipam.operator.clusterPoolIPv4PodCIDR` → `clusterPoolIPv4PodCIDRList` (same for IPv6) — the 1.14 chart refuses to render while the old names are set (`helm upgrade` fails), so nothing changes until you rename; `hubble.tls.ca*` → `tls.ca*`; drop `hubble.peerService.enabled` and `hubble.ui.securityContext.enabled`.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(cluster-pool-ipv4-cidr|cluster-pool-ipv6-cidr)$\")) | \"\\(.key)=\\(.value)\"'  # the pod CIDRs in use today — they must survive the values rename",
+    "coversNotes": [
+      "Helm Options: Value `hubble.peerService.enabled` was deprecated in Cilium",
+      "Helm Options: Values `hubble.tls.ca`, `hubble.tls.ca.cert` and `hubble.tls.ca.key` were",
+      "Helm Options: Value `hubble.ui.securityContext.enabled` was deprecated in Cilium"
+    ]
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-helm-values-deprecated",
+    "severity": "LOW",
+    "title": "Helm values deprecated in 1.14 (`containerRuntime.integration`, `encryption.keyFile/mountPath/secretName/interface`, `clustermesh.apiserver.tls.ca.*`, `proxy.prometheus.*`)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "quote": "Values `encryption.keyFile`, `encryption.mountPath`, `encryption.secretName` and `encryption.interface` are deprecated in favor of their `encryption.ipsec.*` counterparts and will be removed in Cilium 1.15.",
+    "remediation": "Rename in your Helm values: `encryption.{keyFile,mountPath,secretName,interface}` → `encryption.ipsec.*`, `containerRuntime.integration` → `bpf.autoMount.enabled`, `clustermesh.apiserver.tls.ca.{cert,key}` → `tls.ca.{cert,key}`, `proxy.prometheus.*` → `envoy.prometheus.*`. Each is removed in a later minor.",
+    "coversNotes": [
+      "Helm Options: The `containerRuntime.integration` value is being deprecated",
+      "Helm Options: Values `clustermesh.apiserver.tls.ca.cert` and `clustermesh.apiserver.tls.ca.key` are",
+      "Helm Options: Values `proxy.prometheus.enabled` and `proxy.prometheus.port` are deprecated"
+    ],
+    "deprecationOnly": true
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-disable-endpoint-crd-boolean",
+    "severity": "MEDIUM",
+    "title": "Helm `disableEndpointCRD` is now a boolean",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^cilium-config$",
+      "target": "keys[]",
+      "value": "^(disable-endpoint-crd)$"
+    },
+    "quote": "Value `disableEndpointCRD` is now a boolean type instead of a string.",
+    "remediation": "If you pass `--set-string disableEndpointCRD=\"true\"`, switch to `--set disableEndpointCRD=true`; a string value is not read as true by the 1.14 chart.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(disable-endpoint-crd)$\")) | \"\\(.key)=\\(.value)\"'  # disable-endpoint-crd=true is set today"
+  },
+  {
+    "ruleId": "rtz-cilium-1.14-metrics-changed-in-1-14",
+    "severity": "LOW",
+    "title": "Cilium 1.14 renames, relabels or removes Prometheus metrics — dashboards and alerts that query them go blank",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Prometheus series names are not Kubernetes objects; runtimez does not scrape Cilium metrics"
+    },
+    "quote": "Removed formerly deprecated metrics: `cilium_policy_l7_parse_errors_total`",
+    "remediation": "Before upgrading to 1.14, search your dashboards, recording rules and alerts for the metric names listed in the Cilium 1.14 upgrade notes (Changed / Removed Metrics) and move them to the new names or labels. An alert on a renamed or removed series does not fail: it silently stops firing.",
+    "coversNotes": [
+      "Deprecated Metrics: `cilium_operator_ces_sync_errors_total` is deprecated. Please use",
+      "Deprecated Metrics: `cilium_policy_import_errors_total` is deprecated. Please use `cilium_policy_change_total`",
+      "Deprecated Metrics: `cilium_operator_ipam_ips` is deprecated. Use",
+      "Changed Metrics: `cilium_bpf_map_pressure` is now enabled by default",
+      "Changed Metrics: `cilium_policy_l7_total` now has label `proxy_type` to"
+    ]
+  }
+]
