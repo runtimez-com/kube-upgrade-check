@@ -83,7 +83,7 @@
       "kind": "SPEC_PATH_NONE_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "objectName": "^(gatewayclasses|gateways|httproutes)\\.gateway\\.networking\\.k8s\\.io$",
-      "target": "versions[].name",
+      "target": "versions[served=true].name",
       "value": "^v1$",
       "reason": "reads the installed Gateway API CRDs' served versions"
     },
@@ -107,7 +107,7 @@
       "kind": "SPEC_PATH_NONE_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "objectName": "^(grpcroutes|tlsroutes)\\.gateway\\.networking\\.k8s\\.io$",
-      "target": "versions[].name",
+      "target": "versions[served=true].name",
       "value": "^v1alpha2$",
       "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command lists it"
     },
@@ -131,7 +131,7 @@
       "kind": "SPEC_PATH_NONE_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "objectName": "^(referencegrants)\\.gateway\\.networking\\.k8s\\.io$",
-      "target": "versions[].name",
+      "target": "versions[served=true].name",
       "value": "^v1beta1$",
       "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command lists it"
     },

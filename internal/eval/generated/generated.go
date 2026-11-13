@@ -65,6 +65,9 @@ func Wants(cat *catalog.Catalog, currentVersion, targetVersion string, hops Hops
 			for _, target := range targets(d.Target) {
 				key, _, _ := strings.Cut(strings.TrimSuffix(target, "[]"), ".")
 				key = strings.TrimSuffix(key, "[]")
+				if k, _, _, ok := filteredSegment(key); ok {
+					key = k
+				}
 				if key != "" && !contains(p.Keep, key) {
 					p.Keep = append(p.Keep, key)
 				}
@@ -746,6 +749,56 @@ func matchKey(keys []string, target string) string {
 	return ""
 }
 
+// filteredSegmentRE is a path segment "key[field=value]": each element of key whose scalar field
+// reads value. versions[served=true].name is the versions a CRD SERVES, where versions[].name also
+// counts one it only declares (Gateway API v1.6 TLSRoute keeps v1alpha2 with served: false).
+// Mirrors the backend's FILTERED_SEGMENT.
+var filteredSegmentRE = regexp.MustCompile(`^([A-Za-z0-9_\-]*)\[([A-Za-z0-9_\-]+)=([A-Za-z0-9_\-]+)\]$`)
+
+func filteredSegment(seg string) (key, field, value string, ok bool) {
+	m := filteredSegmentRE.FindStringSubmatch(seg)
+	if m == nil {
+		return "", "", "", false
+	}
+	return m[1], m[2], m[3], true
+}
+
+// filteredElements is the array at key (node itself when key is empty), keeping only the map
+// elements whose scalar field prints as want.
+func filteredElements(node any, key, field, want string) []any {
+	list, _ := filteredArray(node, key)
+	var out []any
+	for _, e := range list {
+		em, isMap := e.(map[string]any)
+		if !isMap {
+			continue
+		}
+		switch f := em[field].(type) {
+		case nil, map[string]any, []any:
+			continue
+		default:
+			if fmt.Sprint(f) == want {
+				out = append(out, e)
+			}
+		}
+	}
+	return out
+}
+
+// filteredArray is the array a filtered segment fans out over, and whether it exists.
+func filteredArray(node any, key string) ([]any, bool) {
+	if key == "" {
+		list, ok := node.([]any)
+		return list, ok
+	}
+	m, ok := node.(map[string]any)
+	if !ok || m == nil {
+		return nil, false
+	}
+	list, ok := m[key].([]any)
+	return list, ok
+}
+
 // leavesAt walks a dotted path where a segment ending in "[]" means each element, and returns
 // every scalar found at the end as text.
 //
@@ -787,6 +840,13 @@ func leavesAt(node any, segments []string) []string {
 		}
 	}
 	seg := segments[0]
+	if key, field, want, ok := filteredSegment(seg); ok {
+		var out []string
+		for _, e := range filteredElements(node, key, field, want) {
+			out = append(out, leavesAt(e, segments[1:])...)
+		}
+		return out
+	}
 	each := strings.HasSuffix(seg, "[]")
 	seg = strings.TrimSuffix(seg, "[]")
 	m, ok := node.(map[string]any)

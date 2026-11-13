@@ -41,7 +41,7 @@
       "value": "(^|/)cilium/cilium([:@]|$)"
     },
     "quote": "Cilium now writes its CNI configuration file to `05-cilium.conflist` in all cases",
-    "remediation": "Tooling that reads, templates or deletes `/etc/cni/net.d/05-cilium.conf` on the nodes (node images, bootstrap scripts, other CNIs in chaining mode) must look for `05-cilium.conflist` instead; a stale `05-cilium.conf` left behind can be picked up first by the container runtime.",
+    "remediation": "Tooling that reads, templates or deletes `/etc/cni/net.d/05-cilium.conf` on the nodes (node images, bootstrap scripts, other CNIs in chaining mode) must look for `05-cilium.conflist` instead; a stale `05-cilium.conf` left behind can be picked up first by the container runtime. Cilium chained to the AWS VPC CNI (`cni-chaining-mode: aws-cni`) is not affected: it already wrote `05-cilium.conflist` before 1.14.",
     "verifyCommand": "kubectl get daemonset -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]?; .image | test(\"(^|/)cilium/cilium([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is the Cilium agent that writes the CNI file on every node"
   },
   {
@@ -87,7 +87,7 @@
       "kind": "SPEC_PATH_NONE_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "objectName": "^referencegrants\\.gateway\\.networking\\.k8s\\.io$",
-      "target": "versions[].name",
+      "target": "versions[served=true].name",
       "value": "^v1beta1$",
       "reason": "reads the installed ReferenceGrant CRD's served versions"
     },

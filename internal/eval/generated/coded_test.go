@@ -188,6 +188,41 @@ func TestSpecPathNoneMatches(t *testing.T) {
 	}
 }
 
+// versions[served=true].name reads only the versions a CRD SERVES. Gateway API v1.6.3 TLSRoute keeps
+// v1alpha2 declared with served: false (live rtz-eks 2026-11-13); versions[].name counted it as
+// available, so a rule requiring v1alpha2 missed tlsroutes. Mirrors the backend's FILTERED_SEGMENT.
+func TestFilteredSegmentReadsOnlyServedVersions(t *testing.T) {
+	r := sourced("aws-load-balancer-controller", "served", "3.6", catalog.Detection{Kind: catalog.DetectSpecPathNoneMatches,
+		ObjectKind: "CustomResourceDefinition", ObjectName: `^(grpcroutes|tlsroutes)\.gateway\.networking\.k8s\.io$`,
+		Target: "versions[served=true].name", Value: "^v1alpha2$"})
+	crd := func(name string, versions ...any) inventory.CRD {
+		return inventory.CRD{Name: name, Spec: map[string]any{"group": "gateway.networking.k8s.io", "versions": versions}}
+	}
+	v := func(name string, served bool) map[string]any {
+		return map[string]any{"name": name, "served": served, "storage": served}
+	}
+	in := inv()
+	in.Collected[inventory.CollectorCRDs] = inventory.CollectionState{OK: true}
+	in.CRDs = []inventory.CRD{
+		crd("tlsroutes.gateway.networking.k8s.io", v("v1", true), v("v1alpha2", false), v("v1alpha3", false)),
+		crd("grpcroutes.gateway.networking.k8s.io", v("v1", true), v("v1alpha2", true)),
+	}
+	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r), lbcHop("3.5.0", "3.6.2"))
+	f := byRule(findings, r.RuleID)
+	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "tlsroutes.gateway.networking.k8s.io" {
+		t.Fatalf("a declared-but-unserved v1alpha2 must not count: want tlsroutes only, got %+v (coverage %+v)", f, coverage)
+	}
+	// Nothing passing the filter is still a resolved path ("serves nothing that matches"), not a projection gap.
+	in.CRDs = []inventory.CRD{crd("tlsroutes.gateway.networking.k8s.io", v("v1alpha2", false))}
+	findings, coverage = Analyze(in, nil, "1.35", "1.36", cat(r), lbcHop("3.5.0", "3.6.2"))
+	if byRule(findings, r.RuleID) == nil || len(coverage) != 0 {
+		t.Errorf("a CRD serving no version must fire, not decline: %+v %+v", findings, coverage)
+	}
+	if k, f, val, ok := filteredSegment("versions[served=true]"); !ok || k != "versions" || f != "served" || val != "true" {
+		t.Errorf("filteredSegment parse: %q %q %q %v", k, f, val, ok)
+	}
+}
+
 func TestRequiresInstalledSinceFloors(t *testing.T) {
 	r := advisoryRule("traefik", "encoded", "3.6")
 	r.IntroducedIn = []string{"2.11.35", "3.6.7"}

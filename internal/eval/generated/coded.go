@@ -106,6 +106,23 @@ func resolveAt(node any, segments []string) (leaves []string, resolved bool) {
 	if node == nil {
 		return nil, false
 	}
+	if len(segments) > 0 {
+		if key, field, want, ok := filteredSegment(segments[0]); ok {
+			// The array is there: no element passing the filter reads as "nothing matches" (resolved),
+			// like an empty array; once one passes, resolution depends on its leaves.
+			if _, exists := filteredArray(node, key); !exists {
+				return nil, false
+			}
+			passed := filteredElements(node, key, field, want)
+			resolved = len(passed) == 0
+			for _, e := range passed {
+				l, ok := resolveAt(e, segments[1:])
+				leaves = append(leaves, l...)
+				resolved = resolved || ok
+			}
+			return leaves, resolved
+		}
+	}
 	if len(segments) == 0 {
 		switch n := node.(type) {
 		case []any:
