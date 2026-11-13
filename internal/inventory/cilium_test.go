@@ -48,6 +48,15 @@ func TestCiliumPolicyProjection_featuresOnly_noValueLeaves(t *testing.T) {
 
 func TestCiliumPolicyProjection_nearMisses(t *testing.T) {
 	feats := func(spec any, specs any) []string { return ciliumPolicyFeatures(spec, specs) }
+	if f := feats(map[string]any{"egressDeny": []any{map[string]any{"toEntities": []any{"world"}}}}, nil); contains(f, "denyCidr") || !contains(f, "denyRules") {
+		t.Errorf("an entity deny is not a CIDR deny: %v", f)
+	}
+	if f := feats(map[string]any{"egress": []any{map[string]any{"toPorts": []any{map[string]any{"rules": map[string]any{"l7proto": "x", "l7": []any{}}}}}}}, nil); contains(f, "invalidShape") {
+		t.Errorf("l7 is not a OneOf member: %v", f)
+	}
+	if f := feats(map[string]any{"egress": []any{map[string]any{"toCIDRSet": []any{map[string]any{"cidrGroupRef": "corp"}}}}}, nil); contains(f, "emptySlice") || !contains(f, "cidrGroupRef") {
+		t.Errorf("cidrGroupRef is its own feature: %v", f)
+	}
 	if f := feats(nil, nil); len(f) != 1 || f[0] != "empty" {
 		t.Errorf("no spec and no specs is empty, got %v", f)
 	}
@@ -66,10 +75,18 @@ func TestCiliumRedirectAndPoolProjection(t *testing.T) {
 		t.Errorf("lrp features %v", f)
 	}
 	pool := projectCiliumLBIPPool(map[string]any{
-		"metadata": map[string]any{"managedFields": []any{map[string]any{"apiVersion": "cilium.io/v2alpha1"}}},
-		"spec":     map[string]any{"cidrs": []any{map[string]any{"cidr": "10.0.0.0/24"}}}}, nil)
+		"metadata": map[string]any{"managedFields": []any{map[string]any{"apiVersion": "cilium.io/v2alpha1"},
+			map[string]any{"apiVersion": "cilium.io/v2alpha1", "subresource": "status"}}},
+		"spec": map[string]any{"cidrs": []any{map[string]any{"cidr": "10.0.0.0/24"}}}}, nil)
 	if f := pool["features"].([]any); len(f) != 3 {
 		t.Errorf("pool features %v", f)
+	}
+	statusOnly := projectCiliumLBIPPool(map[string]any{"metadata": map[string]any{"managedFields": []any{
+		map[string]any{"apiVersion": "cilium.io/v2alpha1", "subresource": "status"}}}, "spec": map[string]any{}}, nil)
+	for _, f := range statusOnly["features"].([]any) {
+		if f == "writtenV2alpha1" {
+			t.Errorf("the operator's status write is not the user's manifest")
+		}
 	}
 	b, _ := json.Marshal(pool)
 	if strings.Contains(string(b), "10.0.0.0") {

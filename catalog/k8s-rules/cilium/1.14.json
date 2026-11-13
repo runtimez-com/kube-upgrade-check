@@ -149,11 +149,14 @@
     "severity": "HIGH",
     "title": "CIDR deny policies now take precedence over overlapping allow policies",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only a CIDR deny overlapping a CIDR allow is affected, and the agent never ships CIDRs; the hint names the policies whose deny rules carry a CIDR"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
       "target": "features[]",
-      "value": "^denyRules$",
-      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
+      "value": "^denyCidr$"
     },
     "quote": "Deny policies now always take precedence over allow policies.",
     "remediation": "Traffic that an overlapping CIDR allow policy used to let through despite a CIDR deny policy is DROPPED on 1.14. For each policy pair the command lists, confirm the deny is intended; narrow the deny CIDR where it is not.",

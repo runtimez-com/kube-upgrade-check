@@ -37,7 +37,9 @@ func projectCiliumLBIPPool(obj map[string]any, base map[string]any) map[string]a
 	}
 	meta, _ := obj["metadata"].(map[string]any)
 	for _, e := range listAt(meta, "managedFields") {
-		if m, ok := e.(map[string]any); ok && m["apiVersion"] == "cilium.io/v2alpha1" {
+		// the status subresource is the operator's write (1.17 patches pool status with its v2alpha1
+		// client), never the user's manifest the 1.19 note is about
+		if m, ok := e.(map[string]any); ok && m["apiVersion"] == "cilium.io/v2alpha1" && (m["subresource"] == nil || m["subresource"] == "") {
 			f = append(f, "writtenV2alpha1")
 			break
 		}
@@ -80,6 +82,18 @@ func ciliumPolicyFeatures(spec, specs any) []string {
 			break
 		}
 	}
+	// 1.14 deny precedence (hint): a deny rule carrying a CIDR
+	for _, b := range blocks {
+		for _, dir := range []string{"ingressDeny", "egressDeny"} {
+			for _, r := range maps(b[dir]) {
+				for _, k := range []string{"fromCIDR", "fromCIDRSet", "toCIDR", "toCIDRSet"} {
+					if len(listAt(r, k)) > 0 {
+						add("denyCidr")
+					}
+				}
+			}
+		}
+	}
 	var rules []map[string]any
 	for _, b := range blocks {
 		for _, dir := range []string{"ingress", "egress", "ingressDeny", "egressDeny"} {
@@ -102,8 +116,11 @@ func ciliumPolicyFeatures(spec, specs any) []string {
 		if fullRangeCIDR(r) {
 			add("fullRangeCidr")
 		}
-		if emptySliceOrGroupRef(r) {
+		if emptySlice(r) {
 			add("emptySlice")
+		}
+		if cidrGroupRef(r) {
+			add("cidrGroupRef")
 		}
 		if overLimitOrMixedRules(r) {
 			add("invalidShape")
@@ -168,12 +185,16 @@ func fullRangeCIDR(r map[string]any) bool {
 	return false
 }
 
-func emptySliceOrGroupRef(r map[string]any) bool {
+func emptySlice(r map[string]any) bool {
 	for _, k := range []string{"fromEndpoints", "fromCIDR", "fromCIDRSet", "fromEntities", "toEndpoints", "toCIDR", "toCIDRSet", "toEntities"} {
 		if l, ok := r[k].([]any); ok && len(l) == 0 {
 			return true
 		}
 	}
+	return false
+}
+
+func cidrGroupRef(r map[string]any) bool {
 	for _, k := range []string{"fromCIDRSet", "toCIDRSet"} {
 		for _, s := range maps(r[k]) {
 			if s["cidrGroupRef"] != nil {
@@ -184,15 +205,31 @@ func emptySliceOrGroupRef(r map[string]any) bool {
 	return false
 }
 
+// overLimitOrMixedRules follows the v1.16.0 CRD (pkg/policy/api l4.go, icmp.go): MaxItems=40 per
+// PortRule.ports and per ICMPRule.fields; OneOf over http / kafka / dns / l7proto (l7 is not one).
 func overLimitOrMixedRules(r map[string]any) bool {
-	ports := 0
 	for _, p := range maps(r["toPorts"]) {
-		ports += len(listAt(p, "ports"))
-		if rl, ok := p["rules"].(map[string]any); ok && len(rl) > 1 {
+		if len(listAt(p, "ports")) > 40 {
+			return true
+		}
+		if rl, ok := p["rules"].(map[string]any); ok {
+			n := 0
+			for _, k := range []string{"http", "kafka", "dns", "l7proto"} {
+				if rl[k] != nil {
+					n++
+				}
+			}
+			if n > 1 {
+				return true
+			}
+		}
+	}
+	for _, icmp := range maps(r["icmps"]) {
+		if len(listAt(icmp, "fields")) > 40 {
 			return true
 		}
 	}
-	return ports > 40 || len(listAt(r, "icmps")) > 40
+	return false
 }
 
 func doubleStarDNS(r map[string]any) bool {

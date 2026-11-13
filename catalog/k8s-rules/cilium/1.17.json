@@ -4,11 +4,14 @@
     "severity": "MEDIUM",
     "title": "Local Redirect Policy `addressMatcher` no longer overrides an existing Service (from 1.17.16)",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only a frontend address that is an existing Service's IP is affected, and the agent never ships the address; the hint names the redirect policies using addressMatcher"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "CiliumLocalRedirectPolicy",
       "target": "features[]",
-      "value": "^addressMatcher$",
-      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
+      "value": "^addressMatcher$"
     },
     "quote": "`CiliumLocalRedirectPolicy` with `addressMatcher` will no longer override an existing Service at the same frontend address.",
     "remediation": "For each policy the command lists whose frontend address is also a Service's ClusterIP, migrate to `serviceMatcher`. `--enable-lrp-address-matcher-override=true` restores the old behaviour on 1.17.16+ only: the flag does not exist in 1.18 or later, and 1.18.10+ / 1.19.4+ enforce the same guard with no override (upstream ships no 1.18/1.19 upgrade note for it), so migrate instead of relying on the flag.",
@@ -202,11 +205,14 @@
     "severity": "MEDIUM",
     "title": "TLS visibility Secrets now read only from the configured secrets namespace",
     "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "only clusters keeping the 1.16 secret handling (tls.secretSync.enabled=false / upgradeCompatibility) are affected, a Helm VALUE the agent does not collect; the hint names the policies that reference TLS Secrets"
+    },
+    "scope": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
       "target": "features[]",
-      "value": "^tlsInterception$",
-      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
+      "value": "^tlsInterception$"
     },
     "quote": "TLS Visibility can now pass secrets to Envoy via SDS instead of inline via NPDS.",
     "remediation": "`tls.readSecretsOnlyFromSecretsNamespace` defaults to true. With `tls.secretSync.enabled: true` (the default for NEW clusters) the operator copies the Secrets referenced by `terminatingTLS` / `originatingTLS` into `tls.secretsNamespace` for you. With `upgradeCompatibility: 1.16` (or `tls.secretSync.enabled=false`) nothing copies them: for the policies listed, copy the Secrets into `tls.secretsNamespace` before upgrading, or set `tls.readSecretsOnlyFromSecretsNamespace=false`.",

@@ -112,7 +112,7 @@
     },
     "quote": "Change `apiVersion: cilium.io/v2alpha1` to `apiVersion: cilium.io/v2` in your manifests for all `CiliumLoadBalancerIPPool` resources before upgrading.",
     "remediation": "Rewrite the pools the command lists (last written as v2alpha1) to `apiVersion: cilium.io/v2`, in Git and in the cluster.",
-    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
+    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
   },
   {
     "ruleId": "rtz-cilium-1.19-bgp-peering-policy-removed",
