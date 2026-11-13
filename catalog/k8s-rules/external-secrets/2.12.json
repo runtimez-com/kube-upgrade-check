@@ -1,0 +1,44 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.12-chart-global-imageregistry-removed",
+    "severity": "MEDIUM",
+    "title": "Helm chart: `global.imageRegistry` (added in 2.11) removed again",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected; the running image is"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "imageRegistry: ghcr.io",
+    "remediation": "Only a release installed at 2.11 can carry this value (it existed in 2.11 alone). If it set `global.imageRegistry` (for a mirror), set the full registry path in `image.repository`, `webhook.image.repository` and `certController.image.repository` before upgrading; 2.12 ignores `global.imageRegistry` and pulls from ghcr.io.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is an ESO workload and the registry it pulls from today",
+    "coversNotes": [
+      "v2.12.0 (General): fix: Revert breaking change to change imageRegistry",
+      "chart value certController.image.repository default changed external-secrets/externa -> ghcr.io/external-secrets",
+      "chart value image.repository default changed external-secrets/externa -> ghcr.io/external-secrets",
+      "chart value webhook.image.repository default changed external-secrets/externa -> ghcr.io/external-secrets"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-2.12-template-fail-function-removed",
+    "severity": "MEDIUM",
+    "title": "Template function `fail` removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "template bodies are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templatePresent",
+      "value": "true"
+    },
+    "quote": "fix: Remove fail from templates",
+    "remediation": "Remove `fail` from the templates of the ExternalSecrets named; a template calling it no longer parses. ESO's function map has no `required` (that is Helm's): to abort rendering on bad input call a function that errors (e.g. `mustFromJson`), or drop the guard.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | (.spec.target.template // .spec.externalSecretSpec.target.template // {}) | tostring | select(test(\"fail \")) | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row's template may call fail"
+  }
+]

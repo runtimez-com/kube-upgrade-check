@@ -1,0 +1,81 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.11-target-secret-keys-pruned",
+    "severity": "HIGH",
+    "title": "Keys an ExternalSecret created are now removed from the target Secret when they leave the template / data",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which keys of a target Secret were written by the ExternalSecret is only in the Secret's managedFields, which are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templatePresent"
+    },
+    "quote": "In ALL cases (even when CreationPolicy is Merge), if a data key in the target Secret was created by the ExternalSecret, and it no longer exists in the template (or data/dataFrom), it will be removed from the target secret:",
+    "remediation": "Before upgrading, compare each ExternalSecret named with its target Secret: any key the ExternalSecret once wrote but no longer renders (from its template, data or dataFrom) is deleted on the first 0.11 reconcile — even with `creationPolicy: Merge`. With `creationPolicy: Owner` the Secret is fully recomputed every loop, so keys other writers added to it are dropped too. Add the keys you still need to the ExternalSecret first.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.target.creationPolicy // .spec.externalSecretSpec.target.creationPolicy // \"Owner\") == \"Merge\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) target=\\(.spec.target.name // .metadata.name)\"'  # each row is a Merge-policy ExternalSecret whose shared Secret can lose keys"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.11-managed-secrets-caching-default",
+    "severity": "LOW",
+    "title": "Reconcile rewrite: `--enable-managed-secrets-caching` is the new default; memory use may rise",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "memory rises when `--enable-secrets-caching` is NOT set — an absent flag cannot be told from one set another way, so the controller workloads are named for a manual check"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "Memory usage might increase if you are not already using `--enable-secrets-caching`",
+    "remediation": "On each ESO controller named that does not pass `--enable-secrets-caching`, watch memory after the upgrade and raise its limit if needed: the new default `--enable-managed-secrets-caching` caches the Secrets ESO manages.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].args[]?] | map(select(test(\"caching\"))) | join(\" \"))\"'  # each row is an ESO workload and its caching flags"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.11-crd-validation-markers",
+    "severity": "MEDIUM",
+    "title": "CRDs now validate names and keys — objects that skipped required fields are rejected on their next update",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "schema validation runs at admission; a stored object is only re-validated when it is next written"
+    },
+    "quote": "All of the CRDs now have proper kubebuilder markers for validation. This might surprise someone leaving out some data that was essentially actually required or expected in a certain format. This is now validated in #4104.",
+    "remediation": "Run your ExternalSecret / SecretStore / PushSecret manifests through a server-side dry run against a 0.11 CRD set (or `kubectl explain`) before upgrading; malformed names or keys that 0.10 stored are refused on the next apply."
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.11-olm-releases-end",
+    "severity": "MEDIUM",
+    "title": "OLM: 0.11.0 is the last release published to OperatorHub",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "OLM Subscriptions are not collected"
+    },
+    "quote": "As of `0.11.0` is the last release available for OLM until further notice.",
+    "remediation": "If ESO is installed through OLM (OperatorHub Subscription), plan a move to the Helm chart; OLM will not deliver anything after 0.11.0. Upstream notes the 0.11.0 OLM bundle can run newer images by setting `image.tag`.",
+    "verifyCommand": "kubectl get subscriptions.operators.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.name | test(\"external-secrets\")) | \"\\(.metadata.namespace)/\\(.metadata.name) \\(.spec.name)\"'  # each row is an OLM subscription to ESO",
+    "coversNotes": [
+      "v0.11.0 (What's Changed): chore: deprecation policy and deprecating process"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.11-generator-caching-clustergenerator",
+    "severity": "LOW",
+    "title": "Generators: ClusterGenerator and generator caching change how generators are defined",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "generator objects are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "generatorKinds[]",
+      "value": ".+"
+    },
+    "quote": "We added ClusterGenerators and Generator caching as well. This might create some problems in the way generators are defined now.",
+    "remediation": "Re-check each ExternalSecret named (they use a generator) after the upgrade: generated values are cached per ExternalSecret and generators may now be referenced cluster-wide.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select([(.spec.dataFrom // .spec.externalSecretSpec.dataFrom // [])[]?.sourceRef.generatorRef] | map(select(. != null)) | length != 0) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an ExternalSecret that uses a generator"
+  }
+]

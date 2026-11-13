@@ -1,0 +1,24 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-1.2-alibaba-provider-deprecated",
+    "severity": "MEDIUM",
+    "title": "Alibaba Cloud KMS provider deprecated — removed in 2.0",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^alibaba$"
+    },
+    "quote": "It will be removed on the next minor release.",
+    "remediation": "Migrate the Alibaba stores named to another provider; 1.2 marks the provider Deprecated (warning event and admission warning) and 2.0 removes it.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"alibaba\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an Alibaba store",
+    "coversNotes": [
+      "v1.2.0 (General): feat: introduce store deprecation",
+      "stability-support.md › Provider Stability and Support L › Alibaba Cloud KMS | alpha | DEPRECATED",
+      "alibaba.md ›  › warning \"Provider Deprecated\"",
+      "alibaba.md ›  › This provider is deprecated due to lack of maintenance and",
+      "provider alibaba: maintenance status Deprecated"
+    ],
+    "deprecationOnly": true
+  }
+]

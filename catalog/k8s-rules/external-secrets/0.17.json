@@ -1,0 +1,24 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.17-v1beta1-unserved",
+    "severity": "HIGH",
+    "title": "`external-secrets.io/v1beta1` is no longer served — manifests must use v1",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret|SecretStore|ClusterSecretStore",
+      "target": "fieldManagers[].apiVersion",
+      "value": "^external-secrets\\.io/v1beta1$",
+      "reason": "read from each object's managedFields: the apiVersion every field manager (kubectl, Helm, Argo CD, Flux) last wrote it with — the manifests that will fail to apply"
+    },
+    "quote": "v0.17.0 Stops serving `v1beta1` apis. You need to update your manifests from `v1beta1` to `v1` prior to updating from `v0.16` to `v0.17`.",
+    "remediation": "Change `apiVersion: external-secrets.io/v1beta1` to `external-secrets.io/v1` in the manifests (Git, Helm charts, Kustomize) behind each object named and re-apply them while still on 0.16; after 0.17 an apply in v1beta1 fails with 'no matches for kind'.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"external-secrets.io/v1beta1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) managers=\\([.metadata.managedFields[] | select(.apiVersion == \"external-secrets.io/v1beta1\") | .manager] | unique | join(\",\"))\"'  # each row was last written as v1beta1 by the managers listed",
+    "coversNotes": [
+      "v0.17.0 (What's Changed): chore: unserve v1beta1 and mark it as deprecated",
+      "CRD clusterexternalsecrets.external-secrets.io: version v1beta1 no longer served",
+      "CRD clustersecretstores.external-secrets.io: version v1beta1 no longer served",
+      "CRD externalsecrets.external-secrets.io: version v1beta1 no longer served",
+      "CRD secretstores.external-secrets.io: version v1beta1 no longer served"
+    ]
+  }
+]

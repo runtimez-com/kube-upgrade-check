@@ -1,0 +1,67 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-1.1-bitwarden-sdk-url-required",
+    "severity": "LOW",
+    "title": "Bitwarden Secrets Manager: `bitwardenServerSDKURL` is required",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "a missing key is not a projected value; the store projection names the keys present"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^bitwardensecretsmanager$"
+    },
+    "quote": "feat: `bitwardenServerSDKURL` is required for `bitwardensecretsmanager`",
+    "remediation": "Set `spec.provider.bitwardensecretsmanager.bitwardenServerSDKURL` (the bitwarden-sdk-server Service URL) on each store named; validation now fails without it (an empty URL never worked; #5679 only adds the check).",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"bitwardensecretsmanager\")) | select((.spec.provider.bitwardensecretsmanager.bitwardenServerSDKURL // \"\") == \"\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a Bitwarden store missing the SDK URL",
+    "introducedIn": [
+      "1.1.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-1.1-sprig-fork-replaced",
+    "severity": "MEDIUM",
+    "title": "Templates: ESO's sprig fork replaced by upstream sprig; `camelcase` now emits PascalCase",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "template bodies are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templatePresent",
+      "value": "true"
+    },
+    "quote": "chore(deps): remove sprig fork",
+    "remediation": "For installs on 0.10.0–1.1.0 (the fork's lifetime): template functions now come from upstream Masterminds/sprig v3.3.0, and `camelcase` changes output. The fork produced lowerCamel (`foo_bar` → `fooBar`), upstream produces PascalCase (`FooBar`), so templates of the ExternalSecrets named that build keys with it write different keys. Use `camelcase | untitle` to keep the old form.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | (.spec.target.template // .spec.externalSecretSpec.target.template // {}) | tostring | select(test(\"camelcase\")) | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row's template calls camelcase",
+    "introducedIn": [
+      "1.1.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-1.1-default-image-registry-ghcr",
+    "severity": "MEDIUM",
+    "title": "Helm chart: default image registry moved back to ghcr.io",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values and registry allow-lists are not collected; the running image is"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)"
+    },
+    "quote": "repository: ghcr.io/external-secrets/external-secrets",
+    "remediation": "If image pulls are restricted to `oci.external-secrets.io` (egress, admission allow-list, mirror), allow `ghcr.io` or pin the three `*.image.repository` values before upgrading; the chart default changed back.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].image] | join(\",\"))\"'  # each row is an ESO workload and the registry it pulls from today",
+    "coversNotes": [
+      "chart value certController.image.repository default changed oci.external-secrets.io/ -> ghcr.io/external-secrets",
+      "chart value image.repository default changed oci.external-secrets.io/ -> ghcr.io/external-secrets",
+      "chart value webhook.image.repository default changed oci.external-secrets.io/ -> ghcr.io/external-secrets"
+    ]
+  }
+]

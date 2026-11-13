@@ -1,0 +1,35 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.2-flux-oci-chart-layer-selector",
+    "severity": "MEDIUM",
+    "title": "Flux OCIRepository for the ESO chart needs a `layerSelector`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Flux OCIRepository objects are not collected"
+    },
+    "quote": "If you are using Flux + OCIRepository to fetch External Secrets Operator charts, please update your object to use a Layer selector:",
+    "remediation": "Add `spec.layerSelector: {mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip, operation: extract}` to the OCIRepository that pulls `oci://ghcr.io/external-secrets/charts/external-secrets`; the chart artifacts are now built with a different layer layout.",
+    "verifyCommand": "kubectl get ocirepositories.source.toolkit.fluxcd.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.url | test(\"external-secrets\")) | select(.spec.layerSelector == null) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row pulls the ESO chart without a layerSelector",
+    "coversNotes": [
+      "v2.2.0 (General): fix: publish now uses docker build v4 which required some changes"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-2.2-aws-pushsecret-tags-source-of-truth",
+    "severity": "HIGH",
+    "title": "AWS Secrets Manager PushSecret: a resource policy and tags not in metadata are removed from AWS on every reconcile",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the store a PushSecret pushes to is a reference; the AWS-side policy and tags are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "PushSecret|ClusterPushSecret",
+      "target": "selectorType",
+      "value": "^(secret|generatorRef)$"
+    },
+    "quote": "**Note:** ESO treats the PushSecret as the **source of truth** for tags.",
+    "remediation": "For each PushSecret named that pushes to AWS Secrets Manager: (1) a resource policy attached to the secret in AWS outside ESO is DELETED whenever `metadata.spec.resourcePolicy` is unset, including on PushSecrets with no metadata at all; since 1.0 that ran when the value changed, from 2.2 it runs on every reconcile. Move the policy into `metadata.spec.resourcePolicy` or stop pushing that secret. (2) With `metadata.spec.tags`, list every tag the secret must keep; tags added in AWS outside ESO are deleted on the next reconcile, even when the value is unchanged.",
+    "verifyCommand": "kubectl get pushsecrets.external-secrets.io,clusterpushsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) stores=\\([(.spec.secretStoreRefs // .spec.pushSecretSpec.secretStoreRefs // [])[].name] | join(\",\")) policy=\\(any((.spec.data // .spec.pushSecretSpec.data // [])[]; .metadata.spec.resourcePolicy != null))\"'  # each row is a PushSecret, its stores and whether it sets a resourcePolicy; on an AWS Secrets Manager store policy=false means the AWS-side policy is deleted"
+  }
+]

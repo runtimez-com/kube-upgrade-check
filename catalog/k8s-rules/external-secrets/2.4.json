@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.4-privileged-template-types-refused",
+    "severity": "MEDIUM",
+    "title": "Template types `bootstrap.kubernetes.io/token` (and service-account tokens bound by annotation) are refused",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templateType",
+      "value": "^bootstrap\\.kubernetes\\.io/token$",
+      "reason": "read from the agent's templateType; a kubernetes.io/service-account-token template is refused only with the kubernetes.io/service-account.name annotation or an Annotations templateFrom, which the projection does not carry — the verify command checks it"
+    },
+    "quote": "fix: prevent creation of specific type of secrets",
+    "remediation": "The webhook (from 2.4.1) and the controller (from 2.9, on every sync) refuse an ExternalSecret whose template writes a `bootstrap.kubernetes.io/token` Secret, or a `kubernetes.io/service-account-token` Secret bound through the `kubernetes.io/service-account.name` annotation or an Annotations templateFrom. Create those Secrets another way before upgrading; the ExternalSecrets named stop syncing.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | (.spec.target.template // .spec.externalSecretSpec.target.template // {}) | select(.type == \"bootstrap.kubernetes.io/token\" or .type == \"kubernetes.io/service-account-token\") | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) type=\\((.spec.target.template // .spec.externalSecretSpec.target.template).type)\"'  # each row writes a token-type Secret; a service-account-token one is refused only with the SA annotation or an Annotations templateFrom",
+    "introducedIn": [
+      "2.4.1"
+    ]
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.18-aws-providers-sdk-v2",
+    "severity": "MEDIUM",
+    "title": "AWS providers refactored onto AWS SDK v2",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "credential resolution and endpoint behaviour are runtime; the store spec does not change"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^aws$"
+    },
+    "quote": "This version includes a massive refactor of the AWS providers. Now, they are finally using V2 and thus opened some regions and are more maintainable.",
+    "remediation": "After the upgrade, check that every AWS store named reports Ready (`SecretStore` condition) — the SDK v2 credential chain and endpoint resolution differ in edge cases (custom endpoints, assumed-role chains).",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"aws\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) ready=\\([.status.conditions[]? | select(.type == \"Ready\") | .status] | join(\"\"))\"'  # each row is an AWS store and its Ready status"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.18-onepassword-sdk-getsecretmap",
+    "severity": "MEDIUM",
+    "title": "1Password SDK provider: `GetSecretMap` now filters with `extract` like 1Password Connect",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the dataFrom shape of each ExternalSecret is collected, not the store's provider behind its reference"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "provider",
+      "value": "^onepasswordSDK$"
+    },
+    "quote": "Further update has been done to 1Password provider SDK. Now, GetSecretMap functions the same way as 1Password connect. Which is that it uses extract to filter for files or other values.",
+    "remediation": "For ExternalSecrets on the 1Password SDK stores named that use `dataFrom.extract`, re-check the keys produced; the SDK provider now applies the same file/field filtering as 1Password Connect.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"onepasswordSDK\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a 1Password SDK store whose extract results may change"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.18-aws-session-cache-flag-deprecated",
+    "severity": "LOW",
+    "title": "`--experimental-enable-aws-session-cache` is deprecated and ignored",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "experimental-enable-aws-session-cache",
+      "reason": "checked in the ESO controller's container args only (Deployment) — a flag set another way is not scanned"
+    },
+    "quote": "DEPRECATED: this flag is no longer used and will be removed since aws sdk v2 has its own session cache.",
+    "remediation": "Drop `--experimental-enable-aws-session-cache` from the controller args; it no longer does anything, and 1.3.2 removes it: a controller still passing it then exits on an unknown flag (rtz-external-secrets-1.3-aws-session-cache-flag-removed).",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\" as $w | [.spec.template.spec.containers[].args[]?] | map(select(test(\"aws-session-cache\"))) | select(length != 0) | \"\\($w) \\(join(\" \"))\"'  # each row still passes the ignored flag",
+    "deprecationOnly": true
+  }
+]

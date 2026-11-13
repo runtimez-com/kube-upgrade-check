@@ -1,0 +1,59 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.14-stateful-generators",
+    "severity": "LOW",
+    "title": "Stateful generators: ExternalSecret and PushSecret controllers changed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "generator objects are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "generatorKinds[]",
+      "value": ".+"
+    },
+    "quote": "While normally this isn't a problem, external secrets controller and push secrets controller have been changed.",
+    "remediation": "Watch the ExternalSecrets named (they use generators) for sync errors after the upgrade and report regressions upstream, as the release asks.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select([(.spec.dataFrom // .spec.externalSecretSpec.dataFrom // [])[]?.sourceRef.generatorRef] | map(select(. != null)) | length != 0) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an ExternalSecret that uses a generator"
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.14-pushsecret-refreshinterval-defaulted",
+    "severity": "LOW",
+    "title": "PushSecret `refreshInterval` now defaults to 1h — PushSecrets without it start re-pushing hourly",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PushSecret|ClusterPushSecret",
+      "target": "refreshIntervalSet",
+      "value": "false",
+      "reason": "the agent writes refreshIntervalSet on every PushSecret (false when spec.refreshInterval is absent)"
+    },
+    "quote": "fix: add push secret refreshInterval defaulting",
+    "remediation": "Set `spec.refreshInterval` explicitly on the PushSecrets named if hourly re-pushes are unwanted (e.g. `0` for push-once); the CRD now fills in `1h`.",
+    "verifyCommand": "kubectl get pushsecrets.external-secrets.io,clusterpushsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.refreshInterval // .spec.pushSecretSpec.refreshInterval // \"\") == \"\") | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a PushSecret relying on the default",
+    "introducedIn": [
+      "0.14.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-external-secrets-0.14-vault-userpass-default-path",
+    "severity": "MEDIUM",
+    "title": "Vault userPass auth: default mount path changed from `user` to `userpass`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the store projection names auth methods, not whether `path` is set under them"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "SecretStore|ClusterSecretStore",
+      "target": "providerKeys[]",
+      "value": "^vault\\.auth\\.userPass$"
+    },
+    "quote": "update: update Kubernetes tags for vault provider and change path default",
+    "remediation": "The CRD default of `auth.userPass.path` changed from `user` to `userpass`. A live store keeps the `user` it was defaulted to when created, so check the SOURCE manifests (Git / Helm) of the stores named, and of VaultDynamicSecret generators and ClusterGenerators using userPass, for `userPass` without `path`: re-applied or recreated, they get `userpass`. Set `path: user` explicitly if the method is mounted at `user/` in Vault.",
+    "verifyCommand": "kubectl get secretstores.external-secrets.io,clustersecretstores.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.provider | has(\"vault\")) | select(.spec.provider.vault.auth.userPass != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) path=\\(.spec.provider.vault.auth.userPass.path // \"-\")\"'  # each row uses userPass and the path it resolved to; compare with the source manifest",
+    "introducedIn": [
+      "0.14.3"
+    ]
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-1.3-aws-session-cache-flag-removed",
+    "severity": "HIGH",
+    "title": "`--experimental-enable-aws-session-cache` removed — a controller still passing it fails to start",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].args[]",
+      "value": "experimental-enable-aws-session-cache",
+      "reason": "checked in the ESO controller's container args only (Deployment) — a flag set another way is not scanned"
+    },
+    "quote": "chore: Cleanup flags",
+    "remediation": "Remove `--experimental-enable-aws-session-cache` from the controller args (Helm: `extraArgs`) before upgrading to 1.3.2 or later; the flag is no longer registered and the controller exits with \"unknown flag\".",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)(external-secrets/external-secrets|bitnami/external-secrets)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\" as $w | [.spec.template.spec.containers[].args[]?] | map(select(test(\"aws-session-cache\"))) | select(length != 0) | \"\\($w) \\(join(\" \"))\"'  # each row still passes the removed flag",
+    "introducedIn": [
+      "1.3.2"
+    ]
+  }
+]

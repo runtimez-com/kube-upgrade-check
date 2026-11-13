@@ -1,0 +1,38 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.9-chart-partial-cache-needs-crd-label",
+    "severity": "LOW",
+    "title": "Helm chart: with `installCRDs=false` the cert-controller now runs `--enable-partial-cache` and ignores unlabelled CRDs",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CRD labels are not in the CRD projection the rules read"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^external-secrets\\.io$"
+    },
+    "quote": "chore: fix enable cache being removed on installCRD=false",
+    "remediation": "Before 2.9 a release with `installCRDs: false` ran the cert-controller without `--enable-partial-cache`. From 2.9 it is on by default (`certController.enablePartialCache: true`), and the cert-controller only reconciles CRDs labelled `external-secrets.io/component: controller`: an unlabelled ESO CRD never gets its conversion CA injected and the cert-controller's readiness check never passes. If the CRDs named come from elsewhere (a repackaged bundle, GitOps-managed CRDs), label them, or set `certController.enablePartialCache: false`.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"external-secrets.io\") | select(.metadata.labels[\"external-secrets.io/component\"] != \"controller\") | .metadata.name'  # each row is an ESO CRD without the label the partial cache selects"
+  },
+  {
+    "ruleId": "rtz-external-secrets-2.9-secret-templatefrom-target-restricted",
+    "severity": "MEDIUM",
+    "title": "`templateFrom[].target` for a Secret target must be Data, Annotations or Labels; the controller now enforces it too",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templateFromTargets[]",
+      "value": "(?i)^(?:type|immutable|metadata|stringdata|.*[^a-z].*)$",
+      "reason": "read from the agent's templateFromTargets[] (an empty target is projected as Data); a non-Secret target.manifest may use other targets, and a letters-only target other than type / immutable / metadata / stringData is not matched"
+    },
+    "quote": "chore(fix): template abuse for secret values",
+    "remediation": "On the ExternalSecrets named whose target is a Secret, change every `spec.target.template.templateFrom[].target` to `Data`, `Annotations` or `Labels` (or remove it) before upgrading. From 2.9 the webhook refuses any other target and the controller re-checks it on every sync, so an existing ExternalSecret that wrote a dotted path (`metadata.ownerReferences`, `type`, …) stops syncing.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | [(.spec.target.template.templateFrom // .spec.externalSecretSpec.target.template.templateFrom // [])[].target // \"\"] | map(select(test(\"^(|Data|Annotations|Labels)$\"; \"i\") | not)) | select(length != 0) | . as $t | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) targets=\\($t | join(\",\"))\"'  # each row writes a templateFrom target the 2.9 controller refuses",
+    "coversNotes": [
+      "v2.9.0 (General): chore(fix): moved the validation further up the chain"
+    ]
+  }
+]

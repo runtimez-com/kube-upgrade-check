@@ -1,0 +1,20 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-2.3-template-gethostbyname-removed",
+    "severity": "MEDIUM",
+    "title": "Template function `getHostByName` removed (GHSA-r2pg-r6h7-crf3)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "template bodies are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "ExternalSecret|ClusterExternalSecret",
+      "target": "templatePresent",
+      "value": "true"
+    },
+    "quote": "fix: remove getHostByName from template funcs",
+    "remediation": "Remove `getHostByName` from the templates of the ExternalSecrets named; the function was a DNS exfiltration path and templates calling it fail to render from 2.3.",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | . as $o | (.spec.target.template // .spec.externalSecretSpec.target.template // {}) | tostring | select(test(\"getHostByName\")) | $o | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row's template calls getHostByName"
+  }
+]

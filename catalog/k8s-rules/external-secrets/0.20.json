@@ -1,0 +1,19 @@
+[
+  {
+    "ruleId": "rtz-external-secrets-0.20-clusterexternalsecret-namespace-finalizers",
+    "severity": "MEDIUM",
+    "title": "ClusterExternalSecret now puts a finalizer on each target namespace and needs `namespaces` update/patch",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the controller's RBAC and the namespaces' finalizers are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_PRESENT",
+      "objectKind": "ClusterExternalSecret",
+      "target": "namespaceSelectorSet"
+    },
+    "quote": "fix: handle namespace deletion race conditions with finalizers",
+    "remediation": "From 0.20 the ClusterExternalSecret controller adds a finalizer (`externalsecrets.external-secrets.io/ces-<name>`) to every namespace it provisions into, BEFORE creating the ExternalSecret, and ExternalSecrets carry their own cleanup finalizer. (1) If you manage the controller's RBAC yourself, grant `namespaces` update and patch, or the ClusterExternalSecrets named fail to provision in every namespace. (2) After the upgrade, delete ExternalSecrets and ClusterExternalSecrets before removing or scaling down the controller, or those namespaces and objects hang in Terminating.",
+    "verifyCommand": "kubectl auth can-i patch namespaces --as=system:serviceaccount:external-secrets:external-secrets  # 'no' means ClusterExternalSecret provisioning fails after the upgrade (adjust the namespace/ServiceAccount to your install)"
+  }
+]
