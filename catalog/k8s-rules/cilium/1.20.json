@@ -65,8 +65,8 @@
       "value": "^(custom-cni-conf)$"
     },
     "quote": "Cilium updated to use CNI standard `v1.0.0` by default.",
-    "remediation": "Affected only if the command prints `custom-cni-conf=true` (you maintain the CNI configuration yourself): set its `cniVersion` to `1.0.0` before upgrading. `false` (the chart default) needs nothing.",
-    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(custom-cni-conf|cni-chaining-mode)$\")) | \"\\(.key)=\\(.value)\"'  # custom-cni-conf=true means you maintain the CNI config"
+    "remediation": "Affected only if the command prints `custom-cni-conf=true` (you maintain the CNI configuration yourself): set its `cniVersion` to `1.0.0` before upgrading. `false` (the chart default) needs nothing. `cni-chaining-mode=aws-cni` (chained to the AWS VPC CNI) is not affected either: Cilium builds its file from the VPC CNI's own `10-aws.conflist` and keeps that file's `cniVersion`.",
+    "verifyCommand": "kubectl get configmap -A -o json | jq -r '.items[] | select(.metadata.name == \"cilium-config\") | .data | to_entries[] | select(.key | test(\"^(custom-cni-conf|cni-chaining-mode)$\")) | \"\\(.key)=\\(.value)\"'  # custom-cni-conf=true means you maintain the CNI config; cni-chaining-mode=aws-cni keeps the VPC CNI's cniVersion"
   },
   {
     "ruleId": "rtz-cilium-1.20-gateway-api-1-6-1-required",
@@ -82,7 +82,7 @@
     },
     "quote": "Cilium's Gateway API support now requires Gateway API v1.6.1 at a minimum to work correctly.",
     "remediation": "Upgrade the Gateway API CRDs named to v1.6.1 BEFORE Cilium 1.20. If you use TLSRoute, back the objects up and install the EXPERIMENTAL TLSRoute CRD from v1.6.1 (it still serves v1alpha2) — the Standard one makes existing TLSRoute objects unreadable from etcd, i.e. they vanish.",
-    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"?\") channel=\\(.metadata.annotations[\"gateway.networking.k8s.io/channel\"] // \"?\") versions=\\([.spec.versions[].name] | join(\",\"))\"'  # bundles below v1.6.1 must be upgraded; TLSRoute must be the experimental channel",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group == \"gateway.networking.k8s.io\") | \"\\(.metadata.name) bundle=\\(.metadata.annotations[\"gateway.networking.k8s.io/bundle-version\"] // \"?\") channel=\\(.metadata.annotations[\"gateway.networking.k8s.io/channel\"] // \"?\") served=\\([.spec.versions[] | select(.served) | .name] | join(\",\"))\"'  # bundles below v1.6.1 must be upgraded; TLSRoute must be the experimental channel",
     "gate": {
       "kind": "SPEC_PATH_MATCHES",
       "objectKind": "ConfigMap",
@@ -100,7 +100,7 @@
       "kind": "SPEC_PATH_NONE_MATCHES",
       "objectKind": "CustomResourceDefinition",
       "objectName": "^(grpcroutes|tlsroutes|referencegrants|backendtlspolicies)\\.gateway\\.networking\\.k8s\\.io$",
-      "target": "versions[].name",
+      "target": "versions[served=true].name",
       "value": "^v1$",
       "reason": "reads the installed Gateway API CRDs' served versions; a CRD that is not installed at all is not judged — the command prints it as MISSING"
     },
