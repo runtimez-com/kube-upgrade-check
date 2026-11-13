@@ -41,8 +41,11 @@
     "severity": "MEDIUM",
     "title": "toFQDNs implementation overhauled — follow the upgrade guidance to avoid drops",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^toFQDNs$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "The implementation of `toFQDNs` selectors in policies has been overhauled to improve performance",
     "remediation": "Clusters with toFQDNs policies (listed by the command) migrate their FQDN state on upgrade AND downgrade. Follow the upgrade note's instruction to avoid drops during the upgrade, and do not roll back through a version that predates the new implementation without reading the downgrade note.",
@@ -54,7 +57,13 @@
     "title": "L7 policy `terminatingTLS` no longer loads `ca.crt` from the Secret",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "reason": "only a terminatingTLS Secret that carries ca.crt is affected, and the agent never reads the Secret; the hint names the policies that terminate TLS"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^terminatingTLS$"
     },
     "quote": "L7 network policy with terminatingTLS will not load the key `ca.crt` even if it is present in the secret.",
     "remediation": "Envoy stops requiring client certificates for the policies listed. If you relied on that mTLS check, set `use-full-tls-context: \"true\"` (agent `--use-full-tls-context=true`) before upgrading.",
@@ -83,14 +92,13 @@
     "title": "Local Redirect Policy now also redirects traffic from its own backends",
     "detection": {
       "kind": "NOT_DETECTABLE",
-      "reason": "CiliumLocalRedirectPolicy is not collected"
+      "reason": "only clusters running Local Redirect Policy with socket-based load-balancing are affected, a cilium-config VALUE the agent does not collect; the hint names the redirect policies without skipRedirectFromBackend"
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ConfigMap",
-      "objectName": "^cilium-config$",
-      "target": "keys[]",
-      "value": "^(enable-local-redirect-policy)$"
+      "objectKind": "CiliumLocalRedirectPolicy",
+      "target": "features[]",
+      "value": "^redirectsFromBackend$"
     },
     "quote": "Local Redirect Policy redirects traffic from policy-selected node-local backends destined to the policy's frontend, back to the node-local backends.",
     "remediation": "For each Local Redirect Policy whose backends must reach the real frontend (e.g. a node-local DNS cache forwarding to kube-dns), set `skipRedirectFromBackend: true` and RE-CREATE the backend Pods after upgrading — otherwise policy application fails.",
@@ -174,12 +182,15 @@
     "severity": "MEDIUM",
     "title": "Invalid CiliumNetworkPolicies (several L7 protocols on a port, more than 40 port or ICMP rules) now rejected",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^invalidShape$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "Certain invalid CiliumNetworkPolicies that have always been ignored will now be rejected by the apiserver.",
     "remediation": "Existing policies stay, but the next apply of any policy the command lists fails validation. Split them before upgrading (they were already ignored by the agent, so splitting changes nothing at runtime).",
-    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; ([(.toPorts // [])[].ports[]?] | .[40] != null) or ((.icmps // []) | .[40] != null) or ((.toPorts // []) | any((.rules // {}) | keys | length | . != 0 and . != 1)))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy the 1.16 CRD rejects on update"
+    "verifyCommand": "kubectl get ciliumnetworkpolicies.cilium.io,ciliumclusterwidenetworkpolicies.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | . as $p | [(.spec // empty), (.specs[]?)] | map(((.ingress // []) + (.egress // []) + (.ingressDeny // []) + (.egressDeny // []))[]) | select(any(.[]; ((.toPorts // []) | any((.ports // []) | .[40] != null)) or ((.icmps // []) | any((.fields // []) | .[40] != null)) or ((.toPorts // []) | any((.rules // {}) | [has(\"http\"), has(\"kafka\"), has(\"dns\"), has(\"l7proto\")] | map(select(.)) | .[1] != null)))) | $p | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy the 1.16 CRD rejects on update"
   },
   {
     "ruleId": "rtz-cilium-1.16-managed-etcd-removed",
@@ -287,8 +298,11 @@
     "severity": "MEDIUM",
     "title": "LB IPAM: `allowFirstLastIPs` now defaults to `yes`",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "CiliumLoadBalancerIPPool is not collected"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumLoadBalancerIPPool",
+      "target": "features[]",
+      "value": "^allowFirstLastIPsUnset$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "The default value of of `CiliumLoadBalancerIPPool.spec.allowFirstLastIPs` has been changed to `yes`.",
     "remediation": "Pools the command lists do not set `allowFirstLastIPs`: from 1.16 their network and broadcast addresses can be handed to Services. Set `allowFirstLastIPs: \"No\"` on each before upgrading if your network cannot route them.",
@@ -299,8 +313,11 @@
     "severity": "HIGH",
     "title": "LB IPAM: `spec.cidrs` replaced by `spec.blocks`",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "CiliumLoadBalancerIPPool is not collected"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumLoadBalancerIPPool",
+      "target": "features[]",
+      "value": "^cidrs$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "Please update your IP pool configurations to use `blocks` instead of `cidrs` before upgrading.",
     "remediation": "Rename `spec.cidrs` to `spec.blocks` in every pool the command lists before upgrading.",
@@ -327,8 +344,11 @@
     "severity": "HIGH",
     "title": "CiliumNetworkPolicy: an empty `from*` / `to*` list now selects nothing",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^emptySlice$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations; a cidrGroupRef is NOT judged (it bites only when no CiliumCIDRGroup of that name exists, and CiliumCIDRGroup is not collected) — the command lists those policies too"
     },
     "quote": "`CiliumNetworkPolicy` changed the semantics of the empty non-nil slice.",
     "remediation": "A rule with an empty `fromEndpoints`/`fromCIDR`/`fromCIDRSet`/`fromEntities` (or `to*`) list now matches no peer, so an allow policy falls back to default deny. Delete the empty fields (or fill them) in every policy the command lists before upgrading. The same note flips a `fromCIDRSet` / `toCIDRSet` whose `cidrGroupRef` entries all name CiliumCIDRGroups that do not exist from allow-all to deny-all: the command lists those policies too — compare each referenced name with `kubectl get ciliumcidrgroups`.",

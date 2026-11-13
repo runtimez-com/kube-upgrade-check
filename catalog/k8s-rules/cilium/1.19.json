@@ -4,8 +4,11 @@
     "severity": "MEDIUM",
     "title": "DNS patterns starting `**.` now match several subdomain levels",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^dnsDoubleStar$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "If you have any existing patterns that start with `**.`, they will now match multiple subdomains.",
     "remediation": "Each policy the command lists has a `matchPattern` beginning `**.`, which widens on 1.19 from one subdomain level to any depth. Replace it with `*.` where one level was intended.",
@@ -16,8 +19,11 @@
     "severity": "HIGH",
     "title": "`fromRequires` / `toRequires` must be empty — the CRD now rejects them",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^requires$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "The `CiliumNetworkPolicy` and `CiliumClusterwideNetworkPolicy` CRDs now enforce that the `FromRequires` and `ToRequires` fields are empty.",
     "remediation": "Cilium 1.19 no longer evaluates `fromRequires` / `toRequires`: a policy already stored keeps loading, but its requirement is IGNORED, so peers it used to exclude become allowed — the policy silently gets broader. Any later update to such a policy is rejected by the CRD. Before upgrading, rewrite every policy the command lists so the requirement is expressed in its `fromEndpoints` / `toEndpoints` selectors, then remove the two fields.",
@@ -28,8 +34,11 @@
     "severity": "LOW",
     "title": "Kafka network policy deprecated — removed in 1.20",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^kafka$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "Kafka Network Policy support is deprecated and will be removed in Cilium v1.20.",
     "remediation": "Policies the command lists use Kafka L7 rules; replace them with L3/L4 rules before 1.20 (rtz-cilium-1.20-proxylib-removed).",
@@ -46,10 +55,9 @@
     },
     "scope": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "ConfigMap",
-      "objectName": "^cilium-config$",
-      "target": "keys[]",
-      "value": "^(mesh-auth-enabled)$"
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^authRequired$"
     },
     "quote": "The mesh auth flag `mesh-auth-enabled` (Helm `authentication.enabled`) is now disabled by default.",
     "remediation": "If the command lists policies, set Helm `authentication.enabled=true` (cilium-config `mesh-auth-enabled: \"true\"`) explicitly before upgrading; otherwise those rules stop enforcing authentication and only log a validation warning.",
@@ -96,19 +104,15 @@
     "severity": "MEDIUM",
     "title": "`CiliumLoadBalancerIPPool` v2alpha1 deprecated — use `cilium.io/v2`",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "CiliumLoadBalancerIPPool is not collected"
-    },
-    "scope": {
       "kind": "SPEC_PATH_MATCHES",
-      "objectKind": "CustomResourceDefinition",
-      "objectName": "^ciliumloadbalancerippools\\.cilium\\.io$",
-      "target": "group",
-      "value": "^cilium\\.io$"
+      "objectKind": "CiliumLoadBalancerIPPool",
+      "target": "features[]",
+      "value": "^writtenV2alpha1$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "Change `apiVersion: cilium.io/v2alpha1` to `apiVersion: cilium.io/v2` in your manifests for all `CiliumLoadBalancerIPPool` resources before upgrading.",
     "remediation": "Rewrite the pools the command lists (last written as v2alpha1) to `apiVersion: cilium.io/v2`, in Git and in the cluster.",
-    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
+    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
   },
   {
     "ruleId": "rtz-cilium-1.19-bgp-peering-policy-removed",

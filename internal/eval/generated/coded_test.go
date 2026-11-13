@@ -223,6 +223,47 @@ func TestFilteredSegmentReadsOnlyServedVersions(t *testing.T) {
 	}
 }
 
+// A shipped Cilium policy rule reads the projected features[] across both policy kinds, names only
+// the policy that has the feature, and declines (never clears) when the kind could not be read.
+func TestCiliumPolicyRuleReadsFeatures(t *testing.T) {
+	c, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "rtz-cilium-1.16-tofqdns-selector-overhaul"
+	var only *catalog.Catalog
+	for _, r := range c.GeneratedRules {
+		if r.RuleID == id {
+			only = cat(r)
+		}
+	}
+	if only == nil {
+		t.Fatalf("%s is not in the catalog", id)
+	}
+	feats := func(f ...any) map[string]any { return map[string]any{"projection": 1, "features": f} }
+	hops := Hops{"cilium": {InstalledVersion: "1.15.19", RequiredVersion: "1.16.19"}}
+	in := inv()
+	in.CRs["CiliumNetworkPolicy"] = []inventory.CustomResource{
+		{Kind: "CiliumNetworkPolicy", Namespace: "checkout", Name: "egress-dns", Spec: feats("toFQDNs", "denyRules")},
+		{Kind: "CiliumNetworkPolicy", Namespace: "checkout", Name: "plain", Spec: feats()},
+	}
+	in.CRs["CiliumClusterwideNetworkPolicy"] = []inventory.CustomResource{
+		{Kind: "CiliumClusterwideNetworkPolicy", Name: "cluster-default", Spec: feats("denyRules")},
+	}
+	findings, _ := Analyze(in, nil, "1.35", "1.36", only, hops)
+	f := byRule(findings, id)
+	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "checkout/egress-dns" {
+		t.Fatalf("want checkout/egress-dns only, got %+v", f)
+	}
+	unread := inv()
+	unread.CRUnread["CiliumNetworkPolicy"] = "forbidden"
+	unread.CRUnread["CiliumClusterwideNetworkPolicy"] = "forbidden"
+	findings, coverage := Analyze(unread, nil, "1.35", "1.36", only, hops)
+	if byRule(findings, id) != nil || len(coverage) == 0 {
+		t.Errorf("an unreadable policy kind must decline, not clear or fire: %+v %+v", findings, coverage)
+	}
+}
+
 func TestRequiresInstalledSinceFloors(t *testing.T) {
 	r := advisoryRule("traefik", "encoded", "3.6")
 	r.IntroducedIn = []string{"2.11.35", "3.6.7"}

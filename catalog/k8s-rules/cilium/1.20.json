@@ -4,8 +4,11 @@
     "severity": "LOW",
     "title": "Mutual authentication deprecated — consider ztunnel encryption",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^authRequired$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "gs_mutual_authentication support is now deprecated and will be removed in a future version.",
     "remediation": "Policies the command lists use `authentication.mode: required`; plan the move to ztunnel-based encryption.",
@@ -17,8 +20,11 @@
     "severity": "HIGH",
     "title": "Envoy Go Extensions (proxylib) and Kafka-aware policies removed",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^proxylib$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "Envoy Go Extensions (proxylib) was removed after deprecation in Cilium 1.18.",
     "remediation": "Remove the `rules` section (with `kafka`, `l7` or `l7proto`) from every policy the command lists BEFORE upgrading; Kafka-aware and other proxylib L7 policies are not enforced by 1.20.",
@@ -44,7 +50,7 @@
     },
     "quote": "If you are still using the `v2alpha1` API version of `CiliumNodeConfig`, update existing manifests or tooling that references `cilium.io/v2alpha1` to use `cilium.io/v2` instead.",
     "remediation": "Rewrite every CiliumNodeConfig manifest (Git, GitOps, scripts) to `apiVersion: cilium.io/v2` before upgrading; the command lists objects last written as v2alpha1. Applying a v2alpha1 manifest fails on 1.20.",
-    "verifyCommand": "kubectl get ciliumnodeconfigs.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "verifyCommand": "kubectl get ciliumnodeconfigs.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
     "coversNotes": [
       "Changes to Features / Removed Options: The `v2alpha1` API version of `CiliumNodeConfig`"
     ]
@@ -136,8 +142,11 @@
     "severity": "MEDIUM",
     "title": "Policies with neither `spec` nor `specs` are rejected at admission",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^empty$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "CiliumNetworkPolicy and CiliumClusterwideNetworkPolicy resources that specify neither `spec` nor `specs` are now rejected at admission time by the Kubernetes API server via a CEL validation rule.",
     "remediation": "Existing empty policies stay, but re-applying them (GitOps sync) fails. Delete or fill each policy the command lists.",

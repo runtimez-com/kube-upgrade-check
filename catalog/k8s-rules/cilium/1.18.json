@@ -16,7 +16,7 @@
     },
     "quote": "Change `apiVersion: cilium.io/v2alpha1` to `apiVersion: cilium.io/v2` for these CRDs in all your BGP configs.",
     "remediation": "Rewrite CiliumBGPClusterConfig / PeerConfig / Advertisement / NodeConfig / NodeConfigOverride manifests to `cilium.io/v2` (the command lists objects last written as v2alpha1) and drop `spec.transport.localPort` from peer configs — it is ignored from 1.18.",
-    "verifyCommand": "kubectl get ciliumbgpclusterconfigs.cilium.io,ciliumbgppeerconfigs.cilium.io,ciliumbgpadvertisements.cilium.io,ciliumbgpnodeconfigoverrides.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "verifyCommand": "kubectl get ciliumbgpclusterconfigs.cilium.io,ciliumbgppeerconfigs.cilium.io,ciliumbgpadvertisements.cilium.io,ciliumbgpnodeconfigoverrides.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
     "deprecationOnly": true
   },
   {
@@ -54,7 +54,7 @@
     },
     "quote": "The `v2alpha1` version of `CiliumCIDRGroup` CRD was deprecated in favor of the `v2` version.",
     "remediation": "Rewrite CiliumCIDRGroup manifests to `apiVersion: cilium.io/v2`.",
-    "verifyCommand": "kubectl get ciliumcidrgroups.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "verifyCommand": "kubectl get ciliumcidrgroups.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
     "deprecationOnly": true
   },
   {
@@ -165,8 +165,11 @@
     "severity": "MEDIUM",
     "title": "Envoy Go Extensions (proxylib) deprecated — Kafka and other proxylib L7 policies removed in 1.20",
     "detection": {
-      "kind": "NOT_DETECTABLE",
-      "reason": "Cilium network policies (CiliumNetworkPolicy / CiliumClusterwideNetworkPolicy) are not collected — run the command to list the affected policies"
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CiliumNetworkPolicy|CiliumClusterwideNetworkPolicy",
+      "target": "features[]",
+      "value": "^proxylib$",
+      "reason": "read from the agent's Cilium projection (feature names, never the policy's values); needs Cilium collection switched on in Integrations"
     },
     "quote": "The support for Envoy Go Extensions (proxylib) is deprecated, and will be removed in a future release.",
     "remediation": "Policies the command lists use a proxylib parser (`kafka`, `l7proto`, generic `l7`); plan to replace those rules — 1.20 removes them (rtz-cilium-1.20-proxylib-removed).",
