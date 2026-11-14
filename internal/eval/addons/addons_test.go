@@ -490,3 +490,38 @@ func TestVendorSupportPolicyFinding(t *testing.T) {
 		t.Fatalf("the vendored EBS catalog must carry supportedMinorsBehindLatest=1, got ok=%v %+v", ok, ebs.SupportedMinorsBehindLatest)
 	}
 }
+
+// Cilium publishes BOTH tested Kubernetes windows and a "last three minors" support policy, and tests upgrades only
+// between consecutive minors. Mirrors eac CiliumCatalogTest.
+func TestCiliumSupportPolicyAndConsecutiveMinors(t *testing.T) {
+	cat := realCatalog(t)
+	cilium, ok := cat.AddonByID("cilium")
+	if !ok {
+		t.Fatal("the vendored catalog must carry k8s-addons/cilium.json")
+	}
+	if len(cilium.SupportWindows) == 0 || cilium.SupportedMinorsBehindLatest == nil || *cilium.SupportedMinorsBehindLatest != 2 || !cilium.ConsecutiveMinorUpgrades {
+		t.Fatalf("cilium must carry windows, supportedMinorsBehindLatest=2 and consecutiveMinorUpgrades: %+v", cilium)
+	}
+	// windows present AND a policy: the policy still applies (1.17 is the fourth-newest minor of 1.20.4)
+	if got := vendorSupportPolicyFinding(detection{addon: cilium, version: "v1.17.18"}, "1.33"); len(got) != 1 {
+		t.Fatalf("1.17 is outside the last three minors: got %d findings", len(got))
+	} else if !strings.Contains(got[0].Recommendation, "(1.18.x through 1.20.x") {
+		t.Fatalf("three supported lines must read as a range, got %q", got[0].Recommendation)
+	}
+	if got := vendorSupportPolicyFinding(detection{addon: cilium, version: "v1.18.0"}, "1.33"); len(got) != 0 {
+		t.Fatalf("1.18 is one of the last three minors: got %d findings", len(got))
+	}
+	// 1.15 -> k8s 1.33: the lowest window covering 1.33 is 1.18, three minors away
+	got := consecutiveMinorFinding(detection{addon: cilium, version: "v1.15.19", workloadRef: "kube-system/cilium"}, "1.33")
+	if len(got) != 1 || got[0].RuleID != "rtz-addon-cilium-skips-minor-releases" ||
+		!strings.Contains(got[0].Recommendation, "1.15 → 1.16 → 1.17 → 1.18") {
+		t.Fatalf("want one skips-minor-releases finding naming every step, got %+v", got)
+	}
+	if got := consecutiveMinorFinding(detection{addon: cilium, version: "v1.17.18"}, "1.33"); len(got) != 0 {
+		t.Fatalf("1.17 -> 1.18 is one minor: got %d findings", len(got))
+	}
+	ebs, _ := cat.AddonByID("aws-ebs-csi-driver")
+	if got := consecutiveMinorFinding(detection{addon: ebs, version: "v1.29.0"}, "1.35"); len(got) != 0 {
+		t.Fatalf("an add-on without the policy never gets the finding: got %d", len(got))
+	}
+}

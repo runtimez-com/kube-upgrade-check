@@ -272,10 +272,13 @@ type Addon struct {
 	// SupportedMinorsBehindLatest is the vendor's own support policy ("the latest version and one
 	// prior" = 1): an installed version more minors behind LatestKnownVersion is outside it. Not a
 	// Kubernetes compatibility window. Nil when the vendor states no such policy.
-	SupportedMinorsBehindLatest *int          `json:"supportedMinorsBehindLatest"`
-	InventoryKinds              []string      `json:"inventoryKinds"`
-	Rules                       []AddonRule   `json:"rules"`
-	UpgradeNotes                []UpgradeNote `json:"upgradeNotes"`
+	SupportedMinorsBehindLatest *int `json:"supportedMinorsBehindLatest"`
+	// ConsecutiveMinorUpgrades: the vendor tests upgrades only between consecutive minor releases
+	// (Cilium). A forced hop that crosses more than one minor gets its own finding naming each step.
+	ConsecutiveMinorUpgrades bool          `json:"consecutiveMinorUpgrades"`
+	InventoryKinds           []string      `json:"inventoryKinds"`
+	Rules                    []AddonRule   `json:"rules"`
+	UpgradeNotes             []UpgradeNote `json:"upgradeNotes"`
 }
 
 // ---------- k8s-adoption/adoption-suggestions.json ----------

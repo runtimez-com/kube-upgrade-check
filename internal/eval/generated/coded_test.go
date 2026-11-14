@@ -188,6 +188,82 @@ func TestSpecPathNoneMatches(t *testing.T) {
 	}
 }
 
+// versions[served=true].name reads only the versions a CRD SERVES. Gateway API v1.6.3 TLSRoute keeps
+// v1alpha2 declared with served: false (live rtz-eks 2026-11-13); versions[].name counted it as
+// available, so a rule requiring v1alpha2 missed tlsroutes. Mirrors the backend's FILTERED_SEGMENT.
+func TestFilteredSegmentReadsOnlyServedVersions(t *testing.T) {
+	r := sourced("aws-load-balancer-controller", "served", "3.6", catalog.Detection{Kind: catalog.DetectSpecPathNoneMatches,
+		ObjectKind: "CustomResourceDefinition", ObjectName: `^(grpcroutes|tlsroutes)\.gateway\.networking\.k8s\.io$`,
+		Target: "versions[served=true].name", Value: "^v1alpha2$"})
+	crd := func(name string, versions ...any) inventory.CRD {
+		return inventory.CRD{Name: name, Spec: map[string]any{"group": "gateway.networking.k8s.io", "versions": versions}}
+	}
+	v := func(name string, served bool) map[string]any {
+		return map[string]any{"name": name, "served": served, "storage": served}
+	}
+	in := inv()
+	in.Collected[inventory.CollectorCRDs] = inventory.CollectionState{OK: true}
+	in.CRDs = []inventory.CRD{
+		crd("tlsroutes.gateway.networking.k8s.io", v("v1", true), v("v1alpha2", false), v("v1alpha3", false)),
+		crd("grpcroutes.gateway.networking.k8s.io", v("v1", true), v("v1alpha2", true)),
+	}
+	findings, coverage := Analyze(in, nil, "1.35", "1.36", cat(r), lbcHop("3.5.0", "3.6.2"))
+	f := byRule(findings, r.RuleID)
+	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "tlsroutes.gateway.networking.k8s.io" {
+		t.Fatalf("a declared-but-unserved v1alpha2 must not count: want tlsroutes only, got %+v (coverage %+v)", f, coverage)
+	}
+	// Nothing passing the filter is still a resolved path ("serves nothing that matches"), not a projection gap.
+	in.CRDs = []inventory.CRD{crd("tlsroutes.gateway.networking.k8s.io", v("v1alpha2", false))}
+	findings, coverage = Analyze(in, nil, "1.35", "1.36", cat(r), lbcHop("3.5.0", "3.6.2"))
+	if byRule(findings, r.RuleID) == nil || len(coverage) != 0 {
+		t.Errorf("a CRD serving no version must fire, not decline: %+v %+v", findings, coverage)
+	}
+	if k, f, val, ok := filteredSegment("versions[served=true]"); !ok || k != "versions" || f != "served" || val != "true" {
+		t.Errorf("filteredSegment parse: %q %q %q %v", k, f, val, ok)
+	}
+}
+
+// A shipped Cilium policy rule reads the projected features[] across both policy kinds, names only
+// the policy that has the feature, and declines (never clears) when the kind could not be read.
+func TestCiliumPolicyRuleReadsFeatures(t *testing.T) {
+	c, err := catalog.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "rtz-cilium-1.16-tofqdns-selector-overhaul"
+	var only *catalog.Catalog
+	for _, r := range c.GeneratedRules {
+		if r.RuleID == id {
+			only = cat(r)
+		}
+	}
+	if only == nil {
+		t.Fatalf("%s is not in the catalog", id)
+	}
+	feats := func(f ...any) map[string]any { return map[string]any{"projection": 1, "features": f} }
+	hops := Hops{"cilium": {InstalledVersion: "1.15.19", RequiredVersion: "1.16.19"}}
+	in := inv()
+	in.CRs["CiliumNetworkPolicy"] = []inventory.CustomResource{
+		{Kind: "CiliumNetworkPolicy", Namespace: "checkout", Name: "egress-dns", Spec: feats("toFQDNs", "denyRules")},
+		{Kind: "CiliumNetworkPolicy", Namespace: "checkout", Name: "plain", Spec: feats()},
+	}
+	in.CRs["CiliumClusterwideNetworkPolicy"] = []inventory.CustomResource{
+		{Kind: "CiliumClusterwideNetworkPolicy", Name: "cluster-default", Spec: feats("denyRules")},
+	}
+	findings, _ := Analyze(in, nil, "1.35", "1.36", only, hops)
+	f := byRule(findings, id)
+	if f == nil || len(f.AffectedResources) != 1 || f.AffectedResources[0] != "checkout/egress-dns" {
+		t.Fatalf("want checkout/egress-dns only, got %+v", f)
+	}
+	unread := inv()
+	unread.CRUnread["CiliumNetworkPolicy"] = "forbidden"
+	unread.CRUnread["CiliumClusterwideNetworkPolicy"] = "forbidden"
+	findings, coverage := Analyze(unread, nil, "1.35", "1.36", only, hops)
+	if byRule(findings, id) != nil || len(coverage) == 0 {
+		t.Errorf("an unreadable policy kind must decline, not clear or fire: %+v %+v", findings, coverage)
+	}
+}
+
 func TestRequiresInstalledSinceFloors(t *testing.T) {
 	r := advisoryRule("traefik", "encoded", "3.6")
 	r.IntroducedIn = []string{"2.11.35", "3.6.7"}
