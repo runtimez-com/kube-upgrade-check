@@ -12,7 +12,7 @@
     },
     "quote": "Removal of Conversion Webhooks and `SecretStore/v1alpha1`, `ExternalSecret/v1alpha1` and their cluster counterparts",
     "remediation": "Rewrite the manifests of the objects named in `external-secrets.io/v1` (v1alpha1 `dataFrom` entries become `dataFrom[].extract`) and re-apply them BEFORE the upgrade; 0.16 drops v1alpha1 and the conversion webhook, so an apply in v1alpha1 is refused.",
-    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"external-secrets.io/v1alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written as v1alpha1 by some manager",
+    "verifyCommand": "kubectl get externalsecrets.external-secrets.io,clusterexternalsecrets.external-secrets.io -A -o json --show-managed-fields 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"external-secrets.io/v1alpha1\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written as v1alpha1 by some manager",
     "coversNotes": [
       "v0.16.0: warning it is known v0.16.0 will not be an easy upgrade if you're not consuming from ou",
       "v0.16.0: Make sure you are not using any v1alpha1 resources across all of your infrastructure.",

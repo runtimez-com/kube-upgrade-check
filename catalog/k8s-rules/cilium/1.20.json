@@ -50,7 +50,7 @@
     },
     "quote": "If you are still using the `v2alpha1` API version of `CiliumNodeConfig`, update existing manifests or tooling that references `cilium.io/v2alpha1` to use `cilium.io/v2` instead.",
     "remediation": "Rewrite every CiliumNodeConfig manifest (Git, GitOps, scripts) to `apiVersion: cilium.io/v2` before upgrading; the command lists objects last written as v2alpha1. Applying a v2alpha1 manifest fails on 1.20.",
-    "verifyCommand": "kubectl get ciliumnodeconfigs.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
+    "verifyCommand": "kubectl get ciliumnodeconfigs.cilium.io -A -o json --show-managed-fields 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1",
     "coversNotes": [
       "Changes to Features / Removed Options: The `v2alpha1` API version of `CiliumNodeConfig`"
     ]

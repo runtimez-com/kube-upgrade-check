@@ -51,7 +51,7 @@
     },
     "quote": "If you are using server-side apply with multiple field managers to manage a single `selector` or `labelSelector` field in an ApplicationSet, that field management must be changed to be atomic starting with 2.12.",
     "remediation": "Where more than one tool server-side-applies parts of an ApplicationSet's generator selectors, make one of them own the whole selector (`matchLabels` and `matchExpressions` together) before upgrading the CRD.",
-    "verifyCommand": "kubectl get applicationsets -A -o json | jq -r '.items[] | select(.metadata.managedFields[1] != null) | .metadata.namespace + \"/\" + .metadata.name + \": \" + ([.metadata.managedFields[].manager] | unique | join(\",\"))' # ApplicationSets printed have several field managers — check whether two of them touch one selector"
+    "verifyCommand": "kubectl get applicationsets -A -o json --show-managed-fields | jq -r '.items[] | select(.metadata.managedFields[1] != null) | .metadata.namespace + \"/\" + .metadata.name + \": \" + ([.metadata.managedFields[].manager] | unique | join(\",\"))' # ApplicationSets printed have several field managers — check whether two of them touch one selector"
   },
   {
     "ruleId": "rtz-argocd-2.12-added-health-checks-crds",

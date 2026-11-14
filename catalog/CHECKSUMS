@@ -21,7 +21,7 @@ bab8fdf5d672928d23c223226d22616e0856b2920bf44edf8b1f43f854275201  k8s-node-runti
 4eaec5d73d76c314be5546cc21f5b0bbd83fdd97c5773c970252d12e94439947  k8s-plugins/removed-volume-plugins.json
 d60a5b71b42b0348e754c1666db25cb3c9c8de889c141aa626e9c34f1a140102  k8s-rules/argocd/2.10.json
 a345a5a4a5761ee788c49be19091a5e3f594e9f67bfd3ec3b472d7c0bac696e3  k8s-rules/argocd/2.11.json
-ad10f2596327bfa659c80011a20c9d99b9a44456f02527aa1f7d87114d7fa5a2  k8s-rules/argocd/2.12.json
+d77da8aca5c994323b76698e85a34a3fb1c4da0ab3c12cbd9996297eb6dd7a04  k8s-rules/argocd/2.12.json
 fde597335dd2960e3dc23096832580daad8450a2e5509e95500f9d5b45d99746  k8s-rules/argocd/2.13.json
 0abccbd22788c476a7240f32ad2c8aae807f1837fafb349de93dc3179f02bda0  k8s-rules/argocd/2.14.json
 db5d7e06864bc8919ca7d7914d045dd67ff1c3ac39830ac5d6c9159f2c52fcc0  k8s-rules/argocd/2.6.json
@@ -119,9 +119,9 @@ af8ee56525945d8f9b464373c5fe3ca18230e701186ef63807ccfb5e494d74a7  k8s-rules/cert
 4429be061fd6db6a94e029b0d9f46cfb23fadc670e3d6e54db961965099d2a6b  k8s-rules/cilium/1.15.json
 85aee0136bb470d41ed50db1598df0c49596bd6b222e9cb05b7f8abbd61b23e1  k8s-rules/cilium/1.16.json
 cc8e314e643836f89a1dc1e02b12bfe6f83bfc68848b0607fdea8d50f8097036  k8s-rules/cilium/1.17.json
-0df8d42117b10bb3d13a25ebdccb4ffed92f23158a609ba292abe451da50b5cd  k8s-rules/cilium/1.18.json
-4ed3d9c3bc95d6a1e33120b02ea649a4402f00ef4e1e04ff95a79a4006adb5f0  k8s-rules/cilium/1.19.json
-70c6d612132b469c6668e3fd1255576b776c9d1b45980971676986ee23c0923a  k8s-rules/cilium/1.20.json
+37555be8f26b6bbe20c7f540f6a9866c5a85150fe61de477c587fab782cd337b  k8s-rules/cilium/1.18.json
+3dc938ab711b21e2cd49d7b34c8e02405540050982ab3712764522d2022b1105  k8s-rules/cilium/1.19.json
+2652837da9427c284d7213e14d76d7f612eeea6eb0bb6abcc4de90bbc537acac  k8s-rules/cilium/1.20.json
 d2bfb78a536a262e485b44f803c06b4c9e3349da534c5650295efd04ab4076c9  k8s-rules/cilium/_excluded.json
 173b55daf34cdc4ec85ab42f35d049ef6c96cd88aaa9079558163dbc228c0c21  k8s-rules/coredns/1.10.json
 42d657c01fdf039dcb1a787cc8daa331505c776ed52d657c84672fac6a88c3b4  k8s-rules/coredns/1.11.json
@@ -140,8 +140,8 @@ def9dadae52db130ceb65d721a0ce715cd51486ca1f43e6e88e23a108b73d688  k8s-rules/exte
 542bb4f8bd9b886e3f21719876fbd35242185c1e02a4e72a8efcf76b0b20cf6c  k8s-rules/external-secrets/0.13.json
 deb200dc2b1e68da8490bd36a58cfb498b0d62b542e8a38a8cd84b3ea1f35dc7  k8s-rules/external-secrets/0.14.json
 b5735ff1ac3bb90518e595c3f3e80d471d097e39ae1150047549933d76ac3e34  k8s-rules/external-secrets/0.15.json
-094cba1094bec81edfededd002348eba0e74e20bfe309b99cf9c108925f0ff88  k8s-rules/external-secrets/0.16.json
-7587720c16556898c11ca8d3e405918b3bfb953022e3ab540fe3c00be7c42ae6  k8s-rules/external-secrets/0.17.json
+2b6c07e563b22edd9ecdc49871fb76f91e8daee9b5bfa136450e88e872d65eea  k8s-rules/external-secrets/0.16.json
+5a0cb31a8e1e78bc140c24f45a82f8ac619ec30085bc9d44f587651fddc3a8b3  k8s-rules/external-secrets/0.17.json
 8a1310258b20733a4391195390e2460324d6cb6aa1a1ad65c034ea6d4f9c69b1  k8s-rules/external-secrets/0.18.json
 d59c7acb943beac715e9ade80e4a6a8c1e71ae232a2ff9b0b2ab9f4494df6165  k8s-rules/external-secrets/0.19.json
 5b6c40e20c45bcf283e4d17104272e1b595696e600c94b30cd085cb26f14352c  k8s-rules/external-secrets/0.20.json

@@ -112,7 +112,7 @@
     },
     "quote": "Change `apiVersion: cilium.io/v2alpha1` to `apiVersion: cilium.io/v2` in your manifests for all `CiliumLoadBalancerIPPool` resources before upgrading.",
     "remediation": "Rewrite the pools the command lists (last written as v2alpha1) to `apiVersion: cilium.io/v2`, in Git and in the cluster.",
-    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
+    "verifyCommand": "kubectl get ciliumloadbalancerippools.cilium.io -A -o json --show-managed-fields 2>/dev/null | jq -r '.items[] | select(any(.metadata.managedFields[]?; .apiVersion == \"cilium.io/v2alpha1\" and (.subresource // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row was last written with cilium.io/v2alpha1"
   },
   {
     "ruleId": "rtz-cilium-1.19-bgp-peering-policy-removed",
@@ -192,14 +192,14 @@
       "reason": "datapath / runtime behaviour — nothing in the collected inventory states it"
     },
     "scope": {
-      "kind": "SPEC_FIELD_EQUALS",
+      "kind": "SPEC_PATH_MATCHES",
       "objectKind": "Service",
-      "target": "type",
-      "value": "LoadBalancer"
+      "target": "loadBalancerClassDefault|loadBalancerClass",
+      "value": "^(true|io\\.cilium/.*)$"
     },
     "quote": "The Cilium datapath will now drop TCP/UDP traffic towards a LoadBalancer or ClusterIP allocated by LB-IPAM in the north-south direction if the destination port does not match a provisioned service.",
     "remediation": "Anything that reached an LB-IPAM address on a port not declared in the Service (health checks, side ports, ICMP-style probes over TCP) is dropped on 1.19; declare those ports on the Service.",
-    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"LoadBalancer\") | \"\\(.metadata.namespace)/\\(.metadata.name) ports=\\([.spec.ports[].port] | map(tostring) | join(\",\"))\"'  # each row is a LoadBalancer and the only ports it will accept"
+    "verifyCommand": "kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type == \"LoadBalancer\" and ((.spec.loadBalancerClass // \"\") as $c | $c == \"\" or ($c | startswith(\"io.cilium/\")))) | \"\\(.metadata.namespace)/\\(.metadata.name) ports=\\([.spec.ports[].port] | map(tostring) | join(\",\"))\"'  # each row is a LoadBalancer LB-IPAM can serve (no class or io.cilium/*) and the only ports it will accept"
   },
   {
     "ruleId": "rtz-cilium-1.19-tproxy-incompatible-with-netkit",
