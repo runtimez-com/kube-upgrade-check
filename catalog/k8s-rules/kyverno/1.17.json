@@ -1,0 +1,104 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.17-configmap-namespace-restricted",
+    "severity": "HIGH",
+    "title": "A namespaced Policy can only read ConfigMaps in its own namespace (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "context entries are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "restrict configmap access for namespaced policies",
+    "remediation": "In a namespaced `Policy` a context `configMap` entry that names another namespace is refused (\"configMap namespace ... is different from policy namespace ...\"), and an entry with NO namespace now reads the policy's namespace — it used to read `default`. A shared lookup ConfigMap in `default`, `kyverno` or any other namespace stops resolving. Copy the ConfigMap into the policy's namespace, or move the rule into a ClusterPolicy. ClusterPolicies are not affected.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace as $ns | select([.. | objects | .context? // empty | arrays | .[] | .configMap? // empty | objects] | any((.namespace // \"\") != $ns)) | \"Policy \\($ns)/\\(.metadata.name)\"'  # each row is a namespaced Policy reading a ConfigMap with no namespace set or one that is not literally its own",
+    "introducedIn": [
+      "1.16.4",
+      "1.17.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.17-apicall-scoped-token",
+    "severity": "MEDIUM",
+    "title": "Service calls from policies carry a scoped token with audience `kyverno-svc.kyverno.io` (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the called services authenticate Kyverno is outside the cluster objects collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "fix: use scoped token for request authz",
+    "remediation": "Kyverno no longer sends its own ServiceAccount token to the services policies call. `apiCall.service` requests (and, from 1.18.0, CEL `http.Get` / `http.Post`) carry a separate projected token with audience `kyverno-svc.kyverno.io`, mounted at /var/run/secrets/kyverno/apicall/token from the `apicall-token` volume the chart adds (1 h expiry). A service that authenticates the caller by TokenReview against the API server's default audience starts rejecting the call: accept the new audience there, or set chart value `apiCallToken.audience` (`\"\"` restores the cluster's default audience). Manifests not rendered by the chart must add the projected volume — without it the request is sent with no Authorization header.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .apiCall? // empty | objects | .service? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row makes an apiCall.service call",
+    "introducedIn": [
+      "1.16.4",
+      "1.17.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.17-clusterpolicy-deprecated",
+    "severity": "LOW",
+    "title": "ClusterPolicy / Policy are deprecated (removed from execution in 1.20)",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "the legacy `Policy` and `ClusterPolicy` types (which served the community for years using JMESPath) are now entering their sunset phase.",
+    "remediation": "Start migrating each ClusterPolicy and Policy to the CEL policy types (ValidatingPolicy, MutatingPolicy, GeneratingPolicy, ImageValidatingPolicy, DeletingPolicy) with the migration guide; 1.20 stops executing them.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy policy object",
+    "coversNotes": [
+      "Blog: The Deprecation of Legacy APIs",
+      "Blog: Migration Tips"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.17-cleanup-policies-deprecated",
+    "severity": "LOW",
+    "title": "CleanupPolicy / ClusterCleanupPolicy are deprecated (removed from execution in 1.20)",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterCleanupPolicy|CleanupPolicy"
+    },
+    "quote": "Kyverno 1.17 officially marks `ClusterPolicy` and `CleanupPolicy` as **Deprecated**.",
+    "remediation": "Rewrite each (Cluster)CleanupPolicy as a DeletingPolicy before upgrading to 1.20.",
+    "verifyCommand": "kubectl get cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy cleanup policy",
+    "coversNotes": [
+      "Blog: The Deprecation Schedule"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.17-vap-map-reporting-opt-in",
+    "severity": "LOW",
+    "title": "Reports for ValidatingAdmissionPolicies / MutatingAdmissionPolicies are opt-in",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "report configuration is Kyverno's"
+    },
+    "quote": "make VAP/MAP reporting opt in instead of opt out",
+    "remediation": "If you read PolicyReports for ValidatingAdmissionPolicy / MutatingAdmissionPolicy results, label each VAP/MAP `reports.kyverno.io/enabled` after the upgrade (a5cf08d31); the controller flags did not change."
+  },
+  {
+    "ruleId": "rtz-kyverno-1.17-namespaced-policies-http-disabled",
+    "severity": "HIGH",
+    "title": "HTTP calls are disabled by default in namespaced CEL policies (CVE-2026-4789; 1.16.4, 1.17.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CEL expressions are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedValidatingPolicy"
+    },
+    "quote": "[backport] chore(security): disable HTTP in namespaced policies by default (CVE-2026-4789)",
+    "remediation": "Namespaced CEL policies that call `http.Get`/`http.Post` stop compiling, so they stop enforcing. Move the call to a cluster-scoped policy, or re-enable it cluster-wide with `--allowHTTPInNamespacedPolicies=true` (env `FLAG_ENABLE_HTTP_IN_NAMESPACED_POLICIES`) on the admission and cleanup controllers — there is no per-namespace switch.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep '^namespaced' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"http[.](Get|Post)\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a namespaced CEL policy that makes an HTTP call (only the kinds this cluster serves are listed)",
+    "introducedIn": [
+      "1.16.4",
+      "1.17.2"
+    ]
+  }
+]

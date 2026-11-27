@@ -1,0 +1,131 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.15-vap-generation-enabled-by-default",
+    "severity": "MEDIUM",
+    "title": "ValidatingAdmissionPolicy generation is on by default — CEL validate rules become API-server policies",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which policies qualify for generation is decided by Kyverno"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^validateCel$"
+    },
+    "quote": "Enabled `ValidatingAdmissionPolicy` generation by default (#12678)",
+    "remediation": "Expect Kyverno to create ValidatingAdmissionPolicies (+ bindings) for policies whose validate rules are pure CEL; the API server then enforces them even while Kyverno is down. Turn it off with the admission controller's `--generateValidatingAdmissionPolicy=false` if you do not want that.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?.validate?; .cel != null)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a CEL validate rule",
+    "coversNotes": [
+      "Chart kyverno changed: Enable the flag --generateValidatingAdmissionPolicy by default in the"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-cel-image-function-renamed",
+    "severity": "LOW",
+    "title": "CEL `image()` is renamed `parseImageReference()` — the old name stays as a deprecated alias",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CEL expressions are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ValidatingPolicy"
+    },
+    "quote": "Renamed CEL operator `image()` to `parseImageReference` (#12895)",
+    "remediation": "Replace `image(` with `parseImageReference(` in ValidatingPolicy / ImageValidatingPolicy expressions. The old name still compiles through 1.20 (`string_to_image_deprecated`, \"alias for backward compatibility\", kyverno/sdk at the v1.20.0 pin), so this is a deprecation to clear before the alias goes.",
+    "verifyCommand": "kubectl get validatingpolicies.policies.kyverno.io,imagevalidatingpolicies.policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"[^A-Za-z_.]image[(]\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row calls image()"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-cel-validate-context-and-preconditions-refused",
+    "severity": "LOW",
+    "title": "A CEL validate rule can no longer use `context`, and `celPreconditions` need `validate.cel`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "rule contents are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^validateCel$"
+    },
+    "quote": "Disallowed celPreconditions without validate.cel (#13514)",
+    "remediation": "Remove `context` from rules that validate with CEL, and drop `celPreconditions` from rules that do not use `validate.cel`.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; (.validate.cel != null and .context != null) or (.celPreconditions != null and .validate.cel == null))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row combines them",
+    "coversNotes": [
+      "v1.15.0 Fixed: Disabled context support when using CEL Expressions in"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-mutatingpolicy-compile-errors-blocked",
+    "severity": "LOW",
+    "title": "MutatingPolicies with CEL compilation errors are refused (1.15.2, 1.16.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "compilation is Kyverno's"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "MutatingPolicy"
+    },
+    "quote": "Fixed issue to block mutating policies upon compilation errors (#13972)",
+    "remediation": "Fix MutatingPolicies whose CEL does not compile; they are refused on the next create/update.",
+    "verifyCommand": "kubectl get mutatingpolicies.policies.kyverno.io -o json 2>/dev/null | jq -r '.items[] | select((.status.conditionStatus.ready // true) == false) | .metadata.name'  # each row is a MutatingPolicy Kyverno reports not ready",
+    "introducedIn": [
+      "1.15.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-helper-images-changed",
+    "severity": "LOW",
+    "title": "The chart's hook-Job images change — air-gapped mirrors need the image of the target version",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "registry mirrors live outside the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "registry: registry.k8s.io",
+    "remediation": "The chart's Helm hook Jobs pull helper images that changed three times. The webhooks-cleanup image (`webhooksCleanup.image`, used by the pre-delete hooks) is `bitnami/kubectl` up to 1.14.4 and again on 1.15.0 (cut before the 1.14.5 backport), `alpine/kubectl` on 1.14.5, `registry.k8s.io/kubectl` from 1.15.1 and `ghcr.io/kyverno/readiness-checker` from 1.18.0; the post-upgrade report-cleanup hook (`policyReportsCleanup.image`) is `alpine/kubectl` on 1.14.5 and is gone from 1.15.1. Hooks run with the TARGET chart's values, so before an air-gapped upgrade mirror the image your target version uses (or pin your own with those values). On 1.14.4 or older the hooks still name `bitnami/kubectl` tags that are no longer published: the pre-delete hooks stall in ImagePullBackOff and `helm uninstall` hangs unless the image is overridden (seen with 1.13.6 on rtz-box) — and an upgrade TO 1.14.4 or 1.15.0 runs a post-upgrade hook with them.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-apicall-cross-namespace",
+    "severity": "HIGH",
+    "title": "A namespaced Policy can no longer make an apiCall outside its own namespace (1.15.3, 1.16.3, 1.17.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "apiCall paths are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "fix: prevent cross-namespace access in apiCall",
+    "remediation": "In a namespaced `Policy` every context `apiCall.urlPath` must name the policy's own namespace: a path into another namespace, a path with no namespace segment (cluster-scoped resources, cluster-wide lists) and every `apiCall.service` call are refused (\"path ... refers to namespace ..., which is different from the policy namespace\", \"path ... does not contain a namespace segment, which is required for namespaced policies\"). There is no opt-out. Move such a rule into a ClusterPolicy scoped with `match.resources.namespaces`, or keep the lookup inside the policy's namespace. ClusterPolicies are not affected.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace as $ns | select([.. | objects | .apiCall? // empty | objects] | any((.service != null) or ((.urlPath // \"\") | test(\"/namespaces/\" + $ns + \"(/|$)\") | not))) | \"Policy \\($ns)/\\(.metadata.name)\"'  # each row is a namespaced Policy whose apiCall calls a service or a path that does not literally name its own namespace (a path built from a variable is listed too: check what it resolves to)",
+    "introducedIn": [
+      "1.15.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.15-context-size-limit",
+    "severity": "MEDIUM",
+    "title": "A rule's context is capped at 2Mi by default (1.15.3, 1.16.3, 1.17.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the size of the data a rule loads is only known when it runs"
+    },
+    "quote": "feat(engine): add context size limit",
+    "remediation": "ClusterPolicy / Policy rules that load more than 2Mi into their context (a cluster-wide `apiCall` list, a large ConfigMap or GlobalContextEntry) now fail with \"context size limit exceeded: N bytes exceeds limit of N bytes\". Narrow the call (a namespaced path, a `jmesPath` that keeps only what the rule reads) or raise the limit: key `maxContextSize` in the `kyverno` ConfigMap, chart value `config.maxContextSize` (a quantity; the string `\"0\"` disables the check — an unquoted 0 is dropped by the chart).",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .context? // empty | arrays | .[] | select(.apiCall != null or .globalReference != null or .configMap != null)] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row loads API, global-context or ConfigMap data into a rule context — the entries that can exceed the limit",
+    "introducedIn": [
+      "1.15.3"
+    ]
+  }
+]

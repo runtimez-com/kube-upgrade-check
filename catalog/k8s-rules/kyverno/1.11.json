@@ -1,0 +1,121 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.11-policy-reports-per-resource",
+    "severity": "MEDIUM",
+    "title": "PolicyReports are now one per resource, named by UID, instead of one per policy",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "PolicyReports are not collected"
+    },
+    "quote": "Policy Reports are now created on a _per-resource_ basis and using a UID as the name rather than the previous behavior of _per-policy_.",
+    "remediation": "Update dashboards, alerts and scripts that read PolicyReports by name or expect one report per policy (Policy Reporter, custom exporters). Reports are now named by the resource UID and removed with the resource.",
+    "verifyCommand": "kubectl get policyreports.wgpolicyk8s.io -A --no-headers 2>/dev/null | head -5  # rows are current reports; after 1.11 their names are resource UIDs",
+    "coversNotes": [
+      "Blog: Policy Report Enhancements (With the introduction of Kyverno 1.11)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-cosign2-rekor-url-required",
+    "severity": "HIGH",
+    "title": "Cosign 2.0: image verification needs an explicit Rekor URL (or ignoreTlogs / ignoreSCT)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "verifyImages attestor settings are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "verifyImagesTypes[]",
+      "value": "^(Cosign|)$"
+    },
+    "quote": "In accordance with Cosign 2.0 updates, the Rekor URL is now required in a policy.",
+    "remediation": "Keyed cosign signatures without a transparency-log entry now fail verification (a missing `rekor` block means the public Rekor). For images signed without Rekor set `rekor.ignoreTlog: true` and `ctlog.ignoreSCT: true` on the attestor (the field is `ignoreTlog` — a misspelt field is pruned silently by the API server); otherwise the Pods are blocked.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?.verifyImages[]?.attestors[]?.entries[]?; has(\"keys\") and (.keys.rekor == null))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a cosign key attestor without a rekor block"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-policy-exceptions-enabled-by-default",
+    "severity": "MEDIUM",
+    "title": "PolicyExceptions are enabled by default — existing exceptions start exempting resources",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PolicyException",
+      "target": "apiGroup",
+      "value": "kyverno.io",
+      "reason": "read from the kyverno.io PolicyExceptions in the cluster"
+    },
+    "quote": "Changed the default value of `--enablePolicyException` from `false` to `true`.",
+    "remediation": "Review the PolicyExceptions named: from 1.11 they take effect unless the admission controller runs with `--enablePolicyException=false`. Restrict who can create PolicyExceptions (RBAC) and, from 1.13, the namespace they may live in.",
+    "verifyCommand": "kubectl get policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an exception that becomes active",
+    "coversNotes": [
+      "v1.11.0 Changed: Policy Exceptions are now enabled by default (#8545)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-jsonpatch-library-replaced",
+    "severity": "LOW",
+    "title": "The JSON patch implementation was replaced — some mutations behave slightly differently",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "mutate rule patches are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^mutate$"
+    },
+    "quote": "Replaced the internal package used to apply JSON patches. This resulted in some fixes and slight behavioral changes (#7401, #7452)",
+    "remediation": "Re-test mutate rules that use `patchesJson6902` (especially array index and `remove` operations) in a staging cluster before upgrading.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?.mutate?; .patchesJson6902 != null)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row uses JSON 6902 patches"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-last-applied-patches-annotation-removed",
+    "severity": "LOW",
+    "title": "Kyverno no longer writes the `policies.kyverno.io/last-applied-patches` annotation",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "tooling that reads the annotation lives outside the cluster"
+    },
+    "quote": "The `policies.kyverno.io/last-applied-patches` annotation upon successful mutation has been removed (#7438)",
+    "remediation": "Stop relying on the annotation in scripts or audits; use PolicyReports or Kyverno events to see which mutations applied.",
+    "coversNotes": [
+      "v1.11.0 Helm: #7438 chore: remove last-applied-patches annotation"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-enforce-skips-unchanged-violations-on-update",
+    "severity": "MEDIUM",
+    "title": "Enforce no longer blocks an UPDATE of a resource that already violated the rule the same way (1.11.2, 1.12.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a resource violated a rule before the upgrade is not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "Fixed an issue allowing changes to pre-existing resources in violation of a Validation policy in Enforce mode (#9027)",
+    "remediation": "Expect pre-existing violators to stay editable: an UPDATE whose validation result is the same as the old object's is now skipped instead of denied (d3d0eb354, `IsSameRuleResponse` → skip). Policies that relied on blocking every change to a non-compliant resource — e.g. the `restrict-scale` sample on `Deployment/scale` — stop doing so; read PolicyReports to find the existing violators and fix them directly.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.validationFailureAction // \"\" | test(\"(?i)enforce\")) or any(.spec.rules[]?.validate?; (.failureAction // \"\") | test(\"(?i)enforce\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a policy that enforces",
+    "introducedIn": [
+      "1.11.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.11-deployment-scale-condition-anchor",
+    "severity": "LOW",
+    "title": "Policies on `Deployment/scale` (restrict-scale sample) must use a condition anchor (from 1.11.2)",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "matchKinds[]",
+      "value": "(?i)/scale$",
+      "reason": "read from the kinds named in each policy's match blocks"
+    },
+    "quote": "The policy that applies to `Deployment/scale` subresource has been changed to use condition anchor for the condition check.",
+    "remediation": "Update policies copied from `restrict-scale` to the current library version (condition anchor) or they stop blocking scale actions.",
+    "introducedIn": [
+      "1.11.2"
+    ]
+  }
+]

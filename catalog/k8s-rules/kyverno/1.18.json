@@ -1,0 +1,120 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.18-configmap-namespace-restricted",
+    "severity": "HIGH",
+    "title": "A namespaced Policy can only read ConfigMaps in its own namespace (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "context entries are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "restrict configmap access for namespaced policies",
+    "remediation": "In a namespaced `Policy` a context `configMap` entry that names another namespace is refused (\"configMap namespace ... is different from policy namespace ...\"), and an entry with NO namespace now reads the policy's namespace — it used to read `default`. A shared lookup ConfigMap in `default`, `kyverno` or any other namespace stops resolving. Copy the ConfigMap into the policy's namespace, or move the rule into a ClusterPolicy. ClusterPolicies are not affected.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace as $ns | select([.. | objects | .context? // empty | arrays | .[] | .configMap? // empty | objects] | any((.namespace // \"\") != $ns)) | \"Policy \\($ns)/\\(.metadata.name)\"'  # each row is a namespaced Policy reading a ConfigMap with no namespace set or one that is not literally its own",
+    "introducedIn": [
+      "1.16.4",
+      "1.17.2",
+      "1.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.18-apicall-scoped-token",
+    "severity": "MEDIUM",
+    "title": "Service calls from policies carry a scoped token with audience `kyverno-svc.kyverno.io` (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the called services authenticate Kyverno is outside the cluster objects collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "Use scoped token for request authorization in HTTP context",
+    "remediation": "Kyverno no longer sends its own ServiceAccount token to the services policies call. `apiCall.service` requests (and, from 1.18.0, CEL `http.Get` / `http.Post`) carry a separate projected token with audience `kyverno-svc.kyverno.io`, mounted at /var/run/secrets/kyverno/apicall/token from the `apicall-token` volume the chart adds (1 h expiry). A service that authenticates the caller by TokenReview against the API server's default audience starts rejecting the call: accept the new audience there, or set chart value `apiCallToken.audience` (`\"\"` restores the cluster's default audience). Manifests not rendered by the chart must add the projected volume — without it the request is sent with no Authorization header.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .apiCall? // empty | objects | .service? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row makes an apiCall.service call",
+    "introducedIn": [
+      "1.16.4",
+      "1.17.2",
+      "1.18.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.18-http-calls-blocklist",
+    "severity": "LOW",
+    "title": "CEL HTTP calls from namespaced policies are checked against a blocklist",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "policy HTTP targets are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedValidatingPolicy"
+    },
+    "quote": "HTTP context loading now enforces a configurable blocklist and scoped token authorization",
+    "remediation": "In 1.18 the blocklist covers CEL `http.Get`/`http.Post` in namespaced policies only (cluster-scoped policies are exempt, #15880; apiCall.service is not covered until 1.19.1) — and HTTP in namespaced policies is already off by default since the CVE-2026-4789 fix. Adjust the list with `--httpBlocklist` / `FLAG_HTTP_BLOCKLIST` if a namespaced policy calls a blocked address.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep '^namespaced' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"http[.](Get|Post)\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a namespaced CEL policy that makes an HTTP call (only the kinds this cluster serves are listed)",
+    "coversNotes": [
+      "v1.18.0 New Features: Secure HTTP calls: enforce blocklist and add FLAG_HTTP_BLOCKLIST",
+      "v1.18.0 Policy Engine: Fix: bypass blocklist for cluster-scoped HTTP policies (#15880)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.18-auto-delete-webhooks-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`--autoDeleteWebhooks` is removed from the admission controller",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?autoDeleteWebhooks(=|$)",
+      "reason": "checked in the container args of the Kyverno Deployments (admission controller) — a flag passed any other way is not scanned"
+    },
+    "quote": "Fix: remove finalizers and workarounds around uninstall",
+    "remediation": "Remove `--autoDeleteWebhooks` from the admission controller's extra args (present in v1.17.2 cmd/kyverno/main.go:387, gone in v1.18.0 with cce31df0a) and drop `webhooksCleanup.autoDeleteWebhooks` from values; an unknown flag stops the container at start. Check that no Kyverno webhook configuration keeps a finalizer the 1.18 controller no longer clears.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?autoDeleteWebhooks(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes the removed flag ; kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations -o json | jq -r '.items[] | select(.metadata.name | test(\"kyverno\")) | select(.metadata.finalizers != null) | \"\\(.metadata.name) \\(.metadata.finalizers | join(\",\"))\"'  # second block: Kyverno webhook configurations still carrying a finalizer"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.18-helper-images-changed",
+    "severity": "LOW",
+    "title": "The chart's hook-Job images change — air-gapped mirrors need the image of the target version",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "registry mirrors live outside the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "Replace the `aerosound` readiness image with a purpose-built `readiness-checker` image",
+    "remediation": "The chart's Helm hook Jobs pull helper images that changed three times. The webhooks-cleanup image (`webhooksCleanup.image`, used by the pre-delete hooks) is `bitnami/kubectl` up to 1.14.4 and again on 1.15.0 (cut before the 1.14.5 backport), `alpine/kubectl` on 1.14.5, `registry.k8s.io/kubectl` from 1.15.1 and `ghcr.io/kyverno/readiness-checker` from 1.18.0; the post-upgrade report-cleanup hook (`policyReportsCleanup.image`) is `alpine/kubectl` on 1.14.5 and is gone from 1.15.1. Hooks run with the TARGET chart's values, so before an air-gapped upgrade mirror the image your target version uses (or pin your own with those values). On 1.14.4 or older the hooks still name `bitnami/kubectl` tags that are no longer published: the pre-delete hooks stall in ImagePullBackOff and `helm uninstall` hangs unless the image is overridden (seen with 1.13.6 on rtz-box) — and an upgrade TO 1.14.4 or 1.15.0 runs a post-upgrade hook with them.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "Chart kyverno image default: ghcr.io/kyverno/readiness-checker (was registry.k8s.io/kubectl)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.18-generator-namespace-boundary",
+    "severity": "MEDIUM",
+    "title": "A namespaced CEL policy can no longer generate into another namespace (GHSA-79gf-7frw-68m9; 1.18.2, 1.19.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CEL expressions are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedGeneratingPolicy|NamespacedMutatingPolicy|GeneratingPolicy"
+    },
+    "quote": "fix(gpol,mpol): enforce namespace boundary in generator.apply()",
+    "remediation": "`generator.apply()` in a NamespacedGeneratingPolicy (and in a NamespacedMutatingPolicy) is confined to the policy's own namespace: a resource aimed at another namespace is refused, and a namespaced policy cannot emit a cluster-scoped resource. Move generation that crosses namespaces into a cluster-scoped GeneratingPolicy. Check each GeneratingPolicy too: one that passes a namespace argument while generating a cluster-scoped kind now errors.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E '(generating|namespacedmutating)polic' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"generator[.]apply\"; \"i\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a CEL policy that calls generator.apply",
+    "introducedIn": [
+      "1.18.2"
+    ]
+  }
+]

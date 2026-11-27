@@ -1,0 +1,382 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.19-clusterpolicy-deprecated",
+    "severity": "LOW",
+    "title": "ClusterPolicy / Policy are deprecated (removed from execution in 1.20)",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "are officially deprecated** and will be **removed in v1.20**.",
+    "remediation": "Migrate each ClusterPolicy and Policy to the CEL policy types with the migration guide before upgrading to 1.20, which stops executing them.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy policy object",
+    "coversNotes": [
+      "Deprecations (overview)",
+      "Blog: TL;DR (Official deprecation of ClusterPolicy and Policy)",
+      "Blog: Deprecations and Removal Schedule",
+      "Blog: Migrating",
+      "v1.19.0 What's Changed: feat: surface deprecation of legacy kyverno.io policy types",
+      "v1.19.1 What's Changed: feat: phase1 deprecation warning plumbing and CLI warning",
+      "v1.19.1 What's Changed: feat: add deprecation warnings to legacy CRD versions"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-cleanup-policies-deprecated",
+    "severity": "LOW",
+    "title": "CleanupPolicy / ClusterCleanupPolicy are deprecated (removed from execution in 1.20)",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterCleanupPolicy|CleanupPolicy"
+    },
+    "quote": "are deprecated and will be **removed in v1.20**. Use [DeletingPolicy](/docs/policy-types/deleting-policy) instead.",
+    "remediation": "Rewrite each (Cluster)CleanupPolicy as a DeletingPolicy before upgrading to 1.20.",
+    "verifyCommand": "kubectl get cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy cleanup policy",
+    "coversNotes": [
+      "Blog: TL;DR (Deprecation of CleanupPolicy/ClusterCleanupPolicy and the legacy)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-legacy-policyexception-deprecated",
+    "severity": "LOW",
+    "title": "The kyverno.io PolicyException is deprecated (removed from execution in 1.20)",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PolicyException",
+      "target": "apiGroup",
+      "value": "kyverno.io",
+      "reason": "read from the kyverno.io PolicyExceptions (not the policies.kyverno.io ones)"
+    },
+    "quote": "is deprecated and will be **removed in v1.20**. Use the [`policies.kyverno.io` PolicyException](/docs/guides/exceptions) instead.",
+    "remediation": "Recreate each exception as a `policies.kyverno.io/v1` PolicyException targeting the migrated CEL policy.",
+    "verifyCommand": "kubectl get policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy exception"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-cel-policies-v1alpha1-deprecated",
+    "severity": "LOW",
+    "title": "`policies.kyverno.io/v1alpha1` is deprecated — store and write v1",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "\\.policies\\.kyverno\\.io$",
+      "target": "storedVersions[]",
+      "value": "^v1alpha1$",
+      "reason": "read from each named CRD's status.storedVersions (version names only)"
+    },
+    "quote": "Update your manifests to use `policies.kyverno.io/v1`.",
+    "remediation": "Rewrite manifests to `policies.kyverno.io/v1` and, after upgrading, run `kyverno migrate --resource <crd>` so stored objects leave v1alpha1 (it rewrites them to the storage version, still v1beta1 in the v1.20.0 CRDs — the guide's \"moves to v1 in v1.20\" did not ship).",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"^policies\\\\.kyverno\\\\.io$\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) stored=\\(.status.storedVersions | join(\",\"))\"'  # each row is a CEL policy CRD and the versions it still stores",
+    "coversNotes": [
+      "Storage Versions"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-globalcontextentry-v2alpha1-deprecated",
+    "severity": "LOW",
+    "title": "GlobalContextEntry `kyverno.io/v2alpha1` is deprecated — use v2",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^globalcontextentries\\.kyverno\\.io$",
+      "target": "storedVersions[]",
+      "value": "^v2alpha1$",
+      "reason": "read from each named CRD's status.storedVersions (version names only)"
+    },
+    "quote": "only the older `kyverno.io/v2alpha1` API version is deprecated; use `kyverno.io/v2`.",
+    "remediation": "Write GlobalContextEntries as `kyverno.io/v2` and migrate stored objects off v2alpha1.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"^kyverno\\\\.io$\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) stored=\\(.status.storedVersions | join(\",\"))\"'  # each row is a kyverno.io CRD and the versions it still stores"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-crds-moved-to-kyverno-api-chart",
+    "severity": "LOW",
+    "title": "The chart installs CRDs through the `kyverno-api` dependency (crds.install)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how CRDs are managed outside the chart is not visible"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "target": "group",
+      "value": "^(kyverno\\.io|policies\\.kyverno\\.io|reports\\.kyverno\\.io)$"
+    },
+    "quote": "Starting with v1.19, the Kyverno CRDs are managed through a dedicated `kyverno-api` chart dependency, controlled by the existing `crds.install` value.",
+    "remediation": "The chart has shipped the policies.kyverno.io CRDs through the `kyverno-api` dependency since 1.17.0 (Chart.yaml; the `crds` subchart lost them then) — the 1.19 guide announces it. Coming from 1.16 or older: if you install CRDs separately or set `crds.install: false`, install them yourself before upgrading; with `crds.install: true` check Helm adopts the existing CRDs (ownership labels/annotations) instead of failing.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"kyverno\\\\.io$\")) | \"\\(.metadata.name) managed-by=\\(.metadata.labels[\"app.kubernetes.io/managed-by\"] // \"-\") release=\\(.metadata.annotations[\"meta.helm.sh/release-name\"] // \"-\")\"'  # each row is a Kyverno CRD and who manages it",
+    "coversNotes": [
+      "Blog: Helm Chart Changes"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-per-rule-failure-action-honoured",
+    "severity": "MEDIUM",
+    "title": "Each rule's own `failureAction` now decides blocking — mixed-action policies change in both directions",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a policy mixes per-rule actions is not one projected field"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleFailureActions[]",
+      "value": ".+"
+    },
+    "quote": "fix(engine): honor per-rule failureAction in the admission block",
+    "remediation": "Before 1.19 the FIRST validate rule with a `failureAction` decided for the whole policy (engineresponse.go@v1.18.2). From 1.19 each rule's own action applies: in a policy that mixes Audit and Enforce rules, Enforce rules that followed an Audit one start blocking, and Audit rules that followed an Enforce one stop blocking. Check each policy listed.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.spec.rules[]?.validate?.failureAction // empty | ascii_downcase] | unique | .[1] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row mixes Audit and Enforce rules"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-imagevalidatingpolicy-required-enforced",
+    "severity": "MEDIUM",
+    "title": "ImageValidatingPolicy `required` is now enforced",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ImageValidatingPolicy fields are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ImageValidatingPolicy"
+    },
+    "quote": "fix: IVPOL required has no effect (Cherry-pick #16853)",
+    "remediation": "Images an ImageValidatingPolicy marks `required` that were admitted unverified are now blocked — verify the images those policies cover are signed before upgrading.",
+    "verifyCommand": "kubectl get imagevalidatingpolicies.policies.kyverno.io -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"\\\"required\\\":true\")) | .metadata.name'  # each row sets required"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-apicall-service-blocklist",
+    "severity": "LOW",
+    "title": "The HTTP blocklist now covers cluster-scoped CEL policies (1.19.0) and apiCall.service calls (1.19.1)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "policy HTTP targets are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "fix: apply HTTP blocklist to apiCall.service executor (cherry-pick #17234)",
+    "remediation": "Calls to a blocked address fail after the upgrade. The default list is narrow — 169.254.169.254, 169.254.170.253 (cloud metadata), metadata.google.internal, 127.0.0.0/8 and ::1 — so only policies calling metadata endpoints or loopback are hit; allow a target with `--httpBlocklist` / `FLAG_HTTP_BLOCKLIST` first.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .service? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row makes an apiCall.service call",
+    "coversNotes": [
+      "v1.19.0 What's Changed: update blocklist to allow in-cluster HTTP calls by",
+      "v1.19.0 What's Changed: fix: revert 15880 - support httpAllowList and httpBlockList",
+      "v1.19.1 What's Changed: fix: harden apiCall.service egress proxy path and cover"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-image-verify-at-admission",
+    "severity": "LOW",
+    "title": "Image verification runs at admission instead of trusting earlier verification metadata (1.19.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "verification annotations are written by Kyverno"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^verifyImages$"
+    },
+    "quote": "fix(imageverify): verify at admission instead of trusting prior-stage metadata",
+    "remediation": "Expect image verification to run again on resources that carried Kyverno's verified annotation; check registry access and rate limits for verifyImages policies. The same release measures the existing 10 MB payload limit on DECOMPRESSED bytes and extends it to the image config blob and cosign v3 bundles (the referrers index is capped at 1 MB), so a large compressed attestation (an SBOM) that passed before can be refused — raise the limit with the new `--imageVerifyPayloadLimit` (bytes) on the admission controller.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"verifyImages\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a verifyImages rule",
+    "coversNotes": [
+      "v1.19.2: Image verification and attestation hardening (Critical and High)",
+      "v1.19.2 What's Changed: fix(imageverify): bound the reads image verification makes from"
+    ],
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-namespaced-policy-webhook-scope",
+    "severity": "MEDIUM",
+    "title": "CEL policies sharing webhook selectors were silently not called — they start enforcing; namespaced ones are confined to their namespace",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which namespaced policies the webhooks routed before is not visible"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedValidatingPolicy|NamespacedMutatingPolicy|NamespacedGeneratingPolicy|NamespacedDeletingPolicy|NamespacedImageValidatingPolicy|ValidatingPolicy|MutatingPolicy|GeneratingPolicy|ImageValidatingPolicy"
+    },
+    "quote": "fix(webhook): scope namespaced policies to their own namespace",
+    "remediation": "Before 1.19.0, when several CEL policies (Validating / Mutating / Generating / ImageValidating, cluster-scoped or namespaced) carried their own namespaceSelector / objectSelector, the last one processed overwrote the webhook's selector and the others were silently never called. 1.19.0 groups webhooks by selector, so those policies start validating / mutating after the upgrade — review each one listed (and its `validationActions`) as if it were newly created, and set `Audit` first where you are not sure. The same release confines Namespaced* policies to their own namespace: a NamespacedImageValidatingPolicy that was evaluated outside it stops applying there.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E '(validating|mutating|generating)polic' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) \\((.spec.validationActions // []) | join(\",\"))\"'  # each row is a CEL policy and its validationActions"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-globalcontext-denied-in-namespaced",
+    "severity": "HIGH",
+    "title": "Namespaced policies can no longer read GlobalContextEntries (1.19.1, 1.20.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "context entries and CEL expressions are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy|NamespacedValidatingPolicy|NamespacedMutatingPolicy|NamespacedGeneratingPolicy|NamespacedDeletingPolicy|NamespacedImageValidatingPolicy"
+    },
+    "quote": "fix: deny globalContext in namespaced policies",
+    "remediation": "A legacy namespaced `Policy` with a `context.globalReference` entry and a Namespaced* CEL policy that calls `globalContext.*` are refused (\"globalReference is not allowed in namespaced policies\", \"globalContext.* is not allowed in namespaced policies\"); there is no opt-out. Move the rule into a cluster-scoped policy (ClusterPolicy / ValidatingPolicy / ...) limited to the namespace with its match block, or replace the lookup with a ConfigMap in the policy's namespace.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .globalReference? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"' ; kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E '^namespaced' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"globalContext[.]\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a namespaced policy that reads a GlobalContextEntry",
+    "introducedIn": [
+      "1.19.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-ivpol-exception-scope",
+    "severity": "HIGH",
+    "title": "An exception to an ImageValidatingPolicy that lists `images` or `allowedValues` no longer exempts anything (GHSA-5cjf-wwfg-pj4c; 1.19.1, 1.20.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "exception fields are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PolicyException",
+      "target": "apiGroup",
+      "value": "policies.kyverno.io"
+    },
+    "quote": "cherry-pick: fix IVPol PolicyException scope bypass (GHSA-5cjf-wwfg-pj4c)",
+    "remediation": "A policies.kyverno.io PolicyException for an ImageValidatingPolicy used to skip the policy for the whole matched resource even when it named specific `images` / `allowedValues`. From 1.19.1 such a partial exception is IGNORED by image verification — every image, the listed ones included, is verified, and digest mutation is no longer skipped (pkg/image/verification/evaluator/policy.go: a partial exception is skipped until IVPol exposes allowed images to CEL). Pods the exception used to admit can start being blocked. Before upgrading, sign those images, or turn the exception into a full one (drop `images` / `allowedValues` and narrow it with `matchConditions`).",
+    "verifyCommand": "kubectl get policyexceptions.policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.images != null or .spec.allowedValues != null) | select(any(.spec.policyRefs[]?; (.kind // \"\") | test(\"ImageValidatingPolicy\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an exception to an image policy that lists images or allowedValues",
+    "introducedIn": [
+      "1.19.1"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-generate-provenance",
+    "severity": "HIGH",
+    "title": "Generate rules are authorised against the policy author, and downstreams must carry a provenance stamp (1.19.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "who created each policy and what each downstream carries is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^generate$"
+    },
+    "quote": "Generate authorization, clone namespace confinement, and internal-label protections",
+    "remediation": "Legacy generate rules change in 1.19.2, with no opt-out: (1) the user who creates or updates the policy must themselves be allowed to create the generated kind in the target namespace and to read the clone source — a GitOps ServiceAccount that could only write policies is now refused; (2) `generate.kind` / `apiVersion` must be static (\"generated resource apiVersion and kind must be static so authorization can be verified\"); (3) a namespaced `Policy` may only generate into its own namespace (\"generate.namespace ... must equal policy namespace ...\"); (4) downstream resources are stamped with a signed `generate.kyverno.io/provenance` annotation, and existing downstreams without it are skipped by clone-source sync and cleanup until their trigger is processed again or the policy runs with `generateExisting`; (5) the background controller's ServiceAccount needs get / create / patch (and update / delete for synchronize) on every generated kind. The signing key lives in Secret `kyverno-generate-provenance` in Kyverno's namespace — include it in backups; deleting it invalidates every stamp. A new webhook `protect-generation-labels.kyverno.svc` (failurePolicy Fail) guards Kyverno's generate labels.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"generate\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a generate rule; check its author's RBAC, that kind and apiVersion carry no {{ }}, and for a namespaced Policy that it generates into its own namespace",
+    "coversNotes": [
+      "v1.19.2 What's Changed: [release-1.19] fix: preserve legacy generation scope and ownership"
+    ],
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-cel-cost-limits",
+    "severity": "LOW",
+    "title": "CEL policy expressions are cost-limited (GHSA-m8p2-qqmx-j53x; 1.19.2, 1.20.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the cost of an expression is only known when it runs"
+    },
+    "quote": "CEL evaluation cost limits (Moderate): GHSA-m8p2-qqmx-j53x (#17989)",
+    "remediation": "Every CEL policy expression now runs under a budget — 1,000,000 cost units per expression, 10,000,000 per admission request, 3,000,000 per background evaluation, and 10 MB per function argument — with no flag to raise it. An expression over budget fails with \"cel: per-program cost limit exceeded\", \"cel: per-request cost budget exceeded\" or \"cel: argument or guard limit exceeded\". Policies that iterate large lists (every Pod in a namespace, nested `all()` / `exists()` over big objects) are the ones at risk: narrow the data they walk.",
+    "coversNotes": [
+      "v1.19.2 What's Changed: fix(cel): bound the cost of CEL policy expression"
+    ],
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-namespaced-legacy-context-confined",
+    "severity": "MEDIUM",
+    "title": "API calls from legacy policies are path-checked, and namespaced ones lose access to their own Namespace object (1.19.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "apiCall paths are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy|CleanupPolicy"
+    },
+    "quote": "API path validation and namespace confinement (Critical): GHSA-3xfv-vq8x-qhg4",
+    "remediation": "1.19.2 checks every `apiCall.urlPath`, in ClusterPolicies too: an absolute URL (scheme / host), a `#fragment`, a path that does not start with `/` or an empty path is refused; `..` segments and percent-encoding are resolved and the cleaned path is what is sent. For namespaced policies it also clamps a namespaced CleanupPolicy's context (apiCall, ConfigMap) to its own namespace like a namespaced Policy's, and a namespaced Policy / CleanupPolicy can no longer read its own Namespace object (`/api/v1/namespaces/<ns>`). CEL policies get the same validation of resource path segments. Rewrite the calls listed; move a rule that needs its Namespace object to a ClusterPolicy.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .apiCall? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) \\([.. | objects | .apiCall? // empty | .urlPath? // empty] | join(\" \"))\"'  # each row is a legacy policy that makes an apiCall, with its urlPaths",
+    "coversNotes": [
+      "v1.19.2 What's Changed: [1.19] fix(security): API path validation, apiCall canonicalization, mpol/cleanup"
+    ],
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-mutatingpolicy-target-confinement",
+    "severity": "MEDIUM",
+    "title": "A NamespacedMutatingPolicy can only mutate existing resources in its own namespace (1.19.2, 1.20.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "mutation targets are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedMutatingPolicy|MutatingPolicy"
+    },
+    "quote": "NamespacedMutatingPolicy target confinement (Critical and High): GHSA-jcw5-3wcg-fqx5",
+    "remediation": "Mutate-existing in a NamespacedMutatingPolicy is refused for a target outside the policy's namespace (\"target ... is outside policy namespace ... for mpol ...\"), and a MutatingPolicy mutation that changes a target's identity (apiVersion, kind, namespace, name) is refused. Move cross-namespace mutate-existing into a cluster-scoped MutatingPolicy.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E 'mutatingpolic' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.targetMatchConstraints != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a MutatingPolicy that mutates existing resources (targetMatchConstraints)",
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-policyexception-gates-in-generated-vap",
+    "severity": "MEDIUM",
+    "title": "Generated ValidatingAdmissionPolicies / MutatingAdmissionPolicies honour an exception only when Kyverno would (GHSA-qc9c-3fgf-cgq8; 1.19.2, 1.20.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which exceptions a generated admission policy carried is not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "PolicyException"
+    },
+    "quote": "PolicyException enforcement in generated admission policies (High): GHSA-qc9c-3fgf-cgq8 (#17987)",
+    "remediation": "When Kyverno generates a ValidatingAdmissionPolicy / MutatingAdmissionPolicy from a policy, a PolicyException used to be compiled into it unconditionally. From 1.19.2 the exception is included only if `--enablePolicyException` is on, the exception lives in a namespace `--exceptionNamespace` allows, it has not expired, and its policyRefs match. Resources that were exempt only in the API-server policy start being denied: check the two flags on the admission controller against the exceptions listed.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name) \\([.spec.template.spec.containers[].args[]? | select(test(\"^--?(enablePolicyException|exceptionNamespace)\"))] | join(\" \"))\"'  # each row is a Kyverno controller and the exception flags it runs with (none printed = exceptions are disabled by default)",
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-wildcard-substitution-bounds",
+    "severity": "LOW",
+    "title": "Legacy policies: wildcard patterns and variable substitution are bounded, and substituted output is not re-scanned (1.19.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "pattern and variable contents are not collected"
+    },
+    "quote": "Bounded wildcard matching, safer variable substitution, and panic prevention (High)",
+    "remediation": "In ClusterPolicy / Policy rules: a wildcard pattern over 2,048 characters (255 for annotation keys and values) and a JMESPath pattern over 1,024 are refused; one resource may trigger at most 5,000 substitutions / 10 MiB; text produced by a variable that itself contains `{{ }}` is no longer substituted a second time; and `*` is always a wildcard. Policies that built variable references out of other variables (nested `{{ }}` assembled at runtime) need rewriting. `In` / `NotIn` on a plain string value no longer errors on a miss — `NotIn` is now its complement, so a deny condition that used to error can now evaluate true and deny.",
+    "coversNotes": [
+      "v1.19.2 What's Changed: fix(engine): bound wildcard matching and variable substitution by"
+    ],
+    "introducedIn": [
+      "1.19.2"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.19-kyverno-policies-default-validatingpolicy",
+    "severity": "MEDIUM",
+    "title": "The kyverno-policies chart installs ValidatingPolicies by default — its ClusterPolicy-only values stop applying",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy",
+      "objectName": "^(disallow-capabilities|disallow-capabilities-strict|disallow-host-namespaces|disallow-host-path|disallow-host-ports|disallow-host-process|disallow-privileged-containers|disallow-privilege-escalation|disallow-proc-mount|disallow-selinux|restrict-apparmor-profiles|restrict-seccomp|restrict-seccomp-strict|restrict-sysctls|restrict-volume-types|require-non-root-groups|require-run-as-non-root-user|require-run-as-nonroot)$",
+      "target": "ruleTypes[]",
+      "value": "^validate"
+    },
+    "quote": "Default policyType is now ValidatingPolicy (policies.kyverno.io), set policyType to ClusterPolicy to keep installing the deprecated legacy policy types",
+    "remediation": "Upgrading the kyverno-policies (Pod Security Standards) chart to its 1.19 release (3.9.0) with default values replaces the PSS ClusterPolicies listed with ValidatingPolicies. `validationFailureAction` / `validationFailureActionByPolicy` carry over, but `policyExclude`, `policyPreconditions`, `validationFailureActionOverrides`, `validationAllowExistingViolations`, `autogenControllers`, `background` and `skipBackgroundRequests` are ignored by the new templates: exclusions you configured silently disappear — re-express them as `vpolExclude` / `vpolExcludeByPolicy`. The ValidatingPolicies are autogenerated for pod controllers (Deployments, ...) by default, but an exclusion that sets `excludeResourceRules` turns autogen off and that policy then checks Pods only. Set `policyType: ClusterPolicy` to keep the legacy policies through 1.19 (the option is gone in 1.20).",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-policies-\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE"
+  }
+]

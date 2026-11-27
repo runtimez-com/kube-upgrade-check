@@ -1,0 +1,41 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.14-image-registry-moved",
+    "severity": "MEDIUM",
+    "title": "The chart pulls Kyverno's images from `reg.kyverno.io` instead of `ghcr.io`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "registry mirrors, pull-through caches, egress rules and image allow-lists live outside the collected objects"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "^ghcr\\.io/kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "defaultRegistry: reg.kyverno.io",
+    "remediation": "From Kyverno 1.14.0 (chart 3.4.0) the admission, background, cleanup and reports controllers, the init container and the kyverno-cli hook image default to `reg.kyverno.io/kyverno/...` (values.yaml `image.defaultRegistry`; 1.13.3 made the same switch and 1.13.4 reverted it). Before upgrading, allow or mirror `reg.kyverno.io` wherever registries are restricted — egress firewall, containerd mirror, an image allow-list policy (including your own Kyverno policies) — or keep the old source by setting `image.registry: ghcr.io` on each component. An admission controller that cannot pull its image leaves the Kyverno webhooks unanswered.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | .metadata.namespace as $ns | (.spec.template.spec.containers[], .spec.template.spec.initContainers[]?) | \"\\($ns) \\(.name) \\(.image)\"'  # each row is an image a Kyverno controller runs today; ghcr.io rows move to reg.kyverno.io unless image.registry is set"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.14-helper-images-changed",
+    "severity": "LOW",
+    "title": "The chart's hook-Job images change — air-gapped mirrors need the image of the target version",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "registry mirrors live outside the cluster"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "repository: alpine/kubectl",
+    "remediation": "The chart's Helm hook Jobs pull helper images that changed three times. The webhooks-cleanup image (`webhooksCleanup.image`, used by the pre-delete hooks) is `bitnami/kubectl` up to 1.14.4 and again on 1.15.0 (cut before the 1.14.5 backport), `alpine/kubectl` on 1.14.5, `registry.k8s.io/kubectl` from 1.15.1 and `ghcr.io/kyverno/readiness-checker` from 1.18.0; the post-upgrade report-cleanup hook (`policyReportsCleanup.image`) is `alpine/kubectl` on 1.14.5 and is gone from 1.15.1. Hooks run with the TARGET chart's values, so before an air-gapped upgrade mirror the image your target version uses (or pin your own with those values). On 1.14.4 or older the hooks still name `bitnami/kubectl` tags that are no longer published: the pre-delete hooks stall in ImagePullBackOff and `helm uninstall` hangs unless the image is overridden (seen with 1.13.6 on rtz-box) — and an upgrade TO 1.14.4 or 1.15.0 runs a post-upgrade hook with them.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "v1.14.5 Others: Replaced kubectl image #14268"
+    ]
+  }
+]

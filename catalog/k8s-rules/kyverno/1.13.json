@@ -1,0 +1,172 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.13-wildcard-view-permissions-removed",
+    "severity": "MEDIUM",
+    "title": "Kyverno controllers lose wildcard view permissions — generate / mutate / reports on custom resources need explicit RBAC",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kyverno's effective RBAC is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^(generate|mutate|mutateExisting)$"
+    },
+    "quote": "In 1.13 the wildcard view permission was removed and a role binding to the default `view` role was added.",
+    "remediation": "If generate or mutate rules, or reports, cover custom resources, add get/list/watch for them under `admissionController.rbac.clusterRole.extraResources`, `backgroundController...` and `reportsController...` before upgrading. The upgrade guide shows the values that restore the old wildcard (not recommended).",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.spec.rules[]?.match | .. | .kinds? // empty | .[]] | any(test(\"\\\\.\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row matches a kind with a group (Group/Version/Kind) — likely a custom resource",
+    "coversNotes": [
+      "v1.13.0 Breaking Changes: This release contains the following breaking configuration changes",
+      "v1.13.0: Removal of wildcard permissions: prior versions contained wildcard",
+      "v1.13.0 Changed: Removed wildcard permissions (#10785)",
+      "Breaking Changes (overview)",
+      "Breaking Changes: Removal of wildcard permissions",
+      "Blog: Security Hardening",
+      "Blog: Removal of wildcard roles"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-policy-exceptions-namespace-restricted",
+    "severity": "HIGH",
+    "title": "PolicyExceptions are no longer honoured in every namespace by default (CVE-2024-48921)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which namespace the admission controller accepts exceptions from (--exceptionNamespace) is a Helm value"
+    },
+    "scope": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PolicyException",
+      "target": "apiGroup",
+      "value": "kyverno.io"
+    },
+    "quote": "the Helm chart values of the prior versions enabled exceptions by default for all namespaces.",
+    "remediation": "The 1.13 chart turns PolicyExceptions OFF (`features.policyExceptions.enabled: false`) and the binary honours none without an exception namespace (cmd/internal/engine.go@v1.13.0). Every exception stops exempting and the resources it covered start being blocked. Set `features.policyExceptions.enabled=true` AND `features.policyExceptions.namespace=<one namespace>` (move the exceptions there), or `namespace=\"*\"` to keep the old, insecure behaviour.",
+    "verifyCommand": "kubectl get policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"' ; kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?(enablePolicyException|exceptionNamespace)(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # first block: every exception; second: the controllers passing --enablePolicyException / --exceptionNamespace",
+    "coversNotes": [
+      "v1.13.0: Default exception settings: the Helm chart values of",
+      "Breaking Changes: Default exception settings",
+      "Blog: Removal of insecure configuration for exceptions"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-dropped-api-versions-stored",
+    "severity": "HIGH",
+    "title": "1.13 drops deprecated CRD versions — a version still in a CRD's storedVersions blocks the CRD update",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(cleanuppolicies|clustercleanuppolicies|policyexceptions)\\.kyverno\\.io$",
+      "target": "storedVersions[]",
+      "value": "^v2alpha1$",
+      "reason": "read from each named CRD's status.storedVersions (version names only)"
+    },
+    "quote": "Kyverno 1.13 drops deprecated API versions for its managed CustomResourceDefinitions.",
+    "remediation": "If this fires, the 1.12 chart's migration hook did not collapse storedVersions (the 1.13 migrate hook runs post-upgrade, after the CRD update has already failed). Migrate manually before upgrading: rewrite the objects to the stored version (kube-storage-version-migrator, or `kubectl get … -o yaml | kubectl replace -f -`), then remove the dropped version from the CRD's status.storedVersions.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"^kyverno\\\\.io$\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) stored=\\(.status.storedVersions | join(\",\"))\"'  # each row is a kyverno.io CRD with the versions it serves and still stores"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-intermediate-report-crds-removed",
+    "severity": "LOW",
+    "title": "The admissionreports / backgroundscanreports CRDs are removed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(cluster)?(admission|backgroundscan)reports\\.kyverno\\.io$",
+      "target": "group",
+      "value": "^kyverno\\.io$",
+      "reason": "reads whether the old intermediate report CRDs are still installed"
+    },
+    "quote": "Removed old intermediate reports types `admissionreports` and `backgroundscanreports` (#10083, #10500, #10504)",
+    "remediation": "After the upgrade, delete the leftover (cluster)admissionreports / (cluster)backgroundscanreports CRDs; 1.13 uses ephemeralreports.",
+    "verifyCommand": "kubectl get crd -o name | grep -E 'admissionreports|backgroundscanreports'  # each row is a leftover CRD",
+    "coversNotes": [
+      "v1.13.0 Changed: Removed old reports from Helm chart and disable"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-reports-chunk-size-flag-removed",
+    "severity": "MEDIUM",
+    "title": "`--reportsChunkSize` is removed — a reports controller still passed it refuses to start",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the 1.10-1.12 charts render --reportsChunkSize on every install and the 1.13 chart drops it itself, so the flag on today's Deployment says nothing about the upgraded one"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?reportsChunkSize(=|$)"
+    },
+    "quote": "Removed deprecated flag `reportsChunkSize`.",
+    "remediation": "Only a flag passed outside the chart's own rendering breaks: check `reportsController.extraArgs`, kustomize patches and hand-maintained manifests for `--reportsChunkSize` and remove it before upgrading. A plain Helm or release-manifest upgrade drops it (v1.12.7 `_helpers.tpl` renders it, v1.13.0 does not).",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?reportsChunkSize(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes the flag today; it matters only if it does not come from the chart",
+    "coversNotes": [
+      "v1.13.0 Changed: Remove reports chunking (#10597)"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-cleanup-jobs-values-removed",
+    "severity": "LOW",
+    "title": "The chart's `cleanupJobs` values are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "Removed cleanupJobs keys from Helm chart (#11242)",
+    "remediation": "Drop `cleanupJobs.*` from your values; the report and UpdateRequest cleanup CronJobs are gone (circuit breakers replace them).",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "v1.13.0 Changed: Removed cleanup cronjobs for updaterequests and ephemeralreports (#10249"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-spec-level-failure-action-deprecated",
+    "severity": "LOW",
+    "title": "Spec-level `validationFailureAction` (and its overrides, mutateExistingOnPolicyUpdate, generateExisting) are deprecated — set them per rule",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "validationFailureAction",
+      "value": "(?i)^enforce$",
+      "reason": "read from each policy's spec-level validationFailureAction; the CRD defaults it to Audit on every stored policy, so only an explicit Enforce is counted"
+    },
+    "quote": "Several policy settings are deprecated:",
+    "remediation": "Move `validationFailureAction` / `validationFailureActionOverrides` into each validate rule as `failureAction` / `failureActionOverrides`, and `mutateExistingOnPolicyUpdate` / `generateExisting` into the rule's mutate / generate block.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.validationFailureAction // \"\") | test(\"(?i)enforce\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row enforces through the spec-level action"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-policy-status-ready-deprecated",
+    "severity": "LOW",
+    "title": "Policy `.status.ready` is deprecated — read the Ready condition",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "tooling that reads policy status lives outside the cluster"
+    },
+    "quote": "(API) Deprecated the policy `status.ready` (#10999)",
+    "remediation": "Change scripts, dashboards and GitOps health checks that read `.status.ready` to read the `Ready` condition in `.status.conditions`."
+  },
+  {
+    "ruleId": "rtz-kyverno-1.13-rule-match-required",
+    "severity": "LOW",
+    "title": "Every rule must have a `match` block",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "rule match blocks are not collected as such"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "Fixed an issue to make `match` field required in rule API (#11048)",
+    "remediation": "Add a `match` block to any rule that has none; such a policy is refused on create/update.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; .match == null)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a rule without match"
+  }
+]

@@ -1,0 +1,139 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.12-deprecated-condition-operators-warned",
+    "severity": "LOW",
+    "title": "The condition operators `In` / `NotIn` are deprecated — Kyverno warns at admission (only invalid operators are refused)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "condition operators inside rules are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "Policies using long-deprecated or invalid operators in conditions (ex., `In` and `NotIn`) will be blocked.",
+    "remediation": "Replace `In` with `AnyIn`/`AllIn` and `NotIn` with `AnyNotIn`/`AllNotIn` in preconditions and deny conditions. Through 1.20 they still work: #8624 returns a deprecation warning for them (validate.go `checkDeprecatedOperator`) and refuses only operators that are not valid at all.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | select(has(\"key\")) | .operator? // empty] | any(. == \"In\" or . == \"NotIn\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row uses In or NotIn in a condition (label-selector matchExpressions are not counted)",
+    "coversNotes": [
+      "v1.12.0 Helm: #8624 feat: add fail/warn on deprecated/invalid operators"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-image-signature-repository-flag-removed",
+    "severity": "HIGH",
+    "title": "`--imageSignatureRepository` is removed — the controller refuses to start with it",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?imageSignatureRepository(=|$)",
+      "reason": "checked in the container args of the Kyverno Deployments (admission and background controllers) — a flag passed any other way is not scanned"
+    },
+    "quote": "The `--imageSignatureRepository` flag is deprecated and has no effect, use the `verifyImages.Repository` field instead (#9698)",
+    "remediation": "Remove `--imageSignatureRepository` from the Kyverno containers' args (Helm extraArgs) and set `repository` on the verifyImages rules instead. 1.12 no longer defines the flag (cmd/internal/flag.go@v1.12.0), so a container passing it exits at start.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?imageSignatureRepository(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes the removed flag",
+    "coversNotes": [
+      "v1.12.0 Helm: #9698 fix: remove deprecated imageSignatureRepository flag"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-omit-events-flag-renamed",
+    "severity": "HIGH",
+    "title": "`--omit-events` is renamed `--omitEvents` — a controller passed the old name refuses to start",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?omit-events(=|$)",
+      "reason": "checked in the container args of the Kyverno Deployments (admission, background and reports controllers) — a flag passed any other way is not scanned"
+    },
+    "quote": "#9572 fix: omit events flag",
+    "remediation": "Rename `--omit-events` to `--omitEvents` in the Kyverno containers' extra args (v1.11.5 cmd/kyverno/main.go:223 vs v1.12.0:264, same in the background and reports controllers). The chart renders the new name from `features.omitEvents` itself; only extraArgs or kustomize patches carry the old one.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?omit-events(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes the old flag name"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-schema-validation-deprecated",
+    "severity": "LOW",
+    "title": "`spec.schemaValidation` is deprecated and has no effect",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "schemaValidationSet",
+      "value": "^true$",
+      "reason": "read from whether each policy sets spec.schemaValidation"
+    },
+    "quote": "The `spec.schemaValidation` field is formally deprecated. As of 1.11 it has no effect. (#9189)",
+    "remediation": "Remove `spec.schemaValidation` from the policies named.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.schemaValidation != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row sets schemaValidation",
+    "coversNotes": [
+      "v1.12.0 Helm: #9189 fix: deprecate spec.schemaValidation"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-policyexception-v2alpha1-unserved",
+    "severity": "MEDIUM",
+    "title": "kyverno.io/v2alpha1 PolicyException (and CleanupPolicy) is no longer served",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the apiVersion a manifest was written in is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^(policyexceptions|cleanuppolicies|clustercleanuppolicies)\\.kyverno\\.io$",
+      "target": "storedVersions[]",
+      "value": "^v2alpha1$",
+      "reason": "read from each named CRD's status.storedVersions (version names only)"
+    },
+    "quote": "#9211 chore: remove v2alpha1 version of policy exceptions",
+    "remediation": "Rewrite every manifest (Git, Helm charts) that uses `kyverno.io/v2alpha1` for PolicyException, CleanupPolicy or ClusterCleanupPolicy to `kyverno.io/v2beta1`; the API server refuses the old version once 1.12's CRDs are applied.",
+    "verifyCommand": "kubectl get crd -o json | jq -r '.items[] | select(.spec.group | test(\"^kyverno\\\\.io$\")) | \"\\(.metadata.name) served=\\([.spec.versions[] | select(.served) | .name] | join(\",\")) stored=\\(.status.storedVersions | join(\",\"))\"'  # each row is a kyverno.io CRD; a stored or served v2alpha1 means objects were written in it"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-webhook-default-namespace-exclusions",
+    "severity": "MEDIUM",
+    "title": "Webhooks now exclude kube-system by default — policies stop applying there",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kyverno's rendered webhook namespaceSelector is rewritten by Kyverno at runtime"
+    },
+    "quote": "Added default exclusions in webhooks (#9950)",
+    "remediation": "The 1.12 chart excludes `kube-system` from every Kyverno webhook (values.yaml `config.webhooks`), so policies you enforced there stop applying. Override `config.webhooks` if kube-system must stay covered.",
+    "verifyCommand": "kubectl get validatingwebhookconfigurations,mutatingwebhookconfigurations -o json | jq -r '.items[] | select(.metadata.name | test(\"kyverno\")) | .metadata.name as $n | .webhooks[]? | \"\\($n) \\(.name) \\(.namespaceSelector | tostring)\"'  # each row is a Kyverno webhook and the namespaces it selects"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-wildcard-rbac-narrowed",
+    "severity": "LOW",
+    "title": "The chart's ClusterRoles no longer use wildcards",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kyverno's effective RBAC is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^(generate|mutateExisting)$"
+    },
+    "quote": "Refined permissions by removing wildcards (#9507, #9516)",
+    "remediation": "If generate or mutate-existing rules act on resources outside the chart's list, grant them through `*.rbac.clusterRole.extraResources` before upgrading.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"generate\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a generate rule that needs explicit RBAC on its targets",
+    "coversNotes": [
+      "v1.12.0 Helm: #9507 feat: add more granular rbac rules to"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.12-vap-cel-validated",
+    "severity": "LOW",
+    "title": "Kyverno validates ValidatingAdmissionPolicy CEL expressions and may block invalid ones",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ValidatingAdmissionPolicy expressions are not collected"
+    },
+    "quote": "Kyverno will validate ValidatingAdmissionPolicies' CEL expressions and show a warning, or block, if invalid (#9566)",
+    "remediation": "Fix any ValidatingAdmissionPolicy whose CEL expressions do not compile; Kyverno may refuse it on the next update.",
+    "verifyCommand": "kubectl get validatingadmissionpolicies -o name 2>/dev/null  # each row is a ValidatingAdmissionPolicy Kyverno will validate"
+  }
+]
