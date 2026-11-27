@@ -1,0 +1,136 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.16-apicall-cross-namespace",
+    "severity": "HIGH",
+    "title": "A namespaced Policy can no longer make an apiCall outside its own namespace (1.15.3, 1.16.3, 1.17.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "apiCall paths are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "fix: prevent cross-namespace access in apiCall",
+    "remediation": "In a namespaced `Policy` every context `apiCall.urlPath` must name the policy's own namespace: a path into another namespace, a path with no namespace segment (cluster-scoped resources, cluster-wide lists) and every `apiCall.service` call are refused (\"path ... refers to namespace ..., which is different from the policy namespace\", \"path ... does not contain a namespace segment, which is required for namespaced policies\"). There is no opt-out. Move such a rule into a ClusterPolicy scoped with `match.resources.namespaces`, or keep the lookup inside the policy's namespace. ClusterPolicies are not affected.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace as $ns | select([.. | objects | .apiCall? // empty | objects] | any((.service != null) or ((.urlPath // \"\") | test(\"/namespaces/\" + $ns + \"(/|$)\") | not))) | \"Policy \\($ns)/\\(.metadata.name)\"'  # each row is a namespaced Policy whose apiCall calls a service or a path that does not literally name its own namespace (a path built from a variable is listed too: check what it resolves to)",
+    "introducedIn": [
+      "1.15.3",
+      "1.16.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-context-size-limit",
+    "severity": "MEDIUM",
+    "title": "A rule's context is capped at 2Mi by default (1.15.3, 1.16.3, 1.17.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the size of the data a rule loads is only known when it runs"
+    },
+    "quote": "feat(engine): add context size limit",
+    "remediation": "ClusterPolicy / Policy rules that load more than 2Mi into their context (a cluster-wide `apiCall` list, a large ConfigMap or GlobalContextEntry) now fail with \"context size limit exceeded: N bytes exceeds limit of N bytes\". Narrow the call (a namespaced path, a `jmesPath` that keeps only what the rule reads) or raise the limit: key `maxContextSize` in the `kyverno` ConfigMap, chart value `config.maxContextSize` (a quantity; the string `\"0\"` disables the check — an unquoted 0 is dropped by the chart).",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .context? // empty | arrays | .[] | select(.apiCall != null or .globalReference != null or .configMap != null)] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row loads API, global-context or ConfigMap data into a rule context — the entries that can exceed the limit",
+    "introducedIn": [
+      "1.15.3",
+      "1.16.3"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-configmap-namespace-restricted",
+    "severity": "HIGH",
+    "title": "A namespaced Policy can only read ConfigMaps in its own namespace (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "context entries are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "restrict configmap access for namespaced policies",
+    "remediation": "In a namespaced `Policy` a context `configMap` entry that names another namespace is refused (\"configMap namespace ... is different from policy namespace ...\"), and an entry with NO namespace now reads the policy's namespace — it used to read `default`. A shared lookup ConfigMap in `default`, `kyverno` or any other namespace stops resolving. Copy the ConfigMap into the policy's namespace, or move the rule into a ClusterPolicy. ClusterPolicies are not affected.",
+    "verifyCommand": "kubectl get policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | .metadata.namespace as $ns | select([.. | objects | .context? // empty | arrays | .[] | .configMap? // empty | objects] | any((.namespace // \"\") != $ns)) | \"Policy \\($ns)/\\(.metadata.name)\"'  # each row is a namespaced Policy reading a ConfigMap with no namespace set or one that is not literally its own",
+    "introducedIn": [
+      "1.16.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-apicall-scoped-token",
+    "severity": "MEDIUM",
+    "title": "Service calls from policies carry a scoped token with audience `kyverno-svc.kyverno.io` (1.16.4, 1.17.2, 1.18.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "how the called services authenticate Kyverno is outside the cluster objects collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "fix: use scoped token for request authz",
+    "remediation": "Kyverno no longer sends its own ServiceAccount token to the services policies call. `apiCall.service` requests (and, from 1.18.0, CEL `http.Get` / `http.Post`) carry a separate projected token with audience `kyverno-svc.kyverno.io`, mounted at /var/run/secrets/kyverno/apicall/token from the `apicall-token` volume the chart adds (1 h expiry). A service that authenticates the caller by TokenReview against the API server's default audience starts rejecting the call: accept the new audience there, or set chart value `apiCallToken.audience` (`\"\"` restores the cluster's default audience). Manifests not rendered by the chart must add the projected volume — without it the request is sent with no Authorization header.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.. | objects | .apiCall? // empty | objects | .service? // empty] | .[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row makes an apiCall.service call",
+    "introducedIn": [
+      "1.16.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-mutatingpolicy-compile-errors-blocked",
+    "severity": "LOW",
+    "title": "MutatingPolicies with CEL compilation errors are refused (1.15.2, 1.16.0)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "compilation is Kyverno's"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "MutatingPolicy"
+    },
+    "quote": "Fixed issue to block mutating policies upon compilation errors (#13972)",
+    "remediation": "Fix MutatingPolicies whose CEL does not compile; they are refused on the next create/update.",
+    "verifyCommand": "kubectl get mutatingpolicies.policies.kyverno.io -o json 2>/dev/null | jq -r '.items[] | select((.status.conditionStatus.ready // true) == false) | .metadata.name'  # each row is a MutatingPolicy Kyverno reports not ready",
+    "introducedIn": [
+      "1.15.2",
+      "1.16.0"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-namespaced-policies-http-disabled",
+    "severity": "HIGH",
+    "title": "HTTP calls are disabled by default in namespaced CEL policies (CVE-2026-4789; 1.16.4, 1.17.2)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "CEL expressions are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedValidatingPolicy"
+    },
+    "quote": "[backport] chore(security): disable HTTP in namespaced policies by default (CVE-2026-4789)",
+    "remediation": "Namespaced CEL policies that call `http.Get`/`http.Post` stop compiling, so they stop enforcing. Move the call to a cluster-scoped policy, or re-enable it cluster-wide with `--allowHTTPInNamespacedPolicies=true` (env `FLAG_ENABLE_HTTP_IN_NAMESPACED_POLICIES`) on the admission and cleanup controllers — there is no per-namespace switch.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep '^namespaced' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"http[.](Get|Post)\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a namespaced CEL policy that makes an HTTP call (only the kinds this cluster serves are listed)",
+    "introducedIn": [
+      "1.16.4"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.16-chart-values-moved",
+    "severity": "LOW",
+    "title": "Chart values moved: `templating.*` → `global.templating.*`, `cleanupController.webhookServer.port` → `cleanupController.server.port`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "Fixed to make helm templating value global (#14144)",
+    "remediation": "Move `templating.*` under `global.templating.*` and a cleanup-controller `webhookServer.port` override to `cleanupController.server.port` (#13714, values-key diff v1.15.3 → v1.16.4). Helm ignores the old keys silently — a hostNetwork port override is dropped.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "v1.16.0 Added: Supported bind to a hostIP when in hostNetwork"
+    ]
+  }
+]

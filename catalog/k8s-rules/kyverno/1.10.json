@@ -1,0 +1,367 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.10-chart-v2-to-v3-no-direct-upgrade",
+    "severity": "HIGH",
+    "title": "Kyverno 1.10 (Helm chart v3) cannot be upgraded in place from chart v2 — the controllers were split and renamed",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "(^|-)kyverno$",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)",
+      "reason": "the chart v2 admission controller Deployment is named after the release (`kyverno`, `<release>-kyverno`); chart v3 names every controller `*-admission-controller` / `*-background-controller` / …, so a Deployment ending in `kyverno` running the Kyverno image is a v2-era install (a v2 release named e.g. `kyverno-prod` is not matched — the verify command lists every Kyverno Deployment)"
+    },
+    "quote": "Direct upgrades from v2 of the Helm chart to v3 are not supported due to the number of breaking changes and manual intervention is required.",
+    "remediation": "Plan a maintenance window: either back up every Kyverno policy (`kubectl get pol,cpol,cleanpol,ccleanpol,polex -A -o yaml`), uninstall, install chart v3 and restore, or scale `kyverno` to zero and upgrade with `--set upgrade.fromV2=true`. Before uninstalling, set `generate.synchronize: false` on data-type generate rules or the uninstall deletes their generated resources; after restoring, add `spec.generateExisting: true` to refresh them. Translate your values to the v3 names first (see the chart-values card). Raw YAML installs have no upgrade path: uninstall with the old manifest, install the new one.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(.metadata.name | test(\"-controller$\") | not) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a Kyverno Deployment not named *-controller: a chart v2 install",
+    "coversNotes": [
+      "v1.10.0 body: Kyverno 1.10 is a huge release which brings",
+      "v1.10.0: This release separates Kyverno into its 3 main",
+      "v1.10.0 Helm: Added a new upgrade.fromV2 flag in the Helm",
+      "Upgrading Kyverno (1.10)",
+      "Upgrade Kyverno with YAML",
+      "Upgrade Kyverno with Helm",
+      "Blog: Increased Scalability with Service Decomposition (Admission Controller: The heart of Kyverno)",
+      "Blog: Potentially Breaking Changes",
+      "CHANGELOG v1.10.0-rc.1: Refactored kyverno chart, migration instructions are available in",
+      "v1.10.0 Helm: #6045 feat: remove report controllers from kyverno admission"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-chart-v3-values-renamed",
+    "severity": "MEDIUM",
+    "title": "Chart v3 renamed or moved most values — a v2 values file is silently ignored where a key moved",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "target": "containers[].image",
+      "value": "(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)"
+    },
+    "quote": "In `v3` chart values changed significantly, please read the instructions below to migrate your values:",
+    "remediation": "Translate every value you set to its v3 name before upgrading: `replicaCount` → `admissionController.replicas`, `installCRDs` → `crds.install`, `namespace` → `namespaceOverride`, `image`/`resources`/`extraArgs`/`envVars` → `admissionController.container.*` (extraArgs become an object, not an array), `config.excludeUsername` → `config.excludeUsernames`, `config.excludeGroupRole` → `config.excludeGroups`, `generatecontrollerExtraResources` → `admissionController.rbac.clusterRole.extraResources`, and the rest of the list in the chart README. Image tags must be quoted strings, and an overridden registry goes in `image.registry`.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-[0-9]\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "v1.10.0 Helm: The namespace field is renamed to namespaceOverride (#6065)",
+      "v1.10.0 Helm: #6586 fix: remove obsolete generatecontrollerExtraResources from helm chart"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-aggregated-clusterroles-new-labels",
+    "severity": "MEDIUM",
+    "title": "Aggregated ClusterRoles must carry the new per-controller aggregation labels",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ClusterRoles are not collected"
+    },
+    "quote": "As a result of this decomposition, aggregated ClusterRoles may need to be updated to use the new label values depending on the controller which requires those permissions.",
+    "remediation": "Find every ClusterRole you wrote to extend Kyverno's permissions (for generate or mutate-existing rules on extra resources) and relabel it for the controller that now needs it — the background controller for generate and mutate-existing, the admission controller for admission-time lookups, the reports controller for background scans. Without the new label the permission is not aggregated and those policies are refused or fail.",
+    "verifyCommand": "kubectl get clusterroles -o json | jq -r '.items[] | select((.metadata.labels // {}) | to_entries | any(.key | test(\"kyverno\"))) | \"\\(.metadata.name) \\((.metadata.labels // {}) | to_entries | map(select(.key | test(\"kyverno\")) | \"\\(.key)=\\(.value)\") | join(\",\"))\"'  # each row is a ClusterRole carrying a Kyverno label; check the aggregation label names its controller"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-subresource-match-parent-form",
+    "severity": "MEDIUM",
+    "title": "Policies matching subresource kinds such as PodExecOptions must use the `Pod/exec` form",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "matchKinds[]",
+      "value": "^(\\S+/)?(PodExecOptions|PodAttachOptions|PodPortForwardOptions|PodProxyOptions|NodeProxyOptions|ServiceProxyOptions|Eviction|Binding|Scale|TokenRequest)$",
+      "reason": "read from the kinds named in each policy's match/exclude blocks (case-sensitive: the new parent form `Deployment/scale` names the subresource in lower case)"
+    },
+    "quote": "Policies which matched on some types of subresources (such as `PodExecOptions`) will need to be updated to use the standardized form of `<parent>/<subresource>` (`Pod/exec`).",
+    "remediation": "Rewrite each match on a subresource's own kind to its parent form — `PodExecOptions` → `Pod/exec`, `PodAttachOptions` → `Pod/attach`, `Eviction` → `Pod/eviction`, `Scale` → `Deployment/scale` (or the parent you meant). 1.10 refuses the old form when the policy is created or updated, and a policy matching a subresource must set `background: false`.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select([.spec.rules[]? | (.match, .exclude) | .. | .kinds? // empty | .[]] | any(test(\"^([^ ]+/)?(PodExecOptions|PodAttachOptions|PodPortForwardOptions|PodProxyOptions|NodeProxyOptions|ServiceProxyOptions|Eviction|Binding|Scale|TokenRequest)$\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row matches a subresource kind by its own name",
+    "coversNotes": [
+      "v1.10.0 Changed: Changed matching syntax when it comes to subresources",
+      "v1.10.0 Changed: Policies matching on subresources are now properly rejected"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-generate-rule-guardrails",
+    "severity": "MEDIUM",
+    "title": "Generate rules: several fields are immutable, variables are refused in clone/kind/apiVersion, and `generate.apiVersion` is required",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which generate fields carry variables or a missing apiVersion is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^generate$"
+    },
+    "quote": "The following fields in a generate rule are now immutable once created:",
+    "remediation": "For each policy with a generate rule: set `generate.apiVersion` if it is missing, remove variables from `clone`, `cloneList`, `generate.kind` and `generate.apiVersion`, and expect edits to `rules.name`, `match`, `exclude`, `preconditions` and the generate target (apiVersion, kind, namespace, name, clone) to be refused — delete and recreate the policy to change them. From 1.10.2 the target's scope is checked too: `generate.namespace` set on a cluster-scoped kind (\"target namespace must not be set for a cluster-wide resource\") or missing on a namespaced kind (\"target namespace must be set for a namespaced resource\") is refused. Policies breaking any of these are rejected on create/update, so re-applying an unchanged manifest from Git starts failing.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"generate\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a generate rule; check apiVersion is set, clone/kind/apiVersion carry no {{ }}, and namespace is set exactly when the kind is namespaced",
+    "coversNotes": [
+      "v1.10.0: Variables in these portions of a generate rule",
+      "v1.10.0: The generate.apiVersion field is now required in a",
+      "v1.10.0 Added: Kyverno will now ensure that generate rules are",
+      "v1.10.2 Fixed: Fixed an issue in target scope validations for"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-generate-mutate-existing-permission-check",
+    "severity": "MEDIUM",
+    "title": "Generate and mutate-existing policies are refused when Kyverno lacks the permissions to act on their targets",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Kyverno's effective RBAC is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^(generate|mutateExisting)$"
+    },
+    "quote": "Generate and \"mutate existing\" policies, once installed, will check to see if Kyverno has the necessary permissions to successfully execute them.",
+    "remediation": "Before upgrading, grant the background controller the verbs on every resource your generate and mutate-existing rules write (an aggregated ClusterRole labelled for the background controller). 1.10 also narrows the chart's default permissions, so a policy that worked through a broad default role is now refused at creation.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"generate\") or (.mutate.targets? != null))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row needs background-controller permissions on its targets"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-mutate-existing-requires-targets",
+    "severity": "MEDIUM",
+    "title": "`mutateExistingOnPolicyUpdate: true` now requires `mutate.targets[]` or the policy is refused",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether each mutate rule defines targets is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "mutateExistingOnPolicyUpdate",
+      "value": "^true$"
+    },
+    "quote": "also has `mutate.targets[]` defined or else the policy creation will be blocked",
+    "remediation": "Add `mutate.targets[]` to every mutate rule of a policy that sets `mutateExistingOnPolicyUpdate: true`, or drop the flag.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.mutateExistingOnPolicyUpdate == true) | select(any(.spec.rules[]?; has(\"mutate\") and (.mutate.targets == null))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row sets mutateExistingOnPolicyUpdate with a mutate rule that has no targets"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-verifyimages-audit-mutatedigest",
+    "severity": "MEDIUM",
+    "title": "A verifyImages policy in Audit mode is refused unless `mutateDigest: false`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "verifyImages rule fields are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^verifyImages$"
+    },
+    "quote": "When a verifyImages policy is created in `Audit` mode, its creation will be rejected unless `mutateDigest` is set to `false` (#6757)",
+    "remediation": "Set `mutateDigest: false` on every verifyImages rule of a policy whose failure action is Audit.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select((.spec.validationFailureAction // \"\" | test(\"(?i)audit\")) and any(.spec.rules[]?.verifyImages[]?; .mutateDigest != false)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is an Audit policy whose verifyImages rule does not set mutateDigest: false"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-image-registry-no-longer-defaulted",
+    "severity": "MEDIUM",
+    "title": "Kyverno no longer adds `docker.io` to images in mutation and context variables",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "whether a mutate rule relies on the defaulted registry is not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^mutate$"
+    },
+    "quote": "Mutation rules which change the `image` field in a Pod spec and which relied on `docker.io` being silently added by Kyverno",
+    "remediation": "In mutate rules that rewrite `image` and in JMESPath over context image references, stop assuming a registry is present: use the `images.*.registry` variable or `image_normalize()`.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; has(\"mutate\"))) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a mutate rule; check those that build an image string",
+    "coversNotes": [
+      "CHANGELOG v1.10.0-rc.1: Image references in the json context are not"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-generate-sync-deletes-downstream",
+    "severity": "MEDIUM",
+    "title": "With `synchronize: true`, deleting the policy, the trigger, or making the trigger stop matching now deletes the generated resources",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "generate rule synchronize settings are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^generate$"
+    },
+    "quote": "For a generate rule, when `synchronize: true`, if the triggering resource is either deleted or changed to no longer match, it will result in the generated resource being removed",
+    "remediation": "Review every synchronized generate rule before upgrading — and before any uninstall/reinstall migration: set `synchronize: false` first if the generated resources (NetworkPolicies, quotas, Secrets) must survive the policy being removed or recreated.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?.generate?; .synchronize == true)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a synchronized generate rule",
+    "coversNotes": [
+      "v1.10.0 Fixed: Fixed removal of generated resource when the generate",
+      "Blog: Generate Rule Refactoring (Even though generate rules have been)",
+      "v1.10.0 Helm: #6393 fix: delete downstream for a generate rule"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-generate-existing-on-policy-update-renamed",
+    "severity": "LOW",
+    "title": "`spec.generateExistingOnPolicyUpdate` is deprecated in favour of `spec.generateExisting`",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "generateExistingOnPolicyUpdateSet",
+      "value": "^true$",
+      "reason": "read from whether each policy sets spec.generateExistingOnPolicyUpdate"
+    },
+    "quote": "the field `spec.generateExistingOnPolicyUpdate` has been deprecated in favor of `spec.generateExisting`",
+    "remediation": "Rename `spec.generateExistingOnPolicyUpdate` to `spec.generateExisting` on the policies named.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(.spec.generateExistingOnPolicyUpdate != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row still sets generateExistingOnPolicyUpdate",
+    "coversNotes": [
+      "v1.10.0 Helm: #7324 remove validation for deprecated field generateExistingOnPolicyUpdate",
+      "v1.10.0 Helm: #6321 [BREAKING CHANGE] fix: rename GenerateExistingOnPolicyUpdate to GenerateExisting"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-generaterequest-crd-removed",
+    "severity": "LOW",
+    "title": "The GenerateRequest CRD is gone — UpdateRequest replaces it",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "CustomResourceDefinition",
+      "objectName": "^generaterequests\\.kyverno\\.io$",
+      "target": "group",
+      "value": "^kyverno\\.io$",
+      "reason": "reads whether the old generaterequests.kyverno.io CRD is still installed"
+    },
+    "quote": "Removed `GenerateRequest` CRD.",
+    "remediation": "After the upgrade, delete the leftover `generaterequests.kyverno.io` CRD and anything that still reads GenerateRequests; Kyverno now uses UpdateRequest.",
+    "verifyCommand": "kubectl get crd generaterequests.kyverno.io 2>/dev/null  # a printed row is the leftover CRD",
+    "coversNotes": [
+      "v1.10.0 Changed: Removed the GenerateRequest CRD since Kyverno uses a",
+      "v1.10.0 Helm: #6043 feat: remove generate request CRD"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-excluded-groups-usernames-no-hardcoded-defaults",
+    "severity": "MEDIUM",
+    "title": "The hard-coded excludeGroups / excludeUsernames defaults are gone — only the ConfigMap decides",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ConfigMap values are not collected (keys only)"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^kyverno$",
+      "target": "keys[]",
+      "value": ".+"
+    },
+    "quote": "Removed hard-coded defaults for excluded groups and excluded usernames.",
+    "remediation": "Check the `kyverno` ConfigMap's `excludeGroups` and `excludeUsernames`: if you replaced the chart's config, add back `system:nodes` (and any controller identities you relied on being exempt), or Kyverno starts evaluating their requests. 1.10 also stops excluding kube-system service accounts by default.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name == \"kyverno\") | \"\\(.metadata.namespace) excludeGroups=\\(.data.excludeGroups // \"UNSET\") excludeUsernames=\\(.data.excludeUsernames // \"UNSET\")\"'  # each row is a Kyverno ConfigMap's exclusions",
+    "coversNotes": [
+      "CHANGELOG v1.10.0-rc.1: Removed hardcoded defaults for excludeGroups and excludeUsernames. They",
+      "v1.10.0 Fixed: Remove (i.e., _include_) ServiceAccounts in the kube-system Namespace"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-configmap-exclusion-keys-renamed",
+    "severity": "MEDIUM",
+    "title": "The ConfigMap keys `excludeGroupRole` / `excludeUsername` are renamed `excludeGroups` / `excludeUsernames` — the old ones are ignored",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ConfigMap",
+      "objectName": "^kyverno$",
+      "target": "keys[]",
+      "value": "^(excludeGroupRole|excludeUsername)$",
+      "reason": "reads the key names of the kyverno ConfigMap"
+    },
+    "quote": "`config.excludeGroupRole` was renamed to `config.excludeGroups`",
+    "remediation": "Rename the keys in the `kyverno` ConfigMap (1.9 read excludeGroupRole / excludeUsername, pkg/config/config.go@v1.9.5; 1.10 reads only excludeGroups / excludeUsernames). With the old keys every exclusion silently disappears — requests from system:nodes and the identities you exempted are evaluated by policies.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name == \"kyverno\") | select(.data | has(\"excludeGroupRole\") or has(\"excludeUsername\")) | .metadata.namespace'  # each row is a Kyverno ConfigMap still using the old key names"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-gen-worker-flag-removed-from-admission",
+    "severity": "MEDIUM",
+    "title": "`--genWorkers` and the background-scan flags are no longer flags of the admission controller",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?(genWorkers?|backgroundScan(Workers|Interval)?|reportsChunkSize)(=|$)",
+      "reason": "checked in the container args of the Kyverno Deployments (admission controller) — a flag passed any other way is not scanned"
+    },
+    "quote": "Removed the `--genWorker` flag from the admission controller as this is only applicable to the background controller. (#7132)",
+    "remediation": "1.10 splits Kyverno into four controllers and the admission controller stops accepting the flags that moved with them: `--genWorkers` (now the background controller's) and `--backgroundScan`, `--backgroundScanWorkers`, `--backgroundScanInterval`, `--reportsChunkSize` (now the reports controller's; cmd/kyverno/main.go@v1.9.5 vs cmd/{background,reports}-controller/main.go@v1.10.0). Remove them from the admission controller's extra args and set them on the controller that owns them; an unknown flag stops the container at start.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?(genWorkers?|backgroundScan(Workers|Interval)?|reportsChunkSize)(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes a flag that moved to another controller in 1.10 (meaningful on a 1.9 install, where one Deployment runs everything)",
+    "coversNotes": [
+      "v1.10.0 Helm: #7132 fix: remove the container flag genWorker from"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-foreach-mutation-order-and-autogen",
+    "severity": "LOW",
+    "title": "foreach mutations: patches are combined at the end, loops run top-down, and autogen is off for JSON-patch foreach rules",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "foreach mutate rule contents are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy|Policy",
+      "target": "ruleTypes[]",
+      "value": "^mutate$"
+    },
+    "quote": "When using multiple `foreach` loops, they will be evaluated from top down so the result of one loop will only be available to the next after the first loop completes.",
+    "remediation": "Re-test mutate rules with several `foreach` loops (one loop no longer sees another's patches until it finishes) and set `foreach.order` where the order matters. A foreach mutation using JSON patches no longer gets an autogen copy for Pod controllers — add explicit Deployment/StatefulSet rules if you relied on it.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?.mutate?; .foreach != null)) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a foreach mutation"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-rule-name-required",
+    "severity": "LOW",
+    "title": "Every rule must have a `name` (from 1.10.1)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "rule names are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy|Policy"
+    },
+    "quote": "Made it so that the `name` field for a rule is required (#7464)",
+    "remediation": "Give every rule a `name`; a policy with an unnamed rule is rejected on create/update.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.rules[]?; (.name // \"\") == \"\")) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row has a rule without a name",
+    "introducedIn": [
+      "1.10.1"
+    ],
+    "coversNotes": [
+      "v1.10.1 Helm: 7464 fix: rule name not required in the"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-skip-resource-filters-background-default",
+    "severity": "LOW",
+    "title": "Background scans now skip resources excluded by resourceFilters (new default)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the reports controller's effective flags are not decisive on their own"
+    },
+    "quote": "Added new flag `skipResourceFilters` to reports controller to enable/disable considering resource filters in the background (default value is `true`)",
+    "remediation": "Expect MORE background PolicyReport results: with the new default `true` the reports controller ignores the ConfigMap's resourceFilters (pkg/config/config.go@v1.10.0: filters apply only when skipResourceFilters is false), so filtered resources are reported. Pass `--skipResourceFilters=false` to keep excluding them.",
+    "coversNotes": [
+      "v1.10.0 Added: Added a new --skipResourceFilters flag to the reports"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.10-policy-status-ready-deprecated",
+    "severity": "LOW",
+    "title": "Policy `.status.ready` is deprecated — read the Ready condition",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "tooling that reads policy status lives outside the cluster"
+    },
+    "quote": "Policy readiness is now reflected as a condition in the `.status` object and the `.status.ready` field is deprecated (#6071)",
+    "remediation": "Change scripts, dashboards and GitOps health checks that read `.status.ready` on Kyverno policies to read the `Ready` condition in `.status.conditions`."
+  }
+]

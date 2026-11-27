@@ -1,0 +1,37 @@
+{
+ "addonId": "kyverno",
+ "displayName": "Kyverno",
+ "detect": {
+  "imageSuffixes": [
+   "kyverno/kyverno"
+  ]
+ },
+ "source": {
+  "url": "https://kyverno.io/docs/installation/releases/",
+  "ref": "kyverno/website: the Kubernetes compatibility row of each minor read on that minor's own docs branch (release-1-10-0 .. release-1-17-0 docs/installation compatibility table; release-1-18-0, release-1-19-0 src/constants/version.ts + installation/releases.md; release-1.20 installation/releases.md), 1.6-1.9 from the release-1-10-0 table; rules from kyverno/kyverno @ v1.20.0 (f666af06e) + kyverno/website @ 0d3cbab (via kb/kyverno)",
+  "lastVerified": "2026-11-22",
+  "note": "supportWindows transcribed mechanically from the vendor's own 'Kyverno Version / Kubernetes Min / Kubernetes Max' compatibility table, each minor read on ITS OWN docs branch (the row moves: main's table before 2026-04-14 listed 1.18.x as 1.32-1.35, the release-1-18-0 branch lists 1.33-1.35, which is what is shipped). From 1.18 the table is replaced by releases.md 'Kubernetes Versions Supported' (1.19: v1.33 - v1.35, 1.20: v1.34 - v1.37). The page says \"Other Kubernetes versions may work, but are not tested and therefore no guarantees are made as to their full compatibility.\" NEVER derive a window from go.mod (k8s.io/client-go). Support policy (blog announcing-kyverno-release-1.18 'Updated Support Policy'): from 1.18 Kyverno follows a \"main + 1\" patch support model -> supportedMinorsBehindLatest 1 against latestKnownVersion; no EOL dates are published, so no window carries one. Detection: the admission controller image repository ends in kyverno/kyverno (ghcr.io/kyverno/kyverno, reg.kyverno.io/kyverno/kyverno and mirrors); the init container kyverno/kyvernopre, the background/cleanup/reports controllers, kyverno/kyverno-cli and kyverno/reports-server never match on their own, and Nirmata Enterprise Kyverno (ghcr.io/nirmata/kyverno) is a separate build and is not claimed. The stray tag v1.15.20 has no GitHub release (chart appVersion v1.15.2) and is never read. Rules and upgrade notes do NOT live here: they are the hand-authored corpus in k8s-rules/kyverno/ (1.10-1.20, one file per minor, hop-scoped), built by scripts/readiness-agent/build-kyverno-rules.py from kb/kyverno/notes-<minor>.md, which scripts/readiness-agent/extract-kyverno-notes.py extracts verbatim from the release bodies, the website upgrade guide on each minor's docs branch, the release blogs, the chart README and CHANGELOG.md."
+ },
+ "supportWindows": [
+  { "version": "1.20", "minK8s": "1.34", "maxK8s": "1.37" },
+  { "version": "1.19", "minK8s": "1.33", "maxK8s": "1.35" },
+  { "version": "1.18", "minK8s": "1.33", "maxK8s": "1.35" },
+  { "version": "1.17", "minK8s": "1.32", "maxK8s": "1.35" },
+  { "version": "1.16", "minK8s": "1.31", "maxK8s": "1.34" },
+  { "version": "1.15", "minK8s": "1.30", "maxK8s": "1.33" },
+  { "version": "1.14", "minK8s": "1.29", "maxK8s": "1.32" },
+  { "version": "1.13", "minK8s": "1.28", "maxK8s": "1.31" },
+  { "version": "1.12", "minK8s": "1.26", "maxK8s": "1.29" },
+  { "version": "1.11", "minK8s": "1.25", "maxK8s": "1.28" },
+  { "version": "1.10", "minK8s": "1.24", "maxK8s": "1.26" },
+  { "version": "1.9", "minK8s": "1.24", "maxK8s": "1.26" },
+  { "version": "1.8", "minK8s": "1.23", "maxK8s": "1.25" },
+  { "version": "1.7", "minK8s": "1.21", "maxK8s": "1.23" },
+  { "version": "1.6", "minK8s": "1.16", "maxK8s": "1.23" }
+ ],
+ "latestKnownVersion": "1.20.0",
+ "supportedMinorsBehindLatest": 1,
+ "inventoryKinds": [],
+ "rules": [],
+ "upgradeNotes": []
+}

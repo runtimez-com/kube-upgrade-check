@@ -1,0 +1,209 @@
+[
+  {
+    "ruleId": "rtz-kyverno-1.20-clusterpolicy-not-enforced",
+    "severity": "HIGH",
+    "title": "ClusterPolicies are no longer enforced — Kyverno 1.20 does not run legacy kyverno.io policies",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterPolicy"
+    },
+    "quote": "Kyverno v1.20 no longer executes the deprecated `ClusterPolicy`, `Policy`, `CleanupPolicy`, `ClusterCleanupPolicy`, or legacy `kyverno.io` `PolicyException` types.",
+    "remediation": "Migrate every legacy policy to the `policies.kyverno.io` types before upgrading (validate → ValidatingPolicy, mutate → MutatingPolicy, generate → GeneratingPolicy, verifyImages → ImageValidatingPolicy, cleanup → DeletingPolicy, PolicyException → policies.kyverno.io PolicyException). 1.20 keeps the objects but does not run them, and: (1) `helm upgrade` is blocked by the chart's legacy-policy gate until they are gone or you set `upgrade.acknowledgeLegacyPoliciesNotEnforced=true` — it counts all five kinds, so even an exception or a cleanup policy blocks it (a live-cluster `lookup` check at render time plus a pre-upgrade hook Job; `--no-hooks`, Argo CD Skip Hooks and Flux disableHooks skip only the Job, while `helm template`, client-side `--dry-run` and the static release manifests skip both); (2) every create and update of these kinds is denied — a GitOps tool that re-applies them reports them permanently out of sync, so delete the legacy manifests from Git once migrated; (3) YAML installs mark them NotReady. Back them up before an uninstall/reinstall: deleting a CRD deletes its objects. The CRDs themselves are planned for removal in 1.21.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy object 1.20 stops running",
+    "coversNotes": [
+      "Upgrade with Helm",
+      "Install or upgrade with YAML manifests",
+      "Blog: CEL policy types are now the only engine",
+      "Blog: Upgrading to 1.20",
+      "Blog: What's next (Full removal of the legacy policy)",
+      "Chart: Legacy policy resources gate",
+      "Chart: Legacy policy write denial",
+      "v1.20.0 What's Changed: feat: block creates and spec-updates of legacy policy",
+      "v1.20.0 What's Changed: feat(helm): add required default-on gate for legacy policy",
+      "v1.20.0 What's Changed: feat: reject legacy policy writes without typed policy",
+      "v1.20.0 What's Changed: feat: remove legacy policy execution from the background",
+      "v1.20.0 What's Changed: feat: remove legacy policy evaluation from the reports"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-policy-not-enforced",
+    "severity": "HIGH",
+    "title": "Namespaced Policies are no longer enforced — Kyverno 1.20 does not run legacy kyverno.io policies",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "Policy"
+    },
+    "quote": "Kyverno v1.20 no longer executes the deprecated `ClusterPolicy`, `Policy`, `CleanupPolicy`, `ClusterCleanupPolicy`, or legacy `kyverno.io` `PolicyException` types.",
+    "remediation": "Migrate every legacy policy to the `policies.kyverno.io` types before upgrading (validate → ValidatingPolicy, mutate → MutatingPolicy, generate → GeneratingPolicy, verifyImages → ImageValidatingPolicy, cleanup → DeletingPolicy, PolicyException → policies.kyverno.io PolicyException). 1.20 keeps the objects but does not run them, and: (1) `helm upgrade` is blocked by the chart's legacy-policy gate until they are gone or you set `upgrade.acknowledgeLegacyPoliciesNotEnforced=true` — it counts all five kinds, so even an exception or a cleanup policy blocks it (a live-cluster `lookup` check at render time plus a pre-upgrade hook Job; `--no-hooks`, Argo CD Skip Hooks and Flux disableHooks skip only the Job, while `helm template`, client-side `--dry-run` and the static release manifests skip both); (2) every create and update of these kinds is denied — a GitOps tool that re-applies them reports them permanently out of sync, so delete the legacy manifests from Git once migrated; (3) YAML installs mark them NotReady. Back them up before an uninstall/reinstall: deleting a CRD deletes its objects. The CRDs themselves are planned for removal in 1.21.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy object 1.20 stops running"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-clustercleanuppolicy-not-executed",
+    "severity": "HIGH",
+    "title": "ClusterCleanupPolicies no longer run — resources they deleted start accumulating",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ClusterCleanupPolicy"
+    },
+    "quote": "Kyverno v1.20 no longer executes the deprecated `ClusterPolicy`, `Policy`, `CleanupPolicy`, `ClusterCleanupPolicy`, or legacy `kyverno.io` `PolicyException` types.",
+    "remediation": "Migrate every legacy policy to the `policies.kyverno.io` types before upgrading (validate → ValidatingPolicy, mutate → MutatingPolicy, generate → GeneratingPolicy, verifyImages → ImageValidatingPolicy, cleanup → DeletingPolicy, PolicyException → policies.kyverno.io PolicyException). 1.20 keeps the objects but does not run them, and: (1) `helm upgrade` is blocked by the chart's legacy-policy gate until they are gone or you set `upgrade.acknowledgeLegacyPoliciesNotEnforced=true` — it counts all five kinds, so even an exception or a cleanup policy blocks it (a live-cluster `lookup` check at render time plus a pre-upgrade hook Job; `--no-hooks`, Argo CD Skip Hooks and Flux disableHooks skip only the Job, while `helm template`, client-side `--dry-run` and the static release manifests skip both); (2) every create and update of these kinds is denied — a GitOps tool that re-applies them reports them permanently out of sync, so delete the legacy manifests from Git once migrated; (3) YAML installs mark them NotReady. Back them up before an uninstall/reinstall: deleting a CRD deletes its objects. The CRDs themselves are planned for removal in 1.21.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy object 1.20 stops running"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-cleanuppolicy-not-executed",
+    "severity": "HIGH",
+    "title": "CleanupPolicies no longer run — resources they deleted start accumulating",
+    "detection": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "CleanupPolicy"
+    },
+    "quote": "Kyverno v1.20 no longer executes the deprecated `ClusterPolicy`, `Policy`, `CleanupPolicy`, `ClusterCleanupPolicy`, or legacy `kyverno.io` `PolicyException` types.",
+    "remediation": "Migrate every legacy policy to the `policies.kyverno.io` types before upgrading (validate → ValidatingPolicy, mutate → MutatingPolicy, generate → GeneratingPolicy, verifyImages → ImageValidatingPolicy, cleanup → DeletingPolicy, PolicyException → policies.kyverno.io PolicyException). 1.20 keeps the objects but does not run them, and: (1) `helm upgrade` is blocked by the chart's legacy-policy gate until they are gone or you set `upgrade.acknowledgeLegacyPoliciesNotEnforced=true` — it counts all five kinds, so even an exception or a cleanup policy blocks it (a live-cluster `lookup` check at render time plus a pre-upgrade hook Job; `--no-hooks`, Argo CD Skip Hooks and Flux disableHooks skip only the Job, while `helm template`, client-side `--dry-run` and the static release manifests skip both); (2) every create and update of these kinds is denied — a GitOps tool that re-applies them reports them permanently out of sync, so delete the legacy manifests from Git once migrated; (3) YAML installs mark them NotReady. Back them up before an uninstall/reinstall: deleting a CRD deletes its objects. The CRDs themselves are planned for removal in 1.21.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy object 1.20 stops running"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-legacy-policyexception-not-executed",
+    "severity": "HIGH",
+    "title": "kyverno.io PolicyExceptions no longer apply",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "PolicyException",
+      "target": "apiGroup",
+      "value": "kyverno.io",
+      "reason": "read from the kyverno.io PolicyExceptions (not the policies.kyverno.io ones)"
+    },
+    "quote": "Kyverno v1.20 no longer executes the deprecated `ClusterPolicy`, `Policy`, `CleanupPolicy`, `ClusterCleanupPolicy`, or legacy `kyverno.io` `PolicyException` types.",
+    "remediation": "Migrate every legacy policy to the `policies.kyverno.io` types before upgrading (validate → ValidatingPolicy, mutate → MutatingPolicy, generate → GeneratingPolicy, verifyImages → ImageValidatingPolicy, cleanup → DeletingPolicy, PolicyException → policies.kyverno.io PolicyException). 1.20 keeps the objects but does not run them, and: (1) `helm upgrade` is blocked by the chart's legacy-policy gate until they are gone or you set `upgrade.acknowledgeLegacyPoliciesNotEnforced=true` — it counts all five kinds, so even an exception or a cleanup policy blocks it (a live-cluster `lookup` check at render time plus a pre-upgrade hook Job; `--no-hooks`, Argo CD Skip Hooks and Flux disableHooks skip only the Job, while `helm template`, client-side `--dry-run` and the static release manifests skip both); (2) every create and update of these kinds is denied — a GitOps tool that re-applies them reports them permanently out of sync, so delete the legacy manifests from Git once migrated; (3) YAML installs mark them NotReady. Back them up before an uninstall/reinstall: deleting a CRD deletes its objects. The CRDs themselves are planned for removal in 1.21.",
+    "verifyCommand": "kubectl get clusterpolicies.kyverno.io,policies.kyverno.io,cleanuppolicies.kyverno.io,clustercleanuppolicies.kyverno.io,policyexceptions.kyverno.io -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name)\"'  # each row is a legacy object 1.20 stops running"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-max-audit-flags-removed",
+    "severity": "HIGH",
+    "title": "`--maxAuditWorkers` / `--maxAuditCapacity` are removed from the admission controller",
+    "detection": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "Deployment",
+      "objectName": "kyverno",
+      "target": "containers[].args[]",
+      "value": "^--?maxAudit(Workers|Capacity)(=|$)",
+      "reason": "checked in the container args of the Kyverno Deployments (admission controller) — a flag passed any other way is not scanned"
+    },
+    "quote": "feat: remove legacy policy execution from admission binaries",
+    "remediation": "Remove `--maxAuditWorkers` / `--maxAuditCapacity` from the admission controller's extra args (v1.19.2 cmd/kyverno/main.go, gone in v1.20.0 with #18164); an unknown flag stops the container at start, and the chart no longer renders them.",
+    "verifyCommand": "kubectl get deploy -A -o json | jq -r '.items[] | select(any(.spec.template.spec.containers[]; .image | test(\"(^|/)kyverno/(kyverno|background-controller|cleanup-controller|reports-controller)([:@]|$)\"))) | select(any(.spec.template.spec.containers[].args[]?; test(\"^--?maxAudit(Workers|Capacity)(=|$)\"))) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row passes a removed flag"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-globalcontext-jmespath-deprecated",
+    "severity": "LOW",
+    "title": "GlobalContextEntry JMESPath projections are deprecated — use the CEL `expression` field",
+    "detection": {
+      "kind": "SPEC_FIELD_EQUALS",
+      "objectKind": "GlobalContextEntry",
+      "target": "jmesPathProjection",
+      "value": "true",
+      "reason": "read from whether each GlobalContextEntry has a JMESPath projection"
+    },
+    "quote": "JMESPath projections are deprecated",
+    "remediation": "Rewrite each projection of the GlobalContextEntries named with the CEL `expression` field.",
+    "verifyCommand": "kubectl get globalcontextentries.kyverno.io -o json 2>/dev/null | jq -r '.items[] | select(any(.spec.projections[]?; .jmesPath != null)) | .metadata.name'  # each row uses a JMESPath projection",
+    "coversNotes": [
+      "v1.20.0 What's Changed: feat(globalcontext): deprecate jmesPath projections and measure their use"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-imagevalidatingpolicy-matchconstraints-required",
+    "severity": "LOW",
+    "title": "An ImageValidatingPolicy without `matchConstraints` is refused",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "ImageValidatingPolicy fields are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "ImageValidatingPolicy"
+    },
+    "quote": "fix(ivpol): reject ImageValidatingPolicy with empty matchConstraints",
+    "remediation": "Add `matchConstraints` to every ImageValidatingPolicy that has none (#17162 makes it required); without it the next apply is refused.",
+    "verifyCommand": "kubectl get imagevalidatingpolicies.policies.kyverno.io -o json 2>/dev/null | jq -r '.items[] | select(.spec.matchConstraints == null) | .metadata.name'  # each row has no matchConstraints"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-kyverno-policies-chart-policytype-removed",
+    "severity": "MEDIUM",
+    "title": "The kyverno-policies chart renders only ValidatingPolicies — `policyType` and the ClusterPolicy-only values are removed",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "Helm values are not collected"
+    },
+    "scope": {
+      "kind": "SPEC_PATH_MATCHES",
+      "objectKind": "ClusterPolicy",
+      "objectName": "^(disallow-capabilities|disallow-capabilities-strict|disallow-host-namespaces|disallow-host-path|disallow-host-ports|disallow-host-process|disallow-privileged-containers|disallow-privilege-escalation|disallow-proc-mount|disallow-selinux|restrict-apparmor-profiles|restrict-seccomp|restrict-seccomp-strict|restrict-sysctls|restrict-volume-types|require-non-root-groups|require-run-as-non-root-user|require-run-as-nonroot)$",
+      "target": "ruleTypes[]",
+      "value": "^validate"
+    },
+    "quote": "Removed the policyType chart value; the built-in PSS templates now render only ValidatingPolicy (policies.kyverno.io) types",
+    "remediation": "If you kept the kyverno-policies (Pod Security Standards) chart on `policyType: ClusterPolicy`, 1.20 ignores it: the chart installs ValidatingPolicies and the PSS ClusterPolicies listed are removed with the upgrade. The values `policyKind`, `policyType`, `validationFailureActionOverrides`, `validationAllowExistingViolations`, `policyExclude`, `policyPreconditions`, `autogenControllers`, `background` and `skipBackgroundRequests` no longer exist — move exclusions to `vpolExclude` / `vpolExcludeByPolicy` before upgrading or they stop applying. Autogen for pod controllers stays on unless an exclusion sets `excludeResourceRules`, which makes that policy Pod-only.",
+    "verifyCommand": "helm list -A -o json | jq -r '.[] | select(.chart | test(\"^kyverno-policies-\")) | \"\\(.namespace)/\\(.name) \\(.chart) app \\(.app_version)\"'  # each row is a Kyverno Helm release; read its values with: helm get values NAME -n NAMESPACE",
+    "coversNotes": [
+      "v1.20.0 What's Changed: fix(chart): drop the changelog entry for the removed"
+    ]
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-namespaced-image-policy-credentials",
+    "severity": "MEDIUM",
+    "title": "A NamespacedImageValidatingPolicy resolves registry credentials in its own namespace only",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "credential references are not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "NamespacedImageValidatingPolicy"
+    },
+    "quote": "fix: scope namespaced image policy credentials by namespace",
+    "remediation": "`spec.credentials.secrets` and attestor signature pull secrets (`spec.attestors[].cosign.source.PullSecrets`) of a NamespacedImageValidatingPolicy are looked up in the policy's namespace; a reference to a Secret in another namespace (the Kyverno namespace included) is refused at admission and at runtime. Provision tenant credentials in the policy's namespace and grant Kyverno `get` on exactly those Secrets BEFORE upgrading: a Secret the controller is denied fails credential resolution outright, so the policy errors on every matching image, not only private ones. Or move the policy to a cluster-scoped ImageValidatingPolicy.",
+    "verifyCommand": "kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E '^namespacedimagevalidatingpolic' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | ([.spec.credentials.secrets[]?] + [.spec.attestors[]?.cosign.source.PullSecrets[]?.name]) as $s | select($s[0] != null) | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) secrets=\\($s | join(\",\"))\"'  # each row is a namespaced image policy and the Secret names it references (names only)"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-legacy-metrics-removed",
+    "severity": "LOW",
+    "title": "The legacy engine's metrics are gone — dashboards and alerts on `kyverno_policy_results` read nothing",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "dashboards and alert rules are not collected"
+    },
+    "quote": "feat: delete the legacy kyverno.io policy engine",
+    "remediation": "1.20 stops emitting `kyverno_policy_results`, `kyverno_policy_rule_info_total`, `kyverno_policy_changes`, `kyverno_policy_execution_duration_seconds`, `kyverno_cleanup_controller_deletedobjects` and `kyverno_cleanup_controller_errors`. An alert on them never fires again. Repoint dashboards and alerts to the per-type series `kyverno_{validating,mutating,generating,image_validating}_policy_results` and `..._policy_execution_duration_seconds`, and drop the removed entries from `metricsConfig.metricsExposure`.",
+    "verifyCommand": "kubectl get prometheusrules.monitoring.coreos.com -A -o json 2>/dev/null | jq -r '.items[] | select(tostring | test(\"kyverno_policy_(results|rule_info_total|changes|execution_duration_seconds)|kyverno_cleanup_controller_(deletedobjects|errors)\")) | \"\\(.metadata.namespace)/\\(.metadata.name)\"'  # each row is a PrometheusRule that reads a metric 1.20 no longer emits"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-deletingpolicy-honours-resourcefilters",
+    "severity": "MEDIUM",
+    "title": "DeletingPolicies skip resources excluded by `resourceFilters`",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "the resourceFilters value of the kyverno ConfigMap is not collected"
+    },
+    "scope": {
+      "kind": "KIND_PRESENT",
+      "objectKind": "DeletingPolicy|NamespacedDeletingPolicy"
+    },
+    "quote": "fix(controllers): honor resourceFilters in cleanup and deleting controllers",
+    "remediation": "The deleting controller passed the resource's kind where the subresource belongs, so only `[Kind/?*,...]` entries of the `kyverno` ConfigMap's `resourceFilters` matched (Node, APIService, ReplicaSet were already skipped that way). From 1.20 the plain `[Kind,...]` entries apply too: in the chart default that newly skips `Event`, `Binding`, `(Cluster)EphemeralReport` and Kyverno's own ClusterRoles / bindings, plus any kind-only entry you added. A DeletingPolicy that prunes old Events silently stops doing so. Compare the kinds each DeletingPolicy matches with the filter list and remove the entry (`config.resourceFilters` / `config.resourceFiltersExclude`) for kinds you do want deleted.",
+    "verifyCommand": "kubectl get cm -A -o json | jq -r '.items[] | select(.metadata.name == \"kyverno\" and (.data | has(\"resourceFilters\"))) | \"\\(.metadata.namespace)/kyverno \\(.data.resourceFilters)\"' ; kubectl get $(kubectl api-resources --api-group=policies.kyverno.io -o name | grep -E 'deletingpolic' | paste -sd, -) -A -o json 2>/dev/null | jq -r '.items[] | \"\\(.kind) \\(.metadata.namespace // \"-\")/\\(.metadata.name) \\([.spec.matchConstraints.resourceRules[]?.resources[]?] | join(\",\"))\"'  # first block: the resource filters in force; second block: each DeletingPolicy and the resources it matches"
+  },
+  {
+    "ruleId": "rtz-kyverno-1.20-pss-policies-stricter",
+    "severity": "LOW",
+    "title": "The chart's Pod Security Standards policies are stricter (drop ALL, runAsNonRoot, host probes)",
+    "detection": {
+      "kind": "NOT_DETECTABLE",
+      "reason": "which PSS policies the chart installs is a Helm value"
+    },
+    "quote": "fix(charts): enforce drop ALL and deny pod-level runAsNonRoot=false in PSS CEL policies",
+    "remediation": "If you install the chart's PSS policies, re-test workloads against them: Restricted now requires `capabilities.drop: [ALL]` and refuses pod-level `runAsNonRoot: false`, and Baseline adds disallow-host-probes.",
+    "coversNotes": [
+      "v1.20.0 What's Changed: feat(charts): add disallow-host-probes Baseline PSS policy by @Suhani95"
+    ]
+  }
+]

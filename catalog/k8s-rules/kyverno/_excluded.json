@@ -1,0 +1,2057 @@
+[
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: The default registry Kyverno uses can now be",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: Operations are now possible to specify in match/exclude",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: Added a new --backgroundServiceAccountName flag to the admission",
+    "reason": "the new flag replaces a key 1.9 never read (pkg/config/config.go@v1.9.5 has no backgroundServiceAccountName); the chart sets the flag"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: New container flag --enableConfigMapCaching to enable/disable the ConfigMap",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: Added a new JMESPath filter image_normalize() which can",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: New Policy Report cleanup jobs are added as",
+    "reason": "safeguard jobs added by the chart (removed again in 1.13 — see rtz-kyverno-1.13 rules); nothing to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Added: Added a new flag --registryCredentialHelpers with image registry",
+    "reason": "credential helpers are passed by default by the chart; additive"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: Enforce that the admission controller must be deployed",
+    "reason": "chart validation refusing replicas: 0 for the admission controller, which was never a working install"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Getting the \"classic\" behavior in a generate rule",
+    "reason": "simplification: data-sync generate rules no longer need an extra setting; existing rules keep working"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Images which no longer match a verifyImages rule",
+    "reason": "PolicyReports stop listing Skip results for images a rule no longer matches; report noise only"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Burst limit (--clientRateLimitBurst) has its defaults increased from",
+    "reason": "client QPS/burst defaults raised; no configuration change needed"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: The install.yaml manifest has been removed from the",
+    "reason": "release-artifact location in the upstream repository"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Kyverno will use client instead of discovery for",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Renamed initContainer to kyverno-init (#6139)",
+    "reason": "the chart renames the init container of Kyverno's own pod; no other object refers to it"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Removed PolicySpec from engine API (#6159)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Removed dependency on github.com/pkg/errors (#6165)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Remove store dependency in engine pkg (#6260)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Removes validationFailureAction from response and take from policy",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: As part of the massive work done on",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Return structs instead of pointer in engine API",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Removed more pointers from engine API (#6651)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Remove rules pointer (#6722)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Removed admission request/response pointers (#6769, #6774)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Updated the internal Kubernetes resource schemas which will",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Remove the deletionTimestamp check in rules handled by",
+    "reason": "the background controller also processes objects being deleted; no setting to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: All controllers' containers will print their container flags",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Changed: Variables used in conditions (preconditions, deny conditions, verifyImages",
+    "reason": "relaxation: condition variables are resolved lazily, so conditions that evaluated before still do (#7238)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Policies in Audit mode are processed correctly when",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed an issue with the name of the",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Use labels.Everything() in userinfo clusterroles matching (instead of",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Remove dynamic config from match helpers (#6381)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed policy cache by using GVR instead of",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed replacing more reflect.DeepEqual calls (#6674)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed an issue where the clone source was",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Defaults for flags --clientRateLimitQPS and --clientRateLimitBurst are configurable",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Removed the --imageSignatureRepository flag from the background controller",
+    "reason": "the background controller first ships in 1.10, so no 1.9 install passes it the flag; the admission and reports controllers still accept it in 1.10 (its removal is rtz-kyverno-1.12-image-signature-repository-flag-removed)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Remove /status subresource from policy webhooks as this",
+    "reason": "Kyverno-managed webhook configuration; Kyverno rewrites it itself"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed an issue validating variables in policies which",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed removing entries in excludeGroups from matching. (#7083)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed an issue when using the container flag",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed the output message of a validate rule's",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Fixed when to show the new message field",
+    "reason": "the per-condition `message` field is new in 1.10.0; no earlier behaviour to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Fixed: Removed some insecure TLS ciphers which used 3DES",
+    "reason": "3DES suites dropped from Kyverno's webhook server; the API server never needs them"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: Fixed default values file name (#6066)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #7321 rename NotaryV2 to Notary",
+    "reason": "renamed within the 1.10 development cycle: NotaryV2 never shipped in a release (0 occurrences in v1.9.5 CRDs / api / pkg)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #7083 fix: remove excluded groups from matching",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #7039 fix: remove deletionTimestamp checks",
+    "reason": "the background controller also processes objects being deleted; no setting to change (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6939 fix: remove status from policy webhooks",
+    "reason": "Kyverno-managed webhook configuration; Kyverno rewrites it itself (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6925 fix: remove imageSignatureRepository flag from the background",
+    "reason": "the background controller first ships in 1.10, so no 1.9 install passes it the flag; the admission and reports controllers still accept it in 1.10 (its removal is rtz-kyverno-1.12-image-signature-repository-flag-removed) (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6918 chore: add config with exceptions disabled",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6774 refactor: remove more admission request pointers",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6769 refactor: remove admission request/response pointers",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6725 chore: remove unused context variable",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6722 refactor: remove rules pointer",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6651 refactor: remove more pointers from engine api",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6640 fix: remove a couple DeepEqual and fix",
+    "reason": "generated PR-list entry: engine refactor or clone-rule fix; no operator action"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6577 chore: remove unused discovery method GetServerVersion",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6575 fix: add back default generate permissions",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6563 fix: remove hasVerifyYaml from policy cache",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6470 chore: rename generateExistingOnPolicyUpdate to generateExisting in tests",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6439 fix: remove timestamp checks for the clone",
+    "reason": "generated PR-list entry: engine refactor or clone-rule fix; no operator action"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6397 refactor: remove MutateResourceWithImageInfo",
+    "reason": "generated PR-list entry: engine refactor or clone-rule fix; no operator action"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6381 fix: remove dynamic config from match helpers",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6335 feat: Removal of multiple elements using JSON",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6304 refactor: remove validate failure actions from response",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6283 chore: remove testrunner package",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6260 refactor: remove store dependency in engine pkg",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6217 chore: remove install manifest",
+    "reason": "release-artifact location in the upstream repository (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6187 fix: remove exceptionNamespace from init-container",
+    "reason": "argument of Kyverno's own init container, set by the chart"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6165 chore: remove dependency on github.com/pkg/errors",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6159 refactor: remove PolicySpec from engine api",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.0 Helm: #6139 refactor: rename initContainer to kyverno-init",
+    "reason": "the chart renames the init container of Kyverno's own pod; no other object refers to it (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Added: Added a new environment variable, settable on the",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Added: Added a new container flag called --enableDeferredLoading (true",
+    "reason": "the new flag defaults to the 1.10.0 behaviour; opt-out only"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Helm: Removal of the Helm chart will now properly",
+    "reason": "uninstall now removes Kyverno's webhooks; affects uninstall, not the upgrade"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Changed: Removed the redundant loop protection introduced in 1.10.0",
+    "reason": "relaxation: a generate rule may now match the kind it generates; nothing breaks"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed an issue where the default field in",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed a sync issue if an array element",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed a generate issue in which removal of",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed the scope validation check for a generate",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed an issue preventing generated resources from being",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed a slightly misleading error message in deny",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Fixed: Fixed removal of ownerReferences when generating via clone",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Helm: 7517 fix: Remove ownerReferences when cloning across Namespaces",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Helm: 7417 fix: array element removal should be synced",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.1 Helm: 7388 Remove policy validation prevent loop for generate",
+    "reason": "relaxation: a generate rule may now match the kind it generates; nothing breaks (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.2 Helm: Added an additional check to the ServiceMonitor template",
+    "reason": "the ServiceMonitor is skipped when the monitoring.coreos.com API is absent; fix"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.2 Changed: Removed an extra Event created by Kyverno in",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.2 Fixed: Removed some obsolete structs from the CLI. (#6802)",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.2 Helm: #7806 refactor: remove manual keychain refresh from client",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.2 Helm: #6802 refactor: remove obsolete structs from CLI",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.5 What's Changed: feat: add GHSA-vfp6-jrw2-99g9 fixes in cosign v1.13.1 by",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change"
+  },
+  {
+    "version": "1.10",
+    "note": "v1.10.7 What's Changed: chore: fix high vulnerabilities, in release 1.10 by",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change"
+  },
+  {
+    "version": "1.10",
+    "note": "Blog: Generate Rule Refactoring (We didn't stop there, though, we)",
+    "reason": "summary of new generate features (DELETE triggers, subresources, up-front permission checks — the last is rtz-kyverno-1.10-generate-mutate-existing-permission-check)"
+  },
+  {
+    "version": "1.10",
+    "note": "Blog: Other Additions and Enhancements (Context variables are now lazily evaluated)",
+    "reason": "lazy context evaluation; fewer failed rules, nothing to change (opt-out via --enableDeferredLoading)"
+  },
+  {
+    "version": "1.10",
+    "note": "Chart kyverno changed: only create ServiceMonitor if cluster supports it",
+    "reason": "chart fix: a ServiceMonitor is rendered only when the monitoring.coreos.com API exists; an install that has it is unchanged"
+  },
+  {
+    "version": "1.10",
+    "note": "Chart kyverno changed: change to enable webhook cleanup hook by default",
+    "reason": "pre-delete hook Job that removes Kyverno's webhook configurations on `helm uninstall`; it does not run on an upgrade"
+  },
+  {
+    "version": "1.10",
+    "note": "CHANGELOG v1.10.0-rc.1: Added support for configuring webhook annotations in the",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.10",
+    "note": "CHANGELOG v1.10.0-rc.1: Added excludeRoles and excludeClusterRoles support in configuration",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Added: Added a new field under verifyImages rules called",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Added: Added an --aggregateReports flag to the reports controller",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Added: Added ability to disable TUF when used in",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: Added Helm secret size check to CI to",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Schema validation will no longer be done on",
+    "reason": "validation relaxed (patterns no longer schema-checked); the field's formal deprecation is rtz-kyverno-1.12-schema-validation-deprecated"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Cleanup policies no longer use CronJobs to invoke",
+    "reason": "cleanup runs inside the cleanup controller; the chart removes the CronJob RBAC itself"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Kyverno CLI --compact flag has been renamed to",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Kyverno CLI certain more \"internal\" flags will no",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Refactored JSON patches to use structure instead of",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Deprecated the --imageSignatureRepository container flag. Use verifyImages.Repository in",
+    "reason": "deprecation only — the flag still parses in 1.11 (cmd/internal/flag.go@v1.11.5); the removal is rtz-kyverno-1.12-image-signature-repository-flag-removed"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: RBAC has been hardened for a couple controllers",
+    "reason": "chart RBAC reshuffle with the same effective defaults: cleanup-controller permissions move from the ClusterRole to a namespaced Role (#7626), background/reports controllers gain a Role (#7638), cert Secrets are read through a filtered informer (#7634), and the background controller's resource list becomes the `backgroundController.rbac.coreClusterRole.extraResources` value (#8083)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Changed: Replaced CLI manifest commands by create command (#8165)",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Fixed: Fixed indefinitely retry for the mutateExisting rule by",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Fixed: Kyverno CLI: fixed an issue so setting CLI",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8785 fix: rename vap logging name to ValidatingAdmissionPolicy",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8673 remove duplicated log messages",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8538 refactor: remove openapi package",
+    "reason": "validation relaxed (patterns no longer schema-checked); the field's formal deprecation is rtz-kyverno-1.12-schema-validation-deprecated (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8529 fix: remove cronjobs from cleanup controller rbac",
+    "reason": "cleanup runs inside the cleanup controller; the chart removes the CronJob RBAC itself (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8526 feat: remove the creation of cronjobs in",
+    "reason": "cleanup runs inside the cleanup controller; the chart removes the CronJob RBAC itself (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8464 chore: add a required job to simplify",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8428 Check payload counts and limits for image",
+    "reason": "defensive bounds on Notary payloads in pkg/notary (fec2992e3); no flag, value or policy field"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8389 fix: replace fmt.Print calls by fmt.Fprint ones",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8294 chore: remove validating admission policy support from",
+    "reason": "ValidatingAdmissionPolicy generation is not offered on Kubernetes 1.26; an opt-in feature"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8274 refactor: remove dependency from validation to cli",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8269 fix: Remove os.exit calls in apply command",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8218 fix: remove unused struct in cli",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8186 feat: remove description from deprecated fields",
+    "reason": "CRD description text of deprecated fields removed; schema unchanged"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8165 fix: remove cli manifest commands",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8157 refactor: remove logger from tls package",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8142 chore: remove old comment from helm chart",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8082 chore: replace usage of v1beta1 with v1alpha1",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8075 chore: replace usage of v1alpha1 with v1beta1",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8052 chore: use k8s 1.27 by default",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #8043 chore: remove tests for k8s v1.24",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7984 Remove length restriction in --set",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7957 chore: rename ttl controller package",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7937 fix: rename --compact to --detailed-results in CLI",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7929 fix: rename vap to its full name",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7906 feat: update default keychain in registry to",
+    "reason": "an empty --registryCredentialHelpers now means no helpers (it meant all); the chart always renders the list, so only flag-less hand-written manifests are affected"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7802 fix: remove obsolete method in discovery",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7765 chore: introduce defaulters-gen",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7747 Replaced gcr crane with gcr remote",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7726 fix: remove jmespath replace directive",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7528 Updated the message to the level4log and",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7450 Remove response patches",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7449 refactor: remove json patches from engine response",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7447 refactor: remove json patches from mutation tests",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7443 refactor: remove json patches from rule response",
+    "reason": "upstream refactor / test / chart-comment change from the generated PR list; no runtime change for an installed Kyverno"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7411 charts: changes validationFailureAction default value",
+    "reason": "the kyverno-policies chart writes `Audit`/`Enforce` instead of the lower-case values; same behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.0 Helm: #7391 chore: deprecate imageSignatureRepository flag",
+    "reason": "deprecation only — the flag still parses in 1.11 (cmd/internal/flag.go@v1.11.5); the removal is rtz-kyverno-1.12-image-signature-repository-flag-removed (generated PR-list repeat of the curated entry)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.1 What's Changed: fix: block mutation only when failurePolicy is set",
+    "reason": "relaxation: a failing mutation blocks only under failurePolicy Fail; nothing to change"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.1 What's Changed: fix: remove the additional dash in kyverno create",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.1 What's Changed: fix: use the default namespace in case --namespace",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.1 What's Changed: Remove var check (cherry-pick #8990) by @gcp-cherry-pick-bot in",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.2 Added: Added deprecation warnings in both CLI test and",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.2 Added: Enabled additional report printer columns by default (#9194)",
+    "reason": "extra kubectl printer columns on report CRDs"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.4 Fixed: Fixed CVE GHSA-9763-4f94-gfch (#9360)",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change (cloudflare/circl 1.3.7, #9360)"
+  },
+  {
+    "version": "1.11",
+    "note": "v1.11.4 Fixed: Fixed CVE GHSA-2c7c-3mj9-8fqh (#8977)",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change (go-jose 3.0.1, #8977)"
+  },
+  {
+    "version": "1.11",
+    "note": "Blog: Cleanup via TTL label (The cleanup ability was introduced in)",
+    "reason": "new reserved label cleanup.kyverno.io/ttl; opt-in"
+  },
+  {
+    "version": "1.11",
+    "note": "Blog: Security Hardening",
+    "reason": "security audit summary and CVE list; the fixes ship in the release"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Added --tufRoot and --tufMirror flags to configure tuf",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Remove description from deprecated fields in CRDs",
+    "reason": "CRD description text of deprecated fields removed; schema unchanged"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Remove CLI kyverno test manifest ... commands (replaced",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Added --caSecretName and --tlsSecretName flags to control names",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Added match conditions support in kyverno config map",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Deprecated flag --imageSignatureRepository. Will be removed in 1.12",
+    "reason": "deprecation only — the flag still parses in 1.11; the removal is rtz-kyverno-1.12-image-signature-repository-flag-removed"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Added --aggregateReports flag for reports controller to enable/disable",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Added --policyReports flag for reports controller to enable/disable",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.11",
+    "note": "CHANGELOG v1.11.0-rc.1: Renamed CLI flag --compact to --detailed-results (and changed",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 notice: If you are running 1.12, please upgrade to",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 notice: Amazon EKS- managing and fixing ETCD database size",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 notice: If you are seeing consistent creation of ephemeralreports",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 notice: Several critical issues are found in 1.12.0 and",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Added: Several new and improved abilities to reduce the",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Added: Pod Security sub-rule (validate.podSecurity) has a new ability",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: Added the ability to configure backoff limits in",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Changed: The --reportsChunkSize flag is deprecated and has no",
+    "reason": "deprecation only — the flag still parses in 1.12 (cmd/reports-controller/main.go@v1.12.0); the removal is rtz-kyverno-1.13-reports-chunk-size-flag-removed"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Changed: Default logging time format is changed to RFC3339",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Changed: Kyverno CLI: The CLI will now perform field",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: Chart will now omit policy applied and skipped",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: Rename the Grafana dashboard file from dashboard.json to",
+    "reason": "file name inside the chart's Grafana dashboard ConfigMap"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Fixed: Removed an unnecessary podSecurity check (#9790)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9790 fix: remove unnecessary validation check for podSecurity",
+    "reason": "generated PR-list entry; the curated entry it repeats is dispositioned above, or it is internal (report aggregation / CLI)"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9690 chore: rename admission to ephemeral in reports",
+    "reason": "generated PR-list entry; the curated entry it repeats is dispositioned above, or it is internal (report aggregation / CLI)"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9677 feat: remove admission report controller",
+    "reason": "generated PR-list entry; the curated entry it repeats is dispositioned above, or it is internal (report aggregation / CLI)"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9652 chore(globalcontext): remove global context flag",
+    "reason": "--enableGlobalContext existed only in v1.12.0-alpha.0 (absent in v1.11.5 and from v1.12.0-alpha.1 on): no released install passes it"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9570 chore: remove reports aggregation per namespace",
+    "reason": "generated PR-list entry; the curated entry it repeats is dispositioned above, or it is internal (report aggregation / CLI)"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9331 fix: remove the check of exclude in",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9279 fix: remove policy informer from vap controller",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9240 fix: remove unused file in a test",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9052 chore: use Kubernetes 1.28 by default",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.0 Helm: #9041 fix(helm): Rename dashboard.json to kyverno-dashboard.json",
+    "reason": "generated PR-list entry; the curated entry it repeats is dispositioned above, or it is internal (report aggregation / CLI)"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.1 notice: If you are running 1.12, please upgrade to",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.1 notice: Amazon EKS- managing and fixing ETCD database size",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.1 notice: If you are seeing consistent creation of ephemeralreports",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.2 notice: If you are running 1.12, please upgrade to",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.2 notice: Amazon EKS- managing and fixing ETCD database size",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.2 notice: If you are seeing consistent creation of ephemeralreports",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.2 Fixed: Fixed an event generation issue when the size",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.3 notice: If you are running 1.12, please upgrade to",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.3 notice: Amazon EKS- managing and fixing ETCD database size",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.3 notice: If you are seeing consistent creation of ephemeralreports",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.4: disable reporting for admission events, please see this",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.4: tune --aggregationWorkers to increase the capacity of consuming",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.4: as a user of Argo CD, check whether",
+    "reason": "1.12.0-1.12.3 ephemeralreports pile-up notice and its mitigations, fixed in v1.12.4 (#10415); a hop to 1.12 resolves to its latest patch"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.5 Added: Added the circuit breaker for ephemeralreports generated from",
+    "reason": "circuit breakers for ephemeralreports / updaterequests and a log-level rename; protective, nothing to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.5 Added: Added the circuit breaker for updaterequests which is",
+    "reason": "circuit breakers for ephemeralreports / updaterequests and a log-level rename; protective, nothing to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.5 Fixed: Renamed level 1 logs to INFO from DEBUG",
+    "reason": "circuit breakers for ephemeralreports / updaterequests and a log-level rename; protective, nothing to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.6 Fixed: Change: Disable updaterequest cleanup cronjob (#10678)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.6 Fixed: Fix(helm): Remove namespace from RoleBinding/roleRef field (#10685)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "v1.12.7 Fixed: Fixed an issue that the image verification rule",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.12",
+    "note": "Blog: New Plugin System (The plugin system was introduced to)",
+    "reason": "Policy Reporter UI plugin system (a separate project)"
+  },
+  {
+    "version": "1.12",
+    "note": "Blog: Custom Boards (Custom Boards are a way of)",
+    "reason": "Policy Reporter UI (a separate project)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Added: Updated default metrics in the Helm chart (#10459)",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Added: Supported the default value for apiCall in policy",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Added: Added a circuit breaker for the reports controller",
+    "reason": "protective circuit breaker for the reports controller; nothing to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Added: Added --backgroundReports flag to disable background controller reports",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Changed: (API) Removed v1alpha1 of validatingadmissionpolicies and use v1beta1",
+    "reason": "Kyverno generates ValidatingAdmissionPolicies through admissionregistration.k8s.io/v1beta1 from 1.13; generation is opt-in in 1.13 and needs that API enabled, so nothing existing changes"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Fixed: Fixed the default value for orphandownstream (#10478)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Fixed: Fixed the policy exception to match Pod/ephemeralcontainers subresource",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Fixed: Fixed the policy status reconciliation issue by removing",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Fixed: Fixed a performance issue by using shallow copy",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Helm: Renamed metric kyverno_policy_results_total to kyverno_policy_results in grafana dashboard",
+    "reason": "metric name inside the chart's Grafana dashboard JSON"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Helm: Removed namespace from RoleBinding/roleRef field (#10685)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Changed the scope of PreProcessPattern (#9887)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Changed the scope of the continue-on-fail flag (#10293)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Fixed Sigstore tests to unblock PRs (#10455)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Removed kyverno client v2beta1 (#10543)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Renamed package: d4f --> breaker (#10863)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Removed yaml markers in API types (#11015, #11020)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Fixed the API types for default values (#11021)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Required docs for new features in PR template",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Required the milestone label for PRs milestone (#9966",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.0 Others: Removed code owner (#11066)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (includes the generated Go client and package renames)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.1 Fixed: Fixed a CLI issue by setting the default",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (CLI defaults, image-verify update blocking, messages, digest-pinned images)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.1 Fixed: Fixed an issue that the image verification rule",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (CLI defaults, image-verify update blocking, messages, digest-pinned images)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.1 Fixed: Fixed the policy validation message to include keywords",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (CLI defaults, image-verify update blocking, messages, digest-pinned images)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.1 Others: Switched to use the digest instead of the",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change (CLI defaults, image-verify update blocking, messages, digest-pinned images)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.2: Fixed the breaking change in the Kyverno Helm",
+    "reason": "1.13.0-1.13.1 chart regression on `config.webhooks`, fixed in v1.13.2; a hop to 1.13 resolves to its latest patch"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Added: Added a flag to disable reports sanity checks",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Changed: Removed policy exception dependency from global context (#11788)",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Changed: Replaced ghcr.io with reg.kyverno.io for image registry (#12031)",
+    "reason": "image registry switched to reg.kyverno.io in v1.13.3 and reverted in v1.13.4 (#12125); permanent from 1.14.0 (rtz-kyverno-1.14-image-registry-moved)"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Fixed: Fixed distributed labels in group, version, and resource",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Fixed: Fixed default value for apiCall context (#11733)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Fixed: Removed extra line in ConfigMap (#11762)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Fixed: Reverted default background scan interval to 1h (#11754)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.3 Helm: Removed extra line in ConfigMap (#11762)",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.4 What's Changed: Reverted \"replace ghcr.io to reg.kyverno.io\" (#12125)",
+    "reason": "revert of the v1.13.3 registry switch"
+  },
+  {
+    "version": "1.13",
+    "note": "v1.13.5 Fixed: Fixed a CVE which bypasses of policy rules",
+    "reason": "closes GHSA-jrr2-x33p-6hvc: a namespaceSelector in match/exclude is now evaluated for requests it was skipped on; a policy enforces what its manifest already says (#12744)"
+  },
+  {
+    "version": "1.13",
+    "note": "Blog: Generate Changes (The foreach declaration allows the generation)",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.13",
+    "note": "Blog: Generate Changes (This release also allows updates to)",
+    "reason": "the trigger-mismatch removal shipped in 1.10 (rtz-kyverno-1.10-generate-sync-deletes-downstream quotes the 1.10 note); 1.13 adds editable generate patterns"
+  },
+  {
+    "version": "1.13",
+    "note": "Blog: Improved ArgoCD Integration (Kyverno-managed webhook configurations are auto-cleaned up)",
+    "reason": "finalizer on Kyverno's own webhook configurations for clean uninstall; affects uninstall"
+  },
+  {
+    "version": "1.13",
+    "note": "Chart kyverno-policies removed: Remove spec.validationFailureAction field from policies as it is",
+    "reason": "kyverno-policies chart template change only: its Pod Security policies set the per-rule `failureAction` instead of the deprecated spec field; the chart value `validationFailureAction` is unchanged (values.yaml@v1.13.0). The field's own deprecation is rtz-kyverno-1.13-spec-level-failure-action-deprecated"
+  },
+  {
+    "version": "1.13",
+    "note": "CHANGELOG v1.13.0: Added --tufRootRaw flag to pass tuf root for",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Added: [CLI] Added --required-tests to the test command (12395)",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Helm: Added toggle for enabeling/disabling aggregating the user-facing roles",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Helm: Switched to use serviceAccountName instead of deprecated serviceAccount",
+    "reason": "chart template now writes `serviceAccountName` instead of the deprecated pod field `serviceAccount`; same ServiceAccount"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Fixed: Fixed a CVE which bypasses of policy rules",
+    "reason": "closes GHSA-jrr2-x33p-6hvc: a namespaceSelector in match/exclude is now evaluated for requests it was skipped on; a policy enforces what its manifest already says (#12744)"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Fixed: Fixed to remove unnecessary json Marshal/Unmarshal operations to",
+    "reason": "performance or resource-usage improvement; no configuration or API change"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.0 Fixed: Fixed certificate renewer to remove old CA certificate",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.1 Fixed: Fixed to avoid applying CEL PolicyException when the",
+    "reason": "the policies.kyverno.io PolicyException is new in 1.14.0; 1.14.1 makes it honour `--enablePolicyException` like the legacy kind"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.2 What's Changed: fix: remove the delete permission of exceptions (cherry-pick",
+    "reason": "chart RBAC only: the admission controller's ClusterRole loses a `delete` verb on policyexceptions that the controller never used"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.2 What's Changed: chore: Add tests for validating and imagevalidating policies",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.2 What's Changed: fix: remove ununsed code in imageverify lib (cherry-pick",
+    "reason": "Go API / engine-internal refactor — affects programs importing Kyverno packages, not an installed Kyverno"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.4 Fixed: [Helm] Fixed the default webhook type configuration (#11881)",
+    "reason": "restores the documented default: with `config.webhooks: null` the chart's fallback rendered a one-element list from 1.13.2 to 1.14.3, which the controller cannot parse (it reads one object), so Kyverno's own namespace was not excluded from its webhooks; from 1.14.4 it is excluded again (#11881). Installs that set config.webhooks explicitly are unaffected"
+  },
+  {
+    "version": "1.14",
+    "note": "v1.14.4 Fixed: Skipped report permission checks for generation when the",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.14",
+    "note": "Blog: Upgrading to Kyverno 1.14",
+    "reason": "generic helm upgrade instructions"
+  },
+  {
+    "version": "1.14",
+    "note": "Blog: Backward Compatibility",
+    "reason": "statement that ClusterPolicy keeps working in 1.14"
+  },
+  {
+    "version": "1.14",
+    "note": "Chart kyverno removed: Remove the delete permission for policyexceptions in the",
+    "reason": "chart RBAC only: the admission controller's ClusterRole loses a `delete` verb on policyexceptions that the controller never used"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Changed: Removed CLI deprecated APIs (#13481)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Fixed: Fixed default timestamp format handling in logging (#12557)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Helm: Added ability to disable automount of service account",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Others: Removed old schema (#12840)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Others: Removed CLI legacy loader (#12919)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Others: Removed hardcoded cleanup delay (#13461)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.0 Others: Removed external service (#13619)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.1 Changed: Update kubectl image and removed unused hooks (#13837)",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.1 Fixed: Replace openreports module name with the new name",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "v1.15.2 Helm: Removed warnings related to VAPs in the chart",
+    "reason": "CLI, chart option, log format, internal removal or module rename; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.15",
+    "note": "Blog: DeletingPolicy: Controlled Cleanup Made Easy (As Kyverno evolves, managing the full)",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.15",
+    "note": "Blog: New OpenReports API Group Support (Migration Path)",
+    "reason": "future deprecation only — wgpolicyk8s.io PolicyReport CRDs are still served at v1.20.0 (config/crds/policyreport)"
+  },
+  {
+    "version": "1.15",
+    "note": "Chart kyverno changed: Enable the flag --validatingAdmissionPolicyReports by default in the",
+    "reason": "additive output: the reports controller also writes PolicyReports for ValidatingAdmissionPolicies; nothing existing changes (turn off with `features.validatingAdmissionPolicyReports.enabled`)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 API Versions: Added \"bind\" role to the background controller default",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 Fixed: Reduce memory usage by disabling histogram min/max tracking",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 Fixed: Enhanced logs for generate rule attempts execution for",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 Others: Removed deprecated webhook (#13273)",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 Others: Removed gvr/gvk mapping overhead for dpol (#14108)",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.0 Others: Replaced metrics-server helm chart for performance testing setup",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "v1.16.2 What's Changed: fix: revert accidentally introduced breaking change for the",
+    "reason": "chart RBAC addition, memory/log improvement, internal removal, or the 1.16.2 metric-name revert (restores the 1.16.0-1.16.1 name)"
+  },
+  {
+    "version": "1.16",
+    "note": "Blog: CEL Policies in beta (CEL policy types are introduced as)",
+    "reason": "new beta APIs, new metrics, opt-in reporting label, generic upgrade instructions, or a backward-compatibility statement"
+  },
+  {
+    "version": "1.16",
+    "note": "Blog: Observability Upgrades",
+    "reason": "new beta APIs, new metrics, opt-in reporting label, generic upgrade instructions, or a backward-compatibility statement"
+  },
+  {
+    "version": "1.16",
+    "note": "Blog: Label-based reporting configuration (Kyverno now supports label-based report suppression)",
+    "reason": "new beta APIs, new metrics, opt-in reporting label, generic upgrade instructions, or a backward-compatibility statement"
+  },
+  {
+    "version": "1.16",
+    "note": "Blog: Upgrading to Kyverno 1.16",
+    "reason": "new beta APIs, new metrics, opt-in reporting label, generic upgrade instructions, or a backward-compatibility statement"
+  },
+  {
+    "version": "1.16",
+    "note": "Blog: Backward Compatibility",
+    "reason": "new beta APIs, new metrics, opt-in reporting label, generic upgrade instructions, or a backward-compatibility statement"
+  },
+  {
+    "version": "1.16",
+    "note": "Chart kyverno image default: curlimages/curl (was busybox)",
+    "reason": "image of the chart's `helm test` pod only (`test.image`); not part of the running install"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: restrict resource access in namespaced CEL policy types",
+    "reason": "part of introducing the Namespaced* CEL policy kinds (first shipped in 1.16.0, where this restriction is already present); no existing policy changes behaviour (#14217)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: allow bind role to the background controller",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: revert accidentally introduced breaking change for the",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: use v1beta1.PolicyException as new default version by @fjogeleit",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix(cli): color issue for --remove-color flag by @Mujib-Ahasan",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: add kubernetes semantic versioning library to default env",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: Transform CEL lib (replaces the object_from_lists JMESPath functionality)",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: Module test for function evaluation (replace_all) with shallow",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: use local helm-docs binary instead of Docker",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: add missing break in namespace selector override",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: add bounds check for Rules slice in",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.0 What's Changed: fix: remove some policies.kyverno.io/v1alpha1 usage (Cherry-pick #15014) by",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.1 What's Changed: chore: remove Nirmata refs (Cherry-pick #15114) by @kyverno-bot",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.1 What's Changed: fix: add default message for ValidatingPolicy when message",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.1 What's Changed: changed default value and helm values documentation from",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.1 What's Changed: fix: race conditions in configuration.IsExcluded() and breaker.ReportsBreaker (Cherry-pick",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "v1.17.2 What's Changed: Wrong lister in GenerateNamespaced breaks sync for all",
+    "reason": "fix, CLI, new CEL library, internal default-version switch, or Helm doc/type change; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.17",
+    "note": "Blog: Observability and Reporting Upgrades",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.17",
+    "note": "Blog: Getting Started & Backward Compatibility",
+    "reason": "recommendation to move CEL policies to v1; v1beta1 stays served (CRD ledger at v1.20.0 serves v1, v1beta1, v1alpha1)"
+  },
+  {
+    "version": "1.17",
+    "note": "Chart kyverno image default: ghcr.io/kyverno/readiness-checker (was curlimages/curl)",
+    "reason": "image of the chart's `helm test` pod only (`test.image`); not part of the running install"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 New Features: Support uri suffix for defaultRegistry in config (#15258)",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Image Verification: Fix ivpol: remove early return on matchImageReference so",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 CLI: Fix: return error instead of panic when imageRegistryCredentials.secrets",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 CLI: Fix: add default message when rule message is",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Policy Engine: Fix: fetch namespace-scoped enforce policies in audit query",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Generation and Background Controller: Fix: use AddRateLimited instead of AddAfter in background",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Webhook and Controller: Fix: remove hard-wiring of v1alpha1 map informers (#15799)",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0: Fix: limit intermediate certs to mitigate CVE-2026-32280 (#15858)",
+    "reason": "defensive bound: a cosign certificate chain longer than 11 certificates (one leaf + 10 intermediates) is refused (\"certificate chain too long\"); real signing chains are 2-3 long (#15858)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0: Fix CVE-2026-32283: upgrade Go toolchain to 1.26.2 (#15844)",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0: Fix CVE-2026-24686: bump go-tuf/v2 to v2.4.1 (#15579)",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0: Fix stdlib CVEs (#15483)",
+    "reason": "dependency / toolchain bump that fixes a CVE in a library; no configuration, flag or policy behaviour change"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Improvements: Remove kubectl from webhook cleanup binary, replacing with",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 Improvements: Enhance any block logs to include better context",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.0 notice: None identified in this release cycle. The removal",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.1 What's Changed: fix: support cluster-scoped resource generation in GeneratingPolicy (Cherry-pick",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.18",
+    "note": "v1.18.2 What's Changed: fix: do not abort required validation on non-matching",
+    "reason": "fix, CLI, feature or internal change, or the release's own \"no breaking changes\" statement (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.18",
+    "note": "Blog: TL;DR (There are no breaking changes in)",
+    "reason": "release statements: no breaking changes, support policy (encoded as the catalog's supportWindows), a reminder of the 1.17 deprecation (rtz-kyverno-1.17-clusterpolicy-deprecated), generic upgrade steps"
+  },
+  {
+    "version": "1.18",
+    "note": "Blog: Updated Support Policy",
+    "reason": "release statements: no breaking changes, support policy (encoded as the catalog's supportWindows), a reminder of the 1.17 deprecation (rtz-kyverno-1.17-clusterpolicy-deprecated), generic upgrade steps"
+  },
+  {
+    "version": "1.18",
+    "note": "Blog: ClusterPolicy Deprecation Reminder",
+    "reason": "release statements: no breaking changes, support policy (encoded as the catalog's supportWindows), a reminder of the 1.17 deprecation (rtz-kyverno-1.17-clusterpolicy-deprecated), generic upgrade steps"
+  },
+  {
+    "version": "1.18",
+    "note": "Blog: Join the Community (Kyverno 1.18 has no breaking changes)",
+    "reason": "release statements: no breaking changes, support policy (encoded as the catalog's supportWindows), a reminder of the 1.17 deprecation (rtz-kyverno-1.17-clusterpolicy-deprecated), generic upgrade steps"
+  },
+  {
+    "version": "1.18",
+    "note": "Blog: Upgrade",
+    "reason": "release statements: no breaking changes, support policy (encoded as the catalog's supportWindows), a reminder of the 1.17 deprecation (rtz-kyverno-1.17-clusterpolicy-deprecated), generic upgrade steps"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: limit intermediate certs to mitigate CVE-2026-32280 by",
+    "reason": "defensive bound: a cosign certificate chain longer than 11 certificates (one leaf + 10 intermediates) is refused (\"certificate chain too long\"); real signing chains are 2-3 long (#15858)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: support cluster-scoped resource generation in GeneratingPolicy by",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(helm): reportsServer.enabled=true fails with \"Image tags must be",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: do not abort required validation on non-matching",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: chore: regenerate CRDs and docs after GHSA-79gf-7frw-68m9 API",
+    "reason": "CRD / doc regeneration for the namespace-boundary fix that first shipped in 1.18.2 (rtz-kyverno-1.18-generator-namespace-boundary)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(generate): batch UpdateRequests to avoid etcd size limit",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: unblock ko image publish by replacing escaping",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix CEL autogen namespace replacement by @dag-andersen in",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: preserve cluster-scoped generated resources by @Suhani95 in",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(api): use allPath instead of anyPath in m.All",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: skip reports RBAC check when background scanning",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(helm): handle null image tags in _image.tpl and",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(admissionpolicy): default userInfo groups and uid during background",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(generate): reject stale trigger UIDs when live resource",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: strip cross-namespace ownerReferences in CEL-based generation by",
+    "reason": "an ownerReference to an owner in another namespace is invalid in Kubernetes (the garbage collector removes such dependents); generation now leaves it out"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: feat(cel): add regex.replace extension function by @tendinginfinity24 in",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(ivpol): harden validation, cover ephemeral subresource, and serialize",
+    "reason": "closes a bypass (kyverno#16275): an ImageValidatingPolicy that matches `pods/ephemeralcontainers` is now evaluated on that subresource, and a forged verification annotation is ignored; a policy enforces what its manifest already declares"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: [Feature] add optional cache bounds via --maxGlobalContextEntries by",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: restrict issue self-assignment to good first issues for",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix: allow pod-level seccomp in restrict-seccomp-strict vpol by",
+    "reason": "relaxation of the chart's restrict-seccomp-strict ValidatingPolicy: a pod-level seccompProfile is accepted"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(helm): disable in-process cert controller when cert-manager delegation",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: feat: remove kyverno-json support from api by @eddycharly",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: feat: remove kyverno-json from test api (Cherry-pick #16929)",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: feat: remove json scan command (Cherry-pick #16943) by",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(validation): reject non-string values in request.operation conditions (Cherry-pick",
+    "reason": "a list with a non-string element used to panic; it is now an error. Lists of strings (AnyIn [\"CREATE\",\"UPDATE\"]) stay valid"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: feat: remove reference to kyverno-json from go modules",
+    "reason": "fix, chart fix, new CEL function, or kyverno-json removal from the CLI/Go module; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.0 What's Changed: fix(gpol): scope SyncWatchers stale downstream deletion to the",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix: close IPv6-embedded-IPv4 blocklist bypass in apiCall.service egress",
+    "reason": "security fix closing a blocklist bypass, test fixtures, or a circuit-breaker fix"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix(test): disable mutateDigest in exceptions-disabled IVPol by @IceCodeBear",
+    "reason": "security fix closing a blocklist bypass, test fixtures, or a circuit-breaker fix"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix(test): disable IVPol digest defaults in leftover fixtures",
+    "reason": "security fix closing a blocklist bypass, test fixtures, or a circuit-breaker fix"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix: backport 7ac176ac apiCall urlPath hardening to release-1.19",
+    "reason": "the namespace check on a namespaced Policy's apiCall path (rtz-kyverno-1.15-apicall-cross-namespace) now decodes percent-encoded segments first; closes a bypass, valid paths are unaffected"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix(test): disable IVPol digest defaults in leftover report",
+    "reason": "security fix closing a blocklist bypass, test fixtures, or a circuit-breaker fix"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.1 What's Changed: fix(background-controller): watch background-scan reports for the ephemeral reports",
+    "reason": "security fix closing a blocklist bypass, test fixtures, or a circuit-breaker fix"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.2: Cherry-pick workflow script-injection hardening (Critical): GHSA-5gq8-3xxc-jm92 (#18014)",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change (GitHub Actions workflow)"
+  },
+  {
+    "version": "1.19",
+    "note": "v1.19.2 What's Changed: fix(background): resolve generate triggers by name instead of",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.19",
+    "note": "Deprecations: UpdateRequest",
+    "reason": "UpdateRequest is Kyverno-internal; Kyverno writes it, no user object uses v1beta1 (unserved since 1.16 per the CRD ledger)"
+  },
+  {
+    "version": "1.19",
+    "note": "Deprecations: PolicyReport / ClusterPolicyReport",
+    "reason": "statement that reports are NOT deprecated"
+  },
+  {
+    "version": "1.19",
+    "note": "CLI Changes",
+    "reason": "Kyverno CLI only (kubectl-kyverno) — not part of the in-cluster install the upgrade changes"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat: remove kyverno-json from test api by @eddycharly",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat: remove json scan command by @eddycharly in",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(validation): reject non-string values in request.operation conditions by",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: IVPOL required has no effect by @lucchmielowski",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat: remove reference to kyverno-json from go modules",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(gpol): scope SyncWatchers stale downstream deletion to the",
+    "reason": "already shipped on the 1.19 line as a cherry-pick (1.19.0 / 1.19.1 / 1.19.2); dispositioned at 1.19, whose rules carry `introducedIn` and still reach an install that upgrades from an earlier 1.19 patch"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: apply HTTP blocklist to apiCall.service executor by",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(deps): replace rekor to fix GO-2026-5932 by @Sashang-debug",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: harden apiCall.service egress proxy path and cover",
+    "reason": "already shipped on the 1.19 line as a cherry-pick (1.19.0 / 1.19.1 / 1.19.2); dispositioned at 1.19, whose rules carry `introducedIn` and still reach an install that upgrades from an earlier 1.19 patch"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: close IPv6-embedded-IPv4 blocklist bypass in apiCall.service egress",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(test): disable IVPol digest defaults in leftover fixtures",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(deps): use upstream rekor v1.5.4 instead of the",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat: phase1 deprecation warning plumbing and CLI warning",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(test): disable IVPol digest defaults in leftover report",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(background-controller): watch background-scan reports for the ephemeral reports",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat: add deprecation warnings to legacy CRD versions",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: deny globalContext in namespaced policies by @IceCodeBear",
+    "reason": "already shipped on the 1.19 line as a cherry-pick (1.19.0 / 1.19.1 / 1.19.2); dispositioned at 1.19, whose rules carry `introducedIn` and still reach an install that upgrades from an earlier 1.19 patch"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: use Docker CE instead of moby for",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(breaker): recover the reports counter when its watch",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: feat(cli): block legacy policy manifests in apply/test, add",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(event): truncate event notes on a character boundary",
+    "reason": "Kyverno's own log / event / metric output — not a Kubernetes object the upgrade breaks"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: replace remaining fmt.Sprintf in logr messages with",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(background): resolve generate triggers by name instead of",
+    "reason": "already shipped in 1.19 as a cherry-pick (the 1.19 release body lists it; dispositioned at 1.19)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: rename startRountine to startRoutine in metrics policy",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: harden legacy PR triage safety by @JimBugwadia",
+    "reason": "upstream build / test / CI / repository housekeeping; no runtime change"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(helm): scope scale-to-zero hook to the release by",
+    "reason": "chart fix: the pre-delete scale-to-zero hook (runs on `helm uninstall`) is scoped to this release (#17840)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(security): CEL API path validation and mpol namespace",
+    "reason": "already shipped on the 1.19 line as a cherry-pick (1.19.0 / 1.19.1 / 1.19.2); dispositioned at 1.19, whose rules carry `introducedIn` and still reach an install that upgrades from an earlier 1.19 patch"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(imageverify): bound the reads image verification makes from",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(wildcard): replace the glob matcher with a bounded",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(cel): bound the cost of CEL policy expression",
+    "reason": "already shipped on the 1.19 line as a cherry-pick (1.19.0 / 1.19.1 / 1.19.2); dispositioned at 1.19, whose rules carry `introducedIn` and still reach an install that upgrades from an earlier 1.19 patch"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: chore: remove dead AutogenV2 feature flag by @geeknishantkyeus",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(ivpol): report missing annotation keys instead of %!s(<nil>)",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(ext/cluster): block non-GET RawAbsPath from reaching the real",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(webhook): guard nil Scope dereference in sortedRules to",
+    "reason": "bug fix that restores the documented behaviour; nothing on the cluster to change"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix(imageverify): reject non-string attestation fields instead of panicking",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "v1.20.0 What's Changed: fix: drop gone downstreams from the generate watch",
+    "reason": "fix, dependency bump, test fixture, CLI change, log formatting, or internal dead-flag removal; no operator action (reviewed one by one, E2 audit #1)"
+  },
+  {
+    "version": "1.20",
+    "note": "Blog: Policy exceptions that carry their justification (Compensating controls do more than record)",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  },
+  {
+    "version": "1.20",
+    "note": "Blog: JSON mutation beyond Kubernetes (MutatingPolicy gains a JSON mode that)",
+    "reason": "additive feature or new opt-in setting; nothing existing changes behaviour"
+  }
+]
