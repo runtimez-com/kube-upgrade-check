@@ -712,12 +712,12 @@
  {
   "version": "1.15",
   "note": "plugin/grpc_server: Both limits accept zero, not only positive integers",
-  "reason": "a relaxed limit: 0 is now accepted, and every value that parsed before still parses"
+  "reason": "documentation only (plugin/grpc_server/README.md, df0e9ba5a): the parser already accepted 0"
  },
  {
   "version": "1.15",
   "note": "plugin/https: Add max_streams to limit HTTP/2 concurrent streams",
-  "reason": "additive: a new option/plugin/metric that nothing breaks by not using (omitted = the Go HTTP/2 default, as before)"
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using (omitted = DefaultHTTPSMaxStreams 250 concurrent streams, the value the Go HTTP/2 default already gave; 0 selects the transport default)"
  },
  {
   "version": "1.15",
@@ -752,6 +752,6 @@
  {
   "version": "1.15",
   "note": "plugin/tsig: Reject non-final TSIG records",
-  "reason": "a bug fix upstream shipped, not a change an operator must make (a TSIG must be the last additional record; a malformed request with a TSIG elsewhere now gets FORMERR before dispatch)"
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a TSIG must be the last additional record; a malformed request with a TSIG elsewhere now gets FORMERR from the tsig plugin, before later plugins)"
  }
 ]
