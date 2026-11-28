@@ -6,12 +6,12 @@
   },
   "source": {
     "url": "https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler",
-    "ref": "kubernetes/autoscaler @ cluster-autoscaler-1.36.2 (cluster-autoscaler/clusterstate/api/types.go, clusterstate/clusterstate.go, clusterstate/utils/status.go, config/flags/flags.go, metrics/metrics.go, diffed against cluster-autoscaler-1.35.0; GitHub release bodies 1.36.0, 1.36.1, 1.36.2); charts/cluster-autoscaler 9.59.0; core sigs.k8s.io/cluster-autoscaler @ k8s.v1.37.0 (pkg/clusterstate/api/types.go, pkg/config/flags/flags.go, pkg/metrics/metrics.go) read at onboarding",
+    "ref": "kubernetes/autoscaler @ cluster-autoscaler-1.37.0 (186ce11da; GitHub release bodies 1.36.0 through 1.37.0, cluster-autoscaler/FAQ.md, cluster-autoscaler/go.mod); chart at tag cluster-autoscaler-chart-9.60.1 (5c42a2c5: cluster-autoscaler/charts/cluster-autoscaler 9.60.1, appVersion 1.37.0); core sigs.k8s.io/cluster-autoscaler @ v0.0.0-k8s.v1.37.1 (b3f90a631, the core module 1.37.0 pins in go.mod: pkg/clusterstate/api/types.go, pkg/clusterstate/clusterstate.go, pkg/clusterstate/utils/status.go, pkg/config/flags/flags.go, pkg/config/const.go, pkg/metrics/metrics.go, pkg/core/static_autoscaler.go, pkg/loop/run.go), diffed against cluster-autoscaler-1.36.2 and core k8s.v1.37.0",
     "lastVerified": "2026-11-27",
     "note": "Catalog entry so the add-on is ASSESSABLE (org Integrations toggle, agent wire, Autoscaling workspace); the fingerprint row makes it DETECTABLE. supportWindows is deliberately OMITTED for now: Cluster Autoscaler's own rule is 'run the minor that matches the control plane' (its README compatibility table pairs CA 1.N with Kubernetes 1.N), which is a pairing, not a window — transcribing it as one would say every CA on a different minor is unsupported, and the pairing itself has never been an upgrade blocker in the field. No currency hop either: nothing here says a hop is required by the Kubernetes upgrade. The rules for this add-on are LIVE only (src/main/java/io/runtimez/eac/risk/addon/clusterautoscaler/), read from CA's own status ConfigMap projection (agent status.caStatus) and the controller's flags; they reach the Risk tab, RCA and MCP through AddonRuleRegistry."
   },
   "supportWindows": null,
-  "latestKnownVersion": "1.36.2",
+  "latestKnownVersion": "1.37.0",
   "currencyHop": false,
   "rules": [],
   "upgradeNotes": [],
