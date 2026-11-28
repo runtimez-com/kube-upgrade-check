@@ -683,5 +683,75 @@
   "version": "1.14",
   "note": "plugin/timeouts: Add maxtcpqueries option to bound queries per TCP/TLS connection",
   "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.15",
+  "note": "core: Add opt-in JSON logging with structured DNS query fields",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using (the -log-format flag defaults to the old text format)"
+ },
+ {
+  "version": "1.15",
+  "note": "core: Add opt-in opcode admission",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using — only a plugin that registers an extra opcode widens what a server block accepts; the default request policy is unchanged (core/dnsserver/register.go AllowOpcode)"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/cache: Clarify stale verify behavior",
+  "reason": "documentation only (plugin/cache/README.md)"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/file: Return SERVFAIL on self-referential CNAME loops",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a CNAME whose target is its own owner answered NOERROR with the record repeated; self-referential DNAME and wildcard CNAME loops already answered SERVFAIL)"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/forward: Bound DoT connection setup for retries",
+  "reason": "DoT dial plus TLS handshake is now bounded inside the existing 5s forwarding window (plugin/forward/forward.go), so a stalled handshake leaves time for a retry; the window and the 2s read timeout are unchanged"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/grpc_server: Both limits accept zero, not only positive integers",
+  "reason": "documentation only (plugin/grpc_server/README.md, df0e9ba5a): the parser already accepted 0"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/https: Add max_streams to limit HTTP/2 concurrent streams",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using (omitted = DefaultHTTPSMaxStreams 250 concurrent streams, the value the Go HTTP/2 default already gave; 0 selects the transport default)"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/metrics: Drop the nonexistent type label from request_duration_seconds",
+  "reason": "documentation only (plugin/metrics/README.md): the request_duration_seconds histogram never carried a type label, so no series or query changes"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/metrics: Release listener on TLS startup failure",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/rewrite: Fixes a nil pointer dereference panic in ResponseReverter.WriteMsg",
+  "reason": "a bug fix upstream shipped, not a change an operator must make"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/rewrite: Limit rewrite cname recursion",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (unbounded rewrite cname recursion crashed CoreDNS; the bound reuses the server's existing loop counter)"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/rewrite: Support opt-in metadata in regex name replacements",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/template: Add expr-lang support to templates",
+  "reason": "additive: a new option/plugin/metric that nothing breaks by not using"
+ },
+ {
+  "version": "1.15",
+  "note": "plugin/tsig: Reject non-final TSIG records",
+  "reason": "a bug fix upstream shipped, not a change an operator must make (a TSIG must be the last additional record; a malformed request with a TSIG elsewhere now gets FORMERR from the tsig plugin, before later plugins)"
  }
 ]
