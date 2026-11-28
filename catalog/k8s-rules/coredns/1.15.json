@@ -1,0 +1,135 @@
+[
+ {
+  "ruleId": "rtz-coredns-1.15-tls-conflicting-policies-on-shared-listener",
+  "severity": "HIGH",
+  "title": "Server blocks sharing a DoT/DoH/DoQ listener must carry the same TLS policy — 1.15.0 refuses to start otherwise",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which server blocks share one tls://, https://, https3:// or quic:// address, and the certificate / client_auth each sets, are Corefile values; only directive names are collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^tls$"
+  },
+  "quote": "core: Reject conflicting TLS policies on shared listeners.",
+  "remediation": "From 1.15.0 (8d6664393, core/dnsserver/tlsconfig.go) server blocks that share one DoT, DoH, DoH3 or DoQ listener (same address and port) must agree on the whole TLS policy: server certificates, client_auth mode and client CAs, minimum/maximum TLS version, cipher suites, curve preferences and session tickets — and TLS must be set on all of them or none. A difference stops CoreDNS at startup with `conflicting TLS configuration for shared listener <addr> between zones …`. Before 1.15.0 one block's tls settings silently applied to every zone on that listener. Give each zone that needs a different policy its own port, or make the tls lines identical.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*tls\\\\b|^\\\\s*(tls|https|https3|quic)://\")) | $n + \": \" + .'  # server blocks printing the same tls://, https://, https3:// or quic:// address must carry identical tls lines from 1.15.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-file-soa-owner-must-match-zone",
+  "severity": "HIGH",
+  "title": "file: a zone file whose SOA owner is not the zone being loaded fails to load (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "zone files and their SOA owner names are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^(file|auto)$"
+  },
+  "quote": "plugin/file: Reject SOA owners that do not match the zone",
+  "remediation": "From 1.15.0 (84a93a0b8, plugin/file/file.go) every SOA record in a zone file must be owned by the zone being loaded. A relative owner resolves against the current origin — `test` in a zone loaded as `test.` becomes `test.test.` — so write `@` or the zone's absolute name. A `file db.example.org` line in a `.` server block with no zone argument is now rejected even when the file sets `$ORIGIN example.org.`: name the zone on the file line. On the file plugin a mismatch fails setup at startup and CoreDNS does not start; on reload the last good zone stays in service. The auto plugin uses the same parser but only logs `Parse zone …` and skips that zone (plugin/auto/walk.go), so the zone silently stops being served. Check the SOA owner of every zone file before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(file|auto)\\\\b\")) | $n + \": \" + .'  # each printed file zone / auto directory must carry an SOA owned by its zone (@ or the absolute zone name) on 1.15.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-forward-upstream-hostnames-absolute",
+  "severity": "MEDIUM",
+  "title": "forward: upstream hostnames are absolute names — resolver search domains no longer apply (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "upstream addresses are directive arguments, which are not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^forward$"
+  },
+  "quote": "plugin/forward: Treat forward upstream hostnames as absolute FQDNs to avoid search-domain resolution.",
+  "remediation": "From 1.15.0 (5cb7cdc91, plugin/forward/resolve.go) a hostname upstream resolved through the system resolver (`forward . my-dns`) is looked up as the absolute name `my-dns.` — /etc/resolv.conf search domains are no longer appended. A short name that only resolved through a search domain now fails to resolve, forward setup returns the error and CoreDNS does not start. Write the full name (`my-dns.kube-system.svc.cluster.local`). IP-address upstreams are unaffected, and upstreams resolved through the forward `resolver` option were already queried as absolute names.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*forward\\\\b\")) | $n + \": \" + .'  # a printed forward line naming a short hostname (no dot) as an upstream stops resolving at 1.15.0; IP upstreams and full names are fine"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-dns64-prefix-length-restricted",
+  "severity": "MEDIUM",
+  "title": "dns64: only /32, /40, /48, /56, /64 and /96 prefixes are accepted (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the prefix is a directive argument, which is not collected"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^dns64$"
+  },
+  "quote": "plugin/dns64: Reject unsupported prefix lengths",
+  "remediation": "From 1.15.0 (e88652562, plugin/dns64/setup.go) a dns64 prefix must be /32, /40, /48, /56, /64 or /96 (RFC 6052 section 2.2). /72, /80 and /88 were accepted before and now fail Corefile parsing, so CoreDNS does not start. The default 64:ff9b::/96 is unaffected.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(dns64|prefix)\\\\b\")) | $n + \": \" + .'  # a printed dns64 / prefix line ending in /72, /80 or /88 is rejected at 1.15.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-cache-servfail-on-upstream-failure",
+  "severity": "LOW",
+  "title": "cache: an upstream failure is cached as SERVFAIL for the servfail TTL (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "when an upstream fails is runtime behaviour"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^cache$"
+  },
+  "quote": "plugin/cache: Cache SERVFAIL when the resolver fails without a response",
+  "remediation": "From 1.15.0 (16b53a46c, plugin/cache/handler.go) when the next plugin fails without writing a response — forward on an upstream timeout — the cache stores a SERVFAIL for the servfail TTL (5s unless `servfail` is set), so identical queries in that window get SERVFAIL from the cache instead of retrying the upstream. A SERVFAIL caused by a canceled request is not cached. Set `servfail 0` in the cache block to keep the old behaviour; otherwise expect repeated names to keep failing up to the servfail TTL after a short upstream outage.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*(cache|servfail)\\\\b\")) | $n + \": \" + .'  # each printed cache block caches upstream-failure SERVFAILs for its servfail TTL (5s by default) from 1.15.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-cache-hits-keep-original-aa-bit",
+  "severity": "LOW",
+  "title": "cache: answers served from the cache keep the AA bit of the original reply (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "which clients depend on the AA bit is outside the cluster inventory"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^cache$"
+  },
+  "quote": "plugin/cache: Stop setting AA on answers served from cache",
+  "remediation": "From 1.15.0 (234f5fd37, plugin/cache/item.go) a reply served from the cache carries the AA (authoritative) bit of the reply that filled it, instead of always AA=1. Forwarded answers are therefore AA=0 on cache hits as they already were on misses. Only legacy stub resolvers that drop non-authoritative answers (the removed code comment names glibc 2.20 on Ubuntu 14.04) and probes that assert AA=1 notice; check those before the hop.",
+  "verifyCommand": "kubectl -n kube-system get cm -o json | jq -r '.items[] | select(.metadata.name | test(\"coredns\")) | .metadata.name as $n | (.data // {})[] | split(\"\\n\")[] | select(test(\"^\\\\s*cache\\\\b\")) | $n + \": \" + .'  # each printed cache block returns the original AA bit on cache hits from 1.15.0"
+ },
+ {
+  "ruleId": "rtz-coredns-1.15-trace-zipkin-endpoint-error-fails-startup",
+  "severity": "LOW",
+  "title": "trace: a Zipkin endpoint error stops CoreDNS instead of logging a warning (1.15.0)",
+  "detection": {
+   "kind": "NOT_DETECTABLE",
+   "reason": "the trace endpoint and the listen address it is built from are Corefile values"
+  },
+  "scope": {
+   "kind": "SPEC_PATH_MATCHES",
+   "objectKind": "ConfigMap",
+   "objectName": "coredns",
+   "target": "corednsPlugins[]",
+   "value": "^trace$"
+  },
+  "quote": "plugin/trace: Return error from Zipkin NewEndpoint in trace setup",
+  "remediation": "From 1.15.0 (f781f9733, plugin/trace/trace.go) an error from zipkin.NewEndpoint — built from the server block's listen address — is returned from the trace plugin's OnStartup instead of being logged as `build Zipkin endpoint found err`, so the server does not start. If the running CoreDNS logs that warning today, it will fail to start on 1.15.0. Also from 1.15.0 (3580a2996) an ENDPOINT counts as a URL only when it begins with http:// or https://; any other value becomes http://ENDPOINT/api/v2/spans.",
+  "verifyCommand": "kubectl -n kube-system logs deploy/coredns --tail=5000 2>/dev/null | grep -c 'build Zipkin endpoint found err'  # non-zero = the running CoreDNS already hits the Zipkin endpoint error that 1.15.0 makes fatal; 0 proves nothing when trace is not loaded or the logs rotated"
+ }
+]
